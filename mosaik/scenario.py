@@ -1,28 +1,25 @@
 import itertools
-import json
 
 from mosaik import simmanager
+from mosaik import simulator
 
 
-def run(env):
-    pass
+def run(env, until):
+    return simulator.run(env, until)
 
 
 class Environment:
-    def __init__(self, start, stop, sim_config):
-        self.start_time = start
-        self.stop_time = stop
+    def __init__(self, sim_config):
         self.sim_config = sim_config
+        self.sims = {}
 
         self._sim_ids = {}
-        self._sims = {}
 
     def start(self, sim_name):
         sim = simmanager.start(sim_name, self.sim_config)
-        sim.meta = json.loads(sim.meta)
         counter = self._sim_ids.setdefault(sim_name, itertools.count())
         sim_id = '%s-%s' % (sim_name, next(counter))
-        self._sims[sim_id] = sim
+        self.sims[sim_id] = sim
         return ModelFactory(sim_id, sim)
 
 
