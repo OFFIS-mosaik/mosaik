@@ -15,7 +15,7 @@ sim_config = {
 def test_mosaik():
     env = scenario.Environment(sim_config)
     create_scenario(env)
-    end = scenario.run(env, until=10)
+    end = env.run(until=10)
     assert end == 10
 
 
@@ -41,6 +41,6 @@ def create_scenario(env):
         {'eid': 'PyExampleSim-1.0.1', 'rel': [], 'etype': 'B'},
     ]
 
-    # for i, j in zip(a, b):
-    #     env.connect(i, j, ('val_out', 'val_in'))
+    for i, j in zip(a, b):
+        env.connect(i, j, ('val_out', 'val_in'))
     # env.connect((0, 1), a, b)

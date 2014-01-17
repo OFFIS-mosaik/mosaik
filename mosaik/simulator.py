@@ -2,17 +2,12 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
+import logging
+
 import simpy
 
 
-def simulation(env, sim_id, sim):
-    """SimPy simulation process for a certain simulator *sim* with ID *sim_id*.
-    """
-    while True:
-        start = env.now
-        end = sim.step(start)
-        print('%s stepped from %s to %s.' % (sim_id, start, end))
-        yield env.timeout(end - start)
+logger = logging.getLogger(__name__)
 
 
 def run(env, until):
@@ -23,7 +18,37 @@ def run(env, until):
 
     """
     senv = simpy.Environment()
-    for sim_id, sim in env.sims.items():
-        senv.process(simulation(senv, sim_id, sim))
+    env.simpy_env = env
+    for sim in env.sims.values():
+        senv.process(simulation(env, sim))
     senv.run(until=until)
     return senv.now
+
+
+def simulation(env, sim):
+    """SimPy simulation process for a certain simulator *sim*.
+    """
+    while True:
+        start = env.simpy_env.now
+        end = yield step(env, sim, start)
+        logger.debug('%s stepped from %s to %s.' % (sim.id, start, end))
+
+
+def step(env, sim, start):
+    gen = sim.step(start)
+    try:
+        get_data_params = next(gen)
+        while True:
+            data = get_data(env, sim, **get_data_params)
+            get_data_params = gen.send(data)
+    except StopIteration as e:
+        end = e.args[0]
+        return env.simpy_env.timeout(end - start, value=end)
+
+
+def get_data(env, sim, start, end):
+    input_sims = env._get_input_sims(sim_id)
+    env._data_cache(
+    check_env_cache()
+    get_data_from_sim()
+    pass

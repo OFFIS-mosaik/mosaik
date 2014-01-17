@@ -55,7 +55,7 @@ def start(sim_name, sim_config):
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
         sim = cls()
-    except AttributeError, ImportError, KeyError, ValueError as err:
+    except (AttributeError, ImportError, KeyError, ValueError) as err:
         raise exceptions.SimulationError(
             'Simulator "%s" could not be started: %s' % (sim_name, err.args[0])
         ) from None

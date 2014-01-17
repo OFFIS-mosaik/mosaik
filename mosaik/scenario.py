@@ -14,16 +14,6 @@ from mosaik import simmanager
 from mosaik import simulator
 
 
-def run(env, until):
-    """Start the simulation of *env* until the simulation time *until* is
-    reached.
-
-    Return the current simulation time (>= *until*).
-
-    """
-    return simulator.run(env, until)
-
-
 class Environment:
     """The environment holds all data required to specify and run the scenario.
 
@@ -38,8 +28,13 @@ class Environment:
     def __init__(self, sim_config):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
+
         self.sims = {}
         """A dictionary of already started simulators instances."""
+
+        self.simpy_env = None
+        """The SimPy :class:`~simpy.core.Environment` used during the
+        simulation."""
 
         self._sim_ids = {}  # Contains ID counters for each simulator type.
 
@@ -50,14 +45,28 @@ class Environment:
         """
         sim = simmanager.start(sim_name, self.sim_config)
         counter = self._sim_ids.setdefault(sim_name, itertools.count())
-        sim_id = '%s-%s' % (sim_name, next(counter))
-        self.sims[sim_id] = sim
-        return ModelFactory(sim_id, sim)
+        sim.id = '%s-%s' % (sim_name, next(counter))
+        self.sims[sim.id] = sim
+        return ModelFactory(sim)
+
+    def connect(self, src, dest, *attr_pairs):
+        """
+
+        """
+
+
+    def run(self, until):
+        """Start the simulation until the simulation time *until* is reached.
+
+        Return the current simulation time (>= *until*).
+
+        """
+        return simulator.run(self, until)
 
 
 class ModelFactory:
-    """This is a facade for a simulator *sim* with ID *sim_id* that allows the
-    user to create new model instances (entities) within that simulator.
+    """This is a facade for a simulator *sim* that allows the user to create
+    new model instances (entities) within that simulator.
 
     For every model that a simulator publicly exposes, the ``ModelFactory``
     provides a :class:`ModelMock` attribute that actually creates the entities.
@@ -66,8 +75,7 @@ class ModelFactory:
     marked as *public*, an :exc:`AttributeError` is raised.
 
     """
-    def __init__(self, sim_id, sim):
-        self._sim_id = sim_id
+    def __init__(self, sim):
         self._sim = sim
         self._meta = sim.meta
         self._model_cache = {}
@@ -80,7 +88,7 @@ class ModelFactory:
             raise AttributeError('Model "%s" is not public.' % name)
 
         if name not in self._model_cache:
-            self._model_cache[name] = ModelMock(name, self._sim_id, self._sim)
+            self._model_cache[name] = ModelMock(name, self._sim)
 
         return self._model_cache[name]
 
@@ -95,10 +103,10 @@ class ModelMock:
     ``sim.ModelName.create(3, x=23)``.
 
     """
-    def __init__(self, name, sim_id, sim):
+    def __init__(self, name, sim):
         self._name = name
-        self._sim_id = sim_id
         self._sim = sim
+        self._sim_id = sim.id
 
     def __call__(self, **model_params):
         """Call :meth:`create()` to create 1 entity."""
