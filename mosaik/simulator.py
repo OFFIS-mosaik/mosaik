@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
+import collections
 import logging
 
 import simpy
@@ -18,37 +19,49 @@ def run(env, until):
 
     """
     senv = simpy.Environment()
-    env.simpy_env = env
+    env.simpy_env = senv
     for sim in env.sims.values():
-        senv.process(simulation(env, sim))
-    senv.run(until=until)
-    return senv.now
+        senv.process(sim_process(env, sim, until))
+    senv.run()
 
 
-def simulation(env, sim):
+def sim_process(env, sim, until):
     """SimPy simulation process for a certain simulator *sim*.
     """
-    while True:
-        start = env.simpy_env.now
-        end = yield step(env, sim, start)
-        logger.debug('%s stepped from %s to %s.' % (sim.id, start, end))
+    # dfg = env.df_graph
+    # deps = dfg.predecessors(sim['sid'])
+    while sim.time < until:
+        # data = {}
+        # for dep in deps:
+        #     data[dep] = yield get_data(dep, now)
+        start = sim.time
+        end = yield step(env, sim)
+        logger.debug('%s stepped from %s to %s.' % (sim.sid, start, end))
 
 
-def step(env, sim, start):
-    gen = sim.step(start)
-    try:
-        get_data_params = next(gen)
-        while True:
-            data = get_data(env, sim, **get_data_params)
-            get_data_params = gen.send(data)
-    except StopIteration as e:
-        end = e.args[0]
-        return env.simpy_env.timeout(end - start, value=end)
+def step(env, sim):
+    outattr = env._df_outattr[sim.sid]
+    time, data = sim.step(sim.time, inputs={}, outputs=outattr)
+    sim.time = time
+    # TODO:
+    # - Add "data" to env._df_cache
+    # - Get new minimum simulator time
+    # - Prune env._df_cache
+    evt = env.simpy_env.event()
+    evt.succeed(time)
+    return evt
 
 
-def get_data(env, sim, start, end):
-    input_sims = env._get_input_sims(sim_id)
-    env._data_cache(
-    check_env_cache()
-    get_data_from_sim()
-    pass
+# def get_data(sim, data, time):
+#     """Return an event that waits until *sim* provides the required *data* for
+#     a certain *time*.
+#
+#     The event succeeds when the data is avaialbe. The events value will be the
+#     data.
+#
+#     """
+#     input_sims = env._get_input_sims(sim_id)
+#     env._data_cache(
+#     check_env_cache()
+#     get_data_from_sim()
+#     pass

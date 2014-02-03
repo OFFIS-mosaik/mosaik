@@ -15,8 +15,9 @@ sim_config = {
 def test_mosaik():
     env = scenario.Environment(sim_config)
     create_scenario(env)
-    end = env.run(until=10)
-    assert end == 10
+    env.run(until=10)
+    for sim in env.sims.values():
+        assert sim.time == 10
 
 
 def create_scenario(env):
@@ -31,15 +32,19 @@ def create_scenario(env):
     a = [exsim1.A(init_val=0) for i in range(3)]
     b = exsim2.B.create(2, init_val=0)
 
-    assert sorted(a, key=lambda x: x['eid']) == [
-        {'eid': 'PyExampleSim-0.0.0', 'rel': [], 'etype': 'A'},
-        {'eid': 'PyExampleSim-0.1.0', 'rel': [], 'etype': 'A'},
-        {'eid': 'PyExampleSim-0.2.0', 'rel': [], 'etype': 'A'},
-    ]
-    assert sorted(b, key=lambda x: x['eid']) == [
-        {'eid': 'PyExampleSim-1.0.0', 'rel': [], 'etype': 'B'},
-        {'eid': 'PyExampleSim-1.0.1', 'rel': [], 'etype': 'B'},
-    ]
+    for i, entity in enumerate(sorted(a, key=lambda e: (e.sid, e.eid))):
+        assert entity.sid == 'PyExampleSim-0'
+        assert entity.eid == '%d.0' % i
+        assert entity.type == 'A'
+        assert entity.rel == []
+        assert entity.sim == exsim1._sim
+
+    for i, entity in enumerate(sorted(b, key=lambda e: (e.sid, e.eid))):
+        assert entity.sid == 'PyExampleSim-1'
+        assert entity.eid == '0.%d' % i
+        assert entity.type == 'B'
+        assert entity.rel == []
+        assert entity.sim == exsim2._sim
 
     for i, j in zip(a, b):
         env.connect(i, j, ('val_out', 'val_in'))

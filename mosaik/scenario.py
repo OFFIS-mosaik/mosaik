@@ -8,10 +8,33 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The function :func:`run()` finally starts the simulation.
 
 """
+from collections import defaultdict
 import itertools
+
+import networkx
 
 from mosaik import simmanager
 from mosaik import simulator
+from mosaik.exceptions import ScenarioError
+
+
+class Entity:
+    __slots__ = ['sid', 'eid', 'type', 'rel', 'sim']
+
+    def __init__(self, sid, eid, type, rel, sim):
+        self.sid = sid
+        self.eid = eid
+        self.type = type
+        self.rel = rel
+        self.sim = sim
+
+    def __str__(self):
+        return '%s(%s)' % (self.__class__.__name__, ', '.join([
+            self.sid, self.eid, self.type]))
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, ', '.join([
+            self.sid, self.eid, self.type, repr(self.rel), repr(self.sim)]))
 
 
 class Environment:
@@ -36,24 +59,52 @@ class Environment:
         """The SimPy :class:`~simpy.core.Environment` used during the
         simulation."""
 
-        self._sim_ids = {}  # Contains ID counters for each simulator type.
+        self.df_graph = networkx.DiGraph()
+        """The directed dataflow graph for this scenario."""
+
+        # Contains ID counters for each simulator type.
+        self._sim_ids = defaultdict(itertools.count)
+        # List of outputs for each simulator and model:
+        # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
+        self._df_outattr = defaultdict(lambda: defaultdict(list))
+        # Cache for simulation results
+        self._df_cache = {}
 
     def start(self, sim_name):
         """Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
 
         """
-        sim = simmanager.start(sim_name, self.sim_config)
-        counter = self._sim_ids.setdefault(sim_name, itertools.count())
-        sim.id = '%s-%s' % (sim_name, next(counter))
-        self.sims[sim.id] = sim
+        counter = self._sim_ids[sim_name]
+        sim_id = '%s-%s' % (sim_name, next(counter))
+        sim = simmanager.start(sim_name, self.sim_config, sim_id)
+        self.sims[sim_id] = sim
         return ModelFactory(sim)
 
     def connect(self, src, dest, *attr_pairs):
         """
 
-        """
 
+        """
+        if src.sid == dest.sid:
+            raise ScenarioError('Cannot connect entities sharing the same '
+                                'simulator.')
+
+        missing_attrs = self._check_attributes(src, dest, attr_pairs)
+        if missing_attrs:
+            raise ScenarioError('At least on attribute does not exist: %s' %
+                                ', '.join('%s.%s' % x for x in missing_attrs))
+
+        # Add edge and check for cycles and the dataflow graph.
+        self.df_graph.add_edge(src.sid, dest.sid)
+        if not networkx.is_directed_acyclic_graph(self.df_graph):
+            self.df_graph.remove_edge(src.sid, dest.sid)
+            raise ScenarioError('Connection from "%s" to "%s" introduces '
+                                'cyclic dependencies.' % (src.sid, dest.sid))
+
+        # Cache the attribute names which we need output data for after a
+        # simulation step to reduce the number of df graph queries.
+        self._df_outattr[src.sid][src.eid].extend(a[0] for a in attr_pairs)
 
     def run(self, until):
         """Start the simulation until the simulation time *until* is reached.
@@ -62,6 +113,19 @@ class Environment:
 
         """
         return simulator.run(self, until)
+
+    def _check_attributes(self, src, dest, attr_pairs):
+        """Check if *src* and *dest* have the attributes in *attr_pairs*.
+
+        Raise a :exc:`ScenarioError` if an attribute does not exist.
+
+        """
+        attr_errors = []
+        for attr_pair in attr_pairs:
+            for entity, attr in zip([src, dest], attr_pair):
+                if attr not in entity.sim.meta['models'][entity.type]['attrs']:
+                    attr_errors.append((entity, attr))
+        return attr_errors
 
 
 class ModelFactory:
@@ -72,7 +136,7 @@ class ModelFactory:
     provides a :class:`ModelMock` attribute that actually creates the entities.
 
     If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`AttributeError` is raised.
+    marked as *public*, an :exc:`ScenarioError` is raised.
 
     """
     def __init__(self, sim):
@@ -82,10 +146,10 @@ class ModelFactory:
 
     def __getattr__(self, name):
         if name not in self._meta['models']:
-            raise AttributeError('Model factory for "%s" has no model "%s"' %
-                                 (self._meta['name'], name))
+            raise ScenarioError('Model factory for "%s" has no model "%s".' %
+                                (self._sim.sid, name))
         if not self._meta['models'][name]['public']:
-            raise AttributeError('Model "%s" is not public.' % name)
+            raise ScenarioError('Model "%s" is not public.' % name)
 
         if name not in self._model_cache:
             self._model_cache[name] = ModelMock(name, self._sim)
@@ -106,7 +170,7 @@ class ModelMock:
     def __init__(self, name, sim):
         self._name = name
         self._sim = sim
-        self._sim_id = sim.id
+        self._sim_id = sim.sid
 
     def __call__(self, **model_params):
         """Call :meth:`create()` to create 1 entity."""
@@ -123,7 +187,7 @@ class ModelMock:
 
         """
         # TODO: Generate proper signature based on the meta data?
-        entities = self._sim.create(num, self._name, **model_params)
-        for entity in entities:
-            entity['eid'] = '%s.%s' % (self._sim_id, entity['eid'])
-        return entities
+        entities = self._sim.create(num, self._name, model_params)
+        sim_id = self._sim_id
+        return [Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
+                for e in entities]
