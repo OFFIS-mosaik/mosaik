@@ -5,6 +5,8 @@ syntax: glob
 *.ropeproject
 *~
 .DS_Store
+.coverage
 MANIFEST
 dist/*
 docs/_build/*
+htmlcov/*
