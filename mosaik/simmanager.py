@@ -82,5 +82,8 @@ class SimProxy:
     def create(self, num, model_name, model_params):
         return self.inst.create(num, model_name, model_params)
 
-    def step(self, time, inputs, outputs):
-        return self.inst.step(time, inputs, outputs)
+    def step(self, time, inputs):
+        return self.inst.step(time, inputs)
+
+    def get_data(self, outputs):
+        return self.inst.get_data(outputs)

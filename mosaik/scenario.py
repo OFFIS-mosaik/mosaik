@@ -15,6 +15,7 @@ import networkx
 
 from mosaik import simmanager
 from mosaik import simulator
+from mosaik import util
 from mosaik.exceptions import ScenarioError
 
 
@@ -68,7 +69,7 @@ class Environment:
         # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
         self._df_outattr = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
-        self._df_cache = {}
+        self._df_cache = util.OrderedDefaultdict(dict)
 
     def start(self, sim_name):
         """Start the simulator named *sim_name* and return a

@@ -81,7 +81,8 @@ def test_sim_proxy_meth_forward():
     sp = simmanager.SimProxy('', mock.Mock())
     meths = [
         ('create', (object(), object(), object())),
-        ('step', (object(), object(), object())),
+        ('step', (object(), object(), )),
+        ('get_data', (object(),)),
     ]
     for meth, args in meths:
         ret = getattr(sp, meth)(*args)

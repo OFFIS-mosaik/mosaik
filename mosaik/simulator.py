@@ -2,7 +2,6 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
-import collections
 import logging
 
 import simpy
@@ -35,21 +34,35 @@ def sim_process(env, sim, until):
         # for dep in deps:
         #     data[dep] = yield get_data(dep, now)
         start = sim.time
-        end = yield step(env, sim)
-        logger.debug('%s stepped from %s to %s.' % (sim.sid, start, end))
+        yield step(env, sim)
+        logger.debug('%s stepped from %s to %s.' % (sim.sid, start, sim.time))
+        logger.info('Progress: %5.3f%%' % get_progress(env.sims, until))
 
 
 def step(env, sim):
     outattr = env._df_outattr[sim.sid]
-    time, data = sim.step(sim.time, inputs={}, outputs=outattr)
+    time = sim.step(sim.time, inputs={})
+    if outattr:
+        data = sim.get_data(outattr)
+        env._df_cache[sim.time][sim.sid] = data
     sim.time = time
-    # TODO:
-    # - Add "data" to env._df_cache
-    # - Get new minimum simulator time
-    # - Prune env._df_cache
+
+    # Prune dataflow cache
+    min_time = min(s.time for s in env.sims.values())
+    for cache_time in env._df_cache.keys():
+        if cache_time >= min_time:
+            break
+        del env._df_cache[cache_time]
+
     evt = env.simpy_env.event()
     evt.succeed(time)
     return evt
+
+
+def get_progress(sims, until):
+    times = [sim.time for sim in sims.values()]
+    avg_time = sum(times) / len(times)
+    return avg_time * 100 / until
 
 
 # def get_data(sim, data, time):
