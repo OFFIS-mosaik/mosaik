@@ -18,6 +18,7 @@ def test_mosaik():
     env.run(until=10)
     for sim in env.sims.values():
         assert sim.time == 10
+    assert 0
 
 
 def create_scenario(env):

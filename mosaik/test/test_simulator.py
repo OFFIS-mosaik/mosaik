@@ -31,6 +31,10 @@ def test_sim_process():
     assert 0
 
 
+def test_wait_for_dependencies():
+    assert 0
+
+
 @pytest.mark.xfail
 def test_step():
     assert 0

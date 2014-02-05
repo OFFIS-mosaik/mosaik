@@ -78,6 +78,7 @@ class SimProxy:
         self.inst = inst
         self.meta = inst.meta
         self.time = 0
+        self.next_time = 0
 
     def create(self, num, model_name, model_params):
         return self.inst.create(num, model_name, model_params)

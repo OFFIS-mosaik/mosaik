@@ -103,6 +103,9 @@ class Environment:
             raise ScenarioError('Connection from "%s" to "%s" introduces '
                                 'cyclic dependencies.' % (src.sid, dest.sid))
 
+        dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
+        dfs.append((src.eid, dest.eid, attr_pairs))
+
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
         self._df_outattr[src.sid][src.eid].extend(a[0] for a in attr_pairs)

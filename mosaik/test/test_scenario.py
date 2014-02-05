@@ -54,9 +54,19 @@ def test_env_connect():
     for i, j in zip(a, b):
         env.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
-    assert list(sorted(env.df_graph.nodes())) == ['ExampleSim-0',
-                                                  'ExampleSim-1']
-    assert env.df_graph.edges() == [('ExampleSim-0', 'ExampleSim-1')]
+    assert env.df_graph.adj == {
+        'ExampleSim-0': {
+            'ExampleSim-1': {
+                'dataflows': [
+                    (a[0].eid, b[0].eid, (('val_out', 'val_in'),
+                                          ('dummy_out', 'dummy_in'))),
+                    (a[1].eid, b[1].eid, (('val_out', 'val_in'),
+                                          ('dummy_out', 'dummy_in'))),
+                ],
+            },
+        },
+        'ExampleSim-1': {},
+    }
     assert env._df_outattr == {
         'ExampleSim-0': {
             '0.0': ['val_out', 'dummy_out'],
