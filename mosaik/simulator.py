@@ -24,18 +24,18 @@ def run(env, until):
 def sim_process(env, sim, until):
     """SimPy simulation process for a certain simulator *sim*.
     """
-    while sim.time < until:
+    while sim.next_time < until:
         yield wait_for_dependencies(env, sim)
         input_data = get_input_data(env, sim)
         yield step(env, sim, input_data)
         yield get_outputs(env, sim)
-        print('Progress: %5.3f%%' % get_progress(env.sims, until))
+        print('Progress: %.2f%%' % get_progress(env.sims, until))
 
 
 def wait_for_dependencies(env, sim):
     events = []
     for dep_sid in env.df_graph.predecessors_iter(sim.sid):
-        if env.sims[dep_sid].time < sim.time:
+        if env.sims[dep_sid].next_time <= sim.time:
             evt = env.simpy_env.event()
             events.append(evt)
 
@@ -96,11 +96,12 @@ def get_outputs(env, sim):
             break
         del env._df_cache[cache_time]
 
+
     evt = env.simpy_env.event().succeed()
     return evt
 
 
 def get_progress(sims, until):
-    times = [sim.time for sim in sims.values()]
+    times = [sim.next_time for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until

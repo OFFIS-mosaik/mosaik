@@ -31,6 +31,7 @@ def test_sim_process():
     assert 0
 
 
+@pytest.mark.xfail
 def test_wait_for_dependencies():
     assert 0
 
@@ -43,18 +44,18 @@ def test_step():
 def test_get_progress():
     class Sim:
         def __init__(self, time):
-            self.time = time
+            self.next_time = time
 
     sims = {i: Sim(0) for i in range(4)}
     assert simulator.get_progress(sims, 10) == 0
 
-    sims[0].time = 4
+    sims[0].next_time = 4
     assert simulator.get_progress(sims, 10) == 10
 
-    sims[1].time = 2
-    sims[2].time = 2
+    sims[1].next_time = 2
+    sims[2].next_time = 2
     assert simulator.get_progress(sims, 10) == 20
 
     for sim in sims.values():
-        sim.time = 10
+        sim.next_time = 10
     assert simulator.get_progress(sims, 10) == 100
