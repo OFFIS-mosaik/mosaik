@@ -74,7 +74,9 @@ def test_sim_proxy():
     assert sp.sid == 'ExampleSim-0'
     assert sp.inst is es
     assert sp.meta is es.meta
-    assert sp.time == 0
+    assert sp.time == float('-inf')
+    assert sp.next_step == 0
+    assert sp.step_required == None
 
 
 def test_sim_proxy_meth_forward():

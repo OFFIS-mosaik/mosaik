@@ -7,6 +7,17 @@ from collections import defaultdict
 import simpy
 
 
+def enable_debugging():
+    import mosaik.simulator as s
+
+
+    pass
+
+
+def disable_debugging():
+    pass
+
+
 def run(env, until):
     """Run the simulation for an :class:`~mosaik.scenario.Environment` until
     the simulation time *until* has been reached.
@@ -24,28 +35,88 @@ def run(env, until):
 def sim_process(env, sim, until):
     """SimPy simulation process for a certain simulator *sim*.
     """
-    while sim.next_time < until:
+    while sim.next_step < until:
+        yield step_required(env, sim)
         yield wait_for_dependencies(env, sim)
         input_data = get_input_data(env, sim)
         yield step(env, sim, input_data)
         yield get_outputs(env, sim)
-        print('Progress: %.2f%%' % get_progress(env.sims, until))
+        # print('Progress: %.2f%%' % get_progress(env, until))
+        print('Progress: %.2f%%' % (env.simpy_env.now * 100 / until))
+
+
+def step_required(env, sim):
+    """Return an :class:`~simpy.events.Event` that is triggered when *sim*
+    needs to perform its next step.
+
+    The event will already be triggered if the simulator is a "sink" (no other
+    simulator depends on its outputs) or if another simulator is already
+    waiting for it.
+
+    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+
+    """
+    sim.step_required = env.simpy_env.event()
+    dfg = env.df_graph
+    sid = sim.sid
+    if dfg.out_degree(sid) == 0 or any(('wait_event' in dfg[sid][s])
+                                       for s in dfg.successors_iter(sid)):
+        # A step is required if there are no outgoing edges or if one of the
+        # edges had a "WaitEvent" attached.
+        sim.step_required.succeed()
+    # else:
+    #   "wait_for_dependencies()" triggers the event when it creates a new
+    #   "WaitEvent" for "sim".
+
+    return sim.step_required
 
 
 def wait_for_dependencies(env, sim):
+    """Return an event (:class:`simpy.events.AllOf`) that is triggered when
+    all dependencies can provide input data for *sim*.
+
+    Also notify any simulator that is already waiting to perform its next step.
+
+    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+
+    """
     events = []
     for dep_sid in env.df_graph.predecessors_iter(sim.sid):
-        if env.sims[dep_sid].next_time <= sim.time:
-            evt = env.simpy_env.event()
+        dep = env.sims[dep_sid]
+        if dep.next_step <= sim.time:
+            evt = WaitEvent(env.simpy_env, sim.time)
             events.append(evt)
-
             env.df_graph[dep_sid][sim.sid]['wait_evt'] = evt
-            env.df_graph[dep_sid][sim.sid]['wait_time'] = sim.time
+
+            if not dep.step_required.triggered:
+                # Notify dependency that it needs to step now.
+                dep.step_required.succeed()
 
     return env.simpy_env.all_of(events)
 
 
 def get_input_data(env, sim):
+    """Return a dictionary with the input data for *sim*.
+
+    The dict will look like::
+
+        {
+            'eid': {
+                'attrname': [val_0, ..., val_n],
+                ...
+            },
+            ...
+        }
+
+    For every entity, there is an entry in the dict and each entry is itself
+    a dict with attributes and a list of values. This is, because we may have
+    inputs from multiple simulators (e.g., different consumers that provide
+    loads for a node in a power grid) and cannot know how to aggreate that data
+    (sum, max, ...?).
+
+    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+
+    """
     input_data = defaultdict(lambda: defaultdict(list))
     for src_sid in env.df_graph.predecessors_iter(sim.sid):
         dataflows = env.df_graph[src_sid][sim.sid]['dataflows']
@@ -58,25 +129,21 @@ def get_input_data(env, sim):
 
 
 def step(env, sim, inputs):
-    # TODO: If a simulator had no dependencies it could theoretically run
-    # until the simulation end while other simulators are still way behind.
-    # If theses simulators need data from it, we'd have to cache the the
-    # simulators data for the complete simulation time which may require
-    # lots of memory. Furthermore, if we allowed simulators (like FMI) to
-    # rollback, they also shouldn't run until the simulation end or we would
-    # not be able to roll them back (because we can only do a rollback until
-    # we got data from them). So we need a way to slow down faster simulators
-    # so that they only run until they reach a max. t or a sync. point.
-    sim.time = sim.next_time
+    step_size = sim.next_step - sim.time
+    sim.time = sim.next_step
     time = sim.step(sim.time, inputs=inputs)
-    sim.next_time = time
+    sim.next_step = time
 
+    # This event will be need when we send step() commands over network and
+    # need to wait for a simulator's reply
     evt = env.simpy_env.event().succeed()
 
     for suc_sid in env.df_graph.successors_iter(sim.sid):
         edge = env.df_graph[sim.sid][suc_sid]
-        if 'wait_evt' in edge and edge['wait_time'] < time:
+        if 'wait_evt' in edge and edge['wait_evt'].time <= time:
             edge.pop('wait_evt').succeed()
+
+    env.simpy_env.timeout(step_size)  # Increase simulation time
 
     return evt
 
@@ -86,7 +153,7 @@ def get_outputs(env, sim):
     if outattr:
         # Create a cache entry for every point in time the data is valid for.
         data = sim.get_data(outattr)
-        for i in range(sim.time, sim.next_time):
+        for i in range(sim.time, sim.next_step):
             env._df_cache[i][sim.sid] = data
 
     # Prune dataflow cache
@@ -96,12 +163,17 @@ def get_outputs(env, sim):
             break
         del env._df_cache[cache_time]
 
-
     evt = env.simpy_env.event().succeed()
     return evt
 
 
 def get_progress(sims, until):
-    times = [sim.next_time for sim in sims.values()]
+    times = [sim.next_step for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
+
+
+class WaitEvent(simpy.events.Event):
+    def __init__(self, env, time):
+        super().__init__(env)
+        self.time = time

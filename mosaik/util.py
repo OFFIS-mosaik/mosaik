@@ -1,5 +1,7 @@
 import collections
 
+from mosaik import simulator
+
 
 class OrderedDefaultdict(collections.OrderedDict):
     """Mixes :class:`~collections.OrderedDict` with

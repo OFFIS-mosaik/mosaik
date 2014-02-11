@@ -77,8 +77,9 @@ class SimProxy:
         self.sid = sid
         self.inst = inst
         self.meta = inst.meta
-        self.time = 0
-        self.next_time = 0
+        self.time = float('-inf')
+        self.next_step = 0
+        self.step_required = None
 
     def create(self, num, model_name, model_params):
         return self.inst.create(num, model_name, model_params)
