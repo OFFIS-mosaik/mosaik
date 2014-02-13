@@ -32,15 +32,15 @@ def pre_step(env, sim):
     node_id = node % (sid, next_step)
 
     eg.add_node(node_id, t=perf_counter(), st=env.simpy_env.now)
-    if sim.time >= 0:
-        eg.add_edge(node % (sid, sim.time), node_id)
+    if sim.last_step >= 0:
+        eg.add_edge(node % (sid, sim.last_step), node_id)
 
     for pre in env.df_graph.predecessors_iter(sid):
-        pre_node = node % (pre, sims[pre].time)
+        pre_node = node % (pre, sims[pre].last_step)
         eg.add_edge(pre_node, node_id)
         assert eg.node[pre_node]['t'] <= eg.node[node_id]['t']
 
     for suc in env.df_graph.successors_iter(sid):
-        suc_id = node % (suc, sims[suc].next_time)
+        suc_id = node % (suc, sims[suc].next_step)
         assert sims[suc].next_step >= next_step
         assert suc_id not in eg

@@ -30,8 +30,7 @@ def sim_process(env, sim, until):
         input_data = get_input_data(env, sim)
         yield step(env, sim, input_data)
         yield get_outputs(env, sim)
-        # print('Progress: %.2f%%' % get_progress(env, until))
-        print('Progress: %.2f%%' % (env.simpy_env.now * 100 / until))
+        print('Progress: %.2f%%' % get_progress(env.sims, until))
 
 
 def step_required(env, sim):
@@ -70,10 +69,12 @@ def wait_for_dependencies(env, sim):
 
     """
     events = []
+    t = sim.next_step
     for dep_sid in env.df_graph.predecessors_iter(sim.sid):
         dep = env.sims[dep_sid]
-        if dep.next_step <= sim.time:
-            evt = WaitEvent(env.simpy_env, sim.time)
+        if not (t in env._df_cache and dep_sid in env._df_cache[t]):
+            # Wait for dep_sim if there's not data for it yet.
+            evt = WaitEvent(env.simpy_env, t)
             events.append(evt)
             env.df_graph[dep_sid][sim.sid]['wait_evt'] = evt
 
@@ -111,44 +112,43 @@ def get_input_data(env, sim):
         dataflows = env.df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
-                val = env._df_cache[sim.time][src_sid][src_eid][src_attr]
+                val = env._df_cache[sim.next_step][src_sid][src_eid][src_attr]
                 input_data[dest_eid][dest_attr].append(val)
 
     return input_data
 
 
 def step(env, sim, inputs):
-    sim.time = sim.next_step
-    time = sim.step(sim.time, inputs=inputs)
-    sim.next_step = time
+    sim.last_step = sim.next_step
+    sim.next_step = sim.step(sim.next_step, inputs=inputs)
 
     # This event will be need when we send step() commands over network and
     # need to wait for a simulator's reply
-    # evt = env.simpy_env.event().succeed()
-    # return evt
-
-    for suc_sid in env.df_graph.successors_iter(sim.sid):
-        edge = env.df_graph[sim.sid][suc_sid]
-        if 'wait_evt' in edge and edge['wait_evt'].time <= time:
-            edge.pop('wait_evt').succeed()
-
-    return env.simpy_env.timeout(sim.next_step - sim.time)
+    evt = env.simpy_env.event().succeed()
+    return evt
 
 
 def get_outputs(env, sim):
-    outattr = env._df_outattr[sim.sid]
+    sid = sim.sid
+    outattr = env._df_outattr[sid]
     if outattr:
         # Create a cache entry for every point in time the data is valid for.
         data = sim.get_data(outattr)
-        for i in range(sim.time, sim.next_step):
+        for i in range(sim.last_step, sim.next_step):
             env._df_cache[i][sim.sid] = data
 
     # Prune dataflow cache
-    min_time = min(s.time for s in env.sims.values())
+    min_time = min(s.next_step for s in env.sims.values())
     for cache_time in env._df_cache.keys():
-        if cache_time >= min_time:
-            break
-        del env._df_cache[cache_time]
+        if cache_time < min_time:
+            del env._df_cache[cache_time]
+
+    # Notify waiting simulators
+    max_cache_time = sim.next_step
+    for suc_sid in env.df_graph.successors_iter(sid):
+        edge = env.df_graph[sid][suc_sid]
+        if 'wait_evt' in edge and edge['wait_evt'].time < max_cache_time:
+            edge.pop('wait_evt').succeed()
 
     evt = env.simpy_env.event().succeed()
     return evt

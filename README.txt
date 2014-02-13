@@ -35,6 +35,10 @@ A simple demo scenario with mosaik::
    >>> env = mosaik.Environment(sim_config)
    >>> create_scenario(env)
    >>> env.run(until=2)
+   Progress: 25.00%
+   Progress: 50.00%
+   Progress: 75.00%
+   Progress: 100.00%
 
 
 Installation

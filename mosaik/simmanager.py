@@ -77,7 +77,7 @@ class SimProxy:
         self.sid = sid
         self.inst = inst
         self.meta = inst.meta
-        self.time = float('-inf')
+        self.last_step = float('-inf')
         self.next_step = 0
         self.step_required = None
 
