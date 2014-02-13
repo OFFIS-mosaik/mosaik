@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from mosaik import scenario
+from mosaik import scenario, simulator
 from mosaik.exceptions import ScenarioError
 
 
@@ -33,6 +33,10 @@ def test_environment():
     assert env.simpy_env is None
     assert env.df_graph.nodes() == []
     assert env.df_graph.edges() == []
+    assert not hasattr(env, 'execution_graph')
+
+    env = scenario.Environment(sim_config, execution_graph=True)
+    assert env.execution_graph.adj == {}
 
 
 def test_env_start():
@@ -41,9 +45,11 @@ def test_env_start():
     fac = env.start('ExampleSim')
     assert isinstance(fac, scenario.ModelFactory)
     assert env.sims == {'ExampleSim-0': fac._sim}
+    assert 'ExampleSim-0' in env.df_graph
 
     env.start('ExampleSim')
     assert list(sorted(env.sims)) == ['ExampleSim-0', 'ExampleSim-1']
+    assert 'ExampleSim-1' in env.df_graph
 
 
 def test_env_connect():
@@ -127,6 +133,18 @@ def test_env_run():
     with mock.patch('mosaik.simulator.run') as run_mock:
         env.run(3)
         assert run_mock.call_args == mock.call(env, 3)
+
+
+def test_env_run_with_debug():
+    env = scenario.Environment({}, execution_graph=True)
+
+    def run(*args, **kwargs):
+        assert simulator.step.__name__ == 'wrapped_step'
+
+    assert simulator.run.__name__ == 'run'
+    with mock.patch('mosaik.simulator.run', run):
+        env.run(3)
+    assert simulator.run.__name__ == 'run'
 
 
 def test_model_factory():

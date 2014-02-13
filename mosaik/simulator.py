@@ -7,17 +7,6 @@ from collections import defaultdict
 import simpy
 
 
-def enable_debugging():
-    import mosaik.simulator as s
-
-
-    pass
-
-
-def disable_debugging():
-    pass
-
-
 def run(env, until):
     """Run the simulation for an :class:`~mosaik.scenario.Environment` until
     the simulation time *until* has been reached.
@@ -129,23 +118,21 @@ def get_input_data(env, sim):
 
 
 def step(env, sim, inputs):
-    step_size = sim.next_step - sim.time
     sim.time = sim.next_step
     time = sim.step(sim.time, inputs=inputs)
     sim.next_step = time
 
     # This event will be need when we send step() commands over network and
     # need to wait for a simulator's reply
-    evt = env.simpy_env.event().succeed()
+    # evt = env.simpy_env.event().succeed()
+    # return evt
 
     for suc_sid in env.df_graph.successors_iter(sim.sid):
         edge = env.df_graph[sim.sid][suc_sid]
         if 'wait_evt' in edge and edge['wait_evt'].time <= time:
             edge.pop('wait_evt').succeed()
 
-    env.simpy_env.timeout(step_size)  # Increase simulation time
-
-    return evt
+    return env.simpy_env.timeout(sim.next_step - sim.time)
 
 
 def get_outputs(env, sim):

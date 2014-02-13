@@ -48,8 +48,12 @@ class Environment:
     simulators are available and how to start them. See
     :func:`mosaik.simmanager.start()` for more details.
 
+    If *execution_graph* is set to ``True``, an execution graph will be created
+    during the simulation. This may be useful for debugging and testing. Note,
+    that this increases the memory consumption and simulation time.
+
     """
-    def __init__(self, sim_config):
+    def __init__(self, sim_config, execution_graph=False):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -62,6 +66,11 @@ class Environment:
 
         self.df_graph = networkx.DiGraph()
         """The directed dataflow graph for this scenario."""
+
+        self._debug = False
+        if execution_graph:
+            self._debug = True
+            self.execution_graph = networkx.DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
@@ -80,6 +89,7 @@ class Environment:
         sim_id = '%s-%s' % (sim_name, next(counter))
         sim = simmanager.start(sim_name, self.sim_config, sim_id)
         self.sims[sim_id] = sim
+        self.df_graph.add_node(sim_id)
         return ModelFactory(sim)
 
     def connect(self, src, dest, *attr_pairs):
@@ -116,7 +126,14 @@ class Environment:
         Return the current simulation time (>= *until*).
 
         """
-        return simulator.run(self, until)
+        if self._debug:
+            import mosaik._debug as dbg
+            dbg.enable()
+        try:
+            return simulator.run(self, until)
+        finally:
+            if self._debug:
+                dbg.disable()
 
     def _check_attributes(self, src, dest, attr_pairs):
         """Check if *src* and *dest* have the attributes in *attr_pairs*.
