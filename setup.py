@@ -1,11 +1,9 @@
 from setuptools import setup, find_packages
 
-import mosaik
-
 
 setup(
     name='mosaik',
-    version=mosaik.__version__,
+    version='2.0a1',
     author='Stefan Scherfke',
     author_email='stefan.scherfke at offis.de',
     description=('Mosaik is a simulation compositor and comes with a powerful '
