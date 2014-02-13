@@ -24,9 +24,11 @@ sim_config = {
 
 def test_start_inproc():
     """Test starting an in-proc simulator."""
-    sp = simmanager.start('ExampleSimA', sim_config, 'ExampleSim-0')
+    sp = simmanager.start('ExampleSimA', sim_config, 'ExampleSim-0',
+                          {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
     assert isinstance(sp.inst, ExampleSim)
+    assert sp.inst.step_size == 2
 
 
 @pytest.mark.parametrize(('sim_config', 'err_msg'), [
@@ -39,7 +41,7 @@ def test_start_inproc():
 def test_start_inproc_error(sim_config, err_msg):
     """Test failure at starting an in-proc simulator."""
     with pytest.raises(ScenarioError) as exc_info:
-        simmanager.start('spam', sim_config, '')
+        simmanager.start('spam', sim_config, '', {})
     assert str(exc_info.value) == ('Simulator "spam" could not be started: ' +
                                    err_msg)
 
@@ -83,7 +85,7 @@ def test_sim_proxy_meth_forward():
     sp = simmanager.SimProxy('', mock.Mock())
     meths = [
         ('create', (object(), object(), object())),
-        ('step', (object(), object(), )),
+        ('step', (object(), {})),
         ('get_data', (object(),)),
     ]
     for meth, args in meths:

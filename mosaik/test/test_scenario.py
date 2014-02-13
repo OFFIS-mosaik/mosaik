@@ -42,9 +42,10 @@ def test_environment():
 def test_env_start():
     """Test starting new simulators and getting IDs for them."""
     env = scenario.Environment(sim_config)
-    fac = env.start('ExampleSim')
+    fac = env.start('ExampleSim', step_size=2)
     assert isinstance(fac, scenario.ModelFactory)
     assert env.sims == {'ExampleSim-0': fac._sim}
+    assert fac._sim.inst.step_size == 2
     assert 'ExampleSim-0' in env.df_graph
 
     env.start('ExampleSim')

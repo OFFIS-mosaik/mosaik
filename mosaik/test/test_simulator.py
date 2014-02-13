@@ -46,16 +46,19 @@ def test_get_progress():
         def __init__(self, time):
             self.next_step = time
 
-    sims = {i: Sim(0) for i in range(4)}
-    assert simulator.get_progress(sims, 10) == 0
+    sims = {i: Sim(0) for i in range(2)}
+    assert simulator.get_progress(sims, 4) == 0
+
+    sims[0].next_step = 1
+    assert simulator.get_progress(sims, 4) == 12.5
+
+    sims[0].next_step = 2
+    assert simulator.get_progress(sims, 4) == 25
+
+    sims[1].next_step = 3
+    sims[0].next_step = 3
+    assert simulator.get_progress(sims, 4) == 75
 
     sims[0].next_step = 4
-    assert simulator.get_progress(sims, 10) == 10
-
-    sims[1].next_step = 2
-    sims[2].next_step = 2
-    assert simulator.get_progress(sims, 10) == 20
-
-    for sim in sims.values():
-        sim.next_step = 10
-    assert simulator.get_progress(sims, 10) == 100
+    sims[1].next_step = 6
+    assert simulator.get_progress(sims, 4) == 100

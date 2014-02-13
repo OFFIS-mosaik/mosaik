@@ -12,10 +12,11 @@ import importlib
 from mosaik.exceptions import ScenarioError
 
 
-def start(sim_name, sim_config, sim_id):
+def start(sim_name, sim_config, sim_id, sim_params):
     """
-    Start the simulator *sim_name* based on the configuration im *sim_config*
-    and give it the ID *sim_id*.
+    Start the simulator *sim_name* based on the configuration im *sim_config*,
+    give it the ID *sim_id* and pass the parameters of the dict *sim_params* to
+    it.
 
     The sim config is a dictionary with one entry for every simulator. The
     entry itself tells mosaik how to start the simulator::
@@ -68,7 +69,7 @@ def start(sim_name, sim_config, sim_id):
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, details)) from None
 
-    return SimProxy(sim_id, cls())
+    return SimProxy(sim_id, cls(**sim_params))
 
 
 class SimProxy:

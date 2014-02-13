@@ -80,14 +80,14 @@ class Environment:
         # Cache for simulation results
         self._df_cache = util.OrderedDefaultdict(dict)
 
-    def start(self, sim_name):
+    def start(self, sim_name, **sim_params):
         """Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
 
         """
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
-        sim = simmanager.start(sim_name, self.sim_config, sim_id)
+        sim = simmanager.start(sim_name, self.sim_config, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
         return ModelFactory(sim)

@@ -11,7 +11,7 @@ _origs = {
 def enable(capture_dataflows=False):
     # TODO: optionally capture dataflows
     def wrapped_step(env, sim, inputs):
-        pre_step(env, sim)
+        pre_step(env, sim, inputs)
         return _origs['step'](env, sim, inputs)
 
     sim.step = wrapped_step
@@ -22,7 +22,7 @@ def disable():
         setattr(sim, k, v)
 
 
-def pre_step(env, sim):
+def pre_step(env, sim, inputs):
     eg = env.execution_graph
     sims = env.sims
 
@@ -31,7 +31,7 @@ def pre_step(env, sim):
     node = '%s-%s'
     node_id = node % (sid, next_step)
 
-    eg.add_node(node_id, t=perf_counter(), st=env.simpy_env.now)
+    eg.add_node(node_id, t=perf_counter(), inputs=inputs)
     if sim.last_step >= 0:
         eg.add_edge(node % (sid, sim.last_step), node_id)
 

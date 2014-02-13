@@ -76,7 +76,7 @@ def wait_for_dependencies(env, sim):
             # Wait for dep_sim if there's not data for it yet.
             evt = WaitEvent(env.simpy_env, t)
             events.append(evt)
-            env.df_graph[dep_sid][sim.sid]['wait_evt'] = evt
+            env.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
             if not dep.step_required.triggered:
                 # Notify dependency that it needs to step now.
@@ -108,12 +108,14 @@ def get_input_data(env, sim):
 
     """
     input_data = defaultdict(lambda: defaultdict(list))
+    input_data = {}
     for src_sid in env.df_graph.predecessors_iter(sim.sid):
         dataflows = env.df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
                 val = env._df_cache[sim.next_step][src_sid][src_eid][src_attr]
-                input_data[dest_eid][dest_attr].append(val)
+                input_data.setdefault(
+                    dest_eid, {}).setdefault(dest_attr, []).append(val)
 
     return input_data
 
@@ -138,24 +140,24 @@ def get_outputs(env, sim):
             env._df_cache[i][sim.sid] = data
 
     # Prune dataflow cache
-    min_time = min(s.next_step for s in env.sims.values())
+    max_cache_time = min(s.next_step for s in env.sims.values())
     for cache_time in env._df_cache.keys():
-        if cache_time < min_time:
+        if cache_time < max_cache_time:
             del env._df_cache[cache_time]
 
     # Notify waiting simulators
-    max_cache_time = sim.next_step
+    next_step = sim.next_step
     for suc_sid in env.df_graph.successors_iter(sid):
         edge = env.df_graph[sid][suc_sid]
-        if 'wait_evt' in edge and edge['wait_evt'].time < max_cache_time:
-            edge.pop('wait_evt').succeed()
+        if 'wait_event' in edge and edge['wait_event'].time < next_step:
+            edge.pop('wait_event').succeed()
 
     evt = env.simpy_env.event().succeed()
     return evt
 
 
 def get_progress(sims, until):
-    times = [sim.next_step for sim in sims.values()]
+    times = [min(until, sim.next_step) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 

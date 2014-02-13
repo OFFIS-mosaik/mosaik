@@ -2,6 +2,8 @@
 Test a complete mosaik simulation using mosaik as a library.
 
 """
+import importlib
+
 import networkx as nx
 import pytest
 
@@ -13,95 +15,31 @@ sim_config = {
 }
 
 
-#
-# Test fixtures
-#
-# The nodes in the scenario description below are "Simulator(resolution)"
-
-# Scenario 1:
-#
-#   A(1)
-#
-def scenario_1(env):
-    exsim = env.start('A')
-    exsim.A(init_val=0)
-
-
-res_1 = """
-A-0-0 A-0-1
-A-0-1 A-0-2
-"""
-
-
-# Scenario 2:
-#
-#  A(1) → B(1)
-#
-def scenario_2(env):
-    exsim_a = env.start('A')
-    exsim_b = env.start('B')
-    a = exsim_a.A(init_val=0)
-    b = exsim_b.B(init_val=0)
-    env.connect(a, b, ('val_out', 'val_in'))
-
-
-res_2 = """
-A-0-0 A-0-1
-A-0-0 B-0-0
-B-0-0 B-0-1
-A-0-1 B-0-1
-"""
-
-
-# Scenario 3:
-#
-#   A(2) → B(1)
-#
-
-
-# Scenario 4
-#
-#   A(1) → B(2)
-#
-
-
-# Scenario 5
-#
-# A(1) ↘      ↗ C(1)
-#        B(2)
-# D(4) ↗      ↘ E(3)
-#
-
-
-# Scenario 6
-#
-#        B(5)
-#      ↗
-# A(1) ⇄ C(1)
-#
-
-scenarios = [
-    (scenario_1, 3, res_1),
-    (scenario_2, 2, res_2),
-]
-
-
-#
-# Actual tests
-#
-@pytest.mark.parametrize(('create_scenario', 'until', 'expected'), scenarios)
-def test_mosaik(create_scenario, until, expected):
+@pytest.mark.parametrize('fixture', [
+    'scenario_%s' % (i + 1) for i in range(5)
+])
+def test_mosaik(fixture):
+    fixture = importlib.import_module('mosaik.test.fixtures.%s' % fixture)
     env = scenario.Environment(sim_config, execution_graph=True)
-    create_scenario(env)
-    env.run(until=until)
+    fixture.create_scenario(env)
+    env.run(until=fixture.until)
 
-    expected_graph = nx.parse_edgelist(expected.split('\n'),
+    expected_graph = nx.parse_edgelist(fixture.execution_graph.split('\n'),
                                        create_using=nx.DiGraph(),
                                        data=())
+    for node, inputs in fixture.inputs.items():
+        expected_graph.add_node(node, inputs=inputs)
 
-    print(env.execution_graph.edges())
     assert env.execution_graph.adj == expected_graph.adj
 
+    for node, data in env.execution_graph.node.items():
+        # Sort lists of inputs for the assertions:
+        for eid, attrs in data['inputs'].items():
+            for v in attrs.values():
+                v.sort()
+
+        assert data['inputs'] == expected_graph.node[node].get('inputs', {})
+
     for sim in env.sims.values():
-        assert sim.last_step < until
-        assert sim.next_step >= until
+        assert sim.last_step < fixture.until
+        assert sim.next_step >= fixture.until
