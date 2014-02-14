@@ -107,7 +107,6 @@ def get_input_data(env, sim):
     *env* is a mosaik :class:`~mosaik.scenario.Environment`.
 
     """
-    input_data = defaultdict(lambda: defaultdict(list))
     input_data = {}
     for src_sid in env.df_graph.predecessors_iter(sim.sid):
         dataflows = env.df_graph[src_sid][sim.sid]['dataflows']
@@ -121,6 +120,13 @@ def get_input_data(env, sim):
 
 
 def step(env, sim, inputs):
+    """Advance (step) a simulator *sim* with the given *inputs*. Return an
+    event that is triggered when the step was performed.
+
+    *inputs* is a dictionary, that maps entity IDs to data dictionaries which
+    map attribute names to lists of values (see :func:`get_input_data()`).
+
+    """
     sim.last_step = sim.next_step
     sim.next_step = sim.step(sim.next_step, inputs=inputs)
 
@@ -131,6 +137,13 @@ def step(env, sim, inputs):
 
 
 def get_outputs(env, sim):
+    """Get all required output data from a simulator *sim*, notify all
+    simulators that are waiting for that data and prune the data flow cache.
+    Return an event that is triggered when all output data is received.
+
+    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+
+    """
     sid = sim.sid
     outattr = env._df_outattr[sid]
     if outattr:
@@ -139,12 +152,6 @@ def get_outputs(env, sim):
         for i in range(sim.last_step, sim.next_step):
             env._df_cache[i][sim.sid] = data
 
-    # Prune dataflow cache
-    max_cache_time = min(s.next_step for s in env.sims.values())
-    for cache_time in env._df_cache.keys():
-        if cache_time < max_cache_time:
-            del env._df_cache[cache_time]
-
     # Notify waiting simulators
     next_step = sim.next_step
     for suc_sid in env.df_graph.successors_iter(sid):
@@ -152,17 +159,26 @@ def get_outputs(env, sim):
         if 'wait_event' in edge and edge['wait_event'].time < next_step:
             edge.pop('wait_event').succeed()
 
+    # Prune dataflow cache
+    max_cache_time = min(s.next_step for s in env.sims.values())
+    for cache_time in env._df_cache.keys():
+        if cache_time < max_cache_time:
+            del env._df_cache[cache_time]
+
     evt = env.simpy_env.event().succeed()
     return evt
 
 
 def get_progress(sims, until):
+    """Return the current progress of the simulation in percent."""
     times = [min(until, sim.next_step) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 
 
 class WaitEvent(simpy.events.Event):
+    """A normal event with an additional ``time`` attribute."""
     def __init__(self, env, time):
         super().__init__(env)
         self.time = time
+        """The simulation time to which a simulator should advance."""

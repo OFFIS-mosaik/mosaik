@@ -1,3 +1,7 @@
+"""
+This module contains some utility functions and classes.
+
+"""
 import collections
 
 

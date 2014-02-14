@@ -20,14 +20,24 @@ from mosaik.exceptions import ScenarioError
 
 
 class Entity:
+    """An entity represents an instance of a simulation model within mosaik."""
     __slots__ = ['sid', 'eid', 'type', 'rel', 'sim']
 
     def __init__(self, sid, eid, type, rel, sim):
         self.sid = sid
+        """The ID of the simulator this entity belongs to."""
+
         self.eid = eid
+        """The entity's ID."""
+
         self.type = type
+        """The entity's type (or class)."""
+
         self.rel = rel
+        """A list of related entities (their IDs)"""
+
         self.sim = sim
+        """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
@@ -93,8 +103,15 @@ class Environment:
         return ModelFactory(sim)
 
     def connect(self, src, dest, *attr_pairs):
-        """
+        """Connect the *src* entity to *dest* entity.
 
+        Establish a dataflow for each ``(src_attr, dest_attr)`` tuple in
+        *attr_pairs*.
+
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
+        the same simulator instance, if at least one (src. or dest.) attribute
+        in *attr_pairs* does not exist, or if the connection would introduce
+        a cycle in the dataflow (e.g., A → B → C → A).
 
         """
         if src.sid == dest.sid:
