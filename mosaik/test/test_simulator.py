@@ -10,7 +10,8 @@ from mosaik import scenario, simulator, simmanager
 def env():
     env = scenario.Environment({})
     env.simpy_env = simpy.Environment()
-    env.sims = {i: simmanager.SimProxy(i, mock.Mock()) for i in range(4)}
+    env.sims = {i: simmanager.InternalSimProxy(i, mock.Mock())
+                for i in range(4)}
     env.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
     env.df_graph[0][2]['wait_event'] = simulator.WaitEvent(env.simpy_env, 1)
     return env
@@ -100,13 +101,13 @@ def test_get_input_data(env):
 def test_step(env):
     inputs = object()
     sim = env.sims[0]
-    sim.inst.step.return_value = 1
+    sim._inst.step.return_value = 1
     assert (sim.last_step, sim.next_step) == (float('-inf'), 0)
 
     evt = simulator.step(env, sim, inputs)
     assert evt.triggered
     assert (sim.last_step, sim.next_step) == (0, 1)
-    assert sim.inst.step.call_args == mock.call(0, inputs)
+    assert sim._inst.step.call_args == mock.call(0, inputs=inputs)
 
 
 def test_get_outputs(env):
@@ -116,7 +117,7 @@ def test_get_outputs(env):
     wait_event = simulator.WaitEvent(env.simpy_env, 2)
     env.df_graph[0][2]['wait_event'] = wait_event
     sim = env.sims[0]
-    sim.inst.get_data.return_value = {'0': {'x': 0, 'y': 1}}
+    sim._inst.get_data.return_value = {'0': {'x': 0, 'y': 1}}
     sim.last_step, sim.next_step = 0, 1
 
     evt = simulator.get_outputs(env, sim)

@@ -45,7 +45,7 @@ def test_env_start():
     fac = env.start('ExampleSim', step_size=2)
     assert isinstance(fac, scenario.ModelFactory)
     assert env.sims == {'ExampleSim-0': fac._sim}
-    assert fac._sim.inst.step_size == 2
+    assert fac._sim._inst.step_size == 2
     assert 'ExampleSim-0' in env.df_graph
 
     env.start('ExampleSim')

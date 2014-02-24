@@ -34,8 +34,8 @@ def test_start_inproc():
     sp = simmanager.start('ExampleSimA', sim_config, 'ExampleSim-0',
                           {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
-    assert isinstance(sp.inst, ExampleSim)
-    assert sp.inst.step_size == 2
+    assert isinstance(sp._inst, ExampleSim)
+    assert sp._inst.step_size == 2
 
 
 @pytest.mark.xfail
@@ -68,17 +68,17 @@ def test_start__error(sim_config, err_msg):
 
 def test_sim_proxy():
     es = ExampleSim()
-    sp = simmanager.SimProxy('ExampleSim-0', es)
+    sp = simmanager.InternalSimProxy('ExampleSim-0', es)
     assert sp.sid == 'ExampleSim-0'
-    assert sp.inst is es
+    assert sp._inst is es
     assert sp.meta is es.meta
     assert sp.last_step == float('-inf')
     assert sp.next_step == 0
     assert sp.step_required is None
 
 
-def test_sim_proxy_meth_forward():
-    sp = simmanager.SimProxy('', mock.Mock())
+def test_internal_sim_proxy_meth_forward():
+    sp = simmanager.InternalSimProxy('', mock.Mock())
     meths = [
         ('create', (object(), object(), object())),
         ('step', (object(), {})),
@@ -86,5 +86,5 @@ def test_sim_proxy_meth_forward():
     ]
     for meth, args in meths:
         ret = getattr(sp, meth)(*args)
-        assert ret is getattr(sp.inst, meth).return_value
-        assert getattr(sp.inst, meth).call_args == mock.call(*args)
+        assert ret is getattr(sp._inst, meth).return_value
+        assert getattr(sp._inst, meth).call_args == mock.call(*args)

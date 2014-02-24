@@ -9,7 +9,9 @@ already running simulators and manage access to them.
 """
 import collections
 import importlib
+import shlex
 import subprocess
+import types
 
 from mosaik.exceptions import ScenarioError
 
@@ -97,11 +99,19 @@ def start_python(sim_name, conf, sim_id, sim_params):
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, details)) from None
 
-    return SimProxy(sim_id, cls(**sim_params))
+    return InternalSimProxy(sim_id, cls(**sim_params))
 
 
 def start_proc(sim_name, conf, sim_id, sim_params):
-    pass
+    cmd = shlex.split(conf['cmd'])
+    cwd = conf['cwd'] if 'cwd' in conf else '.'
+
+    kwargs = {
+        'bufsize': 1,
+        'cwd': cwd,
+        'universal_newlines': True,
+    }
+    proc = subprocess.Popen(cmd, **kwargs)
 
 
 def start_connect(sim_name, conf, sim_id, sim_params):
@@ -110,22 +120,48 @@ def start_connect(sim_name, conf, sim_id, sim_params):
 
 class SimProxy:
     """Simple proxy/facade for in-process simulators."""
-    def __init__(self, sid, inst):
+    def __init__(self, sid, meta):
         self.sid = sid
-        self.inst = inst
-        self.meta = inst.meta
+        self.meta = meta
         self.last_step = float('-inf')
         self.next_step = 0
         self.step_required = None
 
-    def create(self, num, model_name, model_params):
-        return self.inst.create(num, model_name, model_params)
-
-    def step(self, time, inputs):
-        return self.inst.step(time, inputs)
-
-    def get_data(self, outputs):
-        return self.inst.get_data(outputs)
+        # Bind proxy calls to API methods to this instance:
+        remote_methods = ['create', 'step', 'get_data']
+        for name in remote_methods:
+            meth = types.MethodType(self._proxy_call(name), self)
+            setattr(self, name, meth)
 
     def stop(self):
-        pass  # Nothing to  do here.
+        return
+
+    def _proxy_call(self, name):
+        raise NotImplementedError
+
+
+class InternalSimProxy(SimProxy):
+    """Proxy for internal simulators."""
+    def __init__(self, sid, inst):
+        self._inst = inst
+        super().__init__(sid, inst.meta)
+
+    def _proxy_call(self, name):
+        def meth(self, *args, **kwargs):
+            return getattr(self._inst, name)(*args, **kwargs)
+        meth.__name__ = name
+        return meth
+
+
+class ExternalSimProxy(SimProxy):
+    """Proxy for external simulator processes."""
+    def init__(self, sid, proc):
+        self._proc = proc
+        super().__init__(sid)
+
+    def _proxy_call(self, name):
+        def meth(self, *args, **kwargs):
+            ret = yield getattr(self._remote, name)(*args, **kwargs)
+            return ret
+        meth.__name__ = name
+        return meth
