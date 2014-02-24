@@ -131,9 +131,12 @@ def test_env_connect_wrong_attr_names():
 
 def test_env_run():
     env = scenario.Environment({})
+    env.sims = {0: mock.Mock()}
     with mock.patch('mosaik.simulator.run') as run_mock:
         env.run(3)
         assert run_mock.call_args == mock.call(env, 3)
+
+    assert env.sims[0].stop.call_count == 1
 
 
 def test_env_run_with_debug():

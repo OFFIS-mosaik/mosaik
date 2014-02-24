@@ -7,7 +7,9 @@ instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 
 """
+import collections
 import importlib
+import subprocess
 
 from mosaik.exceptions import ScenarioError
 
@@ -55,12 +57,38 @@ def start(sim_name, sim_config, sim_id, sim_params):
 
     """
     try:
-        mod_name, cls_name = sim_config[sim_name]['python'].split(':')
+        conf = sim_config[sim_name]
+    except KeyError:
+        raise ScenarioError('Simulator "%s" could not be started: Not found '
+                            'in sim_config' % sim_name)
+
+    # Try available starters in that order and raise an error if none of them
+    # matches:
+    starters = collections.OrderedDict(python=start_python,
+                                       cmd=start_proc,
+                                       connect=start_connect)
+    for sim_type, start in starters.items():
+        if sim_type in conf:
+            return start(sim_name, conf, sim_id, sim_params)
+    else:
+        raise ScenarioError('Simulator "%s" could not be started: Invalid '
+                            'configuration' % sim_name)
+
+
+def start_python(sim_name, conf, sim_id, sim_params):
+    """Import and instantiate the Python simulator *sim_name* based on its
+    config entry *conf*.
+
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
+    instantiated.
+
+    """
+    try:
+        mod_name, cls_name = conf['python'].split(':')
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     except (AttributeError, ImportError, KeyError, ValueError) as err:
         detail_msgs = {
-            KeyError: 'Not found in sim_config',
             ValueError: 'Malformed Python class name: Expected "module:Class"',
             ImportError: 'Could not import module',
             AttributeError: 'Class not found in module',
@@ -70,6 +98,14 @@ def start(sim_name, sim_config, sim_id, sim_params):
                             (sim_name, details)) from None
 
     return SimProxy(sim_id, cls(**sim_params))
+
+
+def start_proc(sim_name, conf, sim_id, sim_params):
+    pass
+
+
+def start_connect(sim_name, conf, sim_id, sim_params):
+    pass
 
 
 class SimProxy:
@@ -90,3 +126,6 @@ class SimProxy:
 
     def get_data(self, outputs):
         return self.inst.get_data(outputs)
+
+    def stop(self):
+        pass  # Nothing to  do here.

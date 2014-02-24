@@ -19,7 +19,14 @@ sim_config = {
         'connect': 'host:port',
         'slots': 1,
     },
+    'ExampleSimD': {
+    },
 }
+
+
+@pytest.mark.xfail
+def test_start():
+    assert 0
 
 
 def test_start_inproc():
@@ -31,30 +38,9 @@ def test_start_inproc():
     assert sp.inst.step_size == 2
 
 
-@pytest.mark.parametrize(('sim_config', 'err_msg'), [
-    ({}, 'Not found in sim_config'),
-    ({'spam': {'python': 'eggs'}}, 'Malformed Python class name: Expected '
-                                   '"module:Class"'),
-    ({'spam': {'python': 'eggs:Bacon'}}, 'Could not import module'),
-    ({'spam': {'python': 'example_sim:Bacon'}}, 'Class not found in module'),
-])
-def test_start_inproc_error(sim_config, err_msg):
-    """Test failure at starting an in-proc simulator."""
-    with pytest.raises(ScenarioError) as exc_info:
-        simmanager.start('spam', sim_config, '', {})
-    assert str(exc_info.value) == ('Simulator "spam" could not be started: ' +
-                                   err_msg)
-
-
 @pytest.mark.xfail
 def test_start_proc():
     """Test starting a simulator as external process."""
-    assert 0
-
-
-@pytest.mark.xfail
-def test_start_proc_error():
-    """Test failure at starting a simulator as external process."""
     assert 0
 
 
@@ -64,10 +50,20 @@ def test_start_connect():
     assert 0
 
 
-@pytest.mark.xfail
-def test_start_connect_error():
-    """Test failure at connecting to an already running simulator."""
-    assert 0
+@pytest.mark.parametrize(('sim_config', 'err_msg'), [
+    ({}, 'Not found in sim_config'),
+    ({'spam': {}}, 'Invalid configuration'),
+    ({'spam': {'python': 'eggs'}}, 'Malformed Python class name: Expected '
+                                   '"module:Class"'),
+    ({'spam': {'python': 'eggs:Bacon'}}, 'Could not import module'),
+    ({'spam': {'python': 'example_sim:Bacon'}}, 'Class not found in module'),
+])
+def test_start__error(sim_config, err_msg):
+    """Test failure at starting an in-proc simulator."""
+    with pytest.raises(ScenarioError) as exc_info:
+        simmanager.start('spam', sim_config, '', {})
+    assert str(exc_info.value) == ('Simulator "spam" could not be started: ' +
+                                   err_msg)
 
 
 def test_sim_proxy():

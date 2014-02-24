@@ -142,12 +142,16 @@ class Environment:
 
         Return the current simulation time (>= *until*).
 
+        This method should only be called once!
+
         """
         if self._debug:
             import mosaik._debug as dbg
             dbg.enable()
         try:
-            return simulator.run(self, until)
+            res = simulator.run(self, until)
+            self._shutdown()
+            return res
         finally:
             if self._debug:
                 dbg.disable()
@@ -164,6 +168,11 @@ class Environment:
                 if attr not in entity.sim.meta['models'][entity.type]['attrs']:
                     attr_errors.append((entity, attr))
         return attr_errors
+
+    def _shutdown(self):
+        """Shut-down all simulators."""
+        for sim in self.sims.values():
+            sim.stop()
 
 
 class ModelFactory:
