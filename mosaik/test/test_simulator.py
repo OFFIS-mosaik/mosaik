@@ -6,15 +6,16 @@ import simpy
 from mosaik import scenario, simulator, simmanager
 
 
-@pytest.fixture
+@pytest.yield_fixture
 def env():
     env = scenario.Environment({})
     env.simpy_env = simpy.Environment()
-    env.sims = {i: simmanager.InternalSimProxy(i, mock.Mock())
+    env.sims = {i: simmanager.InternalSimProxy(i, mock.Mock(), None)
                 for i in range(4)}
     env.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
     env.df_graph[0][2]['wait_event'] = simulator.WaitEvent(env.simpy_env, 1)
-    return env
+    yield env
+    env.shutdown()
 
 
 def test_run():
@@ -26,6 +27,9 @@ def test_run():
     class Sim:
         proc_started = False
 
+        def stop(self):
+            pass
+
     env = scenario.Environment({})
     env.sims = {i: Sim() for i in range(2)}
 
@@ -36,6 +40,7 @@ def test_run():
     for sim in env.sims.values():
         assert sim.proc_started
     assert env.simpy_env.now == until
+    env.shutdown()
 
 
 def test_sim_process():

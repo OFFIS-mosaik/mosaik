@@ -13,14 +13,16 @@ import shlex
 import subprocess
 import types
 
+from simpy.io.packet import PacketUTF8 as Packet
+from simpy.io.json import JSON as JsonRpc
+
 from mosaik.exceptions import ScenarioError
 
 
-def start(sim_name, sim_config, sim_id, sim_params):
-    """
-    Start the simulator *sim_name* based on the configuration im *sim_config*,
-    give it the ID *sim_id* and pass the parameters of the dict *sim_params* to
-    it.
+def start(env, sim_name, sim_id, sim_params):
+    """Start the simulator *sim_name* based on the configuration im
+    *env.sim_config*, give it the ID *sim_id* and pass the parameters of the
+    dict *sim_params* to it.
 
     The sim config is a dictionary with one entry for every simulator. The
     entry itself tells mosaik how to start the simulator::
@@ -59,25 +61,25 @@ def start(sim_name, sim_config, sim_id, sim_params):
 
     """
     try:
-        conf = sim_config[sim_name]
+        conf = env.sim_config[sim_name]
     except KeyError:
         raise ScenarioError('Simulator "%s" could not be started: Not found '
                             'in sim_config' % sim_name)
 
     # Try available starters in that order and raise an error if none of them
     # matches:
-    starters = collections.OrderedDict(python=start_python,
+    starters = collections.OrderedDict(python=start_inproc,
                                        cmd=start_proc,
                                        connect=start_connect)
     for sim_type, start in starters.items():
         if sim_type in conf:
-            return start(sim_name, conf, sim_id, sim_params)
+            return start(env, sim_name, conf, sim_id, sim_params)
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
                             'configuration' % sim_name)
 
 
-def start_python(sim_name, conf, sim_id, sim_params):
+def start_inproc(env, sim_name, conf, sim_id, sim_params):
     """Import and instantiate the Python simulator *sim_name* based on its
     config entry *conf*.
 
@@ -99,11 +101,15 @@ def start_python(sim_name, conf, sim_id, sim_params):
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, details)) from None
 
-    return InternalSimProxy(sim_id, cls(**sim_params))
+    sim = cls()
+    meta = sim.init(**sim_params)
+    return InternalSimProxy(sim_id, sim, meta)
 
 
-def start_proc(sim_name, conf, sim_id, sim_params):
-    cmd = shlex.split(conf['cmd'])
+def start_proc(env, sim_name, conf, sim_id, sim_params):
+    cmd = conf['cmd'] % {'addr': '%s:%s' % env.config['addr']}
+    print(cmd)
+    cmd = shlex.split(cmd)
     cwd = conf['cwd'] if 'cwd' in conf else '.'
 
     kwargs = {
@@ -111,7 +117,20 @@ def start_proc(sim_name, conf, sim_id, sim_params):
         'cwd': cwd,
         'universal_newlines': True,
     }
-    proc = subprocess.Popen(cmd, **kwargs)
+    try:
+        proc = subprocess.Popen(cmd, **kwargs)
+    except FileNotFoundError as e:
+        raise ScenarioError('Simulator "%s" could not be started: %s' %
+                            (sim_name, e.args[1]))
+
+    def greeter():
+        sock = yield env.srv_sock.accept()
+        rpc_con = JsonRpc(Packet(sock))
+        meta = yield rpc_con.remote.init(**sim_params)
+        return ExternalSimProxy(sim_id, proc, rpc_con, meta)
+
+    proxy = env.simpy_env.run(until=env.simpy_env.process(greeter()))
+    return proxy
 
 
 def start_connect(sim_name, conf, sim_id, sim_params):
@@ -142,9 +161,9 @@ class SimProxy:
 
 class InternalSimProxy(SimProxy):
     """Proxy for internal simulators."""
-    def __init__(self, sid, inst):
+    def __init__(self, sid, inst, meta):
         self._inst = inst
-        super().__init__(sid, inst.meta)
+        super().__init__(sid, meta)
 
     def _proxy_call(self, name):
         def meth(self, *args, **kwargs):
@@ -155,9 +174,18 @@ class InternalSimProxy(SimProxy):
 
 class ExternalSimProxy(SimProxy):
     """Proxy for external simulator processes."""
-    def init__(self, sid, proc):
+    def __init__(self, sid, proc, rpc_con, meta):
         self._proc = proc
-        super().__init__(sid)
+        self._rpc_con = rpc_con
+        super().__init__(sid, meta)
+
+    def stop(self):
+        # We don't want to yield the event, so we have to defuse it:
+        evt = self._rpc_con.remote.stop()
+        evt.defused = True
+
+        self._rpc_con.close()
+        self._proc.wait()
 
     def _proxy_call(self, name):
         def meth(self, *args, **kwargs):

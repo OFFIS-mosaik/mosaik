@@ -11,12 +11,19 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 from collections import defaultdict
 import itertools
 
+from simpy.io import select as backend
 import networkx
 
 from mosaik import simmanager
 from mosaik import simulator
 from mosaik import util
 from mosaik.exceptions import ScenarioError
+
+
+base_config = {
+    'addr': ('127.0.0.1', 5555),
+    'start_timeout': 2,  # seconds
+}
 
 
 class Entity:
@@ -67,12 +74,18 @@ class Environment:
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
+        self.config = base_config
+        """The config dictionary for general mosaik settings."""
+
         self.sims = {}
         """A dictionary of already started simulators instances."""
 
-        self.simpy_env = None
-        """The SimPy :class:`~simpy.core.Environment` used during the
-        simulation."""
+        self.simpy_env = backend.Environment()
+        """The SimPy.io networking :class:`~simpy.io.select.Environment`."""
+
+        self.srv_sock = backend.TCPSocket.server(self.simpy_env,
+                                                 self.config['addr'])
+        """Mosaik's server socket."""
 
         self.df_graph = networkx.DiGraph()
         """The directed dataflow graph for this scenario."""
@@ -97,7 +110,7 @@ class Environment:
         """
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
-        sim = simmanager.start(sim_name, self.sim_config, sim_id, sim_params)
+        sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
         return ModelFactory(sim)
@@ -150,11 +163,17 @@ class Environment:
             dbg.enable()
         try:
             res = simulator.run(self, until)
-            self._shutdown()
             return res
         finally:
+            self.shutdown()
             if self._debug:
                 dbg.disable()
+
+    def shutdown(self):
+        """Shut-down all simulators and close the server socket."""
+        for sim in self.sims.values():
+            sim.stop()
+        self.srv_sock.close()
 
     def _check_attributes(self, src, dest, attr_pairs):
         """Check if *src* and *dest* have the attributes in *attr_pairs*.
@@ -168,11 +187,6 @@ class Environment:
                 if attr not in entity.sim.meta['models'][entity.type]['attrs']:
                     attr_errors.append((entity, attr))
         return attr_errors
-
-    def _shutdown(self):
-        """Shut-down all simulators."""
-        for sim in self.sims.values():
-            sim.stop()
 
 
 class ModelFactory:
