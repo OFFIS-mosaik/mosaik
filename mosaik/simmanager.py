@@ -126,7 +126,7 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
         meta = yield rpc_con.remote.init(**sim_params)
-        return ExternalProcess(sim_id, proc, rpc_con, meta)
+        return RemoteProcess(sim_id, proc, rpc_con, meta)
 
     proxy = world.env.run(until=world.env.process(greeter()))
     return proxy
@@ -172,7 +172,7 @@ class LocalProcess(SimProxy):
         return meth
 
 
-class ExternalProcess(SimProxy):
+class RemoteProcess(SimProxy):
     """Proxy for external simulator processes."""
     def __init__(self, sid, proc, rpc_con, meta):
         self._proc = proc
