@@ -112,7 +112,7 @@ class World:
         sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
-        return ModelFactory(sim)
+        return ModelFactory(self.env, sim)
 
     def connect(self, src, dest, *attr_pairs):
         """Connect the *src* entity to *dest* entity.
@@ -199,7 +199,8 @@ class ModelFactory:
     marked as *public*, an :exc:`ScenarioError` is raised.
 
     """
-    def __init__(self, sim):
+    def __init__(self, env, sim):
+        self._env = env
         self._sim = sim
         self._meta = sim.meta
         self._model_cache = {}
@@ -212,7 +213,7 @@ class ModelFactory:
             raise ScenarioError('Model "%s" is not public.' % name)
 
         if name not in self._model_cache:
-            self._model_cache[name] = ModelMock(name, self._sim)
+            self._model_cache[name] = ModelMock(self._env, name, self._sim)
 
         return self._model_cache[name]
 
@@ -227,7 +228,8 @@ class ModelMock:
     ``sim.ModelName.create(3, x=23)``.
 
     """
-    def __init__(self, name, sim):
+    def __init__(self, env, name, sim):
+        self._env = env
         self._name = name
         self._sim = sim
         self._sim_id = sim.sid
@@ -247,7 +249,16 @@ class ModelMock:
 
         """
         # TODO: Generate proper signature based on the meta data?
-        entities = self._sim.create(num, self._name, model_params)
+
+        # We have to start a SimPy process to make the "create()" call
+        # behave like it was synchronous.
+        def create():
+            entities = yield self._sim.create(num, self._name, model_params)
+            return entities
+
+        proc = self._env.process(create())
+        entities = self._env.run(until=proc)
+
         sim_id = self._sim_id
         return [Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
                 for e in entities]

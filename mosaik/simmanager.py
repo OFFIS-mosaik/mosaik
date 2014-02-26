@@ -11,7 +11,6 @@ import collections
 import importlib
 import shlex
 import subprocess
-import types
 
 from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
@@ -103,7 +102,7 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
 
     sim = cls()
     meta = sim.init(**sim_params)
-    return LocalProcess(sim_id, sim, meta)
+    return LocalProcess(sim_id, sim, world.env, meta)
 
 
 def start_proc(world, sim_name, conf, sim_id, sim_params):
@@ -149,8 +148,7 @@ class SimProxy:
         # Bind proxy calls to API methods to this instance:
         remote_methods = ['create', 'step', 'get_data']
         for name in remote_methods:
-            meth = types.MethodType(self._proxy_call(name), self)
-            setattr(self, name, meth)
+            setattr(self, name, self._proxy_call(name))
 
     def stop(self):
         return
@@ -161,13 +159,15 @@ class SimProxy:
 
 class LocalProcess(SimProxy):
     """Proxy for internal simulators."""
-    def __init__(self, sid, inst, meta):
+    def __init__(self, sid, inst, env, meta):
         self._inst = inst
+        self._env = env
         super().__init__(sid, meta)
 
     def _proxy_call(self, name):
-        def meth(self, *args, **kwargs):
-            return getattr(self._inst, name)(*args, **kwargs)
+        def meth(*args, **kwargs):
+            ret = getattr(self._inst, name)(*args, **kwargs)
+            return self._env.event().succeed(ret)
         meth.__name__ = name
         return meth
 
@@ -188,8 +188,4 @@ class ExternalProcess(SimProxy):
         self._proc.wait()
 
     def _proxy_call(self, name):
-        def meth(self, *args, **kwargs):
-            ret = yield getattr(self._remote, name)(*args, **kwargs)
-            return ret
-        meth.__name__ = name
-        return meth
+        return getattr(self._rpc_con.remote, name)

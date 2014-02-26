@@ -2,6 +2,7 @@ from unittest import mock
 
 from example_sim.mosaik import ExampleSim
 import pytest
+import simpy
 
 from mosaik import scenario
 from mosaik import simmanager
@@ -84,7 +85,7 @@ def test_start__error(sim_config, err_msg):
 
 def test_sim_proxy():
     es = ExampleSim()
-    sp = simmanager.LocalProcess('ExampleSim-0', es, es.meta)
+    sp = simmanager.LocalProcess('ExampleSim-0', es, None, es.meta)
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
     assert sp.meta is es.meta
@@ -94,7 +95,8 @@ def test_sim_proxy():
 
 
 def test_internal_sim_proxy_meth_forward():
-    sp = simmanager.LocalProcess('', mock.Mock(), None)
+    env = simpy.Environment()
+    sp = simmanager.LocalProcess('', mock.Mock(), env, None)
     meths = [
         ('create', (object(), object(), object())),
         ('step', (object(), {})),
@@ -102,5 +104,5 @@ def test_internal_sim_proxy_meth_forward():
     ]
     for meth, args in meths:
         ret = getattr(sp, meth)(*args)
-        assert ret is getattr(sp._inst, meth).return_value
+        assert ret.value is getattr(sp._inst, meth).return_value
         assert getattr(sp._inst, meth).call_args == mock.call(*args)

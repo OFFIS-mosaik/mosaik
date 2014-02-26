@@ -8,7 +8,7 @@ from mosaik import scenario, simulator, simmanager
 @pytest.yield_fixture
 def world():
     world = scenario.World({})
-    world.sims = {i: simmanager.LocalProcess(i, mock.Mock(), None)
+    world.sims = {i: simmanager.LocalProcess(i, mock.Mock(), world.env, None)
                   for i in range(4)}
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
     world.df_graph[0][2]['wait_event'] = simulator.WaitEvent(world.env, 1)
@@ -105,7 +105,9 @@ def test_step(world):
     sim._inst.step.return_value = 1
     assert (sim.last_step, sim.next_step) == (float('-inf'), 0)
 
-    evt = simulator.step(world, sim, inputs)
+    gen = simulator.step(world, sim, inputs)
+    evt = next(gen)
+    pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert (sim.last_step, sim.next_step) == (0, 1)
     assert sim._inst.step.call_args == mock.call(0, inputs=inputs)
@@ -121,7 +123,9 @@ def test_get_outputs(world):
     sim._inst.get_data.return_value = {'0': {'x': 0, 'y': 1}}
     sim.last_step, sim.next_step = 0, 1
 
-    evt = simulator.get_outputs(world, sim)
+    gen = simulator.get_outputs(world, sim)
+    evt = next(gen)
+    pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert not wait_event.triggered
     assert 'wait_event' in world.df_graph[0][2]
@@ -133,7 +137,9 @@ def test_get_outputs(world):
     for s in world.sims.values():
         s.last_step, s.next_step = 1, 2
     sim.last_step, sim.next_step = 2, 3
-    evt = simulator.get_outputs(world, sim)
+    gen = simulator.get_outputs(world, sim)
+    evt = next(gen)
+    pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert wait_event.triggered
     assert 'wait_event' not in world.df_graph[0][2]

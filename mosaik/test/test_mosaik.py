@@ -10,15 +10,21 @@ import pytest
 from mosaik import scenario
 
 
-sim_config = {
+sim_config_local = {
     char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
+}
+sim_config_remote = {
+    char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
 }
 
 
-@pytest.mark.parametrize('fixture', [
-    'scenario_%s' % (i + 1) for i in range(5)
+# Test all combinations of both sim configs and the 5 test scenarios.
+@pytest.mark.parametrize(('fixture', 'sim_config'), [
+    ('scenario_%s' % (i + 1), sc)
+    for sc in [sim_config_local, sim_config_remote]
+    for i in range(5)
 ])
-def test_mosaik(fixture):
+def test_mosaik(fixture, sim_config):
     fixture = importlib.import_module('mosaik.test.fixtures.%s' % fixture)
     world = scenario.World(sim_config, execution_graph=True)
     fixture.create_scenario(world)

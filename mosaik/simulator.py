@@ -25,8 +25,8 @@ def sim_process(world, sim, until):
         yield step_required(world, sim)
         yield wait_for_dependencies(world, sim)
         input_data = get_input_data(world, sim)
-        yield step(world, sim, input_data)
-        yield get_outputs(world, sim)
+        yield from step(world, sim, input_data)
+        yield from get_outputs(world, sim)
         print('Progress: %.2f%%' % get_progress(world.sims, until))
 
 
@@ -125,12 +125,7 @@ def step(world, sim, inputs):
 
     """
     sim.last_step = sim.next_step
-    sim.next_step = sim.step(sim.next_step, inputs=inputs)
-
-    # This event will be need when we send step() commands over network and
-    # need to wait for a simulator's reply
-    evt = world.env.event().succeed()
-    return evt
+    sim.next_step = yield sim.step(sim.next_step, inputs=inputs)
 
 
 def get_outputs(world, sim):
@@ -145,7 +140,7 @@ def get_outputs(world, sim):
     outattr = world._df_outattr[sid]
     if outattr:
         # Create a cache entry for every point in time the data is valid for.
-        data = sim.get_data(outattr)
+        data = yield sim.get_data(outattr)
         for i in range(sim.last_step, sim.next_step):
             world._df_cache[i][sim.sid] = data
 
@@ -161,9 +156,6 @@ def get_outputs(world, sim):
     for cache_time in world._df_cache.keys():
         if cache_time < max_cache_time:
             del world._df_cache[cache_time]
-
-    evt = world.env.event().succeed()
-    return evt
 
 
 def get_progress(sims, until):
