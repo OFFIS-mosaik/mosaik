@@ -10,7 +10,7 @@ from mosaik import scenario, simulator, simmanager
 def env():
     env = scenario.Environment({})
     env.simpy_env = simpy.Environment()
-    env.sims = {i: simmanager.InternalSimProxy(i, mock.Mock(), None)
+    env.sims = {i: simmanager.LocalProcess(i, mock.Mock(), None)
                 for i in range(4)}
     env.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
     env.df_graph[0][2]['wait_event'] = simulator.WaitEvent(env.simpy_env, 1)

@@ -83,7 +83,7 @@ def test_start__error(sim_config, err_msg):
 
 def test_sim_proxy():
     es = ExampleSim()
-    sp = simmanager.InternalSimProxy('ExampleSim-0', es, es.meta)
+    sp = simmanager.LocalProcess('ExampleSim-0', es, es.meta)
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
     assert sp.meta is es.meta
@@ -93,7 +93,7 @@ def test_sim_proxy():
 
 
 def test_internal_sim_proxy_meth_forward():
-    sp = simmanager.InternalSimProxy('', mock.Mock(), None)
+    sp = simmanager.LocalProcess('', mock.Mock(), None)
     meths = [
         ('create', (object(), object(), object())),
         ('step', (object(), {})),

@@ -103,7 +103,7 @@ def start_inproc(env, sim_name, conf, sim_id, sim_params):
 
     sim = cls()
     meta = sim.init(**sim_params)
-    return InternalSimProxy(sim_id, sim, meta)
+    return LocalProcess(sim_id, sim, meta)
 
 
 def start_proc(env, sim_name, conf, sim_id, sim_params):
@@ -127,7 +127,7 @@ def start_proc(env, sim_name, conf, sim_id, sim_params):
         sock = yield env.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
         meta = yield rpc_con.remote.init(**sim_params)
-        return ExternalSimProxy(sim_id, proc, rpc_con, meta)
+        return ExternalProcess(sim_id, proc, rpc_con, meta)
 
     proxy = env.simpy_env.run(until=env.simpy_env.process(greeter()))
     return proxy
@@ -159,7 +159,7 @@ class SimProxy:
         raise NotImplementedError
 
 
-class InternalSimProxy(SimProxy):
+class LocalProcess(SimProxy):
     """Proxy for internal simulators."""
     def __init__(self, sid, inst, meta):
         self._inst = inst
@@ -172,7 +172,7 @@ class InternalSimProxy(SimProxy):
         return meth
 
 
-class ExternalSimProxy(SimProxy):
+class ExternalProcess(SimProxy):
     """Proxy for external simulator processes."""
     def __init__(self, sid, proc, rpc_con, meta):
         self._proc = proc
