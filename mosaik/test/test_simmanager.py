@@ -26,10 +26,10 @@ sim_config = {
 
 
 @pytest.yield_fixture
-def env():
-    env = scenario.Environment(sim_config)
-    yield env
-    env.shutdown()
+def world():
+    world = scenario.World(sim_config)
+    yield world
+    world.shutdown()
 
 
 @pytest.mark.xfail
@@ -37,18 +37,19 @@ def test_start():
     assert 0
 
 
-def test_start_inproc(env):
+def test_start_inproc(world):
     """Test starting an in-proc simulator."""
-    sp = simmanager.start(env, 'ExampleSimA', 'ExampleSim-0', {'step_size': 2})
+    sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0',
+                          {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
     assert sp.meta
     assert isinstance(sp._inst, ExampleSim)
     assert sp._inst.step_size == 2
 
 
-def test_start_proc(env):
+def test_start_proc(world):
     """Test starting a simulator as external process."""
-    sp = simmanager.start(env, 'ExampleSimB', 'ExampleSim-0', {})
+    sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', {})
     assert sp.sid == 'ExampleSim-0'
     assert 'api_version' in sp.meta and 'models' in sp.meta
     sp.stop()
@@ -73,12 +74,12 @@ def test_start_connect():
 ])
 def test_start__error(sim_config, err_msg):
     """Test failure at starting an in-proc simulator."""
-    env = scenario.Environment(sim_config)
+    world = scenario.World(sim_config)
     with pytest.raises(ScenarioError) as exc_info:
-        simmanager.start(env, 'spam', '', {})
+        simmanager.start(world, 'spam', '', {})
     assert str(exc_info.value) == ('Simulator "spam" could not be started: ' +
                                    err_msg)
-    env.shutdown()
+    world.shutdown()
 
 
 def test_sim_proxy():

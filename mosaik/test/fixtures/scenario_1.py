@@ -6,8 +6,8 @@ Scenario 1::
 """
 
 
-def create_scenario(env):
-    exsim = env.start('A')
+def create_scenario(world):
+    exsim = world.start('A')
     exsim.A(init_val=0)
 
 

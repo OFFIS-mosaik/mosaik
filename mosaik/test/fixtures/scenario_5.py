@@ -8,21 +8,21 @@ Scenario 5
 """
 
 
-def create_scenario(env):
-    exsim_a = env.start('A', step_size=1)
-    exsim_b = env.start('B', step_size=2)
-    exsim_c = env.start('C', step_size=1)
-    exsim_d = env.start('D', step_size=4)
-    exsim_e = env.start('E', step_size=3)
+def create_scenario(world):
+    exsim_a = world.start('A', step_size=1)
+    exsim_b = world.start('B', step_size=2)
+    exsim_c = world.start('C', step_size=1)
+    exsim_d = world.start('D', step_size=4)
+    exsim_e = world.start('E', step_size=3)
     a = exsim_a.A(init_val=0)
     b = exsim_b.B(init_val=0)
     c = exsim_c.B(init_val=0)
     d = exsim_d.B(init_val=0)
     e = exsim_e.B(init_val=0)
-    env.connect(a, b, ('val_out', 'val_in'))
-    env.connect(d, b, ('val_out', 'val_in'))
-    env.connect(b, c, ('val_out', 'val_in'))
-    env.connect(b, e, ('val_out', 'val_in'))
+    world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(d, b, ('val_out', 'val_in'))
+    world.connect(b, c, ('val_out', 'val_in'))
+    world.connect(b, e, ('val_out', 'val_in'))
 
 
 execution_graph = """

@@ -2,8 +2,8 @@
 This module provides the interface for users to create simulation scenarios for
 mosaik.
 
-The :class:`Environment` holds all necessary data for the simulation and allows
-the user to start simulators. It provides a :class:`ModelFactory` (and
+The :class:`World` holds all necessary data for the simulation and allows the
+user to start simulators. It provides a :class:`ModelFactory` (and
 a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The function :func:`run()` finally starts the simulation.
 
@@ -55,15 +55,15 @@ class Entity:
             self.sid, self.eid, self.type, repr(self.rel), repr(self.sim)]))
 
 
-class Environment:
-    """The environment holds all data required to specify and run the scenario.
+class World:
+    """The world holds all data required to specify and run the scenario.
 
     It provides a method to start a simulator process (:meth:`start()`) and
     manages the simulator instances.
 
-    You have to provide a *sim_config* which tells the environment which
-    simulators are available and how to start them. See
-    :func:`mosaik.simmanager.start()` for more details.
+    You have to provide a *sim_config* which tells the world which simulators
+    are available and how to start them. See :func:`mosaik.simmanager.start()`
+    for more details.
 
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
@@ -80,11 +80,10 @@ class Environment:
         self.sims = {}
         """A dictionary of already started simulators instances."""
 
-        self.simpy_env = backend.Environment()
+        self.env = backend.Environment()
         """The SimPy.io networking :class:`~simpy.io.select.Environment`."""
 
-        self.srv_sock = backend.TCPSocket.server(self.simpy_env,
-                                                 self.config['addr'])
+        self.srv_sock = backend.TCPSocket.server(self.env, self.config['addr'])
         """Mosaik's server socket."""
 
         self.df_graph = networkx.DiGraph()

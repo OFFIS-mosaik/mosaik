@@ -2,38 +2,35 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
-from collections import defaultdict
-
 import simpy
 
 
-def run(env, until):
-    """Run the simulation for an :class:`~mosaik.scenario.Environment` until
+def run(world, until):
+    """Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
 
     Return the final simulation time.
 
     """
-    senv = simpy.Environment()
-    env.simpy_env = senv
-    for sim in env.sims.values():
-        senv.process(sim_process(env, sim, until))
-    senv.run()
+    env = world.env
+    procs = [env.process(sim_process(world, sim, until))
+             for sim in world.sims.values()]
+    env.run(until=env.all_of(procs))
 
 
-def sim_process(env, sim, until):
+def sim_process(world, sim, until):
     """SimPy simulation process for a certain simulator *sim*.
     """
     while sim.next_step < until:
-        yield step_required(env, sim)
-        yield wait_for_dependencies(env, sim)
-        input_data = get_input_data(env, sim)
-        yield step(env, sim, input_data)
-        yield get_outputs(env, sim)
-        print('Progress: %.2f%%' % get_progress(env.sims, until))
+        yield step_required(world, sim)
+        yield wait_for_dependencies(world, sim)
+        input_data = get_input_data(world, sim)
+        yield step(world, sim, input_data)
+        yield get_outputs(world, sim)
+        print('Progress: %.2f%%' % get_progress(world.sims, until))
 
 
-def step_required(env, sim):
+def step_required(world, sim):
     """Return an :class:`~simpy.events.Event` that is triggered when *sim*
     needs to perform its next step.
 
@@ -41,11 +38,11 @@ def step_required(env, sim):
     simulator depends on its outputs) or if another simulator is already
     waiting for it.
 
-    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
 
     """
-    sim.step_required = env.simpy_env.event()
-    dfg = env.df_graph
+    sim.step_required = world.env.event()
+    dfg = world.df_graph
     sid = sim.sid
     if dfg.out_degree(sid) == 0 or any(('wait_event' in dfg[sid][s])
                                        for s in dfg.successors_iter(sid)):
@@ -59,33 +56,33 @@ def step_required(env, sim):
     return sim.step_required
 
 
-def wait_for_dependencies(env, sim):
+def wait_for_dependencies(world, sim):
     """Return an event (:class:`simpy.events.AllOf`) that is triggered when
     all dependencies can provide input data for *sim*.
 
     Also notify any simulator that is already waiting to perform its next step.
 
-    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
 
     """
     events = []
     t = sim.next_step
-    for dep_sid in env.df_graph.predecessors_iter(sim.sid):
-        dep = env.sims[dep_sid]
-        if not (t in env._df_cache and dep_sid in env._df_cache[t]):
+    for dep_sid in world.df_graph.predecessors_iter(sim.sid):
+        dep = world.sims[dep_sid]
+        if not (t in world._df_cache and dep_sid in world._df_cache[t]):
             # Wait for dep_sim if there's not data for it yet.
-            evt = WaitEvent(env.simpy_env, t)
+            evt = WaitEvent(world.env, t)
             events.append(evt)
-            env.df_graph[dep_sid][sim.sid]['wait_event'] = evt
+            world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
             if not dep.step_required.triggered:
                 # Notify dependency that it needs to step now.
                 dep.step_required.succeed()
 
-    return env.simpy_env.all_of(events)
+    return world.env.all_of(events)
 
 
-def get_input_data(env, sim):
+def get_input_data(world, sim):
     """Return a dictionary with the input data for *sim*.
 
     The dict will look like::
@@ -104,22 +101,22 @@ def get_input_data(env, sim):
     loads for a node in a power grid) and cannot know how to aggreate that data
     (sum, max, ...?).
 
-    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
 
     """
     input_data = {}
-    for src_sid in env.df_graph.predecessors_iter(sim.sid):
-        dataflows = env.df_graph[src_sid][sim.sid]['dataflows']
+    for src_sid in world.df_graph.predecessors_iter(sim.sid):
+        dataflows = world.df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
-                val = env._df_cache[sim.next_step][src_sid][src_eid][src_attr]
+                v = world._df_cache[sim.next_step][src_sid][src_eid][src_attr]
                 input_data.setdefault(
-                    dest_eid, {}).setdefault(dest_attr, []).append(val)
+                    dest_eid, {}).setdefault(dest_attr, []).append(v)
 
     return input_data
 
 
-def step(env, sim, inputs):
+def step(world, sim, inputs):
     """Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
 
@@ -132,40 +129,40 @@ def step(env, sim, inputs):
 
     # This event will be need when we send step() commands over network and
     # need to wait for a simulator's reply
-    evt = env.simpy_env.event().succeed()
+    evt = world.env.event().succeed()
     return evt
 
 
-def get_outputs(env, sim):
+def get_outputs(world, sim):
     """Get all required output data from a simulator *sim*, notify all
     simulators that are waiting for that data and prune the data flow cache.
     Return an event that is triggered when all output data is received.
 
-    *env* is a mosaik :class:`~mosaik.scenario.Environment`.
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
 
     """
     sid = sim.sid
-    outattr = env._df_outattr[sid]
+    outattr = world._df_outattr[sid]
     if outattr:
         # Create a cache entry for every point in time the data is valid for.
         data = sim.get_data(outattr)
         for i in range(sim.last_step, sim.next_step):
-            env._df_cache[i][sim.sid] = data
+            world._df_cache[i][sim.sid] = data
 
     # Notify waiting simulators
     next_step = sim.next_step
-    for suc_sid in env.df_graph.successors_iter(sid):
-        edge = env.df_graph[sid][suc_sid]
+    for suc_sid in world.df_graph.successors_iter(sid):
+        edge = world.df_graph[sid][suc_sid]
         if 'wait_event' in edge and edge['wait_event'].time < next_step:
             edge.pop('wait_event').succeed()
 
     # Prune dataflow cache
-    max_cache_time = min(s.next_step for s in env.sims.values())
-    for cache_time in env._df_cache.keys():
+    max_cache_time = min(s.next_step for s in world.sims.values())
+    for cache_time in world._df_cache.keys():
         if cache_time < max_cache_time:
-            del env._df_cache[cache_time]
+            del world._df_cache[cache_time]
 
-    evt = env.simpy_env.event().succeed()
+    evt = world.env.event().succeed()
     return evt
 
 
@@ -178,7 +175,7 @@ def get_progress(sims, until):
 
 class WaitEvent(simpy.events.Event):
     """A normal event with an additional ``time`` attribute."""
-    def __init__(self, env, time):
-        super().__init__(env)
+    def __init__(self, world, time):
+        super().__init__(world)
         self.time = time
         """The simulation time to which a simulator should advance."""

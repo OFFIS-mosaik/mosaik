@@ -20,9 +20,9 @@ sim_config = {
 ])
 def test_mosaik(fixture):
     fixture = importlib.import_module('mosaik.test.fixtures.%s' % fixture)
-    env = scenario.Environment(sim_config, execution_graph=True)
-    fixture.create_scenario(env)
-    env.run(until=fixture.until)
+    world = scenario.World(sim_config, execution_graph=True)
+    fixture.create_scenario(world)
+    world.run(until=fixture.until)
 
     expected_graph = nx.parse_edgelist(fixture.execution_graph.split('\n'),
                                        create_using=nx.DiGraph(),
@@ -30,9 +30,9 @@ def test_mosaik(fixture):
     for node, inputs in fixture.inputs.items():
         expected_graph.add_node(node, inputs=inputs)
 
-    assert env.execution_graph.adj == expected_graph.adj
+    assert world.execution_graph.adj == expected_graph.adj
 
-    for node, data in env.execution_graph.node.items():
+    for node, data in world.execution_graph.node.items():
         # Sort lists of inputs for the assertions:
         for eid, attrs in data['inputs'].items():
             for v in attrs.values():
@@ -40,6 +40,6 @@ def test_mosaik(fixture):
 
         assert data['inputs'] == expected_graph.node[node].get('inputs', {})
 
-    for sim in env.sims.values():
+    for sim in world.sims.values():
         assert sim.last_step < fixture.until
         assert sim.next_step >= fixture.until

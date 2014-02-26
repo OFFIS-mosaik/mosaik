@@ -19,9 +19,9 @@ from simpy.io.json import JSON as JsonRpc
 from mosaik.exceptions import ScenarioError
 
 
-def start(env, sim_name, sim_id, sim_params):
+def start(world, sim_name, sim_id, sim_params):
     """Start the simulator *sim_name* based on the configuration im
-    *env.sim_config*, give it the ID *sim_id* and pass the parameters of the
+    *world.sim_config*, give it the ID *sim_id* and pass the parameters of the
     dict *sim_params* to it.
 
     The sim config is a dictionary with one entry for every simulator. The
@@ -61,7 +61,7 @@ def start(env, sim_name, sim_id, sim_params):
 
     """
     try:
-        conf = env.sim_config[sim_name]
+        conf = world.sim_config[sim_name]
     except KeyError:
         raise ScenarioError('Simulator "%s" could not be started: Not found '
                             'in sim_config' % sim_name)
@@ -73,13 +73,13 @@ def start(env, sim_name, sim_id, sim_params):
                                        connect=start_connect)
     for sim_type, start in starters.items():
         if sim_type in conf:
-            return start(env, sim_name, conf, sim_id, sim_params)
+            return start(world, sim_name, conf, sim_id, sim_params)
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
                             'configuration' % sim_name)
 
 
-def start_inproc(env, sim_name, conf, sim_id, sim_params):
+def start_inproc(world, sim_name, conf, sim_id, sim_params):
     """Import and instantiate the Python simulator *sim_name* based on its
     config entry *conf*.
 
@@ -106,8 +106,8 @@ def start_inproc(env, sim_name, conf, sim_id, sim_params):
     return LocalProcess(sim_id, sim, meta)
 
 
-def start_proc(env, sim_name, conf, sim_id, sim_params):
-    cmd = conf['cmd'] % {'addr': '%s:%s' % env.config['addr']}
+def start_proc(world, sim_name, conf, sim_id, sim_params):
+    cmd = conf['cmd'] % {'addr': '%s:%s' % world.config['addr']}
     print(cmd)
     cmd = shlex.split(cmd)
     cwd = conf['cwd'] if 'cwd' in conf else '.'
@@ -124,12 +124,12 @@ def start_proc(env, sim_name, conf, sim_id, sim_params):
                             (sim_name, e.args[1]))
 
     def greeter():
-        sock = yield env.srv_sock.accept()
+        sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
         meta = yield rpc_con.remote.init(**sim_params)
         return ExternalProcess(sim_id, proc, rpc_con, meta)
 
-    proxy = env.simpy_env.run(until=env.simpy_env.process(greeter()))
+    proxy = world.env.run(until=world.env.process(greeter()))
     return proxy
 
 
