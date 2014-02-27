@@ -16,6 +16,7 @@ from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
 
 from mosaik.exceptions import ScenarioError
+from mosaik.scenario import backend
 
 
 def start(world, sim_name, sim_id, sim_params):
@@ -36,7 +37,6 @@ def start(world, sim_name, sim_id, sim_params):
             },
             'ExampleSimC': {
                 'connect': 'host:port',
-                'slots': 1,
             },
         }
 
@@ -49,7 +49,7 @@ def start(world, sim_name, sim_id, sim_params):
     optionally specify a *current working directory*. It defaults to ``.``.
 
     *ExampleSimC* can not be started by mosaik, so mosaik tries to connect to
-    it. Only *slots* connections are allowed at the same time.
+    it.
 
     The function returns a :class:`mosaik_api.Simulator` instance.
 
@@ -107,7 +107,6 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
 
 def start_proc(world, sim_name, conf, sim_id, sim_params):
     cmd = conf['cmd'] % {'addr': '%s:%s' % world.config['addr']}
-    print(cmd)
     cmd = shlex.split(cmd)
     cwd = conf['cwd'] if 'cwd' in conf else '.'
 
@@ -120,7 +119,7 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
         proc = subprocess.Popen(cmd, **kwargs)
     except FileNotFoundError as e:
         raise ScenarioError('Simulator "%s" could not be started: %s' %
-                            (sim_name, e.args[1]))
+                            (sim_name, e.args[1])) from None
 
     def greeter():
         sock = yield world.srv_sock.accept()
@@ -132,8 +131,29 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
     return proxy
 
 
-def start_connect(sim_name, conf, sim_id, sim_params):
-    pass
+def start_connect(world, sim_name, conf, sim_id, sim_params):
+    addr = conf['connect']
+    try:
+        host, port = addr.strip().split(':')
+        addr = (host, int(port))
+    except ValueError:
+        raise ScenarioError('Simulator "%s" could not be started: Could not '
+                            'parse address "%s"' %
+                            (sim_name, conf['connect'])) from None
+
+    def greeter():
+        sock = backend.TCPSocket.connection(world.env, addr)
+        rpc_con = JsonRpc(Packet(sock))
+        meta = yield rpc_con.remote.init(**sim_params)
+        return RemoteProcess(sim_id, None, rpc_con, meta)
+
+    try:
+        proxy = world.env.run(until=world.env.process(greeter()))
+    except (ConnectionError, OSError):
+        raise ScenarioError('Simulator "%s" could not be started: Could not '
+                            'connect to "%s"' %
+                            (sim_name, conf['connect']))
+    return proxy
 
 
 class SimProxy:
@@ -185,7 +205,8 @@ class RemoteProcess(SimProxy):
         evt.defused = True
 
         self._rpc_con.close()
-        self._proc.wait()
+        if self._proc:
+            self._proc.wait()
 
     def _proxy_call(self, name):
         return getattr(self._rpc_con.remote, name)

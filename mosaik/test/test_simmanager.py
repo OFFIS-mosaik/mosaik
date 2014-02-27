@@ -1,6 +1,8 @@
 from unittest import mock
 
 from example_sim.mosaik import ExampleSim
+from simpy.io.message import Message
+from simpy.io.packet import PacketUTF8 as Packet
 import pytest
 import simpy
 
@@ -18,7 +20,7 @@ sim_config = {
         'cwd': '.',
     },
     'ExampleSimC': {
-        'connect': 'host:port',
+        'connect': 'localhost:5556',
         'slots': 1,
     },
     'ExampleSimD': {
@@ -33,9 +35,22 @@ def world():
     world.shutdown()
 
 
-@pytest.mark.xfail
-def test_start():
-    assert 0
+def test_start(world):
+    """Test if start() dispatches to the correct start functions."""
+    with mock.patch('mosaik.simmanager.start_inproc') as a, \
+            mock.patch('mosaik.simmanager.start_proc') as b, \
+            mock.patch('mosaik.simmanager.start_connect') as c:
+        ret = simmanager.start(world, 'ExampleSimA', '0', {})
+        assert a.call_count == 1
+        assert ret == a.return_value
+
+        ret = simmanager.start(world, 'ExampleSimB', '0', {})
+        assert b.call_count == 1
+        assert ret == b.return_value
+
+        ret = simmanager.start(world, 'ExampleSimC', '0', {})
+        assert c.call_count == 1
+        assert ret == c.return_value
 
 
 def test_start_inproc(world):
@@ -56,10 +71,33 @@ def test_start_proc(world):
     sp.stop()
 
 
-@pytest.mark.xfail
-def test_start_connect():
+def test_start_connect(world):
     """Test connecting to an already running simulator."""
-    assert 0
+    env = world.env
+    sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
+
+    def sim():
+        msock = yield sock.accept()
+        channel = Message(env, Packet(msock))
+        req = yield channel.recv()
+        req.succeed(ExampleSim().meta)
+        try:
+            yield channel.recv()  # Wait for stop message
+        except:
+            pass
+
+    def starter():
+        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})
+        assert sp.sid == 'ExampleSim-0'
+        assert sp._proc is None
+        assert 'api_version' in sp.meta and 'models' in sp.meta
+        sp.stop()
+        yield env.event().succeed()
+
+    sim_proc = env.process(sim())
+    starter_proc = env.process(starter())
+    env.run(until=sim_proc & starter_proc)
+    sock.close()
 
 
 @pytest.mark.parametrize(('sim_config', 'err_msg'), [
@@ -72,6 +110,8 @@ def test_start_connect():
     ({'spam': {'cmd': 'foo'}}, "No such file or directory: 'foo'"),
     ({'spam': {'cmd': 'python', 'cwd': 'bar'}}, "No such file or directory: "
                                                 "'bar'"),
+    ({'spam': {'connect': 'eggs'}}, 'Could not parse address "eggs"'),
+    ({'spam': {'connect': 'eggs:23'}}, 'Could not connect to "eggs:23"'),
 ])
 def test_start__error(sim_config, err_msg):
     """Test failure at starting an in-proc simulator."""
@@ -84,6 +124,11 @@ def test_start__error(sim_config, err_msg):
 
 
 def test_sim_proxy():
+    """SimProxy should not be instantiateable."""
+    pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', {})
+
+
+def test_local_process():
     es = ExampleSim()
     sp = simmanager.LocalProcess('ExampleSim-0', es, None, es.meta)
     assert sp.sid == 'ExampleSim-0'
@@ -94,7 +139,7 @@ def test_sim_proxy():
     assert sp.step_required is None
 
 
-def test_internal_sim_proxy_meth_forward():
+def test_local_process_meth_forward():
     env = simpy.Environment()
     sp = simmanager.LocalProcess('', mock.Mock(), env, None)
     meths = [

@@ -17,13 +17,14 @@ sim_config_remote = {
     char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
 }
 
+# We test all scenarios with local simulators and only the most complex one
+# with remote simulators to save some time (starting procs is quite expensive).
+test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(5)]
+test_cases.append(('scenario_5', sim_config_remote))
+
 
 # Test all combinations of both sim configs and the 5 test scenarios.
-@pytest.mark.parametrize(('fixture', 'sim_config'), [
-    ('scenario_%s' % (i + 1), sc)
-    for sc in [sim_config_local, sim_config_remote]
-    for i in range(5)
-])
+@pytest.mark.parametrize(('fixture', 'sim_config'), test_cases)
 def test_mosaik(fixture, sim_config):
     fixture = importlib.import_module('mosaik.test.fixtures.%s' % fixture)
     world = scenario.World(sim_config, execution_graph=True)
