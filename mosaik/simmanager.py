@@ -82,6 +82,8 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
     """Import and instantiate the Python simulator *sim_name* based on its
     config entry *conf*.
 
+    Return a :class:`LocalProcess` instance.
+
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
 
@@ -106,6 +108,15 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
 
 
 def start_proc(world, sim_name, conf, sim_id, sim_params):
+    """Start a new process for simulator *sim_name* based on its config entry
+    *conf*.
+
+    Return a :class:`RemoteProcess` instance.
+
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
+    instantiated.
+
+    """
     cmd = conf['cmd'] % {'addr': '%s:%s' % world.config['addr']}
     cmd = shlex.split(cmd)
     cwd = conf['cwd'] if 'cwd' in conf else '.'
@@ -132,6 +143,15 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
 
 
 def start_connect(world, sim_name, conf, sim_id, sim_params):
+    """Connect to the already running simulator *sim_name* based on its config
+    entry *conf*.
+
+    Return a :class:`RemoteProcess` instance.
+
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
+    instantiated.
+
+    """
     addr = conf['connect']
     try:
         host, port = addr.strip().split(':')
@@ -171,6 +191,11 @@ class SimProxy:
             setattr(self, name, self._proxy_call(name))
 
     def stop(self):
+        """Stop the simulator behind the proxy.
+
+        The default implementation does nothing.
+
+        """
         return
 
     def _proxy_call(self, name):
@@ -185,6 +210,12 @@ class LocalProcess(SimProxy):
         super().__init__(sid, meta)
 
     def _proxy_call(self, name):
+        """Return a wrapper method for the simulators method *name*.
+
+        The wrapper method will return an event with the original return value
+        as its value.
+
+        """
         def meth(*args, **kwargs):
             ret = getattr(self._inst, name)(*args, **kwargs)
             return self._env.event().succeed(ret)
@@ -200,6 +231,10 @@ class RemoteProcess(SimProxy):
         super().__init__(sid, meta)
 
     def stop(self):
+        """Send a *stop* message to the process represented by this proxy and
+        wait for it to terminate.
+
+        """
         # We don't want to yield the event, so we have to defuse it:
         evt = self._rpc_con.remote.stop()
         evt.defused = True
@@ -209,4 +244,5 @@ class RemoteProcess(SimProxy):
             self._proc.wait()
 
     def _proxy_call(self, name):
+        """Return the method *name* of the remote process."""
         return getattr(self._rpc_con.remote, name)
