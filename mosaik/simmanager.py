@@ -128,7 +128,7 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
     }
     try:
         proc = subprocess.Popen(cmd, **kwargs)
-    except FileNotFoundError as e:
+    except (FileNotFoundError, NotADirectoryError) as e:
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, e.args[1])) from None
 
