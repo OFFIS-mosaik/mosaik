@@ -253,7 +253,7 @@ class ModelMock:
         # We have to start a SimPy process to make the "create()" call
         # behave like it was synchronous.
         def create():
-            entities = yield self._sim.create(num, self._name, model_params)
+            entities = yield self._sim.create(num, self._name, **model_params)
             return entities
 
         proc = self._env.process(create())
