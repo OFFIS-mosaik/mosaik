@@ -22,19 +22,19 @@ A simple demo scenario with mosaik::
    ...     'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
    ... }
    >>>
-   >>> def create_scenario(env):
-   ...     exsim1 = env.start('ExampleSim')
-   ...     exsim2 = env.start('ExampleSim')
+   >>> def create_scenario(world):
+   ...     exsim1 = world.start('ExampleSim')
+   ...     exsim2 = world.start('ExampleSim')
    ...
    ...     a = [exsim1.A(init_val=0) for i in range(3)]
    ...     b = exsim2.B.create(2, init_val=0)
    ...
    ...     for i, j in zip(a, b):
-   ...         env.connect(i, j, ('val_out', 'val_in'))
+   ...         world.connect(i, j, ('val_out', 'val_in'))
    >>>
-   >>> env = mosaik.Environment(sim_config)
-   >>> create_scenario(env)
-   >>> env.run(until=2)
+   >>> world = mosaik.World(sim_config)
+   >>> create_scenario(world)
+   >>> world.run(until=2)
    Progress: 25.00%
    Progress: 50.00%
    Progress: 75.00%
