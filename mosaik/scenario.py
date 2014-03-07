@@ -235,9 +235,9 @@ class ModelMock:
         self._sim_id = sim.sid
 
     def __call__(self, **model_params):
-        """Call :meth:`create()` to create 1 entity."""
+        """Call :meth:`create()` to instantiate one model."""
         # TODO: Generate proper signature based on the meta data?
-        return self.create(1, **model_params)[0]
+        return self.create(1, **model_params)
 
     def create(self, num, **model_params):
         """Create *num* entities with the specified *model_params* and return

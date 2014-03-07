@@ -107,9 +107,9 @@ def test_world_connect_cycle(world):
     an error must be raised."""
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(a[0], b[0], ('val_out', 'val_in'))
     with pytest.raises(ScenarioError) as err:
-        world.connect(b, a, ('val_in', 'val_out'))
+        world.connect(b[0], a[0], ('val_in', 'val_out'))
     assert str(err.value) == ('Connection from "ExampleSim-1" to '
                               '"ExampleSim-0" introduces cyclic dependencies.')
     assert world.df_graph.edges() == [('ExampleSim-0', 'ExampleSim-1')]
@@ -118,8 +118,8 @@ def test_world_connect_cycle(world):
 
 def test_world_connect_wrong_attr_names(world):
     """The entities to be connected must have the listed attributes."""
-    a = world.start('ExampleSim').A(init_val=0)
-    b = world.start('ExampleSim').B(init_val=0)
+    a = world.start('ExampleSim').A(init_val=0)[0]
+    b = world.start('ExampleSim').B(init_val=0)[0]
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'))
     assert str(err.value) == ('At least on attribute does not exist: '
                               'Entity(ExampleSim-0, 0.0, A).val')
