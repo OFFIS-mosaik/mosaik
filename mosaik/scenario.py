@@ -89,6 +89,9 @@ class World:
         self.df_graph = networkx.DiGraph()
         """The directed dataflow graph for this scenario."""
 
+        self.rel_graph = networkx.Graph()
+        """The graph of related entities. Nodes are ``(sid, eid)`` tuples."""
+
         self._debug = False
         if execution_graph:
             self._debug = True
@@ -112,7 +115,7 @@ class World:
         sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
-        return ModelFactory(self.env, sim)
+        return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs):
         """Connect the *src* entity to *dest* entity.
@@ -144,6 +147,9 @@ class World:
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, attr_pairs))
+
+        # Add relation in rel_graph
+        self.rel_graph.add_edge((src.sid, src.eid), (dest.sid, dest.eid))
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
@@ -201,8 +207,9 @@ class ModelFactory:
     marked as *public*, an :exc:`ScenarioError` is raised.
 
     """
-    def __init__(self, env, sim):
-        self._env = env
+    def __init__(self, world, sim):
+        self._world = world
+        self._env = world.env
         self._sim = sim
         self._meta = sim.meta
         self._model_cache = {}
@@ -215,7 +222,7 @@ class ModelFactory:
             raise ScenarioError('Model "%s" is not public.' % name)
 
         if name not in self._model_cache:
-            self._model_cache[name] = ModelMock(self._env, name, self._sim)
+            self._model_cache[name] = ModelMock(self._world, name, self._sim)
 
         return self._model_cache[name]
 
@@ -230,8 +237,9 @@ class ModelMock:
     ``sim.ModelName.create(3, x=23)``.
 
     """
-    def __init__(self, env, name, sim):
-        self._env = env
+    def __init__(self, world, name, sim):
+        self._world = world
+        self._env = world.env
         self._name = name
         self._sim = sim
         self._sim_id = sim.sid
@@ -262,5 +270,12 @@ class ModelMock:
         entities = self._env.run(until=proc)
 
         sim_id = self._sim_id
-        return [Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
-                for e in entities]
+        rel_graph = self._world.rel_graph
+        for i, e in enumerate(entities):
+            entity = Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
+            entities[i] = entity  # Replace dict with instance of Entity()
+            for rel in e['rel']:
+                # Add entity relations to rel_graph
+                rel_graph.add_edge((sim_id, e['eid']), (sim_id, rel))
+
+        return entities

@@ -83,6 +83,12 @@ def test_world_connect(world):
         },
         'ExampleSim-1': {},
     }
+    assert world.rel_graph.adj == {
+        ('ExampleSim-0', a[0].eid): {('ExampleSim-1', b[0].eid): {}},
+        ('ExampleSim-1', b[0].eid): {('ExampleSim-0', a[0].eid): {}},
+        ('ExampleSim-0', a[1].eid): {('ExampleSim-1', b[1].eid): {}},
+        ('ExampleSim-1', b[1].eid): {('ExampleSim-0', a[1].eid): {}},
+    }
     assert world._df_outattr == {
         'ExampleSim-0': {
             '0.0': ['val_out', 'dummy_out'],
@@ -151,6 +157,10 @@ def test_world_connect_no_attrs(world):
         },
         'ExampleSim-1': {},
     }
+    assert world.rel_graph.adj == {
+        ('ExampleSim-0', a[0].eid): {('ExampleSim-1', b[0].eid): {}},
+        ('ExampleSim-1', b[0].eid): {('ExampleSim-0', a[0].eid): {}},
+    }
     assert world._df_outattr == {}
 
 
@@ -198,3 +208,28 @@ def test_model_factory_unkown_model(world):
     err = pytest.raises(ScenarioError, getattr, mf, 'D')
     assert str(err.value) == ('Model factory for "ExampleSim-0" has no model '
                               '"D".')
+
+
+def test_model_mock_rel_graph(world):
+    """Test if related entites are added to the rel_graph."""
+    def create(*args, **kwargs):
+        entities = [
+            {'eid': '0', 'type': 'A', 'rel': ['1']},
+            {'eid': '1', 'type': 'A', 'rel': []},
+        ]
+        return world.env.event().succeed(entities)
+
+    sp_mock = mock.Mock()
+    sp_mock.create = create
+    sp_mock.sid = 'E0'
+
+    fac = world.start('ExampleSim')
+    fac._sim = sp_mock
+
+    assert world.rel_graph.adj == {}
+    fac.A.create(2)
+    print(world.rel_graph.adj)
+    assert world.rel_graph.adj == {
+        ('E0', '0'): {('E0', '1'): {}},
+        ('E0', '1'): {('E0', '0'): {}},
+    }
