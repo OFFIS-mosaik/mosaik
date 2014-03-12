@@ -135,6 +135,25 @@ def test_world_connect_wrong_attr_names(world):
     assert world._df_outattr == {}
 
 
+def test_world_connect_no_attrs(world):
+    """Connecting two entities without passing a list of attrs should work."""
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a[0], b[0])
+
+    assert world.df_graph.adj == {
+        'ExampleSim-0': {
+            'ExampleSim-1': {
+                'dataflows': [
+                    (a[0].eid, b[0].eid, ()),
+                ],
+            },
+        },
+        'ExampleSim-1': {},
+    }
+    assert world._df_outattr == {}
+
+
 def test_world_run():
     world = scenario.World({})
     world.sims = {0: mock.Mock()}

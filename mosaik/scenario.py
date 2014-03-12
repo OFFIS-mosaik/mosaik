@@ -147,7 +147,9 @@ class World:
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
-        self._df_outattr[src.sid][src.eid].extend(a[0] for a in attr_pairs)
+        outattr = [a[0] for a in attr_pairs]
+        if outattr:
+            self._df_outattr[src.sid][src.eid].extend(outattr)
 
     def run(self, until):
         """Start the simulation until the simulation time *until* is reached.
