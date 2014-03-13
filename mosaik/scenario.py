@@ -152,7 +152,8 @@ class World:
         dfs.append((src.eid, dest.eid, attr_pairs))
 
         # Add relation in rel_graph
-        self.rel_graph.add_edge((src.sid, src.eid), (dest.sid, dest.eid))
+        self.rel_graph.add_edge('%s/%s' % (src.sid, src.eid),
+                                '%s/%s' % (dest.sid, dest.eid))
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
@@ -279,6 +280,7 @@ class ModelMock:
             entities[i] = entity  # Replace dict with instance of Entity()
             for rel in e['rel']:
                 # Add entity relations to rel_graph
-                rel_graph.add_edge((sim_id, e['eid']), (sim_id, rel))
+                rel_graph.add_edge('%s/%s' % (sim_id, e['eid']),
+                                   '%s/%s' % (sim_id, rel))
 
         return entities

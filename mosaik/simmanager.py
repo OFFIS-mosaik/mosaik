@@ -217,12 +217,6 @@ class LocalProcess(SimProxy):
         as its value.
 
         """
-        func = getattr(self._inst, name)
-        if inspect.isgeneratorfunction(func):
-            raise ScenarioError('Simulator "%s" cannot be used as Python '
-                                'module but as external process.' %
-                                self._inst.__class__.__name__)
-
         def meth(*args, **kwargs):
             ret = getattr(self._inst, name)(*args, **kwargs)
             return self._env.event().succeed(ret)
@@ -235,7 +229,7 @@ class RemoteProcess(SimProxy):
     def __init__(self, world, sid, proc, rpc_con, meta):
         self._proc = proc
         self._rpc_con = rpc_con
-        self._mosaik_remote = MosaikRemote(world)
+        self._mosaik_remote = MosaikRemote(world, sid)
         rpc_con.router = self._mosaik_remote.rpc
         super().__init__(sid, meta)
 
@@ -262,17 +256,38 @@ class MosaikRemote:
     class rpc(JsonRpc.Accessor):
         parent = None
 
-
-    def __init__(self, world):
-        self._world = world
+    def __init__(self, world, sim_id):
+        self.world = world
+        self.sim_id = sim_id
 
     @rpc
     def get_progress(self):
-        return self._world.sim_progress
+        """Return the current simulation progress from
+        :attr:`~mosaik.scenario.World.sim_progress`.
+
+        """
+        return self.world.sim_progress
 
     @rpc
-    def get_related_entities(self, entity):
-        return []
+    def get_related_entities(self, *entities):
+        """Get a list of entities for *entities*.
+
+        An *entity* may either be the string ``'sim_id/entity_id'`` or just
+        ``'entity_id'``. If the latter is the case, use ``self.sim_id`` to
+        identify the entiy.
+
+        The return value is a dict mapping ``'sim_id/entity_id'`` to sorted
+        lists of related entities.
+
+        """
+        rels = {}
+        for entity in entities:
+            if not entity.startswith('%s/' % self.sim_id):
+                entity = '%s/%s' % (self.sim_id, entity)
+
+            rels[entity] = list(sorted(self.world.rel_graph[entity]))
+
+        return rels
 
     @rpc
     def get_data(self, data):

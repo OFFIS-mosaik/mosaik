@@ -2,6 +2,7 @@ from unittest import mock
 import sys
 
 from example_sim.mosaik import ExampleSim
+from simpy.io.json import JSON as JsonRpc
 from simpy.io.message import Message
 from simpy.io.packet import PacketUTF8 as Packet
 import pytest
@@ -154,3 +155,44 @@ def test_local_process_meth_forward():
         ret = getattr(sp, meth)(*args)
         assert ret.value is getattr(sp._inst, meth).return_value
         assert getattr(sp._inst, meth).call_args == mock.call(*args)
+
+
+def test_mosaik_remote():
+    backend = simmanager.backend
+    world = scenario.World({})
+    env = world.env
+
+    edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
+    edges = [('X/%s' % x, 'X/%s' % y) for x, y in edges]
+    world.rel_graph.add_edges_from(edges)
+    print(world.rel_graph.adj)
+    world.sim_progress = 23
+
+    def simulator():
+        sock = backend.TCPSocket.connection(env, ('localhost', 5555))
+        rpc_con = JsonRpc(Packet(sock))
+        mosaik = rpc_con.remote
+
+        prog = yield mosaik.get_progress()
+        assert prog == 23
+
+        entities = yield mosaik.get_related_entities('0')
+        assert entities == {'X/0': ['X/1', 'X/2']}
+
+        entities = yield mosaik.get_related_entities('1', 'X/2')
+        assert entities == {'X/1': ['X/0', 'X/2'],
+                            'X/2': ['X/0', 'X/1', 'X/3']}
+
+        # data = yield mosaik.get_data(...)
+        # assert data == ...
+
+        sock.close()
+
+    def greeter():
+        sock = yield world.srv_sock.accept()
+        rpc_con = JsonRpc(Packet(sock))
+        return simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
+
+    env.process(greeter())
+    env.run(env.process(simulator()))
+    world.srv_sock.close()

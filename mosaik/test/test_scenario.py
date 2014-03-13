@@ -84,10 +84,10 @@ def test_world_connect(world):
         'ExampleSim-1': {},
     }
     assert world.rel_graph.adj == {
-        ('ExampleSim-0', a[0].eid): {('ExampleSim-1', b[0].eid): {}},
-        ('ExampleSim-1', b[0].eid): {('ExampleSim-0', a[0].eid): {}},
-        ('ExampleSim-0', a[1].eid): {('ExampleSim-1', b[1].eid): {}},
-        ('ExampleSim-1', b[1].eid): {('ExampleSim-0', a[1].eid): {}},
+        'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
+        'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
+        'ExampleSim-0/' + a[1].eid: {'ExampleSim-1/' + b[1].eid: {}},
+        'ExampleSim-1/' + b[1].eid: {'ExampleSim-0/' + a[1].eid: {}},
     }
     assert world._df_outattr == {
         'ExampleSim-0': {
@@ -158,8 +158,8 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-1': {},
     }
     assert world.rel_graph.adj == {
-        ('ExampleSim-0', a[0].eid): {('ExampleSim-1', b[0].eid): {}},
-        ('ExampleSim-1', b[0].eid): {('ExampleSim-0', a[0].eid): {}},
+        'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
+        'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
     }
     assert world._df_outattr == {}
 
@@ -230,6 +230,6 @@ def test_model_mock_rel_graph(world):
     fac.A.create(2)
     print(world.rel_graph.adj)
     assert world.rel_graph.adj == {
-        ('E0', '0'): {('E0', '1'): {}},
-        ('E0', '1'): {('E0', '0'): {}},
+        'E0/0': {'E0/1': {}},
+        'E0/1': {'E0/0': {}},
     }
