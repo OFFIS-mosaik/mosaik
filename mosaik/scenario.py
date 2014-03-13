@@ -89,8 +89,9 @@ class World:
         self.df_graph = networkx.DiGraph()
         """The directed dataflow graph for this scenario."""
 
-        self.rel_graph = networkx.Graph()
-        """The graph of related entities. Nodes are ``(sid, eid)`` tuples."""
+        self.entity_graph = networkx.Graph()
+        """The graph of related entities. Nodes are ``(sid, eid)`` tuples.
+        Each note has an attribute *entity* with an :class:`Entity`."""
 
         self.sim_progress = 0
         """Progress of the current simulation."""
@@ -151,9 +152,9 @@ class World:
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, attr_pairs))
 
-        # Add relation in rel_graph
-        self.rel_graph.add_edge('%s/%s' % (src.sid, src.eid),
-                                '%s/%s' % (dest.sid, dest.eid))
+        # Add relation in entity_graph
+        self.entity_graph.add_edge('%s/%s' % (src.sid, src.eid),
+                                   '%s/%s' % (dest.sid, dest.eid))
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
@@ -274,13 +275,14 @@ class ModelMock:
         entities = self._env.run(until=proc)
 
         sim_id = self._sim_id
-        rel_graph = self._world.rel_graph
+        entity_graph = self._world.entity_graph
         for i, e in enumerate(entities):
             entity = Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
             entities[i] = entity  # Replace dict with instance of Entity()
+            entity_graph.add_node('%s/%s' % (sim_id, e['eid']), entity=entity)
             for rel in e['rel']:
-                # Add entity relations to rel_graph
-                rel_graph.add_edge('%s/%s' % (sim_id, e['eid']),
-                                   '%s/%s' % (sim_id, rel))
+                # Add entity relations to entity_graph
+                entity_graph.add_edge('%s/%s' % (sim_id, e['eid']),
+                                      '%s/%s' % (sim_id, rel))
 
         return entities

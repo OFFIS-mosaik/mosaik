@@ -83,7 +83,7 @@ def test_world_connect(world):
         },
         'ExampleSim-1': {},
     }
-    assert world.rel_graph.adj == {
+    assert world.entity_graph.adj == {
         'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
         'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
         'ExampleSim-0/' + a[1].eid: {'ExampleSim-1/' + b[1].eid: {}},
@@ -157,7 +157,7 @@ def test_world_connect_no_attrs(world):
         },
         'ExampleSim-1': {},
     }
-    assert world.rel_graph.adj == {
+    assert world.entity_graph.adj == {
         'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
         'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
     }
@@ -210,8 +210,8 @@ def test_model_factory_unkown_model(world):
                               '"D".')
 
 
-def test_model_mock_rel_graph(world):
-    """Test if related entites are added to the rel_graph."""
+def test_model_mock_entity_graph(world):
+    """Test if related entites are added to the entity_graph."""
     def create(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},
@@ -226,10 +226,11 @@ def test_model_mock_rel_graph(world):
     fac = world.start('ExampleSim')
     fac._sim = sp_mock
 
-    assert world.rel_graph.adj == {}
+    assert world.entity_graph.adj == {}
     fac.A.create(2)
-    print(world.rel_graph.adj)
-    assert world.rel_graph.adj == {
+    assert world.entity_graph.adj == {
         'E0/0': {'E0/1': {}},
         'E0/1': {'E0/0': {}},
     }
+    assert world.entity_graph.node['E0/0']['entity'].type == 'A'
+    assert world.entity_graph.node['E0/1']['entity'].type == 'A'

@@ -164,8 +164,10 @@ def test_mosaik_remote():
 
     edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
     edges = [('X/%s' % x, 'X/%s' % y) for x, y in edges]
-    world.rel_graph.add_edges_from(edges)
-    print(world.rel_graph.adj)
+    world.entity_graph.add_edges_from(edges)
+    for node in world.entity_graph:
+        world.entity_graph.add_node(node, entity=scenario.Entity('', '', 'A',
+                                                                 [], None))
     world.sim_progress = 23
 
     def simulator():
@@ -177,11 +179,11 @@ def test_mosaik_remote():
         assert prog == 23
 
         entities = yield mosaik.get_related_entities('0')
-        assert entities == {'X/0': ['X/1', 'X/2']}
+        assert entities == {'0': [['X/1', 'A'], ['X/2', 'A']]}
 
         entities = yield mosaik.get_related_entities('1', 'X/2')
-        assert entities == {'X/1': ['X/0', 'X/2'],
-                            'X/2': ['X/0', 'X/1', 'X/3']}
+        assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
+                            'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
 
         # data = yield mosaik.get_data(...)
         # assert data == ...

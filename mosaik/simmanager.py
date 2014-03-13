@@ -277,15 +277,21 @@ class MosaikRemote:
         identify the entiy.
 
         The return value is a dict mapping ``'sim_id/entity_id'`` to sorted
-        lists of related entities.
+        lists of tuples ``('sim_id/entity_id', entity_type)``.
 
         """
         rels = {}
+        entity_graph = self.world.entity_graph
         for entity in entities:
-            if not entity.startswith('%s/' % self.sim_id):
-                entity = '%s/%s' % (self.sim_id, entity)
+            if '/' in entity:
+                full_id = entity
+            else:
+                full_id = '%s/%s' % (self.sim_id, entity)
 
-            rels[entity] = list(sorted(self.world.rel_graph[entity]))
+            rels[entity] = [
+                (e, entity_graph.node[e]['entity'].type)
+                for e in sorted(entity_graph[full_id])
+            ]
 
         return rels
 
