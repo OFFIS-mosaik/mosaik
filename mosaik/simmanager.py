@@ -296,5 +296,25 @@ class MosaikRemote:
         return rels
 
     @rpc
-    def get_data(self, data):
-        return 'spam'
+    def get_data(self, attrs):
+        """Return the data for the requested attributes *attrs*.
+
+        Attributes is a dict of (fully qualified) entity IDs mapping to lists
+        of attribute names (``{'sid/eid': ['attr1', 'attrs']}``).
+
+        The return value is a dict mapping the input entity IDs to data
+        dictionaries mapping attribute names to there respective values.
+
+        """
+        sp = self.world.sims[self.sim_id]
+        assert sp.next_step == sp.last_step
+        cache_slice = self.world._df_cache[sp.last_step]
+
+        data = {}
+        for full_id, attr_names in attrs.items():
+            data[full_id] = {}
+            sid, eid = full_id.split('/')
+            for attr in attr_names:
+                data[full_id][attr] = cache_slice[sid][eid][attr]
+
+        return data

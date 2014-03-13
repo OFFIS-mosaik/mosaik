@@ -158,6 +158,7 @@ def test_local_process_meth_forward():
 
 
 def test_mosaik_remote():
+    # TODO: This test case is too big
     backend = simmanager.backend
     world = scenario.World({})
     env = world.env
@@ -169,6 +170,11 @@ def test_mosaik_remote():
         world.entity_graph.add_node(node, entity=scenario.Entity('', '', 'A',
                                                                  [], None))
     world.sim_progress = 23
+    world._df_cache = {
+        1: {
+            'X': {'2': {'attr': 'val'}},
+        },
+    }
 
     def simulator():
         sock = backend.TCPSocket.connection(env, ('localhost', 5555))
@@ -185,6 +191,9 @@ def test_mosaik_remote():
         assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
                             'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
 
+        data = yield mosaik.get_data({'X/2': ['attr']})
+        assert data == {'X/2': {'attr': 'val'}}
+
         # data = yield mosaik.get_data(...)
         # assert data == ...
 
@@ -193,7 +202,9 @@ def test_mosaik_remote():
     def greeter():
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
-        return simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
+        rp = simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
+        rp.last_step = rp.next_step = 1
+        world.sims['X'] = rp
 
     env.process(greeter())
     env.run(env.process(simulator()))
