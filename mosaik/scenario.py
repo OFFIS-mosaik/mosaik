@@ -11,7 +11,6 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 from collections import defaultdict
 import itertools
 
-from simpy.io import select as backend
 import networkx
 
 from mosaik import simmanager
@@ -20,6 +19,7 @@ from mosaik import util
 from mosaik.exceptions import ScenarioError
 
 
+backend = simmanager.backend
 base_config = {
     'addr': ('127.0.0.1', 5555),
     'start_timeout': 2,  # seconds
@@ -91,6 +91,9 @@ class World:
 
         self.rel_graph = networkx.Graph()
         """The graph of related entities. Nodes are ``(sid, eid)`` tuples."""
+
+        self.sim_progress = 0
+        """Progress of the current simulation."""
 
         self._debug = False
         if execution_graph:

@@ -27,7 +27,8 @@ def sim_process(world, sim, until):
         input_data = get_input_data(world, sim)
         yield from step(world, sim, input_data)
         yield from get_outputs(world, sim)
-        print('Progress: %.2f%%' % get_progress(world.sims, until), end='\r')
+        world.sim_progress = get_progress(world.sims, until)
+        print('Progress: %.2f%%' % world.sim_progress, end='\r')
 
 
 def step_required(world, sim):

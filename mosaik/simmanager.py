@@ -9,14 +9,15 @@ already running simulators and manage access to them.
 """
 import collections
 import importlib
+import inspect
 import shlex
 import subprocess
 
+from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
 
 from mosaik.exceptions import ScenarioError
-from mosaik.scenario import backend
 
 
 def start(world, sim_name, sim_id, sim_params):
@@ -136,7 +137,7 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
         meta = yield rpc_con.remote.init(**sim_params)
-        return RemoteProcess(sim_id, proc, rpc_con, meta)
+        return RemoteProcess(world, sim_id, proc, rpc_con, meta)
 
     proxy = world.env.run(until=world.env.process(greeter()))
     return proxy
@@ -165,7 +166,7 @@ def start_connect(world, sim_name, conf, sim_id, sim_params):
         sock = backend.TCPSocket.connection(world.env, addr)
         rpc_con = JsonRpc(Packet(sock))
         meta = yield rpc_con.remote.init(**sim_params)
-        return RemoteProcess(sim_id, None, rpc_con, meta)
+        return RemoteProcess(world, sim_id, None, rpc_con, meta)
 
     try:
         proxy = world.env.run(until=world.env.process(greeter()))
@@ -216,6 +217,12 @@ class LocalProcess(SimProxy):
         as its value.
 
         """
+        func = getattr(self._inst, name)
+        if inspect.isgeneratorfunction(func):
+            raise ScenarioError('Simulator "%s" cannot be used as Python '
+                                'module but as external process.' %
+                                self._inst.__class__.__name__)
+
         def meth(*args, **kwargs):
             ret = getattr(self._inst, name)(*args, **kwargs)
             return self._env.event().succeed(ret)
@@ -225,9 +232,11 @@ class LocalProcess(SimProxy):
 
 class RemoteProcess(SimProxy):
     """Proxy for external simulator processes."""
-    def __init__(self, sid, proc, rpc_con, meta):
+    def __init__(self, world, sid, proc, rpc_con, meta):
         self._proc = proc
         self._rpc_con = rpc_con
+        self._mosaik_remote = MosaikRemote(world)
+        rpc_con.router = self._mosaik_remote.rpc
         super().__init__(sid, meta)
 
     def stop(self):
@@ -246,3 +255,25 @@ class RemoteProcess(SimProxy):
     def _proxy_call(self, name):
         """Return the method *name* of the remote process."""
         return getattr(self._rpc_con.remote, name)
+
+
+class MosaikRemote:
+    @JsonRpc.Descriptor
+    class rpc(JsonRpc.Accessor):
+        parent = None
+
+
+    def __init__(self, world):
+        self._world = world
+
+    @rpc
+    def get_progress(self):
+        return self._world.sim_progress
+
+    @rpc
+    def get_related_entities(self, entity):
+        return []
+
+    @rpc
+    def get_data(self, data):
+        return 'spam'
