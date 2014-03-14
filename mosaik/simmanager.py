@@ -295,7 +295,7 @@ class MosaikRemote:
 
         return rels
 
-    @rpc
+    @rpc.process
     def get_data(self, attrs):
         """Return the data for the requested attributes *attrs*.
 
@@ -311,10 +311,25 @@ class MosaikRemote:
         cache_slice = self.world._df_cache[sp.last_step]
 
         data = {}
+        missing = collections.defaultdict(
+            lambda: collections.defaultdict(list))
         for full_id, attr_names in attrs.items():
             data[full_id] = {}
             sid, eid = full_id.split('/')
             for attr in attr_names:
-                data[full_id][attr] = cache_slice[sid][eid][attr]
+                try:
+                    data[full_id][attr] = cache_slice[sid][eid][attr]
+                except KeyError:
+                    missing[sid][eid].append(attr)
+
+        for sid, attrs in missing.items():
+            dep = self.world.sims[sid]
+            assert (dep.next_step > sp.last_step and
+                    dep.last_step >= sp.last_step)
+            dep_data = yield dep.get_data(attrs)
+            for eid, vals in dep_data.items():
+                # Maybe there's already an entry for full_id, so we need
+                # to update the dict in that case.
+                data.setdefault('%s/%s' % (sid, eid), {}).update(vals)
 
         return data
