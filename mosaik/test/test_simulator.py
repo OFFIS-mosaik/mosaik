@@ -110,7 +110,7 @@ def test_step(world):
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert (sim.last_step, sim.next_step) == (0, 1)
-    assert sim._inst.step.call_args == mock.call(0, inputs=inputs)
+    assert sim._inst.step.call_args == mock.call(0, inputs)
 
 
 def test_get_outputs(world):

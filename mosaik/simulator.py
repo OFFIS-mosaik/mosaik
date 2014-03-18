@@ -126,7 +126,7 @@ def step(world, sim, inputs):
 
     """
     sim.last_step = sim.next_step
-    sim.next_step = yield sim.step(sim.next_step, inputs=inputs)
+    sim.next_step = yield sim.step(sim.next_step, inputs)
 
 
 def get_outputs(world, sim):
