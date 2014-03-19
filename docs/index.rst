@@ -7,8 +7,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   quickstart
    requirements
    glossary
+   api_reference/index
 
 
 
