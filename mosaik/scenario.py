@@ -5,7 +5,7 @@ mosaik.
 The :class:`World` holds all necessary data for the simulation and allows the
 user to start simulators. It provides a :class:`ModelFactory` (and
 a :class:`ModelMock`) via which the user can instantiate model instances
-(*entities*). The function :func:`run()` finally starts the simulation.
+(*entities*). The method :meth:`World.run()` finally starts the simulation.
 
 """
 from collections import defaultdict
@@ -190,7 +190,8 @@ class World:
     def _check_attributes(self, src, dest, attr_pairs):
         """Check if *src* and *dest* have the attributes in *attr_pairs*.
 
-        Raise a :exc:`ScenarioError` if an attribute does not exist.
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
+        not exist.
 
         """
         attr_errors = []
@@ -209,7 +210,7 @@ class ModelFactory:
     provides a :class:`ModelMock` attribute that actually creates the entities.
 
     If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`ScenarioError` is raised.
+    marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
 
     """
     def __init__(self, world, sim):
