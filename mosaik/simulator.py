@@ -13,22 +13,68 @@ def run(world, until):
 
     """
     env = world.env
-    procs = [env.process(sim_process(world, sim, until))
-             for sim in world.sims.values()]
+    procs = []
+    for sim in world.sims.values():
+        proc = env.process(sim_process(world, sim, until))
+        sim.sim_proc = proc
+        procs.append(proc)
+
     env.run(until=env.all_of(procs))
 
 
 def sim_process(world, sim, until):
-    """SimPy simulation process for a certain simulator *sim*.
-    """
-    while sim.next_step < until:
-        yield step_required(world, sim)
+    """SimPy simulation process for a certain simulator *sim*."""
+    keep_running = get_keep_running_func(world, sim, until)
+    while keep_running():
+        try:
+            yield step_required(world, sim)
+        except StopIteration:
+            # We've been woken up by a terminating successor.
+            # Check if we can also stop or need to keep running.
+            continue
+
         yield wait_for_dependencies(world, sim)
         input_data = get_input_data(world, sim)
         yield from step(world, sim, input_data)
         yield from get_outputs(world, sim)
         world.sim_progress = get_progress(world.sims, until)
         print('Progress: %.2f%%' % world.sim_progress, end='\r')
+
+    # Before we stop, we wake up all dependencies who may be waiting for us.
+    # They can then decide whether to also stop of if there's another process
+    # left for which they need to provide data.
+    for pre_sid in world.df_graph.predecessors_iter(sim.sid):
+        evt = world.sims[pre_sid].step_required
+        if not evt.triggered:
+            evt.fail(StopIteration())
+
+
+def get_keep_running_func(world, sim, until):
+    """Return a function that the :func:`sim_process()` uses to determine
+    when to stop.
+
+    Depending on whether the process has any successors in the dataflow graph,
+    the condition for when to stop differs.
+
+    """
+    def check_time():
+        return sim.next_step < until
+
+    if world.df_graph.out_degree(sim.sid) == 0:
+        # If a sim process has no successors (no one needs its data), we just
+        # need to check the time of its next step.
+        keep_running = check_time
+    else:
+        # If there are any successors, we also check if they are still alive.
+        # If all successors have finished, there's no need for us to continue
+        # running.
+        procs = [world.sims[suc_sid].sim_proc
+                 for suc_sid in world.df_graph.successors_iter(sim.sid)]
+
+        def keep_running():
+            return check_time() and not all(proc.triggered for proc in procs)
+
+    return keep_running
 
 
 def step_required(world, sim):
@@ -45,10 +91,10 @@ def step_required(world, sim):
     sim.step_required = world.env.event()
     dfg = world.df_graph
     sid = sim.sid
+
     if dfg.out_degree(sid) == 0 or any(('wait_event' in dfg[sid][s])
                                        for s in dfg.successors_iter(sid)):
         # A step is required if there are no outgoing edges or if one of the
-        # edges had a "WaitEvent" attached.
         sim.step_required.succeed()
     # else:
     #   "wait_for_dependencies()" triggers the event when it creates a new
@@ -77,7 +123,6 @@ def wait_for_dependencies(world, sim):
             world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
             if not dep.step_required.triggered:
-                # Notify dependency that it needs to step now.
                 dep.step_required.succeed()
 
     return world.env.all_of(events)

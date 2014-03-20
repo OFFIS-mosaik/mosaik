@@ -49,4 +49,3 @@ def test_mosaik(fixture, sim_config):
 
     for sim in world.sims.values():
         assert sim.last_step < fixture.until
-        assert sim.next_step >= fixture.until

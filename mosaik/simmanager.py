@@ -184,7 +184,8 @@ class SimProxy:
         self.meta = meta
         self.last_step = float('-inf')
         self.next_step = 0
-        self.step_required = None
+        self.sim_proc = None  # SimPy process
+        self.step_required = None  # SimPy event
 
         # Bind proxy calls to API methods to this instance:
         remote_methods = ['create', 'step', 'get_data']
