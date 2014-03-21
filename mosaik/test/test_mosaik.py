@@ -14,7 +14,7 @@ sim_config_local = {
     char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
 }
 sim_config_remote = {
-    char: {'cmd': 'pyexamplesim -l debug %(addr)s'} for char in 'ABCDE'
+    char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
 }
 
 # We test all scenarios with local simulators and only the most complex one

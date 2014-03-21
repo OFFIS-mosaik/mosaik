@@ -10,7 +10,9 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 """
 from collections import defaultdict
 import itertools
+import sys
 
+from simpy.io.network import RemoteException
 import networkx
 
 from mosaik import simmanager
@@ -25,6 +27,21 @@ base_config = {
     'start_timeout': 2,  # seconds
     'stop_timeout': 2,  # seconds
 }
+
+
+def _print_exception_and_exit(error, callback=None):
+    if type(error) is RemoteException:
+        print('RemoteException:')
+        print(error.remote_traceback)
+        print('————————————————')
+    else:
+        print('ERROR:', error)
+
+    if callback is not None:
+        callback()
+
+    print('Mosaik terminating')
+    sys.exit(1)
 
 
 class Entity:
@@ -115,12 +132,19 @@ class World:
         :class:`ModelFactory` for it.
 
         """
-        counter = self._sim_ids[sim_name]
-        sim_id = '%s-%s' % (sim_name, next(counter))
-        sim = simmanager.start(self, sim_name, sim_id, sim_params)
-        self.sims[sim_id] = sim
-        self.df_graph.add_node(sim_id)
-        return ModelFactory(self, sim)
+        try:
+            counter = self._sim_ids[sim_name]
+            sim_id = '%s-%s' % (sim_name, next(counter))
+            sim = simmanager.start(self, sim_name, sim_id, sim_params)
+            self.sims[sim_id] = sim
+            self.df_graph.add_node(sim_id)
+            return ModelFactory(self, sim)
+        except ConnectionResetError:
+            _print_exception_and_exit('"%s" closed its connection during its '
+                                      'initlization phase.' % (sim_name,),
+                                      self.shutdown)
+        except RemoteException as e:
+            _print_exception_and_exit(e, self.shutdown)
 
     def connect(self, src, dest, *attr_pairs):
         """Connect the *src* entity to *dest* entity.
@@ -177,6 +201,10 @@ class World:
         try:
             res = simulator.run(self, until)
             return res
+        except ConnectionResetError as e:
+            _print_exception_and_exit('A simulator closed its connection.')
+        except RemoteException as e:
+            _print_exception_and_exit(e)
         finally:
             self.shutdown()
             if self._debug:
@@ -273,8 +301,15 @@ class ModelMock:
             entities = yield self._sim.create(num, self._name, **model_params)
             return entities
 
-        proc = self._env.process(create())
-        entities = self._env.run(until=proc)
+        try:
+            proc = self._env.process(create())
+            entities = self._env.run(until=proc)
+        except ConnectionResetError:
+            msg = ('"%s" closed its connection during the creation of %s '
+                   'instances of "%s".' % (self._sim_id, num, self._name))
+            _print_exception_and_exit(msg, self._world.shutdown)
+        except RemoteException as e:
+            _print_exception_and_exit(e, self._world.shutdown)
 
         sim_id = self._sim_id
         entity_graph = self._world.entity_graph
