@@ -14,12 +14,12 @@ sim_config_local = {
     char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
 }
 sim_config_remote = {
-    char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
+    char: {'cmd': 'pyexamplesim -l debug %(addr)s'} for char in 'ABCDE'
 }
 
 # We test all scenarios with local simulators and only the most complex one
 # with remote simulators to save some time (starting procs is quite expensive).
-test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(5)]
+test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(0)]
 test_cases.append(('scenario_5', sim_config_remote))
 
 

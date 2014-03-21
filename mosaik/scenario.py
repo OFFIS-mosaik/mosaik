@@ -23,6 +23,7 @@ backend = simmanager.backend
 base_config = {
     'addr': ('127.0.0.1', 5555),
     'start_timeout': 2,  # seconds
+    'stop_timeout': 2,  # seconds
 }
 
 
@@ -183,8 +184,8 @@ class World:
 
     def shutdown(self):
         """Shut-down all simulators and close the server socket."""
-        for sim in self.sims.values():
-            sim.stop()
+        procs = [self.env.process(sim.stop()) for sim in self.sims.values()]
+        self.env.run(until=self.env.all_of(procs))
         self.srv_sock.close()
 
     def _check_attributes(self, src, dest, attr_pairs):

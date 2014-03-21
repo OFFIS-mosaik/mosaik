@@ -26,9 +26,10 @@ def test_run():
         proc_started = False
 
         def stop(self):
-            pass
+            yield self.env.event().succeed()
 
     world = scenario.World({})
+    Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
 
     with mock.patch('mosaik.simulator.sim_process', dummy_proc):

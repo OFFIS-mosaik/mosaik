@@ -9,7 +9,7 @@ already running simulators and manage access to them.
 """
 import collections
 import importlib
-import inspect
+import logging
 import shlex
 import subprocess
 
@@ -18,6 +18,9 @@ from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
 
 from mosaik.exceptions import ScenarioError
+
+
+logger = logging.getLogger(__name__)
 
 
 def start(world, sim_name, sim_id, sim_params):
@@ -135,7 +138,7 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
 
     def greeter():
         sock = yield world.srv_sock.accept()
-        rpc_con = JsonRpc(Packet(sock))
+        rpc_con = JsonRpc(Packet(sock, max_packet_size=1024*1024))
         meta = yield rpc_con.remote.init(**sim_params)
         return RemoteProcess(world, sim_id, proc, rpc_con, meta)
 
@@ -198,7 +201,7 @@ class SimProxy:
         The default implementation does nothing.
 
         """
-        return
+        raise NotImplementedError
 
     def _proxy_call(self, name):
         raise NotImplementedError
@@ -210,6 +213,10 @@ class LocalProcess(SimProxy):
         self._inst = inst
         self._env = env
         super().__init__(sid, meta)
+
+    def stop(self):
+        """Yield a triggered event but do nothing else."""
+        yield self._env.event().succeed()
 
     def _proxy_call(self, name):
         """Return a wrapper method for the simulators method *name*.
@@ -230,7 +237,9 @@ class RemoteProcess(SimProxy):
     def __init__(self, world, sid, proc, rpc_con, meta):
         self._proc = proc
         self._rpc_con = rpc_con
+        self._env = world.env
         self._mosaik_remote = MosaikRemote(world, sid)
+        self._stop_timeout = world.config['stop_timeout']
         rpc_con.router = self._mosaik_remote.rpc
         super().__init__(sid, meta)
 
@@ -239,11 +248,14 @@ class RemoteProcess(SimProxy):
         wait for it to terminate.
 
         """
-        # We don't want to yield the event, so we have to defuse it:
-        evt = self._rpc_con.remote.stop()
-        evt.defused = True
+        try:
+            yield (self._rpc_con.remote.stop() |
+                   self._env.timeout(self._stop_timeout))
+            logger.warn('Simulator did not close its connection in time.')
+            self._rpc_con.close()
+        except ConnectionError:
+            pass
 
-        self._rpc_con.close()
         if self._proc:
             self._proc.wait()
 

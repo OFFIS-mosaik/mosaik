@@ -83,6 +83,37 @@ def test_start_connect(world):
         channel = Message(env, Packet(msock))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
+        yield channel.recv()  # Wait for stop message
+        channel.close()
+
+    def starter():
+        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})
+        assert sp.sid == 'ExampleSim-0'
+        assert sp._proc is None
+        assert 'api_version' in sp.meta and 'models' in sp.meta
+        yield from sp.stop()
+        yield env.event().succeed()
+
+    sim_proc = env.process(sim())
+    starter_proc = env.process(starter())
+    env.run(until=sim_proc & starter_proc)
+    sock.close()
+
+
+def test_start_connect_stop_timeout(world):
+    """Test connecting to an already running simulator.
+
+    When asked to stop, the simulator times out.
+
+    """
+    env = world.env
+    sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
+
+    def sim():
+        msock = yield sock.accept()
+        channel = Message(env, Packet(msock))
+        req = yield channel.recv()
+        req.succeed(ExampleSim().meta)
         try:
             yield channel.recv()  # Wait for stop message
         except:
@@ -90,10 +121,11 @@ def test_start_connect(world):
 
     def starter():
         sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})
+        sp._stop_timeout = 0.01
         assert sp.sid == 'ExampleSim-0'
         assert sp._proc is None
         assert 'api_version' in sp.meta and 'models' in sp.meta
-        sp.stop()
+        yield from sp.stop()
         yield env.event().succeed()
 
     sim_proc = env.process(sim())
