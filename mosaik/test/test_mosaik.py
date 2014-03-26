@@ -19,7 +19,7 @@ sim_config_remote = {
 
 # We test all scenarios with local simulators and only the most complex one
 # with remote simulators to save some time (starting procs is quite expensive).
-test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(0)]
+test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(5)]
 test_cases.append(('scenario_5', sim_config_remote))
 
 
