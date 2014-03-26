@@ -45,6 +45,8 @@ a `virtualenv`__::
 
     $ pip install mosaik
 
+__ http://pip.readthedocs.org/en/latest/installing.html
+__ http://virtualenv.readthedocs.org/en/latest/
 
 Documentation, Source code and issues
 -------------------------------------
