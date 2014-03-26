@@ -55,7 +55,13 @@ def pre_step(env, sim, inputs):
         eg.add_edge(pre_node, node_id)
         assert eg.node[pre_node]['t'] <= eg.node[node_id]['t']
 
+    next_steps = []
     for suc in env.df_graph.successors_iter(sid):
         suc_id = node % (suc, sims[suc].next_step)
-        assert sims[suc].next_step >= next_step
-        assert suc_id not in eg
+        next_steps.append(sims[suc].next_step)
+
+    # The next step of at least one successor must be >= our next_step (that
+    # we are going to execute).
+    if next_steps:
+        assert max(next_steps) >= next_step, (
+            '"next_step" of all successors is < "%s".next_step' % sid)
