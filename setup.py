@@ -11,7 +11,6 @@ setup(
                       open('CHANGES.txt').read() + '\n\n' +
                       open('AUTHORS.txt').read()),
     url='https://moaik.offis.de',
-    license='LGPLv2',
     install_requires=[
         'networkx>=1.8.1',
         'mosaik-api>=2.0a1',
