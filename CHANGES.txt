@@ -1,2 +1,7 @@
 Changelog
 =========
+
+2.0a1 – 2014-03-26
+------------------
+
+- Initial release. Note, that mosaik is still alpha and not yet done.

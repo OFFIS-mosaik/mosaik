@@ -6,7 +6,9 @@ syntax: glob
 *~
 .DS_Store
 .coverage
+.tox/
 MANIFEST
-dist/*
-docs/_build/*
-htmlcov/*
+build/
+dist/
+docs/_build/
+htmlcov/

@@ -6,13 +6,12 @@ setup(
     version='2.0a1',
     author='Stefan Scherfke',
     author_email='stefan.scherfke at offis.de',
-    description=('Mosaik is a simulation compositor and comes with a powerful '
-                 'scenario specification framework.'),
+    description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
     long_description=(open('README.txt').read() + '\n\n' +
                       open('CHANGES.txt').read() + '\n\n' +
                       open('AUTHORS.txt').read()),
     url='https://moaik.offis.de',
-    license='Proprietary',
+    license='LGPLv2',
     install_requires=[
         'networkx>=1.8.1',
         'mosaik-api>=2.0a1',
@@ -26,9 +25,10 @@ setup(
         ],
     },
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'Intended Audience :: Science/Research',
+        'Natural Language :: English',
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Natural Language :: English',
         'Operating System :: OS Independent',
@@ -37,5 +37,6 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Topic :: Scientific/Engineering',
+        'Topic :: Software Development :: Libraries :: Python Modules',
     ],
 )
