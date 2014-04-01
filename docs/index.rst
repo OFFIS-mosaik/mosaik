@@ -8,9 +8,10 @@ Contents:
    :maxdepth: 2
 
    quickstart
-   requirements
-   glossary
+   installation
+   dev/index
    api_reference/index
+   glossary
 
 
 
