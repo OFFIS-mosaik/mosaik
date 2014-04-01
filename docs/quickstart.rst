@@ -29,7 +29,7 @@ are required for the load flow analysis with *PYPOWER*):
 
    $ hg clone https://bitbucket.org/mosaik/mosaik-demo
    $ cd mosaik-demo/
-   $ pip install -r requirements
+   $ pip install -r requirements.txt
    $ python demo.py
 
 Then open your browser and go to http://localhost:8000.
