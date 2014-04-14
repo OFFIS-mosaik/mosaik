@@ -24,7 +24,7 @@ Python 3.4, so everything is okay.
 
       $ wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py
       $ sudo python get-pip.py
-      $ sudo pip install virtualenv
+      $ sudo pip install -U virtualenv
 
    Optionally, you can also install `virtualenvwrapper`__ which makes working
    with *virtualenv* easier. It's not necessary if you just want to get the
@@ -95,7 +95,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
          (mosaik)$ pip wheel scipy
          (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-linux_x86_64.whl
 
-2. You can now clone the `mosaik-demo repoistory`__ into a folder where you
+2. You can now clone the `mosaik-demo repository`__ into a folder where you
    store all your code and repositories (we'll use :file:`~/Code/`):
 
    .. code-block:: bash
@@ -108,7 +108,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bash
 
-      (mosaik)$ ~/Code/mosaik-demo/
+      (mosaik)$ cd ~/Code/mosaik-demo/
       (mosaik)$ pip install -r requirements.txt
       (mosaik)$ python demo.py
 
@@ -161,7 +161,7 @@ This guide is based on *OS X 10.9 Mavericks*.
 
    .. code-block:: bash
 
-      $ pip install virtualenv
+      $ pip install -U virtualenv
 
    Optionally, you can also install `virtualenvwrapper`__ which makes working
    with *virtualenv* easier. It's not necessary if you just want to get the
@@ -224,7 +224,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik)$ pip wheel scipy
       (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-macosx_10_9_x86_64.whl
 
-2. You can now clone the `mosaik-demo repoistory`__ into a folder where you
+2. You can now clone the `mosaik-demo repository`__ into a folder where you
    store all your code and repositories (we'll use :file:`~/Code/`):
 
    .. code-block:: bash
@@ -237,7 +237,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bash
 
-      (mosaik)$ ~/Code/mosaik-demo/
+      (mosaik)$ cd ~/Code/mosaik-demo/
       (mosaik)$ pip install -r requirements.txt
       (mosaik)$ python demo.py
 
@@ -295,7 +295,7 @@ This guide is based on *Windows 7, 64bit*.
 
    .. code-block:: bat
 
-      C:\Users\yourname> pip install virtualenv
+      C:\Users\yourname> pip install -U virtualenv
 
 3. Now we need to create a virtual environment for mosaik and its dependencies.
    The common location for venvs is under :file:`Envs/` in your users
@@ -303,7 +303,7 @@ This guide is based on *Windows 7, 64bit*.
 
    .. code-block:: bash
 
-      C:\Users\yourname> virtualenv -p C:\Python34\python.exe ~/Envs/mosaik
+      C:\Users\yourname> virtualenv -p C:\Python34\python.exe Envs\mosaik
       C:\Users\yourname> Envs\mosaik\Scripts\activate.bat
 
    Your command line prompt should now start with "(mosaik)" and roughly look
@@ -331,7 +331,7 @@ a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
 1. PYPOWER requires *NumPy* and *SciPy*. Christoph Gohlke `provides`__
-   installers for them (`NumPy`__, `SimPy`__). Select the appropriate files for
+   installers for them (`NumPy`__, `SciPy`__). Select the appropriate files for
    your system (32bit or 64bit, Python version), e.g.,
    *numpy‑MKL‑1.8.1.win‑amd64‑py3.4.exe* and
    *scipy‑0.13.3.win‑amd64‑py3.4.exe*.
@@ -384,6 +384,6 @@ __ https://github.com/rwl/PYPOWER
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
-__ http://git-scm.com/downloads
 __ http://mercurial.selenic.com/
+__ http://git-scm.com/downloads
 __ http://localhost:8000

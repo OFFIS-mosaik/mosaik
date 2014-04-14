@@ -14,7 +14,7 @@ setup(
     install_requires=[
         'networkx>=1.8.1',
         'mosaik-api>=2.0a1',
-        'simpy>=3.0.2',
+        'simpy>=3.0.4',
         'simpy.io>=0.1',
     ],
     packages=find_packages(),
