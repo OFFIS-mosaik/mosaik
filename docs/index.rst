@@ -9,6 +9,7 @@ Contents:
 
    quickstart
    installation
+   faq
    dev/index
    api_reference/index
    glossary
