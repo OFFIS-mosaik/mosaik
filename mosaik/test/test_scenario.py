@@ -1,9 +1,11 @@
 from unittest import mock
 
+import mosaik_api
 import pytest
 
 from mosaik import scenario, simmanager, simulator
 from mosaik.exceptions import ScenarioError
+from mosaik.test.util import SimMock
 
 
 sim_config = {
@@ -166,7 +168,8 @@ def test_world_connect_no_attrs(world):
 
 def test_world_run():
     world = scenario.World({})
-    world.sims = {0: simmanager.LocalProcess(0, None, world.env, {})}
+    world.sims = {0: simmanager.LocalProcess(world, 0, SimMock(), world.env,
+                                             {})}
     with mock.patch('mosaik.simulator.run') as run_mock:
         world.run(3)
         assert run_mock.call_args == mock.call(world, 3)

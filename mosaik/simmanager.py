@@ -1,6 +1,7 @@
 """
 The simulation manager is responsible for starting simulation processes and
-shutting them down.
+shutting them down. It also manages the communication between mosaik and the
+processes.
 
 It is able to start pure Python simulators in-process (by importing and
 instantiating them), to start external simulation processes and to connect to
@@ -16,6 +17,7 @@ import subprocess
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
+import mosaik_api
 
 from mosaik.exceptions import ScenarioError
 
@@ -108,7 +110,7 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
 
     sim = cls()
     meta = sim.init(**sim_params)
-    return LocalProcess(sim_id, sim, world.env, meta)
+    return LocalProcess(world, sim_id, sim, world.env, meta)
 
 
 def start_proc(world, sim_name, conf, sim_id, sim_params):
@@ -209,9 +211,20 @@ class SimProxy:
 
 class LocalProcess(SimProxy):
     """Proxy for internal simulators."""
-    def __init__(self, sid, inst, env, meta):
+    def __init__(self, world, sid, inst, env, meta):
         self._inst = inst
         self._env = env
+
+        # Add MosaikRemote and patch its RPC methods to return events:
+        inst.mosaik = MosaikRemote(world, sid)
+        for attr in dir(inst.mosaik):
+            if attr.startswith('_'):
+                continue
+
+            func = getattr(inst.mosaik, attr)
+            if hasattr(func, '__call__') and hasattr(func, 'rpc'):
+                setattr(inst.mosaik, attr, mosaik_api.get_wrapper(func, env))
+
         super().__init__(sid, meta)
 
     def stop(self):
@@ -225,11 +238,7 @@ class LocalProcess(SimProxy):
         as its value.
 
         """
-        def meth(*args, **kwargs):
-            ret = getattr(self._inst, name)(*args, **kwargs)
-            return self._env.event().succeed(ret)
-        meth.__name__ = name
-        return meth
+        return mosaik_api.get_wrapper(getattr(self._inst, name), self._env)
 
 
 class RemoteProcess(SimProxy):
@@ -265,6 +274,11 @@ class RemoteProcess(SimProxy):
 
 
 class MosaikRemote:
+    """This class provides an RPC interface for remote processes to query
+    mosaik and other processes (simulators) for data while they are executing
+    a ``step()`` command.
+
+    """
     @JsonRpc.Descriptor
     class rpc(JsonRpc.Accessor):
         parent = None
@@ -282,7 +296,7 @@ class MosaikRemote:
         return self.world.sim_progress
 
     @rpc
-    def get_related_entities(self, *entities):
+    def get_related_entities(self, entities):
         """Get a list of entities for *entities*.
 
         An *entity* may either be the string ``'sim_id/entity_id'`` or just
@@ -295,6 +309,9 @@ class MosaikRemote:
         """
         rels = {}
         entity_graph = self.world.entity_graph
+        if type(entities) is not list:
+            entities = [entities]
+
         for entity in entities:
             if '/' in entity:
                 full_id = entity
@@ -320,7 +337,7 @@ class MosaikRemote:
 
         """
         sp = self.world.sims[self.sim_id]
-        assert sp.next_step == sp.last_step
+        assert sp.next_step == sp.last_step  # Assert simulator is in step()
         cache_slice = self.world._df_cache[sp.last_step]
 
         data = {}

@@ -5,6 +5,7 @@ from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc
 from simpy.io.message import Message
 from simpy.io.packet import PacketUTF8 as Packet
+import mosaik_api
 import pytest
 import simpy.core
 
@@ -166,27 +167,13 @@ def test_sim_proxy():
 
 def test_local_process():
     es = ExampleSim()
-    sp = simmanager.LocalProcess('ExampleSim-0', es, None, es.meta)
+    sp = simmanager.LocalProcess(None, 'ExampleSim-0', es, None, es.meta)
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
     assert sp.meta is es.meta
     assert sp.last_step == float('-inf')
     assert sp.next_step == 0
     assert sp.step_required is None
-
-
-def test_local_process_meth_forward():
-    env = simpy.core.Environment()
-    sp = simmanager.LocalProcess('', mock.Mock(), env, None)
-    meths = [
-        ('create', (object(), object(), object())),
-        ('step', (object(), {})),
-        ('get_data', (object(),)),
-    ]
-    for meth, args in meths:
-        ret = getattr(sp, meth)(*args)
-        assert ret.value is getattr(sp._inst, meth).return_value
-        assert getattr(sp._inst, meth).call_args == mock.call(*args)
 
 
 def test_mosaik_remote():
@@ -219,7 +206,7 @@ def test_mosaik_remote():
         entities = yield mosaik.get_related_entities('0')
         assert entities == {'0': [['X/1', 'A'], ['X/2', 'A']]}
 
-        entities = yield mosaik.get_related_entities('1', 'X/2')
+        entities = yield mosaik.get_related_entities(['1', 'X/2'])
         assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
                             'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
 

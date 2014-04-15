@@ -3,12 +3,14 @@ from unittest import mock
 import pytest
 
 from mosaik import scenario, simulator, simmanager
+from mosaik.test.util import SimMock
 
 
 @pytest.yield_fixture
 def world():
     world = scenario.World({})
-    world.sims = {i: simmanager.LocalProcess(i, mock.Mock(), world.env, None)
+    world.sims = {i: simmanager.LocalProcess(world, i, SimMock(), world.env,
+                                             None)
                   for i in range(4)}
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
     world.df_graph[0][2]['wait_event'] = simulator.WaitEvent(world.env, 1)
@@ -103,7 +105,6 @@ def test_get_input_data(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
-    sim._inst.step.return_value = 1
     assert (sim.last_step, sim.next_step) == (float('-inf'), 0)
 
     gen = simulator.step(world, sim, inputs)
@@ -111,7 +112,6 @@ def test_step(world):
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert (sim.last_step, sim.next_step) == (0, 1)
-    assert sim._inst.step.call_args == mock.call(0, inputs)
 
 
 def test_get_outputs(world):
@@ -121,7 +121,6 @@ def test_get_outputs(world):
     wait_event = simulator.WaitEvent(world.env, 2)
     world.df_graph[0][2]['wait_event'] = wait_event
     sim = world.sims[0]
-    sim._inst.get_data.return_value = {'0': {'x': 0, 'y': 1}}
     sim.last_step, sim.next_step = 0, 1
 
     gen = simulator.get_outputs(world, sim)
