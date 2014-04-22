@@ -115,10 +115,7 @@ def test_start_connect_stop_timeout(world):
         channel = Message(env, Packet(msock))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
-        try:
-            yield channel.recv()  # Wait for stop message
-        except:
-            pass
+        yield channel.recv()  # Wait for stop message
 
     def starter():
         sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})

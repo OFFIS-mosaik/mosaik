@@ -114,6 +114,9 @@ def wait_for_dependencies(world, sim):
     """
     events = []
     t = sim.next_step
+
+    # Check if all predecessors have stepped far enough
+    # to provide the required input data for us:
     for dep_sid in world.df_graph.predecessors_iter(sim.sid):
         dep = world.sims[dep_sid]
         if not (t in world._df_cache and dep_sid in world._df_cache[t]):
@@ -124,6 +127,16 @@ def wait_for_dependencies(world, sim):
 
             if not dep.step_required.triggered:
                 dep.step_required.succeed()
+
+    # Check if a successor may request data from us.
+    # We cannot step any further until the successor may no longer require
+    # data for [last_step, next_step) from us:
+    for suc_sid in world.df_graph.successors_iter(sim.sid):
+        suc = world.sims[suc_sid]
+        if suc.next_step < t:
+            evt = WaitEvent(world.env, t)
+            events.append(evt)
+            world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
 
     return world.env.all_of(events)
 
@@ -185,17 +198,24 @@ def get_outputs(world, sim):
     sid = sim.sid
     outattr = world._df_outattr[sid]
     if outattr:
-        # Create a cache entry for every point in time the data is valid for.
         data = yield sim.get_data(outattr)
-        for i in range(sim.last_step, sim.next_step):
-            world._df_cache[i][sim.sid] = data
+    else:
+        data = {}  # Just to indicate that the step/get is completely done.
+    # Create a cache entry for every point in time the data is valid for.
+    for i in range(sim.last_step, sim.next_step):
+        world._df_cache[i][sim.sid] = data
 
-    # Notify waiting simulators
     next_step = sim.next_step
+    # Notify simulators waiting for inputs from us.
     for suc_sid in world.df_graph.successors_iter(sid):
         edge = world.df_graph[sid][suc_sid]
         if 'wait_event' in edge and edge['wait_event'].time < next_step:
             edge.pop('wait_event').succeed()
+    # Notify simulators waiting for async. requests from us.
+    for pre_sid in world.df_graph.predecessors_iter(sid):
+        edge = world.df_graph[pre_sid][sid]
+        if 'wait_async' in edge and edge['wait_async'].time <= next_step:
+            edge.pop('wait_async').succeed()
 
     # Prune dataflow cache
     max_cache_time = min(s.next_step for s in world.sims.values())

@@ -336,9 +336,9 @@ class MosaikRemote:
         dictionaries mapping attribute names to there respective values.
 
         """
-        sp = self.world.sims[self.sim_id]
-        assert sp.next_step == sp.last_step  # Assert simulator is in step()
-        cache_slice = self.world._df_cache[sp.last_step]
+        sim = self.world.sims[self.sim_id]
+        assert sim.next_step == sim.last_step  # Assert simulator is in step()
+        cache_slice = self.world._df_cache[sim.last_step]
 
         data = {}
         missing = collections.defaultdict(
@@ -354,8 +354,8 @@ class MosaikRemote:
 
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.next_step > sp.last_step and
-                    dep.last_step >= sp.last_step)
+            assert (dep.next_step > sim.last_step and
+                    dep.last_step <= sim.last_step)
             dep_data = yield dep.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need

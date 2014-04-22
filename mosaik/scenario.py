@@ -146,7 +146,7 @@ class World:
         except RemoteException as e:
             _print_exception_and_exit(e, self.shutdown)
 
-    def connect(self, src, dest, *attr_pairs):
+    def connect(self, src, dest, *attr_pairs, async_requests=False):
         """Connect the *src* entity to *dest* entity.
 
         Establish a dataflow for each ``(src_attr, dest_attr)`` tuple in
@@ -156,6 +156,10 @@ class World:
         the same simulator instance, if at least one (src. or dest.) attribute
         in *attr_pairs* does not exist, or if the connection would introduce
         a cycle in the dataflow (e.g., A → B → C → A).
+
+        If the *dest* simulator may make asyncronous requests to mosaik to
+        query data from *src* (or set data to it), *async_requests* should be
+        set to ``True`` so that the *src* simulator stays in sync with *dest*.
 
         """
         if src.sid == dest.sid:
@@ -168,7 +172,8 @@ class World:
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         # Add edge and check for cycles and the dataflow graph.
-        self.df_graph.add_edge(src.sid, dest.sid)
+        self.df_graph.add_edge(src.sid, dest.sid,
+                               async_requests=async_requests)
         if not networkx.is_directed_acyclic_graph(self.df_graph):
             self.df_graph.remove_edge(src.sid, dest.sid)
             raise ScenarioError('Connection from "%s" to "%s" introduces '

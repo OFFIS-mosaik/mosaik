@@ -75,6 +75,7 @@ def test_world_connect(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
+                'async_requests': False,
                 'dataflows': [
                     (a[0].eid, b[0].eid, (('val_out', 'val_in'),
                                           ('dummy_out', 'dummy_in'))),
@@ -152,9 +153,8 @@ def test_world_connect_no_attrs(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'dataflows': [
-                    (a[0].eid, b[0].eid, ()),
-                ],
+                'async_requests': False,
+                'dataflows': [(a[0].eid, b[0].eid, ())],
             },
         },
         'ExampleSim-1': {},
@@ -164,6 +164,22 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
     }
     assert world._df_outattr == {}
+
+
+def test_world_connect_async_requests(world):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a[0], b[0], async_requests=True)
+
+    assert world.df_graph.adj == {
+        'ExampleSim-0': {
+            'ExampleSim-1': {
+                'async_requests': True,
+                'dataflows': [(a[0].eid, b[0].eid, ())],
+            },
+        },
+        'ExampleSim-1': {},
+    }
 
 
 def test_world_run():
