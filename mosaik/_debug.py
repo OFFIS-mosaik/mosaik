@@ -69,4 +69,4 @@ def pre_step(world, sim, inputs):
     # we are going to execute).
     if next_steps:
         assert max(next_steps) >= next_step, (
-            '"next_step" of all successors is < "%s".next_step' % sid)
+            '"next_step" of all successors of "%s" is < %s' % (sid, next_step))

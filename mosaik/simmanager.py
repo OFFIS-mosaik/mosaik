@@ -192,7 +192,8 @@ class SimProxy:
         self.sim_proc = None  # SimPy process
         self.step_required = None  # SimPy event
 
-        # Bind proxy calls to API methods to this instance:
+        # Bind proxy calls to API methods to this instance. "init()" is missing
+        # here, because it is called before the SimProxy is created
         remote_methods = ['create', 'step', 'get_data']
         for name in remote_methods:
             setattr(self, name, self._proxy_call(name))
@@ -330,7 +331,7 @@ class MosaikRemote:
         """Return the data for the requested attributes *attrs*.
 
         Attributes is a dict of (fully qualified) entity IDs mapping to lists
-        of attribute names (``{'sid/eid': ['attr1', 'attrs']}``).
+        of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
 
         The return value is a dict mapping the input entity IDs to data
         dictionaries mapping attribute names to there respective values.
