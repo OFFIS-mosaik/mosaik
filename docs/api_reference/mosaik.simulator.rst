@@ -19,6 +19,3 @@
 .. autofunction:: get_outputs
 
 .. autofunction:: get_progress
-
-.. autoclass:: WaitEvent
-   :members:

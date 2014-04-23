@@ -98,7 +98,7 @@ def step_required(world, sim):
         sim.step_required.succeed()
     # else:
     #   "wait_for_dependencies()" triggers the event when it creates a new
-    #   "WaitEvent" for "sim".
+    #   wait event for "sim".
 
     return sim.step_required
 
@@ -114,27 +114,30 @@ def wait_for_dependencies(world, sim):
     """
     events = []
     t = sim.next_step
+    dfg = world.df_graph
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
-    for dep_sid in world.df_graph.predecessors_iter(sim.sid):
+    for dep_sid in dfg.predecessors_iter(sim.sid):
         dep = world.sims[dep_sid]
-        if not (t in world._df_cache and dep_sid in world._df_cache[t]):
-            # Wait for dep_sim if there's not data for it yet.
-            evt = WaitEvent(world.env, t)
-            events.append(evt)
-            world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
+        if t in world._df_cache and dep_sid in world._df_cache[t]:
+            continue
 
-            if not dep.step_required.triggered:
-                dep.step_required.succeed()
+        # Wait for dep_sim if there's not data for it yet.
+        evt = world.env.event()
+        events.append(evt)
+        world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
+
+        if not dep.step_required.triggered:
+            dep.step_required.succeed()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
-    for suc_sid in world.df_graph.successors_iter(sim.sid):
+    for suc_sid in dfg.successors_iter(sim.sid):
         suc = world.sims[suc_sid]
-        if suc.next_step < t:
-            evt = WaitEvent(world.env, t)
+        if dfg[sim.sid][suc_sid]['async_requests'] and suc.next_step < t:
+            evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
 
@@ -206,15 +209,19 @@ def get_outputs(world, sim):
         world._df_cache[i][sim.sid] = data
 
     next_step = sim.next_step
+
     # Notify simulators waiting for inputs from us.
     for suc_sid in world.df_graph.successors_iter(sid):
         edge = world.df_graph[sid][suc_sid]
-        if 'wait_event' in edge and edge['wait_event'].time < next_step:
+        dest_sim = world.sims[suc_sid]
+        if 'wait_event' in edge and dest_sim.next_step < next_step:
             edge.pop('wait_event').succeed()
+
     # Notify simulators waiting for async. requests from us.
     for pre_sid in world.df_graph.predecessors_iter(sid):
         edge = world.df_graph[pre_sid][sid]
-        if 'wait_async' in edge and edge['wait_async'].time <= next_step:
+        pre_sim = world.sims[pre_sid]
+        if 'wait_async' in edge and pre_sim.next_step <= next_step:
             edge.pop('wait_async').succeed()
 
     # Prune dataflow cache
@@ -229,11 +236,3 @@ def get_progress(sims, until):
     times = [min(until, sim.next_step) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
-
-
-class WaitEvent(simpy.events.Event):
-    """A normal event with an additional ``time`` attribute."""
-    def __init__(self, world, time):
-        super().__init__(world)
-        self.time = time
-        """The simulation time to which a simulator should advance."""

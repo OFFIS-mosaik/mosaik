@@ -12,8 +12,9 @@ def world():
     world.sims = {i: simmanager.LocalProcess(world, i, SimMock(), world.env,
                                              None)
                   for i in range(4)}
-    world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)])
-    world.df_graph[0][2]['wait_event'] = simulator.WaitEvent(world.env, 1)
+    world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)],
+                                  async_requests=False)
+    world.df_graph[0][2]['wait_event'] = world.env.event()
     yield world
     world.shutdown()
 
@@ -118,8 +119,9 @@ def test_get_outputs(world):
     world._df_cache[0] = {'spam': 'eggs'}
     world._df_cache[1] = {'foo': 'bar'}
     world._df_outattr[0][0] = ['x', 'y']
-    wait_event = simulator.WaitEvent(world.env, 2)
+    wait_event = world.env.event()
     world.df_graph[0][2]['wait_event'] = wait_event
+    world.sims[2].next_step = 2
     sim = world.sims[0]
     sim.last_step, sim.next_step = 0, 1
 
