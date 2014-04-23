@@ -13,14 +13,13 @@ def create_scenario(world):
     exmas_b = world.start('MAS', step_size=1)
     exmas_c = world.start('MAS', step_size=2)
     exmas_d = world.start('MAS', step_size=3)
-    a = exsim_a.A(init_val=0)
+    a = exsim_a.B(init_val=0)
     b = exmas_b.Agent()
     c = exmas_c.Agent()
     d = exmas_d.Agent()
     world.connect(a[0], b[0], async_requests=True)
     world.connect(a[0], c[0], async_requests=True)
     world.connect(a[0], d[0], async_requests=True)
-
 
 
 # A 0-----2-----4 [0, 2)
@@ -55,6 +54,10 @@ MAS-2-0 MAS-2-3
 MAS-2-3 A-0-4
 """
 
-inputs = {}
+inputs = {
+    'A-0-0': {},  # Initially, there cannot be any inputs.
+    'A-0-2': {'0.0': {'val_in': [23]}},
+    'A-0-4': {'0.0': {'val_in': [23]}},
+}
 
 until = 5

@@ -45,7 +45,7 @@ def pre_step(world, sim, inputs):
     next_step = sim.next_step
     node = '%s-%s'
     node_id = node % (sid, next_step)
-    print('###', node_id)
+    # print('###', node_id)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
     if sim.last_step >= 0:
@@ -60,7 +60,6 @@ def pre_step(world, sim, inputs):
     for suc in world.df_graph.successors_iter(sid):
         if world.df_graph[sid][suc]['async_requests'] and sim.last_step >= 0:
             suc_node = node % (suc, sims[suc].last_step)
-            print(suc_node, node_id)
             eg.add_edge(suc_node, node_id)
             assert sims[suc].next_step >= next_step
         next_steps.append(sims[suc].next_step)

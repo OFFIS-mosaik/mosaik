@@ -189,6 +189,7 @@ class SimProxy:
         self.meta = meta
         self.last_step = float('-inf')
         self.next_step = 0
+        self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.sim_proc = None  # SimPy process
         self.step_required = None  # SimPy event
 
@@ -364,3 +365,21 @@ class MosaikRemote:
                 data.setdefault('%s/%s' % (sid, eid), {}).update(vals)
 
         return data
+
+    @rpc
+    def set_data(self, data):
+        """Set *data* as input data for all affected simulators.
+
+        *data* is a dictionarry mapping *sim_id/entity_id* paths to
+        dictionaries of attributes and values (``{'sid/eid': {'attr1': 'val1',
+        'attr2': 'val2'}}``)
+
+        """
+        sims = self.world.sims
+        for full_id, attributes in data.items():
+            sid, eid = full_id.split('/', 1)
+            inputs = sims[sid].input_buffer.setdefault(eid, {})
+            for attr, val in attributes.items():
+                # If multiple controlstrategies want to set the same attribute,
+                # the last one wins and overwrites all previous values.
+                inputs[attr] = [val]

@@ -2,7 +2,6 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
-import simpy
 
 
 def run(world, until):
@@ -166,14 +165,16 @@ def get_input_data(world, sim):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
 
     """
-    input_data = {}
+    input_data = sim.input_buffer
+    sim.input_buffer = {}
     for src_sid in world.df_graph.predecessors_iter(sim.sid):
         dataflows = world.df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
                 v = world._df_cache[sim.next_step][src_sid][src_eid][src_attr]
-                input_data.setdefault(
-                    dest_eid, {}).setdefault(dest_attr, []).append(v)
+                input_data.setdefault(dest_eid, {}) \
+                          .setdefault(dest_attr, []) \
+                          .append(v)
 
     return input_data
 
