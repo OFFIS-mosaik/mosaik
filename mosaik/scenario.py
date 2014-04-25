@@ -208,6 +208,7 @@ class World:
             return res
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
+            sys.exit(1)
         except ConnectionResetError as e:
             _print_exception_and_exit('A simulator closed its connection.')
         except RemoteException as e:

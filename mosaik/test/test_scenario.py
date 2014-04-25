@@ -1,6 +1,6 @@
 from unittest import mock
 
-import mosaik_api
+from simpy.io.network import RemoteException
 import pytest
 
 from mosaik import scenario, simmanager, simulator
@@ -251,3 +251,61 @@ def test_model_mock_entity_graph(world):
     }
     assert world.entity_graph.node['E0/0']['entity'].type == 'A'
     assert world.entity_graph.node['E0/1']['entity'].type == 'A'
+
+
+@pytest.mark.parametrize(['error', 'errmsg'], [
+    (ConnectionResetError(),
+     'ERROR: "ExampleSim" closed its connection during its initlization '
+     'phase.\nMosaik terminating\n'),
+    (RemoteException('spam', 'eggs'),
+     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
+
+])
+def test_start_errors(world, error, errmsg, capsys):
+    """Test sims breaking during their start."""
+    with mock.patch('mosaik.simmanager.start') as start:
+        start.side_effect = error
+        pytest.raises(SystemExit, world.start, 'ExampleSim')
+    out, err = capsys.readouterr()
+    assert out == errmsg
+    assert err == ''
+
+
+@pytest.mark.parametrize(['error', 'errmsg'], [
+    (ConnectionResetError(),
+     'ERROR: "Mock" closed its connection during the creation of 1 instances '
+     'of "spam".\nMosaik terminating\n'),
+    (RemoteException('spam', 'eggs'),
+     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
+
+])
+def test_create_errors(world, error, errmsg, capsys):
+    """Test sims breaking while creating entities."""
+    sim = mock.Mock()
+    sim.sid = 'Mock'
+    sim.create.side_effect = error
+
+    mm = scenario.ModelMock(world, 'spam', sim)
+    pytest.raises(SystemExit, mm.create, 1)
+
+    out, err = capsys.readouterr()
+    assert out == errmsg
+    assert err == ''
+
+
+@pytest.mark.parametrize(['error', 'errmsg'], [
+    (ConnectionResetError(),
+     'ERROR: A simulator closed its connection.\nMosaik terminating\n'),
+    (RemoteException('spam', 'eggs'),
+     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
+    (KeyboardInterrupt(), 'Simulation canceled. Terminating ...\n')
+
+])
+def test_run_errors(world, error, errmsg, capsys):
+    """Test sims breaking during the simulation."""
+    with mock.patch('mosaik.simulator.run') as run:
+        run.side_effect = error
+        pytest.raises(SystemExit, world.run, 1)
+    out, err = capsys.readouterr()
+    assert out == errmsg
+    assert err == ''
