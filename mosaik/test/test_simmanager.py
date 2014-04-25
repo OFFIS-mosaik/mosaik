@@ -5,9 +5,7 @@ from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc
 from simpy.io.message import Message
 from simpy.io.packet import PacketUTF8 as Packet
-import mosaik_api
 import pytest
-import simpy.core
 
 from mosaik import scenario
 from mosaik import simmanager
@@ -24,9 +22,11 @@ sim_config = {
     },
     'ExampleSimC': {
         'connect': 'localhost:5556',
-        'slots': 1,
     },
     'ExampleSimD': {
+    },
+    'Fail': {
+        'cmd': 'python -c "import time; time.sleep(0.2)"',
     },
 }
 
@@ -74,6 +74,14 @@ def test_start_proc(world):
     sp.stop()
 
 
+def test_start_proc_timeout_accept(world):
+    world.config['start_timeout'] = 0.1
+    exc_info = pytest.raises(ScenarioError, simmanager.start, world, 'Fail',
+                             '', {})
+    assert str(exc_info.value) == ('Simulator "Fail" did not connect to '
+                                   'mosaik in time.')
+
+
 def test_start_connect(world):
     """Test connecting to an already running simulator."""
     env = world.env
@@ -93,6 +101,33 @@ def test_start_connect(world):
         assert sp._proc is None
         assert 'api_version' in sp.meta and 'models' in sp.meta
         yield from sp.stop()
+        yield env.event().succeed()
+
+    sim_proc = env.process(sim())
+    starter_proc = env.process(starter())
+    env.run(until=sim_proc & starter_proc)
+    sock.close()
+
+
+def test_start_connect_timeout_init(world):
+    """Test connecting to an already running simulator."""
+    world.config['start_timeout'] = 0.1
+    env = world.env
+    sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
+
+    def sim():
+        msock = yield sock.accept()
+        channel = Message(env, Packet(msock))
+        yield channel.recv()
+        import time
+        time.sleep(0.15)
+        channel.close()
+
+    def starter():
+        exc_info = pytest.raises(ScenarioError, simmanager.start, world,
+                                 'ExampleSimC', '', {})
+        assert str(exc_info.value) == ('Simulator "ExampleSimC" did not reply '
+                                       'to the init() call in time.')
         yield env.event().succeed()
 
     sim_proc = env.process(sim())

@@ -66,7 +66,7 @@ def start(world, sim_name, sim_id, sim_params):
 
     """
     try:
-        conf = world.sim_config[sim_name]
+        sim_config = world.sim_config[sim_name]
     except KeyError:
         raise ScenarioError('Simulator "%s" could not be started: Not found '
                             'in sim_config' % sim_name)
@@ -77,16 +77,16 @@ def start(world, sim_name, sim_id, sim_params):
                                        cmd=start_proc,
                                        connect=start_connect)
     for sim_type, start in starters.items():
-        if sim_type in conf:
-            return start(world, sim_name, conf, sim_id, sim_params)
+        if sim_type in sim_config:
+            return start(world, sim_name, sim_config, sim_id, sim_params)
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
                             'configuration' % sim_name)
 
 
-def start_inproc(world, sim_name, conf, sim_id, sim_params):
+def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
     """Import and instantiate the Python simulator *sim_name* based on its
-    config entry *conf*.
+    config entry *sim_config*.
 
     Return a :class:`LocalProcess` instance.
 
@@ -95,7 +95,7 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
 
     """
     try:
-        mod_name, cls_name = conf['python'].split(':')
+        mod_name, cls_name = sim_config['python'].split(':')
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     except (AttributeError, ImportError, KeyError, ValueError) as err:
@@ -113,9 +113,9 @@ def start_inproc(world, sim_name, conf, sim_id, sim_params):
     return LocalProcess(world, sim_id, sim, world.env, meta)
 
 
-def start_proc(world, sim_name, conf, sim_id, sim_params):
+def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     """Start a new process for simulator *sim_name* based on its config entry
-    *conf*.
+    *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
@@ -123,9 +123,9 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
     instantiated.
 
     """
-    cmd = conf['cmd'] % {'addr': '%s:%s' % world.config['addr']}
+    cmd = sim_config['cmd'] % {'addr': '%s:%s' % world.config['addr']}
     cmd = shlex.split(cmd)
-    cwd = conf['cwd'] if 'cwd' in conf else '.'
+    cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
 
     kwargs = {
         'bufsize': 1,
@@ -138,19 +138,14 @@ def start_proc(world, sim_name, conf, sim_id, sim_params):
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, e.args[1])) from None
 
-    def greeter():
-        sock = yield world.srv_sock.accept()
-        rpc_con = JsonRpc(Packet(sock, max_packet_size=1024*1024))
-        meta = yield rpc_con.remote.init(**sim_params)
-        return RemoteProcess(world, sim_id, proc, rpc_con, meta)
-
-    proxy = world.env.run(until=world.env.process(greeter()))
+    proxy = world.env.run(until=world.env.process(greeter(
+        world, sim_name, sim_config, sim_id, sim_params, proc=proc)))
     return proxy
 
 
-def start_connect(world, sim_name, conf, sim_id, sim_params):
+def start_connect(world, sim_name, sim_config, sim_id, sim_params):
     """Connect to the already running simulator *sim_name* based on its config
-    entry *conf*.
+    entry *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
@@ -158,28 +153,64 @@ def start_connect(world, sim_name, conf, sim_id, sim_params):
     instantiated.
 
     """
-    addr = conf['connect']
+    addr = sim_config['connect']
     try:
         host, port = addr.strip().split(':')
         addr = (host, int(port))
     except ValueError:
         raise ScenarioError('Simulator "%s" could not be started: Could not '
                             'parse address "%s"' %
-                            (sim_name, conf['connect'])) from None
+                            (sim_name, sim_config['connect'])) from None
 
-    def greeter():
-        sock = backend.TCPSocket.connection(world.env, addr)
-        rpc_con = JsonRpc(Packet(sock))
-        meta = yield rpc_con.remote.init(**sim_params)
-        return RemoteProcess(world, sim_id, None, rpc_con, meta)
-
-    try:
-        proxy = world.env.run(until=world.env.process(greeter()))
-    except (ConnectionError, OSError):
-        raise ScenarioError('Simulator "%s" could not be started: Could not '
-                            'connect to "%s"' %
-                            (sim_name, conf['connect']))
+    proxy = world.env.run(until=world.env.process(greeter(
+        world, sim_name, sim_config, sim_id, sim_params, addr=addr)))
     return proxy
+
+
+def greeter(world, sim_name, sim_config, sim_id, sim_params,
+            proc=None, addr=None):
+    """Try to establish a connection with *sim_name* and perform the ``init()``
+    API call.
+
+    Return a new :class:`RemoteProcess` sim proxy.
+
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if something goes wrong.
+
+    This method is a SimPy process used by :func:`start_proc()` and
+    :func:`start_connect()`.
+
+    """
+    start_timeout = world.env.timeout(world.config['start_timeout'])
+    if proc:
+        # Wait for connection from "sim_name"
+        accept_con = world.srv_sock.accept()
+        results = yield accept_con | start_timeout
+        if start_timeout in results:
+            raise ScenarioError('Simulator "%s" did not connect to mosaik in '
+                                'time.' % sim_name)
+        else:
+            sock = results[accept_con]
+    else:
+        # Connect to "sim_name"
+        try:
+            sock = backend.TCPSocket.connection(world.env, addr)
+        except (ConnectionError, OSError):
+            raise ScenarioError('Simulator "%s" could not be started: Could '
+                                'not connect to "%s"' %
+                                (sim_name, sim_config['connect']))
+
+    rpc_con = JsonRpc(Packet(sock, max_packet_size=1024*1024))
+
+    # Make init() API call and wait for sim_name's meta data.
+    init = rpc_con.remote.init(**sim_params)
+    results = yield init | start_timeout
+    if start_timeout in results:
+        raise ScenarioError('Simulator "%s" did not reply to the init() '
+                            'call in time.' % sim_name)
+    else:
+        meta = results[init]
+
+    return RemoteProcess(world, sim_id, proc, rpc_con, meta)
 
 
 class SimProxy:
