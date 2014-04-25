@@ -5,12 +5,6 @@ class SimMock(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(meta={})
 
-    def init(self):
-        return super().init()
-
-    def create(self, num, model):
-        return []
-
     def step(self, time, inputs):
         return 1
 

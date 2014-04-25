@@ -197,6 +197,16 @@ def test_sim_proxy():
     pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', {})
 
 
+def test_sim_proxy_stop_impl():
+    class Test(simmanager.SimProxy):
+        # Does not implement SimProxy.stop(). Should raise an error.
+        def _proxy_call(self, name):
+            return None
+
+    t = Test('spam', {})
+    pytest.raises(NotImplementedError, t.stop)
+
+
 def test_local_process():
     es = ExampleSim()
     sp = simmanager.LocalProcess(None, 'ExampleSim-0', es, None, es.meta)
@@ -208,8 +218,52 @@ def test_local_process():
     assert sp.step_required is None
 
 
-def test_mosaik_remote():
-    # TODO: This test case is too big
+def _rpc_get_progress(mosaik, world):
+    """Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
+    RPC."""
+    prog = yield mosaik.get_progress()
+    assert prog == 23
+
+
+def _rpc_get_related_entities(mosaik, world):
+    """Helper for :func:`test_mosaik_remote()` that checks the
+    "get_related_entities()" RPC."""
+    entities = yield mosaik.get_related_entities('0')
+    assert entities == {'0': [['X/1', 'A'], ['X/2', 'A']]}
+
+    entities = yield mosaik.get_related_entities(['1', 'X/2'])
+    assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
+                        'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
+
+
+def _rpc_get_data(mosaik, world):
+    """Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
+    RPC."""
+    data = yield mosaik.get_data({'X/2': ['attr']})
+    assert data == {'X/2': {'attr': 'val'}}
+
+
+def _rpc_set_data(mosaik, world):
+    """Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
+    RPC."""
+    yield mosaik.set_data({'X/2': {'val': 23}})
+    assert world.sims['X'].input_buffer == {
+        '2': {'val': [23]},
+    }
+
+    yield mosaik.set_data({'X/2': {'val': 42}})
+    assert world.sims['X'].input_buffer == {
+        '2': {'val': [42]},
+    }
+
+
+@pytest.mark.parametrize('rpc', [
+    _rpc_get_progress,
+    _rpc_get_related_entities,
+    _rpc_get_data,
+    _rpc_set_data,
+])
+def test_mosaik_remote(rpc):
     backend = simmanager.backend
     world = scenario.World({})
     env = world.env
@@ -232,30 +286,17 @@ def test_mosaik_remote():
         rpc_con = JsonRpc(Packet(sock))
         mosaik = rpc_con.remote
 
-        prog = yield mosaik.get_progress()
-        assert prog == 23
-
-        entities = yield mosaik.get_related_entities('0')
-        assert entities == {'0': [['X/1', 'A'], ['X/2', 'A']]}
-
-        entities = yield mosaik.get_related_entities(['1', 'X/2'])
-        assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
-                            'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
-
-        data = yield mosaik.get_data({'X/2': ['attr']})
-        assert data == {'X/2': {'attr': 'val'}}
-
-        # data = yield mosaik.get_data(...)
-        # assert data == ...
-
-        sock.close()
+        try:
+            yield from rpc(mosaik, world)
+        finally:
+            sock.close()
 
     def greeter():
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
-        rp = simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
-        rp.last_step = rp.next_step = 1
-        world.sims['X'] = rp
+        proxy = simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
+        proxy.last_step = proxy.next_step = 1
+        world.sims['X'] = proxy
 
     env.process(greeter())
     env.run(env.process(simulator()))
