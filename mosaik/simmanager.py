@@ -20,6 +20,7 @@ from simpy.io.json import JSON as JsonRpc
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError
+import mosaik
 
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,13 @@ def start(world, sim_name, sim_id, sim_params):
                                        connect=start_connect)
     for sim_type, start in starters.items():
         if sim_type in sim_config:
-            return start(world, sim_name, sim_config, sim_id, sim_params)
+            proxy = start(world, sim_name, sim_config, sim_id, sim_params)
+            if not is_valid_api_version(proxy.meta['api_version']):
+                raise ScenarioError(
+                    '"%s" API version %s is not compatible with mosaik '
+                    'version %s.' % (sim_name, proxy.meta['api_version'],
+                                     mosaik.__version__))
+            return proxy
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
                             'configuration' % sim_name)
@@ -211,6 +218,14 @@ def greeter(world, sim_name, sim_config, sim_id, sim_params,
         meta = results[init]
 
     return RemoteProcess(world, sim_id, proc, rpc_con, meta)
+
+
+def is_valid_api_version(version):
+    """Return ``True`` if the "major" part of *version* is the same as mosaik's
+    version, else ``False``.
+
+    """
+    return int(version.split('.')[0]) == int(mosaik.__version__.split('.')[0])
 
 
 class SimProxy:
