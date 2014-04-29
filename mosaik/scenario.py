@@ -135,13 +135,14 @@ class World:
         try:
             counter = self._sim_ids[sim_name]
             sim_id = '%s-%s' % (sim_name, next(counter))
+            print('Starting "%s" as "%s" ...' % (sim_name, sim_id))
             sim = simmanager.start(self, sim_name, sim_id, sim_params)
             self.sims[sim_id] = sim
             self.df_graph.add_node(sim_id)
             return ModelFactory(self, sim)
         except ConnectionResetError:
             _print_exception_and_exit('"%s" closed its connection during its '
-                                      'initlization phase.' % (sim_name,),
+                                      'initialization phase.' % (sim_name,),
                                       self.shutdown)
         except RemoteException as e:
             _print_exception_and_exit(e, self.shutdown)
@@ -200,11 +201,13 @@ class World:
         This method should only be called once!
 
         """
+        print('Starting simulation.')
         if self._debug:
             import mosaik._debug as dbg
             dbg.enable()
         try:
             res = simulator.run(self, until)
+            print('Simulation finished successfully.')
             return res
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')

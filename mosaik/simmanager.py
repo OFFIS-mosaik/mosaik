@@ -10,7 +10,6 @@ already running simulators and manage access to them.
 """
 import collections
 import importlib
-import logging
 import shlex
 import subprocess
 
@@ -21,9 +20,6 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError
 import mosaik
-
-
-logger = logging.getLogger(__name__)
 
 
 def start(world, sim_name, sim_id, sim_params):
@@ -308,7 +304,8 @@ class RemoteProcess(SimProxy):
         try:
             yield (self._rpc_con.remote.stop() |
                    self._env.timeout(self._stop_timeout))
-            logger.warn('Simulator did not close its connection in time.')
+            print('Simulator "%s" did not close its connection in time.' %
+                  self.sid)
             self._rpc_con.close()
         except ConnectionError:
             pass

@@ -255,7 +255,7 @@ def test_model_mock_entity_graph(world):
 
 @pytest.mark.parametrize(['error', 'errmsg'], [
     (ConnectionResetError(),
-     'ERROR: "ExampleSim" closed its connection during its initlization '
+     'ERROR: "ExampleSim" closed its connection during its initialization '
      'phase.\nMosaik terminating\n'),
     (RemoteException('spam', 'eggs'),
      'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
@@ -266,6 +266,7 @@ def test_start_errors(world, error, errmsg, capsys):
     with mock.patch('mosaik.simmanager.start') as start:
         start.side_effect = error
         pytest.raises(SystemExit, world.start, 'ExampleSim')
+    errmsg = 'Starting "ExampleSim" as "ExampleSim-0" ...\n' + errmsg
     out, err = capsys.readouterr()
     assert out == errmsg
     assert err == ''
@@ -306,6 +307,8 @@ def test_run_errors(world, error, errmsg, capsys):
     with mock.patch('mosaik.simulator.run') as run:
         run.side_effect = error
         pytest.raises(SystemExit, world.run, 1)
+
+    errmsg = 'Starting simulation.\n' + errmsg
     out, err = capsys.readouterr()
     assert out == errmsg
     assert err == ''
