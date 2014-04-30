@@ -12,6 +12,7 @@ Contents:
    faq
    dev/index
    api_reference/index
+   about/index
    glossary
 
 

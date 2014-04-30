@@ -1,8 +1,15 @@
-Changelog
-=========
+=====================
+The history of mosaik
+=====================
+
+Our work on mosaik started on July 15th, 2010 -- at least, the `initial
+commit`__ happened on that day. Since then, we've come a long way …
+
+__ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
+
 
 2.0a2 – 2014-05-05
-------------------
+==================
 
 - [NEW] Preliminary documentation and installation instructions
   (https://mosaik.readthedocs.org)
@@ -40,7 +47,7 @@ Changelog
 
 
 2.0a1 – 2014-03-26
-------------------
+==================
 
 - Mosaik 2 is a complete rewrite of mosaik 1 in order to improve its
   maintainability and flexibility. It is still an early alpha version and
@@ -123,3 +130,34 @@ Changelog
 
   - There is a repository containing a simple demo scenario for mosaik. See
     https://bitbucket.org/mosaik/mosaik-demo.
+
+
+1.1 – 2013-10-25
+================
+
+- [NEW] New API for control strategies.
+- [NEW] Mosaik can be configured via environment variables.
+- [NEW] Various changes and improvements implemented during Steffen’s
+  dissertation.
+
+
+1.0 – 2013-01-25
+================
+
+Mosaik 1 was nearly a complete rewrite of the previous version and already
+incorporated many of the concepts and features described in Steffen Schütte's
+`Phd thesis`__.
+
+It used *mosl*, a DSL implemented with Eclipse and xtext, to describe
+simulators and scenarios. Interprocess communication was done with ZeroMQ and
+JSON encoded messages.
+
+__ http://www.informatik.uni-oldenburg.de/download/Promotionen/dissertation_schuette_08012014.pdf
+
+
+0.5 – 2011-08-22
+================
+
+This was the first actual version of mosaik that actually worked. However, the
+simulators we were using at that time were hard coded into the simulation loop
+and we used XML-RPC to communicate with the simulators.
