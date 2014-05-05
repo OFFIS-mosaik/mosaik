@@ -123,3 +123,8 @@ Changelog
 
   - There is a repository containing a simple demo scenario for mosaik. See
     https://bitbucket.org/mosaik/mosaik-demo.
+
+
+ You can find information about older versions on the `history page`__
+
+__ https://mosaik.readthedocs.org/en/latest/about/history.html
