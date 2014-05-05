@@ -123,36 +123,30 @@ Build and release
     password = <your test password goes here>
 
     [pypi]
-    repository = http://pypi.python.org/pypi
+    repository = https://pypi.python.org/pypi
     username = <your production user name goes here>
     password = <your production password goes here>
 
-#. Upload the distributions for the new version to the test server:
+#. Upload the distributions for the new version to the test server and test the
+   installation again:
 
    .. code-block:: bash
 
     $ twine upload -r test dist/mosaik*a.b.c*
+    $ pip install -i https://testpypi.python.org/pypi mosaik
 
 #. Check if the package is displayed correctly:
    https://testpypi.python.org/pypi/mosaik
-
-#. Test the installation again:
-
-   .. code-block:: bash
-
-    $ pip install -i https://testpypi.python.org/pypi mosaik
 
 #. Finally upload the package to PyPI and test its installation one last time:
 
    .. code-block:: bash
 
     $ twine upload -r pypi dist/mosaik*a.b.c*
+    $ pip install -U mosaik
 
 #. Check if the package is displayed correctly:
    https://pypi.python.org/pypi/mosaik
-
-#. Activate the `documentation build
-   <https://readthedocs.org/dashboard/mosaik>`_ for the new version.
 
 
 Post release
@@ -164,6 +158,9 @@ Post release
 
     $ hg tag a.b.c
     $ hg push ssh://hg@bitbucket.org/mosaik/mosaik
+
+#. Activate the `documentation build
+   <https://readthedocs.org/dashboard/mosaik>`_ for the new version.
 
 #. Send the prepared email to the mailing list.
 
