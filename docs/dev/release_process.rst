@@ -16,8 +16,9 @@ Preparations
 #. Close all `tickets for the next version
    <https://bitbucket.org/mosaik/mosaik/issues?status=new&status=open>`_.
 
-#. Update the *minium* required versions of dependencies in :file:`setup.py`.
-   Update the *exact* version of all entries in :file:`requirements.txt`.
+#. Check all dependencies for new versions and update the *exact* version of
+   all entries in :file:`requirements.txt`. Update the *minium* required
+   versions of dependencies in :file:`setup.py` if (and only if) necessary.
 
 #. Run :command:`tox` from the project root. All tests for all supported
    versions must pass:
@@ -159,8 +160,17 @@ Post release
     $ hg tag a.b.c
     $ hg push ssh://hg@bitbucket.org/mosaik/mosaik
 
+#. Remove the :file:`build/` directory:
+
+   .. code-block:: bash
+
+    $ rm -r build/
+
 #. Activate the `documentation build
    <https://readthedocs.org/dashboard/mosaik>`_ for the new version.
+
+#. Make sure, the `demo <https://bitbucket.org/mosaik/mosaik-demo>`_ works with
+   the new release.
 
 #. Send the prepared email to the mailing list.
 
