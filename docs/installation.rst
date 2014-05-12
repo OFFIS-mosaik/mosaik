@@ -87,7 +87,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
       .. code-block:: bash
 
-         $ sudo apt-get instal mercurial git build-essential python3-dev gfortran libatlas-dev libatlas-base-devl
+         $ sudo apt-get install mercurial git build-essential python3-dev gfortran libatlas-dev libatlas-base-devl
          $ source ~/.virtualenvs/mosaik/bin/activate
          (mosaik)$ pip install wheel
          (mosaik)$ pip wheel numpy
