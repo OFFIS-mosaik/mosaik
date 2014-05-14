@@ -54,7 +54,7 @@ Preparations
     $ hg ci -m 'Updated change log for the upcoming release.'
 
 #. Update the version number in :file:`mosaik/__init__.py`, :file:`setup.py`
-   and :file:`docs/conf.py`. Commit and create a tag:
+   and :file:`docs/conf.py` and commit:
 
    .. code-block:: bash
 
