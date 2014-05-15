@@ -358,10 +358,11 @@ class MosaikRemote:
             entities = [entities]
 
         for entity in entities:
-            if '/' in entity:
-                full_id = entity
-            else:
+            if entity.startswith('self/'):
+                entity = entity[5:]
                 full_id = '%s/%s' % (self.sim_id, entity)
+            else:
+                full_id = entity
 
             rels[entity] = [
                 (e, entity_graph.node[e]['entity'].type)

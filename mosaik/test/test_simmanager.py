@@ -260,10 +260,10 @@ def _rpc_get_progress(mosaik, world):
 def _rpc_get_related_entities(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the
     "get_related_entities()" RPC."""
-    entities = yield mosaik.get_related_entities('0')
+    entities = yield mosaik.get_related_entities('self/0')
     assert entities == {'0': [['X/1', 'A'], ['X/2', 'A']]}
 
-    entities = yield mosaik.get_related_entities(['1', 'X/2'])
+    entities = yield mosaik.get_related_entities(['self/1', 'X/2'])
     assert entities == {'1': [['X/0', 'A'], ['X/2', 'A']],
                         'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
 
