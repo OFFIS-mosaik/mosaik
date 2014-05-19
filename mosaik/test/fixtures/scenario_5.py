@@ -19,10 +19,10 @@ def create_scenario(world):
     c = exsim_c.B(init_val=0)
     d = exsim_d.B(init_val=0)
     e = exsim_e.B(init_val=0)
-    world.connect(a[0], b[0], ('val_out', 'val_in'))
-    world.connect(d[0], b[0], ('val_out', 'val_in'))
-    world.connect(b[0], c[0], ('val_out', 'val_in'))
-    world.connect(b[0], e[0], ('val_out', 'val_in'))
+    world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(d, b, ('val_out', 'val_in'))
+    world.connect(b, c, ('val_out', 'val_in'))
+    world.connect(b, e, ('val_out', 'val_in'))
 
 
 execution_graph = """

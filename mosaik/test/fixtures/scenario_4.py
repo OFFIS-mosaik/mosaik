@@ -11,7 +11,7 @@ def create_scenario(world):
     exsim_b = world.start('B', step_size=2)
     a = exsim_a.A(init_val=0)
     b = exsim_b.B(init_val=0)
-    world.connect(a[0], b[0], ('val_out', 'val_in'))
+    world.connect(a, b, ('val_out', 'val_in'))
 
 
 execution_graph = """

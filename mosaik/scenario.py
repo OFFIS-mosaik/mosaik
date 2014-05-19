@@ -46,9 +46,9 @@ def _print_exception_and_exit(error, callback=None):
 
 class Entity:
     """An entity represents an instance of a simulation model within mosaik."""
-    __slots__ = ['sid', 'eid', 'type', 'rel', 'sim']
+    __slots__ = ['sid', 'eid', 'type', 'rel', 'children', 'sim']
 
-    def __init__(self, sid, eid, type, rel, sim):
+    def __init__(self, sid, eid, type, rel, children, sim):
         self.sid = sid
         """The ID of the simulator this entity belongs to."""
 
@@ -61,6 +61,9 @@ class Entity:
         self.rel = rel
         """A list of related entities (their IDs)"""
 
+        self.children = children if children is not None else set()
+        """An entity set containing subordinate entities."""
+
         self.sim = sim
         """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
 
@@ -70,7 +73,8 @@ class Entity:
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type, repr(self.rel), repr(self.sim)]))
+            self.sid, self.eid, self.type, repr(self.rel), repr(self.children),
+            repr(self.sim)]))
 
 
 class World:
@@ -293,7 +297,7 @@ class ModelMock:
     def __call__(self, **model_params):
         """Call :meth:`create()` to instantiate one model."""
         # TODO: Generate proper signature based on the meta data?
-        return self.create(1, **model_params)
+        return self.create(1, **model_params)[0]
 
     def create(self, num, **model_params):
         """Create *num* entities with the specified *model_params* and return
@@ -322,15 +326,25 @@ class ModelMock:
         except RemoteException as e:
             _print_exception_and_exit(e, self._world.shutdown)
 
+        assert len(entities) == num, (
+            '%d entities were requested but %d were created.' %
+            (num, len(entities)))
+
         sim_id = self._sim_id
+        model_type = self._name
         entity_graph = self._world.entity_graph
-        for i, e in enumerate(entities):
-            entity = Entity(sim_id, e['eid'], e['type'], e['rel'], self._sim)
-            entities[i] = entity  # Replace dict with instance of Entity()
+        entity_set = []
+        for e in entities:
+            assert e['type'] == model_type, (
+                'Entity "%s" has the wrong type: "%s"; "%s" required.' %
+                (e['eid'], e['type'], model_type))
+
+            entity = Entity(sim_id, e['eid'], e['type'], e['rel'],
+                            e.get('children', []), self._sim)
+            entity_set.append(entity)
             entity_graph.add_node('%s/%s' % (sim_id, e['eid']), entity=entity)
             for rel in e['rel']:
-                # Add entity relations to entity_graph
                 entity_graph.add_edge('%s/%s' % (sim_id, e['eid']),
                                       '%s/%s' % (sim_id, rel))
 
-        return entities
+        return entity_set

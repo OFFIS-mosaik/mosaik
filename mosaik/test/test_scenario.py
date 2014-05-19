@@ -24,14 +24,14 @@ def world():
 
 def test_entity():
     sim = object()
-    e = scenario.Entity('0', '1', 'spam', [], sim)
+    e = scenario.Entity('0', '1', 'spam', [], [], sim)
     assert e.sid == '0'
     assert e.eid == '1'
     assert e.type == 'spam'
     assert e.rel == []
     assert e.sim is sim
     assert str(e) == 'Entity(0, 1, spam)'
-    assert repr(e) == 'Entity(0, 1, spam, [], %r)' % sim
+    assert repr(e) == 'Entity(0, 1, spam, [], [], %r)' % sim
 
 
 def test_world():
@@ -116,9 +116,9 @@ def test_world_connect_cycle(world):
     an error must be raised."""
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    world.connect(a[0], b[0], ('val_out', 'val_in'))
+    world.connect(a, b, ('val_out', 'val_in'))
     with pytest.raises(ScenarioError) as err:
-        world.connect(b[0], a[0], ('val_in', 'val_out'))
+        world.connect(b, a, ('val_in', 'val_out'))
     assert str(err.value) == ('Connection from "ExampleSim-1" to '
                               '"ExampleSim-0" introduces cyclic dependencies.')
     assert world.df_graph.edges() == [('ExampleSim-0', 'ExampleSim-1')]
@@ -127,8 +127,8 @@ def test_world_connect_cycle(world):
 
 def test_world_connect_wrong_attr_names(world):
     """The entities to be connected must have the listed attributes."""
-    a = world.start('ExampleSim').A(init_val=0)[0]
-    b = world.start('ExampleSim').B(init_val=0)[0]
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'))
     assert str(err.value) == ('At least on attribute does not exist: '
                               'Entity(ExampleSim-0, 0.0, A).val')
@@ -148,20 +148,20 @@ def test_world_connect_no_attrs(world):
     """Connecting two entities without passing a list of attrs should work."""
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    world.connect(a[0], b[0])
+    world.connect(a, b)
 
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'dataflows': [(a[0].eid, b[0].eid, ())],
+                'dataflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},
     }
     assert world.entity_graph.adj == {
-        'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
-        'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
+        'ExampleSim-0/' + a.eid: {'ExampleSim-1/' + b.eid: {}},
+        'ExampleSim-1/' + b.eid: {'ExampleSim-0/' + a.eid: {}},
     }
     assert world._df_outattr == {}
 
@@ -169,13 +169,13 @@ def test_world_connect_no_attrs(world):
 def test_world_connect_async_requests(world):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    world.connect(a[0], b[0], async_requests=True)
+    world.connect(a, b, async_requests=True)
 
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
-                'dataflows': [(a[0].eid, b[0].eid, ())],
+                'dataflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},
@@ -212,6 +212,23 @@ def test_model_factory(world):
     assert mf.A._name == 'A'
     assert mf.A._sim_id == mf._sim.sid
     assert mf.B._name == 'B'
+
+
+def test_model_factory_wrong_entity_count(world):
+    mf = world.start('ExampleSim')
+    ret = world.env.event().succeed([{'eid': 'spam_0', 'type': 'Spam'}])
+    mf.A._sim.create = mock.Mock(return_value=ret)
+    err = pytest.raises(AssertionError, mf.A.create, 1)
+    assert str(err.value) == ('Entity "spam_0" has the wrong type: "Spam"; '
+                              '"A" required.')
+
+
+def test_model_factory_wrong_model(world):
+    mf = world.start('ExampleSim')
+    ret = world.env.event().succeed([None, None, None])
+    mf.A._sim.create = mock.Mock(return_value=ret)
+    err = pytest.raises(AssertionError, mf.A.create, 2)
+    assert str(err.value) == '2 entities were requested but 3 were created.'
 
 
 def test_model_factory_private_model(world):

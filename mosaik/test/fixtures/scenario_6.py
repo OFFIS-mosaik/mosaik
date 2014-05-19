@@ -17,9 +17,9 @@ def create_scenario(world):
     b = exmas_b.Agent()
     c = exmas_c.Agent()
     d = exmas_d.Agent()
-    world.connect(a[0], b[0], async_requests=True)
-    world.connect(a[0], c[0], async_requests=True)
-    world.connect(a[0], d[0], async_requests=True)
+    world.connect(a, b, async_requests=True)
+    world.connect(a, c, async_requests=True)
+    world.connect(a, d, async_requests=True)
 
 
 # A 0-----2-----4 [0, 2)

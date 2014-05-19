@@ -305,7 +305,7 @@ def test_mosaik_remote(rpc):
     world.entity_graph.add_edges_from(edges)
     for node in world.entity_graph:
         world.entity_graph.add_node(node, entity=scenario.Entity('', '', 'A',
-                                                                 [], None))
+                                                                 [], [], None))
     world.sim_progress = 23
     world._df_cache = {
         1: {
