@@ -38,3 +38,7 @@ Glossary
       A program that contains the implementation of one or more
       :term:`simulation models <simulation model>` and is able to execute these
       models (that is, to perform a :term:`simulation`).
+
+      Sometimes, the term *simulator* also refers all kinds of processes that
+      can talk to mosaik, including actual simulators, control strategies,
+      visualization servers, database adapters and so on.
