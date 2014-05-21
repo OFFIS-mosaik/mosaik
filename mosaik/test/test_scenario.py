@@ -22,6 +22,11 @@ def world():
     world.shutdown()
 
 
+@pytest.fixture
+def mf(world):
+    return world.start('ExampleSim')
+
+
 def test_entity():
     sim = object()
     e = scenario.Entity('0', '1', 'spam', [], [], sim)
@@ -207,15 +212,42 @@ def test_world_run_with_debug():
     world.shutdown()
 
 
-def test_model_factory(world):
-    mf = world.start('ExampleSim')
+def test_model_factory(world, mf):
     assert mf.A._name == 'A'
     assert mf.A._sim_id == mf._sim.sid
     assert mf.B._name == 'B'
 
 
-def test_model_factory_wrong_entity_count(world):
-    mf = world.start('ExampleSim')
+def test_model_factory_hierarchical_entities(world, mf):
+    ret = world.env.event().succeed([{
+        'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
+            'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
+                'eid': 'c', 'type': 'C', 'rel': [],
+            }],
+        }]
+    }])
+    mf.A._sim.create = mock.Mock(return_value=ret)
+
+    a = mf.A()
+    assert len(a.children) == 1
+
+    b = a.children[0]
+    assert type(b) is scenario.Entity
+    assert len(b.children) == 1
+
+    c = b.children[0]
+    assert type(c) is scenario.Entity
+    assert len(c.children) == 0
+
+
+def test_model_factory_wrong_entity_count(world, mf):
+    ret = world.env.event().succeed([None, None, None])
+    mf.A._sim.create = mock.Mock(return_value=ret)
+    err = pytest.raises(AssertionError, mf.A.create, 2)
+    assert str(err.value) == '2 entities were requested but 3 were created.'
+
+
+def test_model_factory_wrong_model(world, mf):
     ret = world.env.event().succeed([{'eid': 'spam_0', 'type': 'Spam'}])
     mf.A._sim.create = mock.Mock(return_value=ret)
     err = pytest.raises(AssertionError, mf.A.create, 1)
@@ -223,22 +255,27 @@ def test_model_factory_wrong_entity_count(world):
                               '"A" required.')
 
 
-def test_model_factory_wrong_model(world):
-    mf = world.start('ExampleSim')
-    ret = world.env.event().succeed([None, None, None])
+def test_model_factory_hierarchical_entities_illegal_type(world, mf):
+    ret = world.env.event().succeed([{
+        'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
+            'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
+                'eid': 'c', 'type': 'Spam', 'rel': [],
+            }],
+        }]
+    }])
     mf.A._sim.create = mock.Mock(return_value=ret)
-    err = pytest.raises(AssertionError, mf.A.create, 2)
-    assert str(err.value) == '2 entities were requested but 3 were created.'
+
+    err = pytest.raises(AssertionError, mf.A.create, 1)
+    assert str(err.value) == ('Type "Spam" of entity "c" not found in sim\'s '
+                              'meta data.')
 
 
-def test_model_factory_private_model(world):
-    mf = world.start('ExampleSim')
+def test_model_factory_private_model(world, mf):
     err = pytest.raises(ScenarioError, getattr, mf, 'C')
     assert str(err.value) == 'Model "C" is not public.'
 
 
-def test_model_factory_unkown_model(world):
-    mf = world.start('ExampleSim')
+def test_model_factory_unkown_model(world, mf):
     err = pytest.raises(ScenarioError, getattr, mf, 'D')
     assert str(err.value) == ('Model factory for "ExampleSim-0" has no model '
                               '"D".')

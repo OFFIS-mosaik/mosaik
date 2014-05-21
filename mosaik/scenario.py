@@ -330,17 +330,24 @@ class ModelMock:
             '%d entities were requested but %d were created.' %
             (num, len(entities)))
 
-        sim_id = self._sim_id
-        model_type = self._name
-        entity_graph = self._world.entity_graph
-        entity_set = []
-        for e in entities:
-            assert e['type'] == model_type, (
-                'Entity "%s" has the wrong type: "%s"; "%s" required.' %
-                (e['eid'], e['type'], model_type))
+        return self._make_entities(entities, assert_type=self._name)
 
-            entity = Entity(sim_id, e['eid'], e['type'], e['rel'],
-                            e.get('children', []), self._sim)
+    def _make_entities(self, entity_dicts, assert_type=None):
+        """Recursively create lists of :class:`Entity` instance from a list
+        of *entity_dicts*."""
+        sim_id = self._sim_id
+        entity_graph = self._world.entity_graph
+
+        entity_set = []
+        for e in entity_dicts:
+            self._assert_model_type(assert_type, e)
+
+            children = e.get('children', [])
+            if children:
+                children = self._make_entities(children)
+            entity = Entity(sim_id, e['eid'], e['type'], e['rel'], children,
+                            self._sim)
+
             entity_set.append(entity)
             entity_graph.add_node('%s/%s' % (sim_id, e['eid']), entity=entity)
             for rel in e['rel']:
@@ -348,3 +355,15 @@ class ModelMock:
                                       '%s/%s' % (sim_id, rel))
 
         return entity_set
+
+    def _assert_model_type(self, assert_type, e):
+        """Assert that entity *e* has either type *assert_type* if is not none
+        or else any valid type."""
+        if assert_type is not None:
+            assert e['type'] == assert_type, (
+                'Entity "%s" has the wrong type: "%s"; "%s" required.' %
+                (e['eid'], e['type'], assert_type))
+        else:
+            assert e['type'] in self._sim.meta['models'], (
+                'Type "%s" of entity "%s" not found in sim\'s meta data.' %
+                (e['type'], e['eid']))
