@@ -28,7 +28,7 @@ That means:
 A simple example
 ----------------
 
-.. image:: _static/mosaik-slide.*
+.. image:: _static/mosaik-slide.png
    :width: 100%
    :align: center
    :alt: mosaik

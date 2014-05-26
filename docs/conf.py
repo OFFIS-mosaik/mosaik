@@ -255,3 +255,6 @@ intersphinx_mapping = {
     'http://docs.python.org/3/': None,
     'http://simpy.readthedocs.org/en/latest/': None,
 }
+
+# Autodoc
+autodoc_member_order = 'bysource'

@@ -10,7 +10,7 @@ Contents:
    quickstart
    installation
    overview
-   mosaik-api
+   mosaik-api/index
    scenario-definition
    simmanager
    simulator
