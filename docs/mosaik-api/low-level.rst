@@ -270,7 +270,27 @@ step
 
 ::
 
-   [] -> null
+   ["step", [time, inputs], {}] -> time_next_step
+
+Perform the next simulation step from time *time* using input values from
+*inputs* and return the new simulation time (the time at which *step* should
+be called again).
+
+*time* and the time retuned are integers. Their unit is *seconds* (counted from
+simulation start).
+
+*inputs* is a object of objects mapping entity IDs to attributes and lists of
+values (each simulator has do decide on its own how to reduce that list (e.g.,
+as its sum, average or maximum)::
+
+    {
+        "eid_1": {
+            "attr_1": [val_1_1, val_1_2, ...],
+            "attr_2": [val_2_1, val_2_2, ...],
+            ...
+        },
+        ...
+    }
 
 
 Example
@@ -280,13 +300,23 @@ Request:
 
 .. code-block:: json
 
-    []
+    [
+        "step",
+        [
+            60,
+            {
+                  "node_1": {"P": [20, 3.14], "Q": [3, -2.5]},
+                  "node_2": {"P": [42], "Q": [-23.2]},
+            }
+        ],
+        {}
+    ]
 
 Reply:
 
 .. code-block:: json
 
-    null
+   120
 
 
 .. _api.get_data:
@@ -296,7 +326,29 @@ get_data
 
 ::
 
-   [] -> null
+   ["get_data", [outputs], {}] -> data
+
+Return the data for the requested attributes in *outputs*
+
+*outputs* is an object mapping entity IDs to lists of attribute names whose
+values are requested::
+
+    {
+        "eid_1": ["attr_1", "attr_2", ...],
+        ...
+    }
+
+The return value needs to be an object of objects mapping entity IDs and
+attribute names to their values::
+
+    {
+        "eid_1: {
+           "attr_1": "val_1",
+           "attr_2": "val_2",
+           ...
+        },
+        ...
+    }
 
 
 Example
@@ -306,13 +358,18 @@ Request:
 
 .. code-block:: json
 
-    []
+    ["get_data", [{"branch_0": ["I"]}], {}]
 
 Reply:
 
 .. code-block:: json
 
-    null
+
+    {
+        "branch_0": {
+            "I": 42.5
+        }
+    }
 
 
 .. _api.stop:
@@ -322,7 +379,11 @@ stop
 
 ::
 
-   [] -> null
+   ["stop", [], {}] ->
+
+Immediately stop the simulation and terminate.
+
+This call has no parameters and no reply is required.
 
 
 Example
@@ -332,13 +393,11 @@ Request:
 
 .. code-block:: json
 
-    []
+    ["stop", [], {}]
 
 Reply:
 
-.. code-block:: json
-
-    null
+   *no reply required*
 
 
 .. _asynchronous-requests:
@@ -351,11 +410,68 @@ Asynchronous requests
 get_progress
 ------------
 
+::
+
+   ["get_progress", [], {}] -> progress
+
+Return the current overall simulation progress in percent.
+
+
+Example
+^^^^^^^
+
+Request:
+
+.. code-block:: json
+
+    ["get_progress", [], {}]
+
+Reply:
+
+.. code-block:: json
+
+    23.42
+
 
 .. _rpc.get_related_entities:
 
 get_related_entities
 --------------------
+
+::
+
+   ["get_related_entities", [entities], {}] -> related_entities
+
+
+Get a list of entities for *entities*.
+
+*entities* may either be a single string or a list of strings. These strings
+must contain both, the simulator and entity ID: ``"sim_id/entity_id"``.
+
+The return value is an object mapping ``"sim_id/entity_id"`` to sorted
+lists of tuples ``["sim_id/entity_id", entity_type]``.
+
+
+Example
+"""""""
+
+Request:
+
+.. code-block:: json
+
+    ["get_related_entities", [["grid_sim_0/node_0", "grid_sim_0/node_1"]] {}]
+
+Reply:
+
+.. code-block:: json
+
+    {
+        "grid_sim_0/node_0": [
+            ["grid_sim_0/branch_0", "Branch"],
+            ["pv_sim_0/pv_0", "PV"],
+        ],
+        "grid_sim_0/node_1": [["grid_sim_0/branch_0", "Branch"]]
+    }
 
 
 .. _rpc.get_data:
@@ -363,10 +479,88 @@ get_related_entities
 get_data
 --------
 
+::
+
+   ["get_data", [attrs], {}] -> data
+
+Return the data for the requested attributes in *attrs*.
+
+*outputs* is an object mapping entity IDs to lists of attribute names whose
+values are requested::
+
+    {
+        "sim_id/eid_1": ["attr_1", "attr_2", ...],
+        ...
+    }
+
+The return value needs to be an object of objects mapping entity IDs and
+attribute names to their values::
+
+    {
+        "sim_id/eid_1: {
+           "attr_1": "val_1",
+           "attr_2": "val_2",
+           ...
+        },
+        ...
+    }
+
+
+Example
+^^^^^^^
+
+Request:
+
+.. code-block:: json
+
+    ["get_data", [{"grid_sim_0/branch_0": ["I"]}], {}]
+
+Reply:
+
+.. code-block:: json
+
+
+    {
+        "grid_sim_0/branch_0": {
+            "I": 42.5
+        }
+    }
+
 
 .. _rpc.set_data:
 
 set_data
 --------
 
+::
 
+   ["set_data", [data], {}] -> null
+
+Set *data* as input data for all affected simulators.
+
+*data* is an object mapping *sim_id/entity_id* paths to
+objects of attributes and values (``{"sid/eid": {"attr1": "val1",
+"attr2": "val2"}}``)
+
+
+Example
+^^^^^^^
+
+Request:
+
+.. code-block:: json
+
+    [
+        "step",
+        [{
+            "grid_sim_0/node_1": {"P": [20, 3.14], "Q": [3, -2.5]},
+            "grid_sim_0/node_2": {"P": [42], "Q": [-23.2]},
+        }],
+        {}
+    ]
+
+Reply:
+
+.. code-block:: json
+
+    null

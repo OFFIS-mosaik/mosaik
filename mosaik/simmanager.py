@@ -344,9 +344,9 @@ class MosaikRemote:
     def get_related_entities(self, entities):
         """Get a list of entities for *entities*.
 
-        An *entity* may either be the string ``'sim_id/entity_id'`` or just
-        ``'entity_id'``. If the latter is the case, use ``self.sim_id`` to
-        identify the entiy.
+        *entities* may either be a single string or a list of strings. These
+        strings must contain both, the simulator and entity ID:
+        ``'sim_id/entity_id'``.
 
         The return value is a dict mapping ``'sim_id/entity_id'`` to sorted
         lists of tuples ``('sim_id/entity_id', entity_type)``.
@@ -414,7 +414,7 @@ class MosaikRemote:
     def set_data(self, data):
         """Set *data* as input data for all affected simulators.
 
-        *data* is a dictionarry mapping *sim_id/entity_id* paths to
+        *data* is a dictionary mapping *sim_id/entity_id* paths to
         dictionaries of attributes and values (``{'sid/eid': {'attr1': 'val1',
         'attr2': 'val2'}}``)
 
