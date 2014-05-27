@@ -1,7 +1,7 @@
 .. _low-level-api:
 
 =================
-The Low-Level API
+The low-level API
 =================
 
 The low-level API uses standard TCP sockets. If mosaik starts a simulator, that

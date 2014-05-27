@@ -1,57 +1,84 @@
 .. _high-level-api:
 
 ==================
-The High-Level API
+The high-level API
 ==================
 
-Currently, a high-level mosaik API is only available for *Python* and *Java*.
-The remainder of this section fill focus on the Python implementation. However,
-APIs for other Languages will expose the same functionality in
-a similar way.
+Currently, there is only a high-level API for Python. Once there are
+implementations for other languages available, this document will be updated.
 
-The high-level API automatically creates the required socket, connects to the
-PM and starts a simple event loop that sends and receives messages and
-(de)serializes their contents. Each command *cmd* is mapped to a method with
-the same name and the contents of the parameters object *params* (which will be
-a plain dict after the deserialization) are passed as keyword arguments (named
-parameters).
+
+Installation
+============
+
+The Python implementation of the mosaik API is available as a separate package
+an can easily be installed via `pip <https://pip.pypa.io>`_:
+
+.. code-block:: bash
+
+   pip install mosaik-api
+
+It supports Python 2.7, >= 3.3 and PyPy.
+
+
+Usage
+=====
+
+You create a subclass of :class:`mosaik_api.Simulator` which implements the
+four API calls :meth:`~mosaik_api.Simulator.init()`,
+:meth:`~mosaik_api.Simulator.create()`, :meth:`~mosaik_api.Simulator.step()`
+and :meth:`~mosaik_api.Simulator.get_data()`. You can optionally override
+:meth:`~mosaik_api.Simulator.configure()` and
+:meth:`~mosaik_api.Simulator.finalize()`. The former allows you to handle
+additional command line arguments that your simulator may need. The latter is
+called just before the simulator terminates and allows you to perform some
+clean-up.
+
+You then call :func:`mosaik_api.start_simulation()` from your `main()` function
+to get everything set-up and running. That function handles the networking as
+well as serialization and de-serialization of messages. Commands from the
+low-level API are translated to simple function calls. The return value of
+these functions is used for the reply.
 
 For example, the message
 
 .. code-block:: json
 
-    ["init", {
-        "step_size": 15,
-        "sim_params": {"start":"2012-12-21"},
-        "model_conf": []
-    }]
+    ["create", [2, "Model", {"param1": 15, "param2": "spam"}]
 
 will result in a call
 
 .. code-block:: python
 
-    init(step_size=15, sim_params={'start': '2012-12-21'}, model_conf=[])
+    create(2, 'Model', param1=15, param2='spam')
 
-The return value of that function is directly used for the *retval* placeholder
-in the simulator’s reply to the PM. Note, that JSON's *object* type directly
-maps to Python's *dictionary* (:class:`dict`) and JSON's *list* type maps to
-Python's :class:`list`.
-
-You only need to implement an interface with the according methods that makes
-the appropriate calls to your simulator. The API therefore offers
-a :class:`~mosaik_api.Simulator` base class,
-that you simply can inherit from. This class also offers
-a :meth:`~mosaik_api.Simulator.configure()` method that allows you to handle
-additional command line arguments that your simulator may need. There is also
-a :meth:`~mosaik_api.Simulator.finalize()` method; it is called just before
-the simulator terminates and allows you to perform some clean-up like shutting
-down sub-processes.
+API calls
+---------
 
 .. currentmodule:: mosaik_api
 .. autoclass:: Simulator
     :members:
 
-Asynchronous callbacks:
+The *mosaik-api* package provides an `example simulator
+<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_sim/mosaik.py>`
+that demonstrates how the API can be implemented.
+
+
+Asynchronous requests
+---------------------
+
+The :ref:`asynchronous requests <asynchronous-requests>` can be called via the
+``MosaikRemote`` proxy ``self.mosaik`` from within
+:meth:`~mosaik_api.Simulator.step()`. They don't return the actual results but
+an *event* (similar to a *future* of *deferred*). The event will eventually
+hold the actual result. To wait for that result to arrive, you simply yield
+the event, e.g.:
+
+.. code-block:: python
+
+    def step(self, time, inputs):
+        progress = yield self.mosaik.get_progress()
+        # ...
 
 .. currentmodule:: mosaik.simmanager
 .. automethod:: MosaikRemote.get_progress
@@ -59,41 +86,66 @@ Asynchronous callbacks:
 .. automethod:: MosaikRemote.get_data
 .. automethod:: MosaikRemote.set_data
 
-There is also a method that you can call from your ``main()`` to start the
-event loop:
+The *mosaik-api* package provides an `example “multi-agent system”
+<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_mas/mosaik.py>`_
+that demonstrates how to perform asynchronous requests can be implemented.
+
+
+Starting the simulator
+----------------------
+
+To start your simulator, you just need to create an instance of your
+:class:`~mosaik_api.Simulator` sub-class and pass it to
+:func:`~mosaik_api.start_simulation()`:
 
 .. currentmodule:: mosaik_api
 .. autofunction:: start_simulation
 
-The following listing shows how the API can be used:
+Here is an example with a bit more context:
 
 .. code-block:: python
 
-    from mosaik_api import Simulation, start_simulation
+    import mosaik_api
 
 
-    class ExampleSim(Simulation):
+    example_meta = {
+        'models' {
+            'A': {
+                  'public': True,
+                  'params': ['init_val'],
+                  'attrs': ['val_out', 'dummy_out'],
+            },
+        }
+    }
+
+
+    class ExampleSim(mosaik_api.Simulator):
+        def __init__(self):
+            super().__init__(example_meta)
+
         sim_name = 'ExampleSimulation'
 
-        def configure(self, args):
-            # Here you could handle additional commandline arguments
+        def configure(self, args, backend, env):
+            # Here you could handle additional command line arguments
 
-        def init(self, step_size, sim_params, model_conf):
-            # Initialize the simulator and create all entities
-            # and return the entity IDs
+        def init(self):
+            # Initialize the simulator
+            return self.meta
 
-        # Implement the remaining methods (step, get_data, ...)
+        # Implement the remaining methods (create, step, get_data, ...)
 
 
-    if __name__ == '__main__':
+    def main():
         import sys
 
         description = 'A simple example simulation for mosaik.'
         extra_options = [
-            (('-e', '--example'), {
-                'help': 'This is just an example parameter',
-                'default': True,
-            }),
+           '--foo       Enable foo',
+           '--bar BAR   The bar parameter',
         ]
 
-        sys.exit(start_simulation(ExampleSim(), description, extra_options))
+        return mosaik_api.start_simulation(ExampleSim(), description, extra_options)
+
+
+    if __name__ == '__main__':
+        sys.exit(main())
