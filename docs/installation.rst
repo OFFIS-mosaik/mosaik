@@ -22,7 +22,7 @@ Python 3.4, so everything is okay.
 
    .. code-block:: bash
 
-      $ wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py
+      $ wget https://bootstrap.pypa.io/get-pip.py
       $ sudo python get-pip.py
       $ sudo pip install -U virtualenv
 
@@ -66,28 +66,28 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    with Ubuntu (faster, easier, but they may be outdated, recommended if you
    just want to run the demo scenario) or *b)* compile them on your own (a bit
    more complicated, takes longer, recommended for development). In both cases,
-   you also need to install *Mercurial* and *Git*:
+   you also need to install *Mercurial*:
 
    a. We use :program:`apt-get` to install NumPy and SciPy (as well as
-      Mercurial and Git). By default, venvs are isolated from globally
-      installed packages. To make them visible, we also have to recreate the
-      venv and set the ``--system-site-packages`` flag:
+      Mercurial). By default, venvs are isolated from globally installed
+      packages. To make them visible, we also have to recreate the venv and set
+      the ``--system-site-packages`` flag:
 
       .. code-block:: bash
 
-         $ sudo apt-get install mercurial git python3-numpy python3-scipy
+         $ sudo apt-get install mercurial python3-numpy python3-scipy
          $ rm -rf ~/.virtualenvs/mosaik
          $ virtualenv -p /usr/bin/python3 --system-site-packages ~/.virtualenvs/mosaik
          $ source ~/.virtualenvs/mosaik/bin/activate
 
    b. In order to compile NumPy and SciPy, we need to install some build
-      dependencies (and Mercurial and Git). We then build binary `wheel`__
-      packages that we can later reuse without re-compiling everything. We'll
-      store these *wheels* in :file:`~/wheelhouse/`:
+      dependencies (and Mercurial). We then build binary `wheel`__ packages
+      that we can later reuse without re-compiling everything. We'll store
+      these *wheels* in :file:`~/wheelhouse/`:
 
       .. code-block:: bash
 
-         $ sudo apt-get install mercurial git build-essential python3-dev gfortran libatlas-dev libatlas-base-devl
+         $ sudo apt-get install mercurial build-essential python3-dev gfortran libatlas-dev libatlas-base-devl
          $ source ~/.virtualenvs/mosaik/bin/activate
          (mosaik)$ pip install wheel
          (mosaik)$ pip wheel numpy
@@ -344,9 +344,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik) C:\Users\yourname> easy_install Downloads\numpy-MKL-1.8.1.win-amd64-py3.4.exe
       (mosaik) C:\Users\yourname> easy_install Downloads\scipy-0.13.3.win-amd64-py3.4.exe
 
-2. Download and install `Mercurial`__ and `Git`__ (Git is only required
-   temorary and won't be necessary in the future). During the installation of
-   Git select *Run Git from the Windows Command Prompt*.
+2. Download and install `Mercurial`__.
 
    Restart the command prompt and activate the virtualenv again:
 
@@ -385,5 +383,4 @@ __ http://www.lfd.uci.edu/~gohlke/pythonlibs/
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 __ http://mercurial.selenic.com/
-__ http://git-scm.com/downloads
 __ http://localhost:8000
