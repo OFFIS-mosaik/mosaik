@@ -9,6 +9,7 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 
 """
 from collections import defaultdict
+import inspect
 import itertools
 import sys
 
@@ -308,10 +309,11 @@ class ModelMock:
         self._name = name
         self._sim = sim
         self._sim_id = sim.sid
+        self._params = sim.meta['models'][name]['params']
 
     def __call__(self, **model_params):
         """Call :meth:`create()` to instantiate one model."""
-        # TODO: Generate proper signature based on the meta data?
+        self._check_params(**model_params)
         return self.create(1, **model_params)[0]
 
     def create(self, num, **model_params):
@@ -323,7 +325,7 @@ class ModelMock:
         to every entity ID to make them globally unique.
 
         """
-        # TODO: Generate proper signature based on the meta data?
+        self._check_params(**model_params)
 
         # We have to start a SimPy process to make the "create()" call
         # behave like it was synchronous.
@@ -340,6 +342,28 @@ class ModelMock:
             (num, len(entities)))
 
         return self._make_entities(entities, assert_type=self._name)
+
+    def _check_params(self, **model_params):
+        expected_params = list(self._params)
+        for param in model_params:
+            if param not in expected_params:
+                raise TypeError("create() got an unexpected keyword argument "
+                                "'%s'" % param)
+            expected_params.remove(param)
+
+        if expected_params:
+            count = len(expected_params)
+            plural = 's' if count > 1 else ''
+            if count == 1:
+                kwargs = "'%s'" % expected_params[0]
+            else:
+                kwargs = "%s%s and '%s'" % (
+                    ', '.join("'%s'" % p for p in expected_params[:-1]),
+                    ',' if count > 2 else '',
+                    expected_params[-1],
+                )
+            raise TypeError("create() missing %d required keyword-only "
+                            "argument%s: %s" % (count, plural, kwargs))
 
     def _make_entities(self, entity_dicts, assert_type=None):
         """Recursively create lists of :class:`Entity` instance from a list

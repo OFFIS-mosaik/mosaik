@@ -192,6 +192,26 @@ def test_model_factory(world, mf):
     assert mf.B._name == 'B'
 
 
+def test_model_factory_check_params(world, mf):
+    einfo = pytest.raises(TypeError, mf.A)
+    assert str(einfo.value) == "create() missing 1 required keyword-only "\
+                               "argument: 'init_val'"
+
+    mf.A._params = ['init_val', 'b']
+    einfo = pytest.raises(TypeError, mf.A)
+    assert str(einfo.value) == "create() missing 2 required keyword-only "\
+                               "arguments: 'init_val' and 'b'"
+
+    mf.A._params = ['init_val', 'b', 'c']
+    einfo = pytest.raises(TypeError, mf.A)
+    assert str(einfo.value) == "create() missing 3 required keyword-only "\
+                               "arguments: 'init_val', 'b', and 'c'"
+
+    einfo = pytest.raises(TypeError, mf.A, spam='eggs')
+    assert str(einfo.value) == "create() got an unexpected keyword argument "\
+                               "'spam'"
+
+
 def test_model_factory_hierarchical_entities(world, mf):
     ret = world.env.event().succeed([{
         'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
@@ -202,7 +222,7 @@ def test_model_factory_hierarchical_entities(world, mf):
     }])
     mf.A._sim.create = mock.Mock(return_value=ret)
 
-    a = mf.A()
+    a = mf.A(init_val=1)
     assert len(a.children) == 1
 
     b = a.children[0]
@@ -217,14 +237,14 @@ def test_model_factory_hierarchical_entities(world, mf):
 def test_model_factory_wrong_entity_count(world, mf):
     ret = world.env.event().succeed([None, None, None])
     mf.A._sim.create = mock.Mock(return_value=ret)
-    err = pytest.raises(AssertionError, mf.A.create, 2)
+    err = pytest.raises(AssertionError, mf.A.create, 2, init_val=0)
     assert str(err.value) == '2 entities were requested but 3 were created.'
 
 
 def test_model_factory_wrong_model(world, mf):
     ret = world.env.event().succeed([{'eid': 'spam_0', 'type': 'Spam'}])
     mf.A._sim.create = mock.Mock(return_value=ret)
-    err = pytest.raises(AssertionError, mf.A.create, 1)
+    err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
     assert str(err.value) == ('Entity "spam_0" has the wrong type: "Spam"; '
                               '"A" required.')
 
@@ -239,7 +259,7 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
     }])
     mf.A._sim.create = mock.Mock(return_value=ret)
 
-    err = pytest.raises(AssertionError, mf.A.create, 1)
+    err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
     assert str(err.value) == ('Type "Spam" of entity "c" not found in sim\'s '
                               'meta data.')
 
@@ -267,6 +287,7 @@ def test_model_mock_entity_graph(world):
     sp_mock = mock.Mock()
     sp_mock.create = create
     sp_mock.sid = 'E0'
+    sp_mock.meta = {'models': {'A': {'params': []}}}
 
     fac = world.start('ExampleSim')
     fac._sim = sp_mock
