@@ -279,3 +279,18 @@ def test_model_mock_entity_graph(world):
     }
     assert world.entity_graph.node['E0/0']['entity'].type == 'A'
     assert world.entity_graph.node['E0/1']['entity'].type == 'A'
+
+
+def test_world_get_data(world):
+    sim1 = world.start('ExampleSim')
+    sim2 = world.start('ExampleSim')
+
+    es1 = sim1.A.create(2, init_val=1)
+    es2 = sim2.B.create(1, init_val=2)
+
+    data = world.get_data(es1 + es2, 'val_out')
+    assert data == {
+        es1[0]: {'val_out': 1},
+        es1[1]: {'val_out': 1},
+        es2[0]: {'val_out': 2},
+    }

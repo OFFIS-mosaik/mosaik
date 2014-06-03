@@ -174,6 +174,48 @@ class World:
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
+    def get_data(self, entity_set, *attributes):
+        """Get and return the values of all *attributes* for each entity of an
+        *entity_set*.
+
+        The return value is a dict mapping the entities of *entity_set* to
+        dicts containing the values of each attribute in *attributes*::
+
+            {
+                Entity(...): {
+                    'attr_1': 'val_1',
+                    'attr_2': 'val_2',
+                    ...
+                },
+                ...
+            }
+
+        """
+        outputs_by_sim = defaultdict(dict)
+        for entity in entity_set:
+            outputs_by_sim[entity.sid][entity.eid] = attributes
+
+        def request_data():
+            requests = {self.sims[sid].get_data(outputs): sid
+                        for sid, outputs in outputs_by_sim.items()}
+            results = yield self.env.all_of(requests)
+
+            results_by_sim = {}
+            for request, value in results.items():
+                sid = requests[request]
+                results_by_sim[sid] = value
+
+            return results_by_sim
+
+        results_by_sim = util.sync_process(request_data(), self,
+                                           'A simulator closed its connection '
+                                           'during "get_data()".')
+        results = {}
+        for entity in entity_set:
+            results[entity] = results_by_sim[entity.sid][entity.eid]
+
+        return results
+
     def run(self, until):
         """Start the simulation until the simulation time *until* is reached.
 
