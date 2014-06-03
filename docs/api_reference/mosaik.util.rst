@@ -3,6 +3,4 @@
 =================================================
 
 .. automodule:: mosaik.util
-
-.. autoclass:: OrderedDefaultdict
    :members:

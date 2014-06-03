@@ -18,7 +18,7 @@ def run(world, until):
         sim.sim_proc = proc
         procs.append(proc)
 
-    env.run(until=env.all_of(procs))
+    yield env.all_of(procs)
 
 
 def sim_process(world, sim, until):

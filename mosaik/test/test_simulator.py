@@ -20,7 +20,7 @@ def world():
 
 
 def test_run():
-    """Test if a process is started for every simulatin."""
+    """Test if a process is started for every simulation."""
     def dummy_proc(world, sim, until):
         sim.proc_started = True
         yield world.env.event().succeed()
@@ -36,7 +36,7 @@ def test_run():
     world.sims = {i: Sim() for i in range(2)}
 
     with mock.patch('mosaik.simulator.sim_process', dummy_proc):
-        simulator.run(world, 1)
+        world.run(until=1)
 
     for sim in world.sims.values():
         assert sim.proc_started

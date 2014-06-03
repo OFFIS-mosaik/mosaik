@@ -1,6 +1,5 @@
 from unittest import mock
 
-from simpy.io.network import RemoteException
 import pytest
 
 from mosaik import scenario, simmanager, simulator
@@ -187,31 +186,6 @@ def test_world_connect_async_requests(world):
     }
 
 
-def test_world_run():
-    world = scenario.World({})
-    world.sims = {0: simmanager.LocalProcess(world, 0, SimMock(), world.env,
-                                             {})}
-    with mock.patch('mosaik.simulator.run') as run_mock:
-        world.run(3)
-        assert run_mock.call_args == mock.call(world, 3)
-
-    world.shutdown()
-
-
-def test_world_run_with_debug():
-    world = scenario.World({}, execution_graph=True)
-
-    def run(*args, **kwargs):
-        assert simulator.step.__name__ == 'wrapped_step'
-
-    assert simulator.run.__name__ == 'run'
-    with mock.patch('mosaik.simulator.run', run):
-        world.run(3)
-    assert simulator.run.__name__ == 'run'
-
-    world.shutdown()
-
-
 def test_model_factory(world, mf):
     assert mf.A._name == 'A'
     assert mf.A._sim_id == mf._sim.sid
@@ -305,64 +279,3 @@ def test_model_mock_entity_graph(world):
     }
     assert world.entity_graph.node['E0/0']['entity'].type == 'A'
     assert world.entity_graph.node['E0/1']['entity'].type == 'A'
-
-
-@pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError(),
-     'ERROR: "ExampleSim" closed its connection during its initialization '
-     'phase.\nMosaik terminating\n'),
-    (RemoteException('spam', 'eggs'),
-     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
-
-])
-def test_start_errors(world, error, errmsg, capsys):
-    """Test sims breaking during their start."""
-    with mock.patch('mosaik.simmanager.start') as start:
-        start.side_effect = error
-        pytest.raises(SystemExit, world.start, 'ExampleSim')
-    errmsg = 'Starting "ExampleSim" as "ExampleSim-0" ...\n' + errmsg
-    out, err = capsys.readouterr()
-    assert out == errmsg
-    assert err == ''
-
-
-@pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError(),
-     'ERROR: "Mock" closed its connection during the creation of 1 instances '
-     'of "spam".\nMosaik terminating\n'),
-    (RemoteException('spam', 'eggs'),
-     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
-
-])
-def test_create_errors(world, error, errmsg, capsys):
-    """Test sims breaking while creating entities."""
-    sim = mock.Mock()
-    sim.sid = 'Mock'
-    sim.create.side_effect = error
-
-    mm = scenario.ModelMock(world, 'spam', sim)
-    pytest.raises(SystemExit, mm.create, 1)
-
-    out, err = capsys.readouterr()
-    assert out == errmsg
-    assert err == ''
-
-
-@pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError(),
-     'ERROR: A simulator closed its connection.\nMosaik terminating\n'),
-    (RemoteException('spam', 'eggs'),
-     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
-    (KeyboardInterrupt(), 'Simulation canceled. Terminating ...\n')
-
-])
-def test_run_errors(world, error, errmsg, capsys):
-    """Test sims breaking during the simulation."""
-    with mock.patch('mosaik.simulator.run') as run:
-        run.side_effect = error
-        pytest.raises(SystemExit, world.run, 1)
-
-    errmsg = 'Starting simulation.\n' + errmsg
-    out, err = capsys.readouterr()
-    assert out == errmsg
-    assert err == ''

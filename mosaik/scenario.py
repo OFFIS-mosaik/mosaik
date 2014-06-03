@@ -12,7 +12,6 @@ from collections import defaultdict
 import itertools
 import sys
 
-from simpy.io.network import RemoteException
 import networkx
 
 from mosaik import simmanager
@@ -27,21 +26,6 @@ base_config = {
     'start_timeout': 2,  # seconds
     'stop_timeout': 2,  # seconds
 }
-
-
-def _print_exception_and_exit(error, callback=None):
-    if type(error) is RemoteException:
-        print('RemoteException:')
-        print(error.remote_traceback)
-        print('————————————————')
-    else:
-        print('ERROR:', error)
-
-    if callback is not None:
-        callback()
-
-    print('Mosaik terminating')
-    sys.exit(1)
 
 
 class Entity:
@@ -136,20 +120,13 @@ class World:
         :class:`ModelFactory` for it.
 
         """
-        try:
-            counter = self._sim_ids[sim_name]
-            sim_id = '%s-%s' % (sim_name, next(counter))
-            print('Starting "%s" as "%s" ...' % (sim_name, sim_id))
-            sim = simmanager.start(self, sim_name, sim_id, sim_params)
-            self.sims[sim_id] = sim
-            self.df_graph.add_node(sim_id)
-            return ModelFactory(self, sim)
-        except ConnectionResetError:
-            _print_exception_and_exit('"%s" closed its connection during its '
-                                      'initialization phase.' % (sim_name,),
-                                      self.shutdown)
-        except RemoteException as e:
-            _print_exception_and_exit(e, self.shutdown)
+        counter = self._sim_ids[sim_name]
+        sim_id = '%s-%s' % (sim_name, next(counter))
+        print('Starting "%s" as "%s" ...' % (sim_name, sim_id))
+        sim = simmanager.start(self, sim_name, sim_id, sim_params)
+        self.sims[sim_id] = sim
+        self.df_graph.add_node(sim_id)
+        return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs, async_requests=False):
         """Connect the *src* entity to *dest* entity.
@@ -210,16 +187,12 @@ class World:
             import mosaik._debug as dbg
             dbg.enable()
         try:
-            res = simulator.run(self, until)
+            util.sync_process(simulator.run(self, until), self,
+                              'A simulator closed its connection.')
             print('Simulation finished successfully.')
-            return res
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
             sys.exit(1)
-        except ConnectionResetError as e:
-            _print_exception_and_exit('A simulator closed its connection.')
-        except RemoteException as e:
-            _print_exception_and_exit(e)
         finally:
             self.shutdown()
             if self._debug:
@@ -227,8 +200,8 @@ class World:
 
     def shutdown(self):
         """Shut-down all simulators and close the server socket."""
-        procs = [self.env.process(sim.stop()) for sim in self.sims.values()]
-        self.env.run(until=self.env.all_of(procs))
+        for sim in self.sims.values():
+            util.sync_process(sim.stop(), self, ignore_errors=True)
         self.srv_sock.close()
 
     def _check_attributes(self, src, dest, attr_pairs):
@@ -312,20 +285,14 @@ class ModelMock:
 
         # We have to start a SimPy process to make the "create()" call
         # behave like it was synchronous.
-        def create():
+        def create_proc():
             entities = yield self._sim.create(num, self._name, **model_params)
             return entities
 
-        try:
-            proc = self._env.process(create())
-            entities = self._env.run(until=proc)
-        except ConnectionResetError:
-            msg = ('"%s" closed its connection during the creation of %s '
-                   'instances of "%s".' % (self._sim_id, num, self._name))
-            _print_exception_and_exit(msg, self._world.shutdown)
-        except RemoteException as e:
-            _print_exception_and_exit(e, self._world.shutdown)
-
+        entities = util.sync_process(create_proc(), self._world,
+                                     '"%s" closed its connection during the '
+                                     'creation of %s instances of "%s".' % (
+                                         self._sim_id, num, self._name))
         assert len(entities) == num, (
             '%d entities were requested but %d were created.' %
             (num, len(entities)))

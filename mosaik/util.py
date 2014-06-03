@@ -3,6 +3,9 @@ This module contains some utility functions and classes.
 
 """
 import collections
+import sys
+
+from simpy.io.network import RemoteException
 
 
 class OrderedDefaultdict(collections.OrderedDict):
@@ -23,3 +26,46 @@ class OrderedDefaultdict(collections.OrderedDict):
             raise KeyError(key)
         self[key] = default = self.default_factory()
         return default
+
+
+def sync_process(generator, world, err_msg=None, ignore_errors=False):
+    """Synchronously execute a SimPy process defined by the generator object
+    *generator*.
+
+    A *world* instance is required to run the event loop.
+
+    You can optionally provide a *err_msg* that will be printed when the
+    remote site unexpectedly closes its connection.
+
+    If *ignore_errors* is set to ``True``, no errors will be printed.
+
+    """
+    try:
+        return world.env.run(until=world.env.process(generator))
+    except ConnectionResetError:
+        if ignore_errors:
+            # Avoid endless recursions when called from "world.shutdown()"
+            return
+        print_exception_and_exit(err_msg, world.shutdown)
+    except RemoteException as e:
+        if ignore_errors:
+            # Avoid endless recursions when called from "world.shutdown()"
+            return
+        print_exception_and_exit(e, world.shutdown)
+
+
+def print_exception_and_exit(error, callback=None):
+    """Print the error defined by the string or exception *error*, optionally
+    calling *callback*."""
+    if type(error) is RemoteException:
+        print('RemoteException:')
+        print(error.remote_traceback)
+        print('————————————————')
+    else:
+        print('ERROR:', error)
+
+    if callback:
+        callback()
+
+    print('Mosaik terminating')
+    sys.exit(1)
