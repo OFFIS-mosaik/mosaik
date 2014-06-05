@@ -88,7 +88,7 @@ a co-simulation framework:
    networking related and offers an abstract base class. You then only have to
    write a subclass and implement a few methods.
 
-   :doc:`Read more … <mosaik-api>`
+   :doc:`Read more … <mosaik-api/index>`
 
 2. The **Scenario Definition** provides a simple API that allows you to create
    your simulation scenarios in pure `Python <https://python.org>`_ (yes, no

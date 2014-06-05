@@ -57,10 +57,16 @@ API calls
 
 .. currentmodule:: mosaik_api
 .. autoclass:: Simulator
-    :members:
+   :members: init, create, step, get_data, configure, finalize
+
+   .. autoattribute:: meta
+      :annotation:
+
+   .. autoattribute:: mosaik
+      :annotation:
 
 The *mosaik-api* package provides an `example simulator
-<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_sim/mosaik.py>`
+<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_sim/mosaik.py>`_
 that demonstrates how the API can be implemented.
 
 
@@ -81,10 +87,18 @@ the event, e.g.:
         # ...
 
 .. currentmodule:: mosaik.simmanager
+
 .. automethod:: MosaikRemote.get_progress
+   :noindex:
+
 .. automethod:: MosaikRemote.get_related_entities
+   :noindex:
+
 .. automethod:: MosaikRemote.get_data
+   :noindex:
+
 .. automethod:: MosaikRemote.set_data
+   :noindex:
 
 The *mosaik-api* package provides an `example “multi-agent system”
 <https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_mas/mosaik.py>`_

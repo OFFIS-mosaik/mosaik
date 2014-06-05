@@ -113,7 +113,7 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
                             (sim_name, details)) from None
 
     sim = cls()
-    meta = sim.init(**sim_params)
+    meta = sim.init(sim_id, **sim_params)
     return LocalProcess(world, sim_id, sim, world.env, meta)
 
 
@@ -208,7 +208,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
         rpc_con = JsonRpc(Packet(sock, max_packet_size=1024*1024))
 
         # Make init() API call and wait for sim_name's meta data.
-        init = rpc_con.remote.init(**sim_params)
+        init = rpc_con.remote.init(sim_id, **sim_params)
         results = yield init | start_timeout
         if start_timeout in results:
             raise ScenarioError('Simulator "%s" did not reply to the init() '
@@ -365,14 +365,8 @@ class MosaikRemote:
         if type(entities) is not list:
             entities = [entities]
 
-        for entity in entities:
-            if entity.startswith('self/'):
-                entity = entity[5:]
-                full_id = '%s/%s' % (self.sim_id, entity)
-            else:
-                full_id = entity
-
-            rels[entity] = [
+        for full_id in entities:
+            rels[full_id] = [
                 (e, entity_graph.node[e]['entity'].type)
                 for e in sorted(entity_graph[full_id])
             ]
