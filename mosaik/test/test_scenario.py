@@ -28,14 +28,13 @@ def mf(world):
 
 def test_entity():
     sim = object()
-    e = scenario.Entity('0', '1', 'spam', [], [], sim)
+    e = scenario.Entity('0', '1', 'spam', [], sim)
     assert e.sid == '0'
     assert e.eid == '1'
     assert e.type == 'spam'
-    assert e.rel == []
     assert e.sim is sim
     assert str(e) == 'Entity(0, 1, spam)'
-    assert repr(e) == 'Entity(0, 1, spam, [], [], %r)' % sim
+    assert repr(e) == 'Entity(0, 1, spam, [], %r)' % sim
 
 
 def test_world():

@@ -31,9 +31,9 @@ base_config = {
 
 class Entity:
     """An entity represents an instance of a simulation model within mosaik."""
-    __slots__ = ['sid', 'eid', 'type', 'rel', 'children', 'sim']
+    __slots__ = ['sid', 'eid', 'type', 'children', 'sim']
 
-    def __init__(self, sid, eid, type, rel, children, sim):
+    def __init__(self, sid, eid, type, children, sim):
         self.sid = sid
         """The ID of the simulator this entity belongs to."""
 
@@ -42,9 +42,6 @@ class Entity:
 
         self.type = type
         """The entity's type (or class)."""
-
-        self.rel = rel
-        """A list of related entities (their IDs)"""
 
         self.children = children if children is not None else set()
         """An entity set containing subordinate entities."""
@@ -58,7 +55,7 @@ class Entity:
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type, repr(self.rel), repr(self.children),
+            self.sid, self.eid, self.type, repr(self.children),
             repr(self.sim)]))
 
 
@@ -378,7 +375,7 @@ class ModelMock:
             children = e.get('children', [])
             if children:
                 children = self._make_entities(children)
-            entity = Entity(sim_id, e['eid'], e['type'], e['rel'], children,
+            entity = Entity(sim_id, e['eid'], e['type'], children,
                             self._sim)
 
             entity_set.append(entity)
