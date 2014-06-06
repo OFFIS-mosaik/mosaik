@@ -298,8 +298,8 @@ def test_model_mock_entity_graph(world):
         'E0/0': {'E0/1': {}},
         'E0/1': {'E0/0': {}},
     }
-    assert world.entity_graph.node['E0/0']['entity'].type == 'A'
-    assert world.entity_graph.node['E0/1']['entity'].type == 'A'
+    assert world.entity_graph.node['E0/0']['type'] == 'A'
+    assert world.entity_graph.node['E0/1']['type'] == 'A'
 
 
 def test_world_get_data(world):

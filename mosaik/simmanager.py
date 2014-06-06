@@ -349,29 +349,56 @@ class MosaikRemote:
         return self.world.sim_progress
 
     @rpc
-    def get_related_entities(self, entities):
-        """Get a list of entities for *entities*.
+    def get_related_entities(self, entities=None):
+        """Return information about the related entities of *entities*.
 
-        *entities* may either be a single string or a list of strings. These
-        strings must contain both, the simulator and entity ID:
-        ``'sim_id/entity_id'``.
+        If *entitites* omitted (or ``None``), return the complete entity
+        graph, e.g.::
 
-        The return value is a dict mapping ``'sim_id/entity_id'`` to sorted
-        lists of tuples ``('sim_id/entity_id', entity_type)``.
+            {
+                'nodes': {
+                    'sid_0/eid_0': {'type': 'A'},
+                    'sid_0/eid_1': {'type': 'B'},
+                    'sid_1/eid_0': {'type': 'C'},
+                },
+                'edges': [
+                    ['sid_0/eid_0', 'sid_1/eid0', {}],
+                    ['sid_0/eid_1', 'sid_1/eid0', {}],
+                ],
+            }
+
+        If *entities* is a single string (e.g., ``sid_1/eid_0``), return a dict
+        containing all entities related to that entity::
+
+            {
+                'sid_0/eid_0': {'type': 'A'},
+                'sid_0/eid_1': {'type': 'B'},
+            }
+
+        If *entities* is a list of entity IDs (e.g., ``['sid_0/eid_0',
+        'sid_0/eid_1']``), return a dict mapping each entity to a dict of
+        related entities::
+
+            {
+                'sid_0/eid_0': {
+                    'sid_0/eid_1': {'type': 'B'},
+                },
+                'sid_0/eid_1': {
+                    'sid_0/eid_1': {'type': 'B'},
+                },
+            }
 
         """
-        rels = {}
-        entity_graph = self.world.entity_graph
-        if type(entities) is not list:
-            entities = [entities]
-
-        for full_id in entities:
-            rels[full_id] = [
-                (e, entity_graph.node[e]['entity'].type)
-                for e in sorted(entity_graph[full_id])
-            ]
-
-        return rels
+        eg = self.world.entity_graph
+        if entities is None:
+            return {'nodes': eg.node, 'edges': eg.edges(data=True)}
+        elif type(entities) is str:
+            return {n: eg.node[n] for n in eg[entities]}
+        else:
+            return {
+                eid: {n: eg.node[n] for n in eg[eid]}
+                for eid in entities
+            }
 
     @rpc.process
     def get_data(self, attrs):

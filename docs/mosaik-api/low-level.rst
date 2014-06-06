@@ -442,14 +442,48 @@ get_related_entities
 
    ["get_related_entities", [entities], {}] -> related_entities
 
+Return information about the related entities of *entities*.
 
-Get a list of entities for *entities*.
+If *entitites* omitted (or ``null``), return the complete entity graph, e.g.:
 
-*entities* may either be a single string or a list of strings. These strings
-must contain both, the simulator and entity ID: ``"sim_id/entity_id"``.
+.. code-block:: json
 
-The return value is an object mapping ``"sim_id/entity_id"`` to sorted
-lists of tuples ``["sim_id/entity_id", entity_type]``.
+   {
+         "nodes": {
+            "sid_0/eid_0": {"type": "A"},
+            "sid_0/eid_1": {"type": "B"},
+            "sid_1/eid_0": {"type": "C"},
+         },
+         "edges": [
+            ["sid_0/eid_0", "sid_1/eid0", {}],
+            ["sid_0/eid_1", "sid_1/eid0", {}],
+         ],
+   }
+
+If *entities* is a single string (e.g., ``sid_1/eid_0``), return an object
+containing all entities related to that entity:
+
+.. code-block:: json
+
+   {
+         "sid_0/eid_0": {"type": "A"},
+         "sid_0/eid_1": {"type": "B"},
+   }
+
+If *entities* is a list of entity IDs (e.g., ``["sid_0/eid_0",
+"sid_0/eid_1"]``), return an object mapping each entity to an object of related
+entities:
+
+.. code-block:: json
+
+   {
+         "sid_0/eid_0": {
+            "sid_0/eid_1": {"type": "B"},
+         },
+         "sid_0/eid_1": {
+            "sid_0/eid_1": {"type": "B"},
+         },
+   }
 
 
 Example
@@ -466,11 +500,13 @@ Reply:
 .. code-block:: json
 
     {
-        "grid_sim_0/node_0": [
-            ["grid_sim_0/branch_0", "Branch"],
-            ["pv_sim_0/pv_0", "PV"],
-        ],
-        "grid_sim_0/node_1": [["grid_sim_0/branch_0", "Branch"]]
+        "grid_sim_0/node_0": {
+            "grid_sim_0/branch_0": {"type": "Branch"},
+            "pv_sim_0/pv_0": {"type": "PV"}
+        },
+        "grid_sim_0/node_1": {
+            "grid_sim_0/branch_0": {"type": "Branch"}
+        }
     }
 
 

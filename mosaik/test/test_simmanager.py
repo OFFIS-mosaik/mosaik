@@ -260,12 +260,46 @@ def _rpc_get_progress(mosaik, world):
 def _rpc_get_related_entities(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the
     "get_related_entities()" RPC."""
-    entities = yield mosaik.get_related_entities('X/0')
-    assert entities == {'X/0': [['X/1', 'A'], ['X/2', 'A']]}
+    # No param yields complete entity graph
+    entities = yield mosaik.get_related_entities()
+    for edge in entities['edges']:
+        edge[:2] = sorted(edge[:2])
+    entities['edges'].sort()
+    assert entities == {
+        'nodes': {
+            'X/0': {'type': 'A'},
+            'X/1': {'type': 'A'},
+            'X/2': {'type': 'A'},
+            'X/3': {'type': 'A'},
+        },
+        'edges': [
+            ['X/0', 'X/1', {}],
+            ['X/0', 'X/2', {}],
+            ['X/1', 'X/2', {}],
+            ['X/2', 'X/3', {}],
+        ],
+    }
 
+    # Single string yields dict with related entities
+    entities = yield mosaik.get_related_entities('X/0')
+    assert entities == {
+        'X/1': {'type': 'A'},
+        'X/2': {'type': 'A'},
+    }
+
+    # List of strings yields dicts with related entities grouped by input ids
     entities = yield mosaik.get_related_entities(['X/1', 'X/2'])
-    assert entities == {'X/1': [['X/0', 'A'], ['X/2', 'A']],
-                        'X/2': [['X/0', 'A'], ['X/1', 'A'], ['X/3', 'A']]}
+    assert entities == {
+        'X/1': {
+            'X/0': {'type': 'A'},
+            'X/2': {'type': 'A'},
+        },
+        'X/2': {
+            'X/0': {'type': 'A'},
+            'X/1': {'type': 'A'},
+            'X/3': {'type': 'A'},
+        },
+    }
 
 
 def _rpc_get_data(mosaik, world):
@@ -304,8 +338,7 @@ def test_mosaik_remote(rpc):
     edges = [('X/%s' % x, 'X/%s' % y) for x, y in edges]
     world.entity_graph.add_edges_from(edges)
     for node in world.entity_graph:
-        world.entity_graph.add_node(node, entity=scenario.Entity('', '', 'A',
-                                                                 [], [], None))
+        world.entity_graph.add_node(node, type='A')
     world.sim_progress = 23
     world._df_cache = {
         1: {

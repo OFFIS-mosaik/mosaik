@@ -382,7 +382,7 @@ class ModelMock:
                             self._sim)
 
             entity_set.append(entity)
-            entity_graph.add_node('%s/%s' % (sim_id, e['eid']), entity=entity)
+            entity_graph.add_node('%s/%s' % (sim_id, e['eid']), type=e['type'])
             for rel in e['rel']:
                 entity_graph.add_edge('%s/%s' % (sim_id, e['eid']),
                                       '%s/%s' % (sim_id, rel))
