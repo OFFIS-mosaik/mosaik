@@ -49,6 +49,11 @@ class Entity:
         self.sim = sim
         """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
 
+    @property
+    def full_id(self):
+        """Full, globally unique entity id ``sid/eid``."""
+        return '%s/%s' % (self.sid, self.eid)
+
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
             self.sid, self.eid, self.type]))
