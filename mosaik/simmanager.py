@@ -105,7 +105,7 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
     except (AttributeError, ImportError, KeyError, ValueError) as err:
         detail_msgs = {
             ValueError: 'Malformed Python class name: Expected "module:Class"',
-            ImportError: 'Could not import module',
+            ImportError: 'Could not import module: %s' % err.args[0],
             AttributeError: 'Class not found in module',
         }
         details = detail_msgs[type(err)]
