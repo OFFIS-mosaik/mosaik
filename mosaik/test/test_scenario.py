@@ -193,20 +193,6 @@ def test_model_factory(world, mf):
 
 
 def test_model_factory_check_params(world, mf):
-    einfo = pytest.raises(TypeError, mf.A)
-    assert str(einfo.value) == "create() missing 1 required keyword-only "\
-                               "argument: 'init_val'"
-
-    mf.A._params = ['init_val', 'b']
-    einfo = pytest.raises(TypeError, mf.A)
-    assert str(einfo.value) == "create() missing 2 required keyword-only "\
-                               "arguments: 'init_val' and 'b'"
-
-    mf.A._params = ['init_val', 'b', 'c']
-    einfo = pytest.raises(TypeError, mf.A)
-    assert str(einfo.value) == "create() missing 3 required keyword-only "\
-                               "arguments: 'init_val', 'b', and 'c'"
-
     einfo = pytest.raises(TypeError, mf.A, spam='eggs')
     assert str(einfo.value) == "create() got an unexpected keyword argument "\
                                "'spam'"

@@ -357,20 +357,6 @@ class ModelMock:
                                 "'%s'" % param)
             expected_params.remove(param)
 
-        if expected_params:
-            count = len(expected_params)
-            plural = 's' if count > 1 else ''
-            if count == 1:
-                kwargs = "'%s'" % expected_params[0]
-            else:
-                kwargs = "%s%s and '%s'" % (
-                    ', '.join("'%s'" % p for p in expected_params[:-1]),
-                    ',' if count > 2 else '',
-                    expected_params[-1],
-                )
-            raise TypeError("create() missing %d required keyword-only "
-                            "argument%s: %s" % (count, plural, kwargs))
-
     def _make_entities(self, entity_dicts, assert_type=None):
         """Recursively create lists of :class:`Entity` instance from a list
         of *entity_dicts*."""
