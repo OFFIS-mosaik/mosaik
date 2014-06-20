@@ -280,17 +280,17 @@ class ModelFactory:
 
     """
     def __init__(self, world, sim):
+        self.meta = sim.meta
         self._world = world
         self._env = world.env
         self._sim = sim
-        self._meta = sim.meta
         self._model_cache = {}
 
     def __getattr__(self, name):
-        if name not in self._meta['models']:
+        if name not in self.meta['models']:
             raise ScenarioError('Model factory for "%s" has no model "%s".' %
                                 (self._sim.sid, name))
-        if not self._meta['models'][name]['public']:
+        if not self.meta['models'][name]['public']:
             raise ScenarioError('Model "%s" is not public.' % name)
 
         if name not in self._model_cache:
