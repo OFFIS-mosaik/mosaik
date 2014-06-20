@@ -192,7 +192,8 @@ def test_start_connect_stop_timeout(world):
     ({'spam': {}}, 'Invalid configuration'),
     ({'spam': {'python': 'eggs'}}, 'Malformed Python class name: Expected '
                                    '"module:Class"'),
-    ({'spam': {'python': 'eggs:Bacon'}}, 'Could not import module'),
+    ({'spam': {'python': 'eggs:Bacon'}}, 'Could not import module: '
+                                         "No module named 'eggs'"),
     ({'spam': {'python': 'example_sim:Bacon'}}, 'Class not found in module'),
     ({'spam': {'cmd': 'foo'}}, "No such file or directory: 'foo'"),
     ({'spam': {'cmd': 'python', 'cwd': 'bar'}}, "No such file or directory: "

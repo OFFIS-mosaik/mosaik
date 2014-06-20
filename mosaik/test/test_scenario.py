@@ -139,9 +139,10 @@ def test_world_connect_wrong_attr_names(world):
     assert str(err.value) == ('At least on attribute does not exist: '
                               'Entity(ExampleSim-1, 0.0, B).val')
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
-                        ('dummy_out', 'onoes'))
+                        'onoes')
     assert str(err.value) == ('At least on attribute does not exist: '
                               'Entity(ExampleSim-0, 0.0, A).val, '
+                              'Entity(ExampleSim-0, 0.0, A).onoes, '
                               'Entity(ExampleSim-1, 0.0, B).onoes')
     assert world.df_graph.edges() == []
     assert world._df_outattr == {}

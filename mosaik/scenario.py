@@ -135,7 +135,8 @@ class World:
         """Connect the *src* entity to *dest* entity.
 
         Establish a dataflow for each ``(src_attr, dest_attr)`` tuple in
-        *attr_pairs*.
+        *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
+        you can optionally only pass one of them as a single string.
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
         the same simulator instance, if at least one (src. or dest.) attribute
@@ -150,6 +151,9 @@ class World:
         if src.sid == dest.sid:
             raise ScenarioError('Cannot connect entities sharing the same '
                                 'simulator.')
+
+        # Expand single attributes "attr" to ("attr", "attr") tuples:
+        attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
 
         missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
