@@ -133,14 +133,14 @@ def test_world_connect_wrong_attr_names(world):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'))
-    assert str(err.value) == ('At least on attribute does not exist: '
+    assert str(err.value) == ('At least one attribute does not exist: '
                               'Entity(ExampleSim-0, 0.0, A).val')
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val_out', 'val'))
-    assert str(err.value) == ('At least on attribute does not exist: '
+    assert str(err.value) == ('At least one attribute does not exist: '
                               'Entity(ExampleSim-1, 0.0, B).val')
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
                         'onoes')
-    assert str(err.value) == ('At least on attribute does not exist: '
+    assert str(err.value) == ('At least one attribute does not exist: '
                               'Entity(ExampleSim-0, 0.0, A).val, '
                               'Entity(ExampleSim-0, 0.0, A).onoes, '
                               'Entity(ExampleSim-1, 0.0, B).onoes')

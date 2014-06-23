@@ -9,6 +9,7 @@ already running simulators and manage access to them.
 
 """
 import collections
+import copy
 import importlib
 import shlex
 import subprocess
@@ -114,6 +115,10 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
 
     sim = cls()
     meta = sim.init(sim_id, **sim_params)
+    # "meta" is module global and thus shared between all "LocalProcess"
+    # instances. This may leed to problems if a user modfies it, so make
+    # a deep copy of it for each instance:
+    meta = copy.deepcopy(meta)
     return LocalProcess(world, sim_id, sim, world.env, meta)
 
 
@@ -221,7 +226,6 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
     return sync_process(greeter(), world,
                         '"%s" closed its connection during its '
                         'initialization phase.' % (sim_name))
-
 
 
 def is_valid_api_version(version):
