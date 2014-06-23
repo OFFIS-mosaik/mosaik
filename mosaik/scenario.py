@@ -9,7 +9,6 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 
 """
 from collections import defaultdict
-import inspect
 import itertools
 import sys
 
@@ -74,17 +73,32 @@ class World:
     are available and how to start them. See :func:`mosaik.simmanager.start()`
     for more details.
 
+    *mosaik_config* can be a dict or list of key-value pairs to set addional
+    parameters overriding the defaults::
+
+        {
+            'addr': ('127.0.0.1', 5555),
+            'start_timeout': 2,  # seconds
+            'stop_timeout': 2,   # seconds
+        }
+
+    Here, *addr* is the network address that mosaik will bind its socket to.
+    *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
+    starting/stopping external simulator processes.
+
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
 
     """
-    def __init__(self, sim_config, execution_graph=False):
+    def __init__(self, sim_config, mosaik_config=None, execution_graph=False):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
-        self.config = base_config
+        self.config = dict(base_config)
         """The config dictionary for general mosaik settings."""
+        if mosaik_config:
+            self.config.update(mosaik_config)
 
         self.sims = {}
         """A dictionary of already started simulators instances."""
@@ -157,7 +171,7 @@ class World:
 
         missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
-            raise ScenarioError('At least on attribute does not exist: %s' %
+            raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         # Add edge and check for cycles and the dataflow graph.
