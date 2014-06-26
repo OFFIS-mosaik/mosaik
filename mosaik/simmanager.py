@@ -424,7 +424,7 @@ class MosaikRemote:
             lambda: collections.defaultdict(list))
         for full_id, attr_names in attrs.items():
             data[full_id] = {}
-            sid, eid = full_id.split('/')
+            sid, eid = full_id.split('/', 1)
             for attr in attr_names:
                 try:
                     data[full_id][attr] = cache_slice[sid][eid][attr]
