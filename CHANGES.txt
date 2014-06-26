@@ -1,6 +1,40 @@
 Changelog
 =========
 
+2.0a3 – 2014-06-26
+------------------
+
+- [NEW] Hierarchical entities: Entities can now have a list of child entities
+  (`issue #14`_).
+- [NEW] The ``World`` class now has a ``get_data()`` method that allows you to
+  get data from entities while creating a scenario.
+- [NEW] ``World.connect(a, b, ('X', 'X'))`` can now be simplified to
+  ``World.connect(a, b, 'X')``.
+- [NEW] Attribute ``Entity.full_id`` which uniquely identifies an entity:
+  ``'<sid>/<eid>'``
+- [NEW] Attribute ``ModelFactory.meta`` which is the meta data dictionary of
+  a simulator.
+- [NEW] ``World()`` now accepts a configuration dictionary which can, e.g.,
+  specify the network address for mosaik.
+- [NEW] Overview section for the docs
+- [NEW] Description of the mosaik API in the docs
+- [CHANGE] When you create entities, mosaik checks if the model parameters
+  actually exists and raises an error if not (`issue #9`_).
+- [CHANGE] The mosaik API’s ``init()`` function now receives the simulator ID
+  as first argument (`issue #15`_).
+- [CHANGE] The behavior of the ``get_related_entities()`` RPC that simulators
+  can perform has been changed.
+- [CHANGE] Various internal improvements
+- [FIX] `issue #18`_. Improved the error message if a Python simulator could
+  not be imported.
+- [REMOVED] Attribute ``Entity.rel``.
+
+.. _`issue #9`: https://bitbucket.org/mosaik/mosaik/issue/9/
+.. _`issue #14`: https://bitbucket.org/mosaik/mosaik/issue/14/
+.. _`issue #15`: https://bitbucket.org/mosaik/mosaik/issue/15/
+.. _`issue #18`: https://bitbucket.org/mosaik/mosaik/issue/18/
+
+
 2.0a2 – 2014-05-05
 ------------------
 

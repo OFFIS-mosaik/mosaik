@@ -13,9 +13,9 @@ setup(
     url='https://moaik.offis.de',
     install_requires=[
         'networkx>=1.8.1',
-        'mosaik-api>=2.0a1',
-        'simpy>=3.0.4',
-        'simpy.io>=0.1',
+        'mosaik-api>=2.0a3',
+        'simpy>=3.0.5',
+        'simpy.io>=0.2',
     ],
     packages=find_packages(),
     include_package_data=True,
