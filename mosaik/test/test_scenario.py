@@ -90,10 +90,10 @@ def test_world_connect(world):
         'ExampleSim-1': {},
     }
     assert world.entity_graph.adj == {
-        'ExampleSim-0/' + a[0].eid: {'ExampleSim-1/' + b[0].eid: {}},
-        'ExampleSim-1/' + b[0].eid: {'ExampleSim-0/' + a[0].eid: {}},
-        'ExampleSim-0/' + a[1].eid: {'ExampleSim-1/' + b[1].eid: {}},
-        'ExampleSim-1/' + b[1].eid: {'ExampleSim-0/' + a[1].eid: {}},
+        'ExampleSim-0.' + a[0].eid: {'ExampleSim-1.' + b[0].eid: {}},
+        'ExampleSim-1.' + b[0].eid: {'ExampleSim-0.' + a[0].eid: {}},
+        'ExampleSim-0.' + a[1].eid: {'ExampleSim-1.' + b[1].eid: {}},
+        'ExampleSim-1.' + b[1].eid: {'ExampleSim-0.' + a[1].eid: {}},
     }
     assert world._df_outattr == {
         'ExampleSim-0': {
@@ -164,8 +164,8 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-1': {},
     }
     assert world.entity_graph.adj == {
-        'ExampleSim-0/' + a.eid: {'ExampleSim-1/' + b.eid: {}},
-        'ExampleSim-1/' + b.eid: {'ExampleSim-0/' + a.eid: {}},
+        'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
+        'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
     assert world._df_outattr == {}
 
@@ -281,11 +281,11 @@ def test_model_mock_entity_graph(world):
     assert world.entity_graph.adj == {}
     fac.A.create(2)
     assert world.entity_graph.adj == {
-        'E0/0': {'E0/1': {}},
-        'E0/1': {'E0/0': {}},
+        'E0.0': {'E0.1': {}},
+        'E0.1': {'E0.0': {}},
     }
-    assert world.entity_graph.node['E0/0']['type'] == 'A'
-    assert world.entity_graph.node['E0/1']['type'] == 'A'
+    assert world.entity_graph.node['E0.0']['type'] == 'A'
+    assert world.entity_graph.node['E0.1']['type'] == 'A'
 
 
 def test_world_get_data(world):

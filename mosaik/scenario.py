@@ -27,6 +27,8 @@ base_config = {
     'stop_timeout': 2,  # seconds
 }
 
+FULL_ID = simmanager.FULL_ID
+
 
 class Entity:
     """An entity represents an instance of a simulation model within mosaik."""
@@ -50,8 +52,8 @@ class Entity:
 
     @property
     def full_id(self):
-        """Full, globally unique entity id ``sid/eid``."""
-        return '%s/%s' % (self.sid, self.eid)
+        """Full, globally unique entity id ``sid.eid``."""
+        return FULL_ID % (self.sid, self.eid)
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
@@ -186,8 +188,7 @@ class World:
         dfs.append((src.eid, dest.eid, attr_pairs))
 
         # Add relation in entity_graph
-        self.entity_graph.add_edge('%s/%s' % (src.sid, src.eid),
-                                   '%s/%s' % (dest.sid, dest.eid))
+        self.entity_graph.add_edge(src.full_id, dest.full_id)
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
@@ -388,10 +389,9 @@ class ModelMock:
                             self._sim)
 
             entity_set.append(entity)
-            entity_graph.add_node('%s/%s' % (sim_id, e['eid']), type=e['type'])
+            entity_graph.add_node(entity.full_id, type=e['type'])
             for rel in e['rel']:
-                entity_graph.add_edge('%s/%s' % (sim_id, e['eid']),
-                                      '%s/%s' % (sim_id, rel))
+                entity_graph.add_edge(entity.full_id, FULL_ID % (sim_id, rel))
 
         return entity_set
 

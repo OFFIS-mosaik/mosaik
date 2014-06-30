@@ -24,6 +24,10 @@ from mosaik.util import sync_process
 import mosaik
 
 
+FULL_ID_SEP = '.'  # Separator for full entity IDs
+FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
+
+
 def start(world, sim_name, sim_id, sim_params):
     """Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the parameters of the
@@ -361,34 +365,34 @@ class MosaikRemote:
 
             {
                 'nodes': {
-                    'sid_0/eid_0': {'type': 'A'},
-                    'sid_0/eid_1': {'type': 'B'},
-                    'sid_1/eid_0': {'type': 'C'},
+                    'sid_0.eid_0': {'type': 'A'},
+                    'sid_0.eid_1': {'type': 'B'},
+                    'sid_1.eid_0': {'type': 'C'},
                 },
                 'edges': [
-                    ['sid_0/eid_0', 'sid_1/eid0', {}],
-                    ['sid_0/eid_1', 'sid_1/eid0', {}],
+                    ['sid_0.eid_0', 'sid_1.eid0', {}],
+                    ['sid_0.eid_1', 'sid_1.eid0', {}],
                 ],
             }
 
-        If *entities* is a single string (e.g., ``sid_1/eid_0``), return a dict
+        If *entities* is a single string (e.g., ``sid_1.eid_0``), return a dict
         containing all entities related to that entity::
 
             {
-                'sid_0/eid_0': {'type': 'A'},
-                'sid_0/eid_1': {'type': 'B'},
+                'sid_0.eid_0': {'type': 'A'},
+                'sid_0.eid_1': {'type': 'B'},
             }
 
-        If *entities* is a list of entity IDs (e.g., ``['sid_0/eid_0',
-        'sid_0/eid_1']``), return a dict mapping each entity to a dict of
+        If *entities* is a list of entity IDs (e.g., ``['sid_0.eid_0',
+        'sid_0.eid_1']``), return a dict mapping each entity to a dict of
         related entities::
 
             {
-                'sid_0/eid_0': {
-                    'sid_0/eid_1': {'type': 'B'},
+                'sid_0.eid_0': {
+                    'sid_0.eid_1': {'type': 'B'},
                 },
-                'sid_0/eid_1': {
-                    'sid_0/eid_1': {'type': 'B'},
+                'sid_0.eid_1': {
+                    'sid_0.eid_1': {'type': 'B'},
                 },
             }
 
@@ -409,7 +413,7 @@ class MosaikRemote:
         """Return the data for the requested attributes *attrs*.
 
         Attributes is a dict of (fully qualified) entity IDs mapping to lists
-        of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
+        of attribute names (``{'sid.eid': ['attr1', 'attr2']}``).
 
         The return value is a dict mapping the input entity IDs to data
         dictionaries mapping attribute names to there respective values.
@@ -424,7 +428,7 @@ class MosaikRemote:
             lambda: collections.defaultdict(list))
         for full_id, attr_names in attrs.items():
             data[full_id] = {}
-            sid, eid = full_id.split('/', 1)
+            sid, eid = full_id.split(FULL_ID_SEP, 1)
             for attr in attr_names:
                 try:
                     data[full_id][attr] = cache_slice[sid][eid][attr]
@@ -439,7 +443,7 @@ class MosaikRemote:
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
                 # to update the dict in that case.
-                data.setdefault('%s/%s' % (sid, eid), {}).update(vals)
+                data.setdefault(FULL_ID % (sid, eid), {}).update(vals)
 
         return data
 
@@ -447,14 +451,14 @@ class MosaikRemote:
     def set_data(self, data):
         """Set *data* as input data for all affected simulators.
 
-        *data* is a dictionary mapping *sim_id/entity_id* paths to
-        dictionaries of attributes and values (``{'sid/eid': {'attr1': 'val1',
+        *data* is a dictionary mapping *sim_id.entity_id* paths to
+        dictionaries of attributes and values (``{'sid.eid': {'attr1': 'val1',
         'attr2': 'val2'}}``)
 
         """
         sims = self.world.sims
         for full_id, attributes in data.items():
-            sid, eid = full_id.split('/', 1)
+            sid, eid = full_id.split(FULL_ID_SEP, 1)
             inputs = sims[sid].input_buffer.setdefault(eid, {})
             for attr, val in attributes.items():
                 # If multiple controlstrategies want to set the same attribute,

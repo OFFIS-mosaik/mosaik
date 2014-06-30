@@ -268,37 +268,37 @@ def _rpc_get_related_entities(mosaik, world):
     entities['edges'].sort()
     assert entities == {
         'nodes': {
-            'X/0': {'type': 'A'},
-            'X/1': {'type': 'A'},
-            'X/2': {'type': 'A'},
-            'X/3': {'type': 'A'},
+            'X.0': {'type': 'A'},
+            'X.1': {'type': 'A'},
+            'X.2': {'type': 'A'},
+            'X.3': {'type': 'A'},
         },
         'edges': [
-            ['X/0', 'X/1', {}],
-            ['X/0', 'X/2', {}],
-            ['X/1', 'X/2', {}],
-            ['X/2', 'X/3', {}],
+            ['X.0', 'X.1', {}],
+            ['X.0', 'X.2', {}],
+            ['X.1', 'X.2', {}],
+            ['X.2', 'X.3', {}],
         ],
     }
 
     # Single string yields dict with related entities
-    entities = yield mosaik.get_related_entities('X/0')
+    entities = yield mosaik.get_related_entities('X.0')
     assert entities == {
-        'X/1': {'type': 'A'},
-        'X/2': {'type': 'A'},
+        'X.1': {'type': 'A'},
+        'X.2': {'type': 'A'},
     }
 
     # List of strings yields dicts with related entities grouped by input ids
-    entities = yield mosaik.get_related_entities(['X/1', 'X/2'])
+    entities = yield mosaik.get_related_entities(['X.1', 'X.2'])
     assert entities == {
-        'X/1': {
-            'X/0': {'type': 'A'},
-            'X/2': {'type': 'A'},
+        'X.1': {
+            'X.0': {'type': 'A'},
+            'X.2': {'type': 'A'},
         },
-        'X/2': {
-            'X/0': {'type': 'A'},
-            'X/1': {'type': 'A'},
-            'X/3': {'type': 'A'},
+        'X.2': {
+            'X.0': {'type': 'A'},
+            'X.1': {'type': 'A'},
+            'X.3': {'type': 'A'},
         },
     }
 
@@ -306,19 +306,19 @@ def _rpc_get_related_entities(mosaik, world):
 def _rpc_get_data(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
     RPC."""
-    data = yield mosaik.get_data({'X/2': ['attr']})
-    assert data == {'X/2': {'attr': 'val'}}
+    data = yield mosaik.get_data({'X.2': ['attr']})
+    assert data == {'X.2': {'attr': 'val'}}
 
 
 def _rpc_set_data(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC."""
-    yield mosaik.set_data({'X/2': {'val': 23}})
+    yield mosaik.set_data({'X.2': {'val': 23}})
     assert world.sims['X'].input_buffer == {
         '2': {'val': [23]},
     }
 
-    yield mosaik.set_data({'X/2': {'val': 42}})
+    yield mosaik.set_data({'X.2': {'val': 42}})
     assert world.sims['X'].input_buffer == {
         '2': {'val': [42]},
     }
@@ -336,7 +336,7 @@ def test_mosaik_remote(rpc):
     env = world.env
 
     edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
-    edges = [('X/%s' % x, 'X/%s' % y) for x, y in edges]
+    edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
     world.entity_graph.add_edges_from(edges)
     for node in world.entity_graph:
         world.entity_graph.add_node(node, type='A')
