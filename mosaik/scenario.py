@@ -272,14 +272,18 @@ class World:
         """Check if *src* and *dest* have the attributes in *attr_pairs*.
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
-        not exist.
+        not exist. Exception: If the meta data for *dest* declares
+        ``'any_inputs': True``.
 
         """
+        entities = [src, dest]
+        emeta = [e.sim.meta['models'][e.type] for e in entities]
+        any_inputs = [False, emeta[1].get('any_inputs', False)]
         attr_errors = []
         for attr_pair in attr_pairs:
-            for entity, attr in zip([src, dest], attr_pair):
-                if attr not in entity.sim.meta['models'][entity.type]['attrs']:
-                    attr_errors.append((entity, attr))
+            for i, attr in enumerate(attr_pair):
+                if not (any_inputs[i] or attr in emeta[i]['attrs']):
+                    attr_errors.append((entities[i], attr))
         return attr_errors
 
 

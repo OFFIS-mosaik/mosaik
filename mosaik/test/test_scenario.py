@@ -170,6 +170,32 @@ def test_world_connect_no_attrs(world):
     assert world._df_outattr == {}
 
 
+def test_world_connect_any_inputs(world):
+    """Check if a model sets ``'any_inputs': True`` in its meta data,
+    everything can be connected to it."""
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    b.sim.meta['models']['B']['any_inputs'] = True
+    world.connect(a, b, 'val_out')
+
+    assert world.df_graph.adj == {
+        'ExampleSim-0': {
+            'ExampleSim-1': {
+                'async_requests': False,
+                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+            },
+        },
+        'ExampleSim-1': {},
+    }
+    assert world.entity_graph.adj == {
+        'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
+        'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
+    }
+    assert world._df_outattr == {
+        'ExampleSim-0': {'0.0': ['val_out']},
+    }
+
+
 def test_world_connect_async_requests(world):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
