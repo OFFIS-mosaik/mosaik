@@ -1,9 +1,9 @@
 from unittest import mock
 
+from mosaik import scenario, simulator, simmanager
 import pytest
 
-from mosaik import scenario, simulator, simmanager
-from mosaik.test.util import SimMock
+from .util import SimMock
 
 
 @pytest.yield_fixture

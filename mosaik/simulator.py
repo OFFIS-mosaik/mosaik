@@ -156,6 +156,14 @@ def get_input_data(world, sim):
             ...
         }
 
+        {
+            'eid': {
+                'attrname': {'src_eid_0': val_0, ... 'src_eid_n': val_n},
+                ...
+            },
+            ...
+        }
+
     For every entity, there is an entry in the dict and each entry is itself
     a dict with attributes and a list of values. This is, because we may have
     inputs from multiple simulators (e.g., different consumers that provide

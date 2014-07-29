@@ -1,10 +1,10 @@
 from unittest import mock
 
-import pytest
-
 from mosaik import scenario, simmanager, simulator
 from mosaik.exceptions import ScenarioError
-from mosaik.test.util import SimMock
+import pytest
+
+from .util import SimMock
 
 
 sim_config = {
