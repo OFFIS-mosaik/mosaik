@@ -416,7 +416,8 @@ class MosaikRemote:
         of attribute names (``{'sid.eid': ['attr1', 'attr2']}``).
 
         The return value is a dict mapping the input entity IDs to data
-        dictionaries mapping attribute names to there respective values.
+        dictionaries mapping attribute names to there respective values
+        (``{'sid.eid': {'attr1': val1, 'attr2': val2}}``).
 
         """
         sim = self.world.sims[self.sim_id]
@@ -426,6 +427,7 @@ class MosaikRemote:
         data = {}
         missing = collections.defaultdict(
             lambda: collections.defaultdict(list))
+        # Try to get data from cache
         for full_id, attr_names in attrs.items():
             data[full_id] = {}
             sid, eid = full_id.split(FULL_ID_SEP, 1)
@@ -435,6 +437,7 @@ class MosaikRemote:
                 except KeyError:
                     missing[sid][eid].append(attr)
 
+        # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
             assert (dep.next_step > sim.last_step and
