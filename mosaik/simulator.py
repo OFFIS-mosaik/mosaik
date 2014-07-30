@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
+from mosaik.simmanager import FULL_ID
 
 
 def run(world, until):
@@ -150,14 +151,6 @@ def get_input_data(world, sim):
 
         {
             'eid': {
-                'attrname': [val_0, ..., val_n],
-                ...
-            },
-            ...
-        }
-
-        {
-            'eid': {
                 'attrname': {'src_eid_0': val_0, ... 'src_eid_n': val_n},
                 ...
             },
@@ -180,9 +173,9 @@ def get_input_data(world, sim):
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
                 v = world._df_cache[sim.next_step][src_sid][src_eid][src_attr]
-                input_data.setdefault(dest_eid, {}) \
-                          .setdefault(dest_attr, []) \
-                          .append(v)
+                vals = input_data.setdefault(dest_eid, {}) \
+                                 .setdefault(dest_attr, {})
+                vals[FULL_ID % (src_sid, src_eid)] = v
 
     return input_data
 

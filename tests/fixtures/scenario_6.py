@@ -56,8 +56,10 @@ MAS-2-3 A-0-4
 
 inputs = {
     'A-0-0': {},  # Initially, there cannot be any inputs.
-    'A-0-2': {'0.0': {'val_in': [23]}},
-    'A-0-4': {'0.0': {'val_in': [23]}},
+    'A-0-2': {'0.0': {'val_in': {'MAS-0.0': 23, 'MAS-1.0': 23,
+                                 'MAS-2.0': 23}}},
+    'A-0-4': {'0.0': {'val_in': {'MAS-0.0': 23, 'MAS-1.0': 23,
+                                 'MAS-2.0': 23}}},
 }
 
 until = 5

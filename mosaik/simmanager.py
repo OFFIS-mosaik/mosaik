@@ -454,16 +454,15 @@ class MosaikRemote:
     def set_data(self, data):
         """Set *data* as input data for all affected simulators.
 
-        *data* is a dictionary mapping *sim_id.entity_id* paths to
-        dictionaries of attributes and values (``{'sid.eid': {'attr1': 'val1',
-        'attr2': 'val2'}}``)
+        *data* is a dictionary mapping source entity IDs to destination entity
+        IDs with dictionaries of attributes and values (``{'src_full_id':
+        {'dest_full_id': {'attr1': 'val1', 'attr2': 'val2'}}}``).
 
         """
         sims = self.world.sims
-        for full_id, attributes in data.items():
-            sid, eid = full_id.split(FULL_ID_SEP, 1)
-            inputs = sims[sid].input_buffer.setdefault(eid, {})
-            for attr, val in attributes.items():
-                # If multiple controlstrategies want to set the same attribute,
-                # the last one wins and overwrites all previous values.
-                inputs[attr] = [val]
+        for src_full_id, dest in data.items():
+            for full_id, attributes in dest.items():
+                sid, eid = full_id.split(FULL_ID_SEP, 1)
+                inputs = sims[sid].input_buffer.setdefault(eid, {})
+                for attr, val in attributes.items():
+                    inputs.setdefault(attr, {})[src_full_id] = val

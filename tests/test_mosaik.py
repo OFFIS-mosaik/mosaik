@@ -43,11 +43,6 @@ def test_mosaik(fixture, sim_config):
     assert world.execution_graph.adj == expected_graph.adj
 
     for node, data in world.execution_graph.node.items():
-        # Sort lists of inputs for the assertions:
-        for eid, attrs in data['inputs'].items():
-            for v in attrs.values():
-                v.sort()
-
         assert data['inputs'] == expected_graph.node[node].get('inputs', {})
 
     for sim in world.sims.values():

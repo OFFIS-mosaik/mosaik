@@ -574,9 +574,9 @@ set_data
 
 Set *data* as input data for all affected simulators.
 
-*data* is an object mapping *sim_id/entity_id* paths to
-objects of attributes and values (``{"sid/eid": {"attr1": "val1",
-"attr2": "val2"}}``)
+*data* is an object mapping source entity IDs to objects which in turn map
+destination entity IDs to objects of attributes and values
+(``{"src_full_id": {"dest_full_id": {"attr1": "val1", "attr2": "val2"}}}``)
 
 
 Example
@@ -587,10 +587,12 @@ Request:
 .. code-block:: json
 
     [
-        "step",
+        "set_data",
         [{
-            "grid_sim_0/node_1": {"P": [20, 3.14], "Q": [3, -2.5]},
-            "grid_sim_0/node_2": {"P": [42], "Q": [-23.2]},
+            "mas_0/agent_0": {"pvsim_0/pv_0": {"P_target": 20,
+                                               "Q_target": 3.14}},
+            "mas_0/agent_1": {"pvsim_0/pv_1": {"P_target": 21,
+                                               "Q_target": 2.718}}
         }],
         {}
     ]

@@ -313,14 +313,14 @@ def _rpc_get_data(mosaik, world):
 def _rpc_set_data(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC."""
-    yield mosaik.set_data({'X.2': {'val': 23}})
+    yield mosaik.set_data({'src': {'X.2': {'val': 23}}})
     assert world.sims['X'].input_buffer == {
-        '2': {'val': [23]},
+        '2': {'val': {'src': 23}},
     }
 
-    yield mosaik.set_data({'X.2': {'val': 42}})
+    yield mosaik.set_data({'src': {'X.2': {'val': 42}}})
     assert world.sims['X'].input_buffer == {
-        '2': {'val': [42]},
+        '2': {'val': {'src': 42}},
     }
 
 
