@@ -129,6 +129,7 @@ The return value *meta* is an object with meta data about the simulator::
                 "public": true|false,
                 "params": ["param_1", ...],
                 "attrs": ["attr_1", ...],
+                "any_inputs": true|false,
             },
             ...
         }
@@ -144,7 +145,10 @@ entry *public* determines whether a model can be instantiated by a user
 (``true``) or if it is a sub-model that cannot be created directly (``false``).
 *params* is a list of parameter names that can be passed to the model when
 creating it. *attrs* is a list of attribute names that can be accessed (reading
-or writing).
+or writing). If the optional *any_inputs* flag is set to ``true``, any
+attributes can be connected to the model, even if they are not *attrs*. This
+may, for example, be useful for databases that don't know in advance which
+attributes of an entity they'll receive.
 
 
 Example
