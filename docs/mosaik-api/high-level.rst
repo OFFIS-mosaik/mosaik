@@ -142,7 +142,7 @@ Here is an example with a bit more context:
         def configure(self, args, backend, env):
             # Here you could handle additional command line arguments
 
-        def init(self):
+        def init(self, sid):
             # Initialize the simulator
             return self.meta
 
