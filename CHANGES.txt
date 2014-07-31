@@ -1,6 +1,21 @@
 Changelog
 =========
 
+2.0a4 – 2014-07-31
+------------------
+
+- [NEW] The model meta data may now contain the ``any_inputs`` which, if set
+  to ``True``, allows any attribute to be connected to that model (useful for
+  databases and alike).
+- [CHANGE] The dictionary of input values in the API's ``step()`` call now
+  also contains the source of a particular value. This is also usefull to for
+  databases. This may break existing simulators.
+- [CHANGE] "." is now used as separator in full entiy IDs instead of "/"
+  (`issue #19`_).
+
+.. _`issue #19`: https://bitbucket.org/mosaik/mosaik/issue/19/
+
+
 2.0a3 – 2014-06-26
 ------------------
 
