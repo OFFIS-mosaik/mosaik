@@ -13,11 +13,11 @@ setup(
     url='https://moaik.offis.de',
     install_requires=[
         'networkx>=1.8.1',
-        'mosaik-api>=2.0a3',
+        'mosaik-api>=2.0a4',
         'simpy>=3.0.5',
         'simpy.io>=0.2',
     ],
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests*']),
     include_package_data=True,
     entry_points={
         'console_scripts': [
