@@ -11,7 +11,7 @@ This guide contains detailed installation instructions for :ref:`linux`,
 Linux
 =====
 
-This guide is based on *(K)ubuntu 14.04 Trusty Tahr, 64bit (beta 2)*.
+This guide is based on *(K)ubuntu 14.04 Trusty Tahr, 64bit*.
 
 Mosaik and the demo scenario require `Python`__ >= 3.3. Ubuntu ships with
 Python 3.4, so everything is okay.
@@ -68,14 +68,14 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    more complicated, takes longer, recommended for development). In both cases,
    you also need to install *Mercurial*:
 
-   a. We use :program:`apt-get` to install NumPy and SciPy (as well as
+   a. We use :program:`apt-get` to install NumPy, SciPy, and h5py (as well as
       Mercurial). By default, venvs are isolated from globally installed
       packages. To make them visible, we also have to recreate the venv and set
       the ``--system-site-packages`` flag:
 
       .. code-block:: bash
 
-         $ sudo apt-get install mercurial python3-numpy python3-scipy
+         $ sudo apt-get install mercurial python3-numpy python3-scipy python3-h5py
          $ rm -rf ~/.virtualenvs/mosaik
          $ virtualenv -p /usr/bin/python3 --system-site-packages ~/.virtualenvs/mosaik
          $ source ~/.virtualenvs/mosaik/bin/activate
@@ -87,13 +87,15 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
       .. code-block:: bash
 
-         $ sudo apt-get install mercurial build-essential python3-dev gfortran libatlas-dev libatlas-base-dev
+         $ sudo apt-get install mercurial build-essential python3-dev gfortran libatlas-dev libatlas-base-dev libhdf5-dev
          $ source ~/.virtualenvs/mosaik/bin/activate
          (mosaik)$ pip install wheel
          (mosaik)$ pip wheel numpy
-         (mosaik)$ pip install wheelhouse/numpy-1.8.1-cp34-cp34m-linux_x86_64.whl
+         (mosaik)$ pip install wheelhouse/numpy-1.8.2-cp34-cp34m-linux_x86_64.whl
          (mosaik)$ pip wheel scipy
          (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-linux_x86_64.whl
+         (mosaik)$ pip wheel h5py
+         (mosaik)$ pip install wheelhouse/h5py-2.3.1-cp34-cp34m-linux_x86_64.whl
 
 2. You can now clone the `mosaik-demo repository`__ into a folder where you
    store all your code and repositories (we'll use :file:`~/Code/`):
@@ -203,13 +205,14 @@ a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
 1. To clone the demo repository, we need to install *Mercurial*. In order to
-   compile *NumPy* and *SciPy* (which are required by PYPOWER) we also need
-   to install *gfortran*. You should deactivate the venv for this:
+   compile *NumPy*, *SciPy* and *h5py* (which are required by PYPOWER and the
+   database adapter) we also need to install *gfortran*. You should deactivate
+   the venv for this:
 
    .. code-block:: bash
 
       (mosaik)$ deactivate
-      $ brew install hg gfortran
+      $ brew install hg gfortran hdf5
 
 2. For NumPy and SciPy we build binary `wheel`__ packages that we can later
    reuse without re-compiling everything. We'll store these *wheels* in
@@ -220,9 +223,11 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       $ source ~/.virtualenvs/mosaik/bin/activate
       (mosaik)$ pip install wheel
       (mosaik)$ pip wheel numpy
-      (mosaik)$ pip install wheelhouse/numpy-1.8.1-cp34-cp34m-macosx_10_9_x86_64.whl
+      (mosaik)$ pip install wheelhouse/numpy-1.8.2-cp34-cp34m-macosx_10_9_x86_64.whl
       (mosaik)$ pip wheel scipy
       (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-macosx_10_9_x86_64.whl
+      (mosaik)$ pip wheel h5py
+      (mosaik)$ pip install wheelhouse/h5py-2.3.1-cp34-cp34m-macosx_10_9_x86_64.whl
 
 2. You can now clone the `mosaik-demo repository`__ into a folder where you
    store all your code and repositories (we'll use :file:`~/Code/`):
@@ -330,19 +335,29 @@ Mosaik alone is not very useful (because it needs other simulators to perform
 a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
-1. PYPOWER requires *NumPy* and *SciPy*. Christoph Gohlke `provides`__
-   installers for them (`NumPy`__, `SciPy`__). Select the appropriate files for
-   your system (32bit or 64bit, Python version), e.g.,
-   *numpy‑MKL‑1.8.1.win‑amd64‑py3.4.exe* and
-   *scipy‑0.13.3.win‑amd64‑py3.4.exe*.
+1. PYPOWER requires *NumPy* and *SciPy* and the database adapter requires
+   *h5py*. Christoph Gohlke `provides`__ installers for them (`NumPy`__,
+   `SciPy`__, `h5py`__). Select the appropriate files for your Python
+   installation (32bit or 64bit, Python version), e.g.,
+   *numpy‑MKL‑1.8.2.win‑amd64‑py3.4.exe*,
+   *scipy‑0.13.3.win‑amd64‑py3.4.exe*, *h5py-2.3.1.win-amd64-py3.4.exe*.
+
+   .. note::
+
+      Run ``python -c "import sys; print(sys.version)"`` from the command promt
+      in order to get the system architecture and Python version.
+
+      If you have a 64bit Windows, but installed a 32bit Python, also use
+      the 32bit versions of NumPy etc.
 
    Download them into your downloads folder and install them via the following
    commands:
 
    .. code-block:: bat
 
-      (mosaik) C:\Users\yourname> easy_install Downloads\numpy-MKL-1.8.1.win-amd64-py3.4.exe
+      (mosaik) C:\Users\yourname> easy_install Downloads\numpy-MKL-1.8.2.win-amd64-py3.4.exe
       (mosaik) C:\Users\yourname> easy_install Downloads\scipy-0.13.3.win-amd64-py3.4.exe
+      (mosaik) C:\Users\yourname> easy_install Downloads\h5py-2.3.1.win-amd64-py3.4.exe
 
 2. Download and install `Mercurial`__.
 
@@ -382,5 +397,6 @@ __ https://github.com/rwl/PYPOWER
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
+__ http://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py
 __ http://mercurial.selenic.com/
 __ http://localhost:8000
