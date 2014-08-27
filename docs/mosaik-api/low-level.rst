@@ -114,11 +114,11 @@ init
 
 ::
 
-   ["init", [], {**sim_params}] -> meta
+   ["init", [sim_id], {**sim_params}] -> meta
 
-The ``init`` call is made once to initialize the simulator. It has no
-positional arguments and an arbitrary amount of keyword arguments
-(*sim_params*).
+The ``init`` call is made once to initialize the simulator. It has one
+positional argument, the simulator ID, and an arbitrary amount of keyword
+arguments (*sim_params*).
 
 The return value *meta* is an object with meta data about the simulator::
 
@@ -158,7 +158,7 @@ Request:
 
 .. code-block:: json
 
-    ["init", [], {"step_size": 60}]
+    ["init", ["PowerGridSim-0"], {"step_size": 60}]
 
 Reply:
 
@@ -285,14 +285,14 @@ be called again).
 *time* and the time retuned are integers. Their unit is *seconds* (counted from
 simulation start).
 
-*inputs* is a object of objects mapping entity IDs to attributes and lists of
-values (each simulator has do decide on its own how to reduce that list (e.g.,
+*inputs* is a dict of dicts mapping entity IDs to attributes and dicts of
+values (each simulator has do decide on its own how to reduce the values (e.g.,
 as its sum, average or maximum)::
 
     {
         "eid_1": {
-            "attr_1": [val_1_1, val_1_2, ...],
-            "attr_2": [val_2_1, val_2_2, ...],
+            "attr_1": {'src_full_id_1': val_1_1, 'src_full_id_2': val_1_2, ...},
+            "attr_2": {'src_full_id_1': val_2_1, 'src_full_id_2': val_2_2, ...},
             ...
         },
         ...
