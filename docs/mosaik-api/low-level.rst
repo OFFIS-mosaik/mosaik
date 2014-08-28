@@ -455,15 +455,15 @@ If *entitites* omitted (or ``null``), return the complete entity graph, e.g.:
 .. code-block:: json
 
    {
-         "nodes": {
-            "sid_0/eid_0": {"type": "A"},
-            "sid_0/eid_1": {"type": "B"},
-            "sid_1/eid_0": {"type": "C"},
-         },
-         "edges": [
-            ["sid_0/eid_0", "sid_1/eid0", {}],
-            ["sid_0/eid_1", "sid_1/eid0", {}],
-         ],
+       "nodes": {
+           "sid_0/eid_0": {"type": "A"},
+           "sid_0/eid_1": {"type": "B"},
+           "sid_1/eid_0": {"type": "C"},
+       },
+       "edges": [
+           ["sid_0/eid_0", "sid_1/eid0", {}],
+           ["sid_0/eid_1", "sid_1/eid0", {}],
+       ],
    }
 
 If *entities* is a single string (e.g., ``sid_1/eid_0``), return an object
@@ -472,8 +472,8 @@ containing all entities related to that entity:
 .. code-block:: json
 
    {
-         "sid_0/eid_0": {"type": "A"},
-         "sid_0/eid_1": {"type": "B"},
+       "sid_0/eid_0": {"type": "A"},
+       "sid_0/eid_1": {"type": "B"},
    }
 
 If *entities* is a list of entity IDs (e.g., ``["sid_0/eid_0",
@@ -483,12 +483,12 @@ entities:
 .. code-block:: json
 
    {
-         "sid_0/eid_0": {
-            "sid_0/eid_1": {"type": "B"},
-         },
-         "sid_0/eid_1": {
-            "sid_0/eid_1": {"type": "B"},
-         },
+       "sid_0/eid_0": {
+           "sid_0/eid_1": {"type": "B"},
+       },
+       "sid_0/eid_1": {
+           "sid_0/eid_1": {"type": "B"},
+       },
    }
 
 
@@ -499,21 +499,21 @@ Request:
 
 .. code-block:: json
 
-    ["get_related_entities", [["grid_sim_0/node_0", "grid_sim_0/node_1"]] {}]
+   ["get_related_entities", [["grid_sim_0/node_0", "grid_sim_0/node_1"]] {}]
 
 Reply:
 
 .. code-block:: json
 
-    {
-        "grid_sim_0/node_0": {
-            "grid_sim_0/branch_0": {"type": "Branch"},
-            "pv_sim_0/pv_0": {"type": "PV"}
-        },
-        "grid_sim_0/node_1": {
-            "grid_sim_0/branch_0": {"type": "Branch"}
-        }
-    }
+   {
+       "grid_sim_0/node_0": {
+           "grid_sim_0/branch_0": {"type": "Branch"},
+           "pv_sim_0/pv_0": {"type": "PV"}
+       },
+       "grid_sim_0/node_1": {
+           "grid_sim_0/branch_0": {"type": "Branch"}
+       }
+   }
 
 
 .. _rpc.get_data:
@@ -525,26 +525,26 @@ get_data
 
    ["get_data", [attrs], {}] -> data
 
-Return the data for the requested attributes in *attrs*.
+Get the data for the requested attributes in *attrs*.
 
-*outputs* is an object mapping entity IDs to lists of attribute names whose
-values are requested::
+*attrs* is an object of (fully qualified) entity IDs mapping to lists of
+attribute names::
 
     {
         "sim_id/eid_1": ["attr_1", "attr_2", ...],
         ...
     }
 
-The return value needs to be an object of objects mapping entity IDs and
-attribute names to their values::
+The return value is an object mapping the input entity IDs to data objects
+mapping attribute names to there respective values::
 
     {
         "sim_id/eid_1: {
-           "attr_1": "val_1",
-           "attr_2": "val_2",
-           ...
+            "attr_1": "val_1",
+            "attr_2": "val_2",
+            ...
         },
-        ...
+         ...
     }
 
 

@@ -412,12 +412,12 @@ class MosaikRemote:
     def get_data(self, attrs):
         """Return the data for the requested attributes *attrs*.
 
-        Attributes is a dict of (fully qualified) entity IDs mapping to lists
-        of attribute names (``{'sid.eid': ['attr1', 'attr2']}``).
+        *attrs* is a dict of (fully qualified) entity IDs mapping to lists
+        of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
 
         The return value is a dict mapping the input entity IDs to data
         dictionaries mapping attribute names to there respective values
-        (``{'sid.eid': {'attr1': val1, 'attr2': val2}}``).
+        (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
 
         """
         sim = self.world.sims[self.sim_id]
