@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
+from mosaik.exceptions import SimulationError
 from mosaik.simmanager import FULL_ID
 
 
@@ -24,29 +25,34 @@ def run(world, until):
 
 def sim_process(world, sim, until):
     """SimPy simulation process for a certain simulator *sim*."""
-    keep_running = get_keep_running_func(world, sim, until)
-    while keep_running():
-        try:
-            yield step_required(world, sim)
-        except StopIteration:
-            # We've been woken up by a terminating successor.
-            # Check if we can also stop or need to keep running.
-            continue
+    try:
+        keep_running = get_keep_running_func(world, sim, until)
+        while keep_running():
+            try:
+                yield step_required(world, sim)
+            except StopIteration:
+                # We've been woken up by a terminating successor.
+                # Check if we can also stop or need to keep running.
+                continue
 
-        yield wait_for_dependencies(world, sim)
-        input_data = get_input_data(world, sim)
-        yield from step(world, sim, input_data)
-        yield from get_outputs(world, sim)
-        world.sim_progress = get_progress(world.sims, until)
-        print('Progress: %.2f%%' % world.sim_progress, end='\r')
+            yield wait_for_dependencies(world, sim)
+            input_data = get_input_data(world, sim)
+            yield from step(world, sim, input_data)
+            yield from get_outputs(world, sim)
+            world.sim_progress = get_progress(world.sims, until)
+            print('Progress: %.2f%%' % world.sim_progress, end='\r')
 
-    # Before we stop, we wake up all dependencies who may be waiting for us.
-    # They can then decide whether to also stop of if there's another process
-    # left for which they need to provide data.
-    for pre_sid in world.df_graph.predecessors_iter(sim.sid):
-        evt = world.sims[pre_sid].step_required
-        if not evt.triggered:
-            evt.fail(StopIteration())
+        # Before we stop, we wake up all dependencies who may be waiting for
+        # us. They can then decide whether to also stop of if there's another
+        # process left for which they need to provide data.
+        for pre_sid in world.df_graph.predecessors_iter(sim.sid):
+            evt = world.sims[pre_sid].step_required
+            if not evt.triggered:
+                evt.fail(StopIteration())
+
+    except ConnectionError as e:
+        raise SimulationError('Simulator "%s" closed its connection.' %
+                              sim.sid, e)
 
 
 def get_keep_running_func(world, sim, until):

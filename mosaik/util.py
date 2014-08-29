@@ -7,6 +7,8 @@ import sys
 
 from simpy.io.network import RemoteException
 
+from mosaik.exceptions import SimulationError
+
 
 class OrderedDefaultdict(collections.OrderedDict):
     """Mixes :class:`~collections.OrderedDict` with
@@ -28,7 +30,7 @@ class OrderedDefaultdict(collections.OrderedDict):
         return default
 
 
-def sync_process(generator, world, err_msg=None, ignore_errors=False):
+def sync_process(generator, world, *, ignore_errors=False):
     """Synchronously execute a SimPy process defined by the generator object
     *generator*.
 
@@ -42,30 +44,18 @@ def sync_process(generator, world, err_msg=None, ignore_errors=False):
     """
     try:
         return world.env.run(until=world.env.process(generator))
-    except ConnectionResetError:
+    except (ConnectionError, RemoteException, SimulationError) as exc:
         if ignore_errors:
             # Avoid endless recursions when called from "world.shutdown()"
             return
-        print_exception_and_exit(err_msg, world.shutdown)
-    except RemoteException as e:
-        if ignore_errors:
-            # Avoid endless recursions when called from "world.shutdown()"
-            return
-        print_exception_and_exit(e, world.shutdown)
 
+        if type(exc) is RemoteException:
+            print('RemoteException:')
+            print(exc.remote_traceback)
+            print('————————————————')
+        else:
+            print('ERROR: %s' % exc)
 
-def print_exception_and_exit(error, callback=None):
-    """Print the error defined by the string or exception *error*, optionally
-    calling *callback*."""
-    if type(error) is RemoteException:
-        print('RemoteException:')
-        print(error.remote_traceback)
-        print('————————————————')
-    else:
-        print('ERROR:', error)
-
-    if callback:
-        callback()
-
-    print('Mosaik terminating')
-    sys.exit(1)
+        print('Mosaik terminating')
+        world.shutdown()
+        sys.exit(1)

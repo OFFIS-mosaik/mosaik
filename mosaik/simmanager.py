@@ -19,7 +19,7 @@ from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
 import mosaik_api
 
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 import mosaik
 
@@ -201,8 +201,8 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
             accept_con = world.srv_sock.accept()
             results = yield accept_con | start_timeout
             if start_timeout in results:
-                raise ScenarioError('Simulator "%s" did not connect to mosaik '
-                                    'in time.' % sim_name)
+                raise SimulationError('Simulator "%s" did not connect to '
+                                      'mosaik in time.' % sim_name)
             else:
                 sock = results[accept_con]
         else:
@@ -210,26 +210,29 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
             try:
                 sock = backend.TCPSocket.connection(world.env, addr)
             except (ConnectionError, OSError):
-                raise ScenarioError('Simulator "%s" could not be started: '
-                                    'Could not connect to "%s"' %
-                                    (sim_name, sim_config['connect']))
+                raise SimulationError('Simulator "%s" could not be started: '
+                                      'Could not connect to "%s"' %
+                                      (sim_name, sim_config['connect']))
 
         rpc_con = JsonRpc(Packet(sock, max_packet_size=1024*1024))
 
         # Make init() API call and wait for sim_name's meta data.
         init = rpc_con.remote.init(sim_id, **sim_params)
-        results = yield init | start_timeout
+        try:
+            results = yield init | start_timeout
+        except ConnectionError as e:
+            raise SimulationError('Simulator "%s" closed its connection during'
+                                  ' the init() call.' % sim_name, e)
+
         if start_timeout in results:
-            raise ScenarioError('Simulator "%s" did not reply to the init() '
-                                'call in time.' % sim_name)
+            raise SimulationError('Simulator "%s" did not reply to the init() '
+                                  'call in time.' % sim_name)
         else:
             meta = results[init]
 
         return RemoteProcess(world, sim_id, proc, rpc_con, meta)
 
-    return sync_process(greeter(), world,
-                        '"%s" closed its connection during its '
-                        'initialization phase.' % (sim_name))
+    return sync_process(greeter(), world)
 
 
 def is_valid_api_version(version):

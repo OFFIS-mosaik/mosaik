@@ -9,7 +9,7 @@ import pytest
 
 from mosaik import scenario
 from mosaik import simmanager
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import ScenarioError, SimulationError
 import mosaik
 import mosaik_api
 
@@ -94,12 +94,13 @@ def test_start_proc(world):
     sp.stop()
 
 
-def test_start_proc_timeout_accept(world):
+def test_start_proc_timeout_accept(world, capsys):
     world.config['start_timeout'] = 0.1
-    exc_info = pytest.raises(ScenarioError, simmanager.start, world, 'Fail',
-                             '', {})
-    assert str(exc_info.value) == ('Simulator "Fail" did not connect to '
-                                   'mosaik in time.')
+    pytest.raises(SystemExit, simmanager.start, world, 'Fail', '', {})
+    out, err = capsys.readouterr()
+    assert out == ('ERROR: Simulator "Fail" did not connect to mosaik in '
+                   'time.\nMosaik terminating\n')
+    assert err == ''
 
 
 def test_start_connect(world):
@@ -129,7 +130,7 @@ def test_start_connect(world):
     sock.close()
 
 
-def test_start_connect_timeout_init(world):
+def test_start_connect_timeout_init(world, capsys):
     """Test connecting to an already running simulator."""
     world.config['start_timeout'] = 0.1
     env = world.env
@@ -144,10 +145,13 @@ def test_start_connect_timeout_init(world):
         channel.close()
 
     def starter():
-        exc_info = pytest.raises(ScenarioError, simmanager.start, world,
-                                 'ExampleSimC', '', {})
-        assert str(exc_info.value) == ('Simulator "ExampleSimC" did not reply '
-                                       'to the init() call in time.')
+        pytest.raises(SystemExit, simmanager.start, world, 'ExampleSimC',
+                      '', {})
+        out, err = capsys.readouterr()
+        assert out == ('ERROR: Simulator "ExampleSimC" did not reply to the '
+                       'init() call in time.\nMosaik terminating\n')
+        assert err == ''
+
         yield env.event().succeed()
 
     sim_proc = env.process(sim())
@@ -199,18 +203,41 @@ def test_start_connect_stop_timeout(world):
     ({'spam': {'cmd': 'python', 'cwd': 'bar'}}, "No such file or directory: "
                                                 "'bar'"),
     ({'spam': {'connect': 'eggs'}}, 'Could not parse address "eggs"'),
-    ({'spam': {'connect': 'eggs:23'}}, 'Could not connect to "eggs:23"'),
 ])
-def test_start__error(sim_config, err_msg):
+def test_start_user_error(sim_config, err_msg):
     """Test failure at starting an in-proc simulator."""
     world = scenario.World(sim_config)
     with pytest.raises(ScenarioError) as exc_info:
         simmanager.start(world, 'spam', '', {})
-    if not sys.platform == 'win32':  # pragma: no cover
+    if sys.platform != 'win32':  # pragma: no cover
         # Windows has strange error messages which do not want to check :(
         assert str(exc_info.value) == ('Simulator "spam" could not be '
                                        'started: ' + err_msg)
     world.shutdown()
+
+
+def test_start_sim_error(capsys):
+    """Test connection failures of external processes."""
+    world = scenario.World({'spam': {'connect': 'foo:1234'}})
+    pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
+                  {'foo': 'bar'})
+
+    out, err = capsys.readouterr()
+    assert out == ('ERROR: Simulator "spam" could not be started: Could not '
+                   'connect to "foo:1234"\nMosaik terminating\n')
+    assert err == ''
+
+
+def test_start_init_error(capsys):
+    """Test simulator crashing during init()."""
+    world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
+    pytest.raises(SystemExit, simmanager.start, world, 'spam', '', {'foo': 3})
+
+    out, err = capsys.readouterr()
+    assert out == ('ERROR: [Errno 104] Connection reset by peer: Simulator '
+                   '"spam" closed its connection during the init() call.\n'
+                   'Mosaik terminating\n')
+    assert err == ''
 
 
 @pytest.mark.parametrize(['version', 'valid'], [

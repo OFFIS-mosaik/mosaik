@@ -3,7 +3,7 @@ from unittest import mock
 from simpy.io.network import RemoteException
 import pytest
 
-from mosaik import scenario, util
+from mosaik import exceptions, scenario, util
 
 
 def test_ordered_default_dict():
@@ -27,10 +27,12 @@ def test_ordered_default_dict():
 
 
 @pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError(),
+    (ConnectionResetError('Spam'),
      'ERROR: Spam\nMosaik terminating\n'),
     (RemoteException('spam', 'eggs'),
      'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
+    (exceptions.SimulationError('spam'),
+     'ERROR: spam\nMosaik terminating\n'),
 
 ])
 def test_sync_process_error(error, errmsg, capsys):
@@ -38,13 +40,24 @@ def test_sync_process_error(error, errmsg, capsys):
     world = scenario.World({})
 
     def gen():
+        raise error
         yield world.env.event()
 
-    with mock.patch.object(world.env, 'run', side_effect=error):
-        pytest.raises(SystemExit, util.sync_process, gen(), world, 'Spam')
+    # with mock.patch.object(world.env, 'run', side_effect=error):
+    pytest.raises(SystemExit, util.sync_process, gen(), world)
 
     world.shutdown()
 
     out, err = capsys.readouterr()
     assert out == errmsg
     assert err == ''
+
+
+def test_sync_process_ignore_errors():
+    world = scenario.World({})
+
+    def gen():
+        raise ConnectionError()
+        yield world.env.event()
+
+    util.sync_process(gen(), world, ignore_errors=True)

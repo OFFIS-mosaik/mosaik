@@ -17,7 +17,7 @@ import networkx
 from mosaik import simmanager
 from mosaik import simulator
 from mosaik import util
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import ScenarioError, SimulationError
 
 
 backend = simmanager.backend
@@ -185,7 +185,18 @@ class World:
         def request_data():
             requests = {self.sims[sid].get_data(outputs): sid
                         for sid, outputs in outputs_by_sim.items()}
-            results = yield self.env.all_of(requests)
+            try:
+                results = yield self.env.all_of(requests)
+            except ConnectionError as e:
+                msg = ('Simulator "%s" closed its connection while executing '
+                       '"World.get_data()".')
+                # Try to find the simulator that closed its connection
+                for req, sid in requests.items():
+                    if req.triggered and not req.ok:
+                        raise SimulationError(msg % sid, e) from None
+                else:
+                    raise RuntimeError('Could not determine which simulator '
+                                       'closed its connection.')
 
             results_by_sim = {}
             for request, value in results.items():
@@ -194,9 +205,7 @@ class World:
 
             return results_by_sim
 
-        results_by_sim = util.sync_process(request_data(), self,
-                                           'A simulator closed its connection '
-                                           'during "get_data()".')
+        results_by_sim = util.sync_process(request_data(), self)
         results = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
@@ -216,8 +225,7 @@ class World:
             import mosaik._debug as dbg
             dbg.enable()
         try:
-            util.sync_process(simulator.run(self, until), self,
-                              'A simulator closed its connection.')
+            util.sync_process(simulator.run(self, until), self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
@@ -320,13 +328,16 @@ class ModelMock:
         # We have to start a SimPy process to make the "create()" call
         # behave like it was synchronous.
         def create_proc():
-            entities = yield self._sim.create(num, self._name, **model_params)
-            return entities
+            try:
+                entities = yield self._sim.create(num, self._name,
+                                                  **model_params)
+                return entities
+            except ConnectionError as e:
+                msg = ('Simulator "%s" closed its connection while creating %s'
+                       ' instances of "%s".' % (self._sim_id, num, self._name))
+                raise SimulationError(msg, e) from None
 
-        entities = util.sync_process(create_proc(), self._world,
-                                     '"%s" closed its connection during the '
-                                     'creation of %s instances of "%s".' % (
-                                         self._sim_id, num, self._name))
+        entities = util.sync_process(create_proc(), self._world)
         assert len(entities) == num, (
             '%d entities were requested but %d were created.' %
             (num, len(entities)))

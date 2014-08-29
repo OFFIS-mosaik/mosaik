@@ -1,6 +1,6 @@
 from unittest import mock
 
-from mosaik import scenario, simulator, simmanager
+from mosaik import exceptions, scenario, simulator, simmanager
 import pytest
 
 from .util import SimMock
@@ -46,6 +46,22 @@ def test_run():
 def test_sim_process():
     """``sim_process()`` is tested via test_mosaik.py."""
     assert True
+
+
+def test_sim_process_error(monkeypatch):
+    class Sim:
+        sid = 'spam'
+
+    def get_keep_running_func(world, sim, until):
+        raise ConnectionError(1337, 'noob')
+
+    monkeypatch.setattr(simulator, 'get_keep_running_func',
+                        get_keep_running_func)
+
+    excinfo = pytest.raises(exceptions.SimulationError, next,
+                            simulator.sim_process(None, Sim(), None))
+    assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
+                                  'its connection.')
 
 
 def test_step_required(world):

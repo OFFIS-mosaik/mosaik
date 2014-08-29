@@ -39,8 +39,10 @@ def test_entity():
 
 def test_world():
     sim_config = {'spam': 'eggs'}
-    world = scenario.World(sim_config)
+    mosaik_config = {'start_timeout': 23}
+    world = scenario.World(sim_config, mosaik_config)
     assert world.sim_config is sim_config
+    assert world.config['start_timeout'] == 23
     assert world.sims == {}
     assert world.env
     assert world.df_graph.nodes() == []
@@ -212,6 +214,21 @@ def test_world_connect_async_requests(world):
     }
 
 
+def test_world_get_data(world):
+    sim1 = world.start('ExampleSim')
+    sim2 = world.start('ExampleSim')
+
+    es1 = sim1.A.create(2, init_val=1)
+    es2 = sim2.B.create(1, init_val=2)
+
+    data = world.get_data(es1 + es2, 'val_out')
+    assert data == {
+        es1[0]: {'val_out': 1},
+        es1[1]: {'val_out': 1},
+        es2[0]: {'val_out': 2},
+    }
+
+
 def test_model_factory(world, mf):
     assert mf.A._name == 'A'
     assert mf.A._sim_id == mf._sim.sid
@@ -312,18 +329,3 @@ def test_model_mock_entity_graph(world):
     }
     assert world.entity_graph.node['E0.0']['type'] == 'A'
     assert world.entity_graph.node['E0.1']['type'] == 'A'
-
-
-def test_world_get_data(world):
-    sim1 = world.start('ExampleSim')
-    sim2 = world.start('ExampleSim')
-
-    es1 = sim1.A.create(2, init_val=1)
-    es2 = sim2.B.create(1, init_val=2)
-
-    data = world.get_data(es1 + es2, 'val_out')
-    assert data == {
-        es1[0]: {'val_out': 1},
-        es1[1]: {'val_out': 1},
-        es2[0]: {'val_out': 2},
-    }
