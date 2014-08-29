@@ -30,41 +30,6 @@ base_config = {
 FULL_ID = simmanager.FULL_ID
 
 
-class Entity:
-    """An entity represents an instance of a simulation model within mosaik."""
-    __slots__ = ['sid', 'eid', 'type', 'children', 'sim']
-
-    def __init__(self, sid, eid, type, children, sim):
-        self.sid = sid
-        """The ID of the simulator this entity belongs to."""
-
-        self.eid = eid
-        """The entity's ID."""
-
-        self.type = type
-        """The entity's type (or class)."""
-
-        self.children = children if children is not None else set()
-        """An entity set containing subordinate entities."""
-
-        self.sim = sim
-        """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
-
-    @property
-    def full_id(self):
-        """Full, globally unique entity id ``sid.eid``."""
-        return FULL_ID % (self.sid, self.eid)
-
-    def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type]))
-
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type, repr(self.children),
-            repr(self.sim)]))
-
-
 class World:
     """The world holds all data required to specify and run the scenario.
 
@@ -410,3 +375,38 @@ class ModelMock:
             assert e['type'] in self._sim.meta['models'], (
                 'Type "%s" of entity "%s" not found in sim\'s meta data.' %
                 (e['type'], e['eid']))
+
+
+class Entity:
+    """An entity represents an instance of a simulation model within mosaik."""
+    __slots__ = ['sid', 'eid', 'type', 'children', 'sim']
+
+    def __init__(self, sid, eid, type, children, sim):
+        self.sid = sid
+        """The ID of the simulator this entity belongs to."""
+
+        self.eid = eid
+        """The entity's ID."""
+
+        self.type = type
+        """The entity's type (or class)."""
+
+        self.children = children if children is not None else set()
+        """An entity set containing subordinate entities."""
+
+        self.sim = sim
+        """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
+
+    @property
+    def full_id(self):
+        """Full, globally unique entity id ``sid.eid``."""
+        return FULL_ID % (self.sid, self.eid)
+
+    def __str__(self):
+        return '%s(%s)' % (self.__class__.__name__, ', '.join([
+            self.sid, self.eid, self.type]))
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, ', '.join([
+            self.sid, self.eid, self.type, repr(self.children),
+            repr(self.sim)]))
