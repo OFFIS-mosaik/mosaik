@@ -9,7 +9,7 @@ import pytest
 
 from mosaik import scenario
 from mosaik import simmanager
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import ScenarioError
 import mosaik
 import mosaik_api
 
@@ -47,7 +47,7 @@ def test_start(world):
             mock.patch('mosaik.simmanager.start_connect') as c:
         proxy = mock.Mock()
         proxy.meta = {
-            'api_version': mosaik_api.__version__,
+            'api_version': mosaik_api.__api_version__,
         }
         a.return_value = b.return_value = c.return_value = proxy
 
@@ -65,15 +65,15 @@ def test_start(world):
 
 
 def test_start_wrong_api_version(world):
-    """An exception should be raised if the "major" part of the simulator's
-    API version differs from mosaik's version's "major" part."""
-    with mock.patch.object(mosaik, '__version__', '42.0.0'):
+    """An exception should be raised if the simulator uses an unsupported
+    API version."""
+    with mock.patch.object(mosaik.simmanager, 'API_VERSION', 1):
         exc_info = pytest.raises(ScenarioError, simmanager.start,
                                  world, 'ExampleSimA', '0', {})
         assert str(exc_info.value) == (
             '"ExampleSimA" API version %s is not compatible with '
-            'mosaik version %s.' % (mosaik_api.__version__,
-                                    mosaik.__version__))
+            'mosaik version %s.' % (mosaik_api.__api_version__,
+                                    mosaik.simmanager.API_VERSION))
 
 
 def test_start_inproc(world):
@@ -241,15 +241,15 @@ def test_start_init_error(capsys):
 
 
 @pytest.mark.parametrize(['version', 'valid'], [
-    ('2.0', True),
-    ('2.2.2', True),
-    ('2.1.1', True),
-    ('1.9', False),
-    ('3.0', False),
+    (2, True),
+    (2.0, True),
+    ('2', False),
+    (1, False),
+    (2.1, False),
+    (3, False),
 ])
-def test_is_valid_api_version(version, valid):
-    with mock.patch.object(mosaik, '__version__', '2.1.1'):
-        assert simmanager.is_valid_api_version(version) == valid
+def test_valid_api_version(version, valid):
+    assert simmanager.valid_api_version(version, 2) == valid
 
 
 def test_sim_proxy():

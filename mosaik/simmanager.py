@@ -21,9 +21,9 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
-import mosaik
 
 
+API_VERSION = 2  # Current version of the simulator API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -82,11 +82,11 @@ def start(world, sim_name, sim_id, sim_params):
     for sim_type, start in starters.items():
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
-            if not is_valid_api_version(proxy.meta['api_version']):
+            if not valid_api_version(proxy.meta['api_version'], API_VERSION):
                 raise ScenarioError(
                     '"%s" API version %s is not compatible with mosaik '
                     'version %s.' % (sim_name, proxy.meta['api_version'],
-                                     mosaik.__version__))
+                                     API_VERSION))
             return proxy
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
@@ -235,12 +235,10 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
     return sync_process(greeter(), world)
 
 
-def is_valid_api_version(version):
-    """Return ``True`` if the "major" part of *version* is the same as mosaik's
-    version, else ``False``.
-
-    """
-    return int(version.split('.')[0]) == int(mosaik.__version__.split('.')[0])
+def valid_api_version(simulator_version, expected_version):
+    """REturn ``True`` if the *simulator_version* equals the
+    *expected_version*, else ``False``."""
+    return simulator_version == expected_version
 
 
 class SimProxy:
