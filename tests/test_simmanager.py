@@ -1,4 +1,3 @@
-from unittest import mock
 import sys
 
 from example_sim.mosaik import ExampleSim
@@ -40,40 +39,37 @@ def world():
     world.shutdown()
 
 
-def test_start(world):
+def test_start(world, monkeypatch):
     """Test if start() dispatches to the correct start functions."""
-    with mock.patch('mosaik.simmanager.start_inproc') as a, \
-            mock.patch('mosaik.simmanager.start_proc') as b, \
-            mock.patch('mosaik.simmanager.start_connect') as c:
-        proxy = mock.Mock()
-        proxy.meta = {
+    class proxy:
+        meta = {
             'api_version': mosaik_api.__api_version__,
         }
-        a.return_value = b.return_value = c.return_value = proxy
+    start = lambda *args, **kwargs: proxy
+    monkeypatch.setattr(simmanager, 'start_inproc', start)
+    monkeypatch.setattr(simmanager, 'start_proc', start)
+    monkeypatch.setattr(simmanager, 'start_connect', start)
 
-        ret = simmanager.start(world, 'ExampleSimA', '0', {})
-        assert a.call_count == 1
-        assert ret == a.return_value
+    ret = simmanager.start(world, 'ExampleSimA', '0', {})
+    assert ret == proxy
 
-        ret = simmanager.start(world, 'ExampleSimB', '0', {})
-        assert b.call_count == 1
-        assert ret == b.return_value
+    ret = simmanager.start(world, 'ExampleSimB', '0', {})
+    assert ret == proxy
 
-        ret = simmanager.start(world, 'ExampleSimC', '0', {})
-        assert c.call_count == 1
-        assert ret == c.return_value
+    ret = simmanager.start(world, 'ExampleSimC', '0', {})
+    assert ret == proxy
 
 
-def test_start_wrong_api_version(world):
+def test_start_wrong_api_version(world, monkeypatch):
     """An exception should be raised if the simulator uses an unsupported
     API version."""
-    with mock.patch.object(mosaik.simmanager, 'API_VERSION', 1):
-        exc_info = pytest.raises(ScenarioError, simmanager.start,
-                                 world, 'ExampleSimA', '0', {})
-        assert str(exc_info.value) == (
-            '"ExampleSimA" API version %s is not compatible with '
-            'mosaik version %s.' % (mosaik_api.__api_version__,
-                                    mosaik.simmanager.API_VERSION))
+    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1)
+    exc_info = pytest.raises(ScenarioError, simmanager.start, world,
+                             'ExampleSimA', '0', {})
+    assert str(exc_info.value) == (
+        '"ExampleSimA" API version %s is not compatible with '
+        'mosaik version %s.' % (mosaik_api.__api_version__,
+                                mosaik.simmanager.API_VERSION))
 
 
 def test_start_inproc(world):

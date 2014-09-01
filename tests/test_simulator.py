@@ -1,5 +1,3 @@
-from unittest import mock
-
 from mosaik import exceptions, scenario, simulator, simmanager
 import pytest
 
@@ -19,7 +17,7 @@ def world():
     world.shutdown()
 
 
-def test_run():
+def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     def dummy_proc(world, sim, until):
         sim.proc_started = True
@@ -35,8 +33,8 @@ def test_run():
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
 
-    with mock.patch('mosaik.simulator.sim_process', dummy_proc):
-        world.run(until=1)
+    monkeypatch.setattr(simulator, 'sim_process', dummy_proc)
+    world.run(until=1)
 
     for sim in world.sims.values():
         assert sim.proc_started

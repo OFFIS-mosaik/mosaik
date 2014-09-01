@@ -1,5 +1,3 @@
-from unittest import mock
-
 from simpy.io.network import RemoteException
 import pytest
 
@@ -43,7 +41,6 @@ def test_sync_process_error(error, errmsg, capsys):
         raise error
         yield world.env.event()
 
-    # with mock.patch.object(world.env, 'run', side_effect=error):
     pytest.raises(SystemExit, util.sync_process, gen(), world)
 
     world.shutdown()
