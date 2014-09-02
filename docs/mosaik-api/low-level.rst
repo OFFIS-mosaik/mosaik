@@ -456,38 +456,38 @@ If *entitites* omitted (or ``null``), return the complete entity graph, e.g.:
 
    {
        "nodes": {
-           "sid_0/eid_0": {"type": "A"},
-           "sid_0/eid_1": {"type": "B"},
-           "sid_1/eid_0": {"type": "C"},
+           "sid_0.eid_0": {"type": "A"},
+           "sid_0.eid_1": {"type": "B"},
+           "sid_1.eid_0": {"type": "C"},
        },
        "edges": [
-           ["sid_0/eid_0", "sid_1/eid0", {}],
-           ["sid_0/eid_1", "sid_1/eid0", {}],
+           ["sid_0.eid_0", "sid_1.eid0", {}],
+           ["sid_0.eid_1", "sid_1.eid0", {}],
        ],
    }
 
-If *entities* is a single string (e.g., ``sid_1/eid_0``), return an object
+If *entities* is a single string (e.g., ``sid_1.eid_0``), return an object
 containing all entities related to that entity:
 
 .. code-block:: json
 
    {
-       "sid_0/eid_0": {"type": "A"},
-       "sid_0/eid_1": {"type": "B"},
+       "sid_0.eid_0": {"type": "A"},
+       "sid_0.eid_1": {"type": "B"},
    }
 
-If *entities* is a list of entity IDs (e.g., ``["sid_0/eid_0",
-"sid_0/eid_1"]``), return an object mapping each entity to an object of related
+If *entities* is a list of entity IDs (e.g., ``["sid_0.eid_0",
+"sid_0.eid_1"]``), return an object mapping each entity to an object of related
 entities:
 
 .. code-block:: json
 
    {
-       "sid_0/eid_0": {
-           "sid_0/eid_1": {"type": "B"},
+       "sid_0.eid_0": {
+           "sid_0.eid_1": {"type": "B"},
        },
-       "sid_0/eid_1": {
-           "sid_0/eid_1": {"type": "B"},
+       "sid_0.eid_1": {
+           "sid_0.eid_1": {"type": "B"},
        },
    }
 
@@ -499,19 +499,19 @@ Request:
 
 .. code-block:: json
 
-   ["get_related_entities", [["grid_sim_0/node_0", "grid_sim_0/node_1"]] {}]
+   ["get_related_entities", [["grid_sim_0.node_0", "grid_sim_0.node_1"]] {}]
 
 Reply:
 
 .. code-block:: json
 
    {
-       "grid_sim_0/node_0": {
-           "grid_sim_0/branch_0": {"type": "Branch"},
-           "pv_sim_0/pv_0": {"type": "PV"}
+       "grid_sim_0.node_0": {
+           "grid_sim_0.branch_0": {"type": "Branch"},
+           "pv_sim_0.pv_0": {"type": "PV"}
        },
-       "grid_sim_0/node_1": {
-           "grid_sim_0/branch_0": {"type": "Branch"}
+       "grid_sim_0.node_1": {
+           "grid_sim_0.branch_0": {"type": "Branch"}
        }
    }
 
@@ -531,7 +531,7 @@ Get the data for the requested attributes in *attrs*.
 attribute names::
 
     {
-        "sim_id/eid_1": ["attr_1", "attr_2", ...],
+        "sim_id.eid_1": ["attr_1", "attr_2", ...],
         ...
     }
 
@@ -539,7 +539,7 @@ The return value is an object mapping the input entity IDs to data objects
 mapping attribute names to there respective values::
 
     {
-        "sim_id/eid_1: {
+        "sim_id.eid_1: {
             "attr_1": "val_1",
             "attr_2": "val_2",
             ...
@@ -555,7 +555,7 @@ Request:
 
 .. code-block:: json
 
-    ["get_data", [{"grid_sim_0/branch_0": ["I"]}], {}]
+    ["get_data", [{"grid_sim_0.branch_0": ["I"]}], {}]
 
 Reply:
 
@@ -563,7 +563,7 @@ Reply:
 
 
     {
-        "grid_sim_0/branch_0": {
+        "grid_sim_0.branch_0": {
             "I": 42.5
         }
     }
@@ -595,9 +595,9 @@ Request:
     [
         "set_data",
         [{
-            "mas_0/agent_0": {"pvsim_0/pv_0": {"P_target": 20,
+            "mas_0.agent_0": {"pvsim_0.pv_0": {"P_target": 20,
                                                "Q_target": 3.14}},
-            "mas_0/agent_1": {"pvsim_0/pv_1": {"P_target": 21,
+            "mas_0.agent_1": {"pvsim_0.pv_1": {"P_target": 21,
                                                "Q_target": 2.718}}
         }],
         {}
