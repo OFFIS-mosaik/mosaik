@@ -415,9 +415,9 @@ class Entity:
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type]))
+            repr(self.sid), repr(self.eid), self.type]))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            self.sid, self.eid, self.type, repr(self.children),
+            repr(self.sid), repr(self.eid), self.type, repr(self.children),
             repr(self.sim)]))

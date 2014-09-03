@@ -17,6 +17,9 @@ Glossary
       between them.  Examples are the nodes and lines of a power grid or single
       electric vehicles.
 
+   Entity Set
+      A set or list of :term:`entities <entity>`.
+
    Model
       A synonym for :term:`simulation model`.
 
