@@ -14,7 +14,7 @@ Modeling or composing a scenario in mosaik comprises three steps:
    flows between them.
 
 This page will show you how to create simple scenarios in these three steps.
-It will also provide some receipts that allow you to create more complex
+It will also provide some recipes that allow you to create more complex
 scenarios.
 
 
