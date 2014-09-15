@@ -14,10 +14,10 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="mosaik-api.inkscape.svg"
+   sodipodi:docname="mosaik-api-inkscape.svg"
    inkscape:export-filename="/home/stefan/Code/mosaik/docs/_static/mosaik-api.png"
-   inkscape:export-xdpi="74.705887"
-   inkscape:export-ydpi="74.705887">
+   inkscape:export-xdpi="74.709999"
+   inkscape:export-ydpi="74.709999">
   <defs
      id="defs4">
     <marker
@@ -438,7 +438,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -493,7 +493,7 @@
        height="70.866241"
        width="212.59843"
        id="rect2985-11-0"
-       style="fill:#4f7f21;fill-opacity:1;stroke:none" />
+       style="fill:#5e8227;fill-opacity:1;stroke:none" />
     <text
        sodipodi:linespacing="125%"
        id="text4256-1-6-8"
@@ -521,7 +521,7 @@
        x="814.46057"
        y="-296.42926" />
     <rect
-       style="fill:#4c4c4c;fill-opacity:1;stroke:none"
+       style="fill:#484848;fill-opacity:1;stroke:none"
        id="rect2985-11-3-8-1-5"
        width="283.46457"
        height="212.59842"
@@ -533,7 +533,7 @@
        height="70.866158"
        width="212.59845"
        id="rect2985-11-0-5"
-       style="fill:#4f7f21;fill-opacity:1;stroke:none" />
+       style="fill:#5e8227;fill-opacity:1;stroke:none" />
     <text
        sodipodi:linespacing="125%"
        id="text4256-1-6-8-6"
@@ -547,7 +547,7 @@
          id="tspan4258-9-5-4-2"
          sodipodi:role="line">socket</tspan></text>
     <rect
-       style="fill:#4f7f21;fill-opacity:1;stroke:none"
+       style="fill:#5e8227;fill-opacity:1;stroke:none"
        id="rect2985-11"
        width="212.59843"
        height="70.866241"
@@ -566,7 +566,7 @@
          y="671.80371"
          style="font-size:40px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Lato;-inkscape-font-specification:Lato Medium">socket</tspan></text>
     <rect
-       style="fill:#216a7f;fill-opacity:1;stroke:none"
+       style="fill:#266580;fill-opacity:1;stroke:none"
        id="rect2985-11-3"
        width="212.59842"
        height="70.866119"
@@ -602,7 +602,7 @@
          id="tspan4436"
          style="-inkscape-font-specification:Lato Medium;font-family:Lato;font-weight:500;font-style:normal;font-stretch:normal;font-variant:normal;font-size:40px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">by User</tspan></text>
     <rect
-       style="fill:#762a61;fill-opacity:1;stroke:none"
+       style="fill:#913a91;fill-opacity:1;stroke:none"
        id="rect2985-8-9"
        width="212.59846"
        height="70.866142"
@@ -639,7 +639,7 @@
        height="70.866158"
        width="212.59845"
        id="rect2985-11-0-5-0"
-       style="fill:#4f7f21;fill-opacity:1;stroke:none" />
+       style="fill:#5e8227;fill-opacity:1;stroke:none" />
     <text
        sodipodi:linespacing="125%"
        id="text4256-1-6-8-6-5"
@@ -653,7 +653,7 @@
          id="tspan4258-9-5-4-2-2"
          sodipodi:role="line">socket</tspan></text>
     <rect
-       style="fill:#216a7f;fill-opacity:1;stroke:none"
+       style="fill:#266580;fill-opacity:1;stroke:none"
        id="rect2985-11-3-6"
        width="212.59842"
        height="70.866119"
@@ -700,7 +700,7 @@
          id="tspan4464"
          style="-inkscape-font-specification:Lato Medium;font-family:Lato;font-weight:500;font-style:normal;font-stretch:normal;font-variant:normal;font-size:40px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">by mosaik</tspan></text>
     <rect
-       style="fill:#762a61;fill-opacity:1;stroke:none"
+       style="fill:#913a91;fill-opacity:1;stroke:none"
        id="rect2985-8"
        width="240.94489"
        height="70.866142"
@@ -719,7 +719,7 @@
          y="8.7419071"
          style="font-size:40px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Lato;-inkscape-font-specification:Lato Medium">Interface</tspan></text>
     <rect
-       style="fill:#4c4c4c;fill-opacity:1;stroke:none"
+       style="fill:#484848;fill-opacity:1;stroke:none"
        id="rect2985-11-3-8"
        width="212.59843"
        height="106.29918"
@@ -784,7 +784,7 @@
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <rect
-       style="fill:#762a61;fill-opacity:1;stroke:none"
+       style="fill:#913a91;fill-opacity:1;stroke:none"
        id="rect2985-8-0"
        width="240.94489"
        height="70.866142"
@@ -803,7 +803,7 @@
          y="8.7418585"
          style="font-size:40px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Lato;-inkscape-font-specification:Lato Medium">Interface</tspan></text>
     <rect
-       style="fill:#4c4c4c;fill-opacity:1;stroke:none"
+       style="fill:#484848;fill-opacity:1;stroke:none"
        id="rect2985-11-3-8-6"
        width="212.59843"
        height="106.29918"

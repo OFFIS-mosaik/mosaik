@@ -14,7 +14,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="mosaik-api-sequence-step.inkscape.svg"
+   sodipodi:docname="mosaik-api-sequence-step-inkscape.svg"
    inkscape:export-filename="/home/stefan/Code/mosaik/docs/_static/mosaik-api-sequence-step.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
@@ -624,7 +624,7 @@
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.795"
-     inkscape:cx="500"
+     inkscape:cx="434.59119"
      inkscape:cy="500"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
@@ -663,7 +663,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -678,14 +678,14 @@
        height="75"
        width="250"
        id="rect2985-11-0-5-0"
-       style="fill:#4f7f21;fill-opacity:1;stroke:none" />
+       style="fill:#5e8227;fill-opacity:1;stroke:none" />
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:23.99999925, 23.99999925;stroke-dashoffset:0"
        d="m 249.5,-0.02230116 0,846.85416116"
        id="path4024"
        inkscape:connector-curvature="0" />
     <rect
-       style="fill:#216a7f;fill-opacity:1;stroke:none"
+       style="fill:#266580;fill-opacity:1;stroke:none"
        id="rect2985-11-3-6"
        width="250"
        height="75"
