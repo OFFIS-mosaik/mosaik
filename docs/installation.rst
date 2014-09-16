@@ -294,7 +294,7 @@ This guide is based on *Windows 7, 64bit*.
    for different projects.
 
    Open a terminal window: Press the :kbd:`Windows` key (or click on the start
-   menu) and enter ``cmd``. Press :kbd:`Enter`. Your terminal Prompt should
+   menu) and enter ``cmd``. Press :kbd:`Enter`. Your terminal prompt should
    look like ``C:\Users\yourname>``. Execute the following command to install
    virtualenv:
 
@@ -302,11 +302,23 @@ This guide is based on *Windows 7, 64bit*.
 
       C:\Users\yourname> pip install -U virtualenv
 
+   .. note::
+
+      If your Windows account type is *Standard User*, you need to open the
+      terminal with administarator priviledges (right-click the Terminal icon,
+      then *open as Administrator*). Make then sure that you are in your user
+      directory:
+
+      .. code-block:: bat
+
+         C:\Windows\system32> cd \Users\yourname
+         C:\Users\yourname>
+
 3. Now we need to create a virtual environment for mosaik and its dependencies.
    The common location for venvs is under :file:`Envs/` in your users
    directory:
 
-   .. code-block:: bash
+   .. code-block:: bat
 
       C:\Users\yourname> virtualenv -p C:\Python34\python.exe Envs\mosaik
       C:\Users\yourname> Envs\mosaik\Scripts\activate.bat
@@ -316,14 +328,14 @@ This guide is based on *Windows 7, 64bit*.
 
 4. The final step is to install mosaik:
 
-   .. code-block:: bash
+   .. code-block:: bat
 
        (mosaik) C:\Users\yourname> pip install --pre mosaik
 
    Mosaik should now be installed successfully.
 
 __ https://www.python.org/
-__ https://www.python.org/downloads/release/python-340/
+__ https://www.python.org/downloads/release/python-341/
 __ https://pip.readthedocs.org/
 __ https://virtualenv.readthedocs.org/
 
@@ -355,13 +367,14 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bat
 
-      (mosaik) C:\Users\yourname> easy_install Downloads\numpy-MKL-1.8.2.win-amd64-py3.4.exe
-      (mosaik) C:\Users\yourname> easy_install Downloads\scipy-0.13.3.win-amd64-py3.4.exe
+      (mosaik) C:\Users\yourname> easy_install Downloads\numpy-MKL-1.9.0.win-amd64-py3.4.exe
+      (mosaik) C:\Users\yourname> easy_install Downloads\scipy-0.14.0.win-amd64-py3.4.exe
       (mosaik) C:\Users\yourname> easy_install Downloads\h5py-2.3.1.win-amd64-py3.4.exe
 
 2. Download and install `Mercurial`__.
 
-   Restart the command prompt and activate the virtualenv again:
+   **Restart the command** prompt (as Admin if necessary and make sure you are
+   in the right directory again) and activate the virtualenv again:
 
    .. code-block:: bat
 
@@ -369,18 +382,18 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
 2. Clone the demo repository:
 
-   .. code-block:: bash
+   .. code-block:: bat
 
       (mosaik)C:\Users\yourname> hg clone https://bitbucket.org/mosaik/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
 
-   .. code-block:: bash
+   .. code-block:: bat
 
       (mosaik)C:\Users\yourname> cd mosaik-demo
-      (mosaik)C:\Users\yourname> pip install -r requirements.txt
-      (mosaik)C:\Users\yourname> python demo.py
+      (mosaik)C:\Users\yourname\mosaik-demo> pip install -r requirements.txt
+      (mosaik)C:\Users\yourname\mosaik-demo> python demo.py
 
    An exception may be raised at the end of the installation, but as long as
    before that exception there was the output *Successfully installed PYPOWER
