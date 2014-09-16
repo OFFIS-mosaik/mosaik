@@ -31,8 +31,8 @@ def test_entity():
     assert e.eid == '1'
     assert e.type == 'spam'
     assert e.sim is sim
-    assert str(e) == 'Entity(0, 1, spam)'
-    assert repr(e) == 'Entity(0, 1, spam, [], %r)' % sim
+    assert str(e) == "Entity('0', '1', spam)"
+    assert repr(e) == "Entity('0', '1', spam, [], %r)" % sim
 
 
 def test_world():
@@ -134,16 +134,16 @@ def test_world_connect_wrong_attr_names(world):
     b = world.start('ExampleSim').B(init_val=0)
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'))
     assert str(err.value) == ('At least one attribute does not exist: '
-                              'Entity(ExampleSim-0, 0.0, A).val')
+                              "Entity('ExampleSim-0', '0.0', A).val")
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val_out', 'val'))
     assert str(err.value) == ('At least one attribute does not exist: '
-                              'Entity(ExampleSim-1, 0.0, B).val')
+                              "Entity('ExampleSim-1', '0.0', B).val")
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
                         'onoes')
     assert str(err.value) == ('At least one attribute does not exist: '
-                              'Entity(ExampleSim-0, 0.0, A).val, '
-                              'Entity(ExampleSim-0, 0.0, A).onoes, '
-                              'Entity(ExampleSim-1, 0.0, B).onoes')
+                              "Entity('ExampleSim-0', '0.0', A).val, "
+                              "Entity('ExampleSim-0', '0.0', A).onoes, "
+                              "Entity('ExampleSim-1', '0.0', B).onoes")
     assert world.df_graph.edges() == []
     assert world._df_outattr == {}
 

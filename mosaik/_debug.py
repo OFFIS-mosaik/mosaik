@@ -5,30 +5,30 @@ mosaik collect more data when the simulation is being executed.
 """
 from time import perf_counter
 
-import mosaik.simulator as sim
+from mosaik import scheduler
 
 
 _origs = {
-    'step': sim.step,
+    'step': scheduler.step,
 }
 
 
 def enable():
-    """Wrap :func:`~mosaik.simulator.step()` to collect more data about the
-    simulation execution.
+    """Wrap :func:`~mosaik.scheduler.step()` to collect more data about the
+    schedulerulation execution.
 
     """
-    def wrapped_step(world, sim, inputs):
-        pre_step(world, sim, inputs)
-        return _origs['step'](world, sim, inputs)
+    def wrapped_step(world, scheduler, inputs):
+        pre_step(world, scheduler, inputs)
+        return _origs['step'](world, scheduler, inputs)
 
-    sim.step = wrapped_step
+    scheduler.step = wrapped_step
 
 
 def disable():
     """Restore all wrapped functions to their original."""
     for k, v in _origs.items():
-        setattr(sim, k, v)
+        setattr(scheduler, k, v)
 
 
 def pre_step(world, sim, inputs):

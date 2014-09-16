@@ -12,6 +12,6 @@ components.
    mosaik
    mosaik.exceptions
    mosaik.scenario
+   mosaik.scheduler
    mosaik.simmanager
-   mosaik.simulator
    mosaik.util

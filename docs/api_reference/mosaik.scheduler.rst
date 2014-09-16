@@ -1,8 +1,8 @@
 ==========================================================
-``mosaik.simulator`` --- Coordinate and execute simulators
+``mosaik.scheduler`` --- Coordinate and execute simulators
 ==========================================================
 
-.. automodule:: mosaik.simulator
+.. automodule:: mosaik.scheduler
 
 .. autofunction:: run
 

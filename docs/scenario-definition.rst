@@ -408,7 +408,6 @@ via :meth:`World.get_data()`:
 
 .. code-block:: python
 
-
    >>> exsim = world.start('ExampleSim')
    Starting "ExampleSim" as "ExampleSim-2" ...
    >>> entities = exsim.A.create(3, init_val=42)
@@ -418,3 +417,18 @@ via :meth:`World.get_data()`:
 
 The entities that you pass to this function don't need to belong to the same
 simulator (instance) as long as they all can provide the required attributes.
+
+
+How to destroy a world
+======================
+
+When you are done working with a world, you should shut it down properly:
+
+.. code-block:: python
+
+   >>> world.shutdown()
+
+This will, for instance, close mosaik's socket and allows new ``World``
+instances to reuse the same port again.
+
+:meth:`World.run()` automatically calls :meth:`World.shutdown()` for you.

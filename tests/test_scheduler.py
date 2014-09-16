@@ -1,4 +1,4 @@
-from mosaik import exceptions, scenario, simulator, simmanager
+from mosaik import exceptions, scenario, scheduler, simmanager
 import pytest
 
 from .util import SimMock
@@ -33,7 +33,7 @@ def test_run(monkeypatch):
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
 
-    monkeypatch.setattr(simulator, 'sim_process', dummy_proc)
+    monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     world.run(until=1)
 
     for sim in world.sims.values():
@@ -53,34 +53,34 @@ def test_sim_process_error(monkeypatch):
     def get_keep_running_func(world, sim, until):
         raise ConnectionError(1337, 'noob')
 
-    monkeypatch.setattr(simulator, 'get_keep_running_func',
+    monkeypatch.setattr(scheduler, 'get_keep_running_func',
                         get_keep_running_func)
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
-                            simulator.sim_process(None, Sim(), None))
+                            scheduler.sim_process(None, Sim(), None))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 
 
 def test_step_required(world):
     """Test *step_required is True*, becauce a simulator is waiting for us."""
-    evt = simulator.step_required(world, world.sims[0])
+    evt = scheduler.step_required(world, world.sims[0])
     assert evt.triggered
 
 
 def test_step_not_required(world):
     """Test *step_required is False*, because noone is waiting for us."""
-    evt = simulator.step_required(world, world.sims[1])
+    evt = scheduler.step_required(world, world.sims[1])
     assert not evt.triggered
 
-    evt = simulator.step_required(world, world.sims[2])
+    evt = scheduler.step_required(world, world.sims[2])
     assert not evt.triggered
 
 
 def test_step_required_no_successors(world):
     """Test *step_required is True*, because there is noone that could be
     waiting for us."""
-    evt = simulator.step_required(world, world.sims[3])
+    evt = scheduler.step_required(world, world.sims[3])
     assert evt.triggered
 
 
@@ -90,7 +90,7 @@ def test_wait_for_dependencies(world):
         world.sims[i].step_required = world.env.event()
         if i == 0:
             world.sims[i].step_required.succeed()
-    evt = simulator.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 2
     assert not evt.triggered
     for i in range(2):
@@ -100,7 +100,7 @@ def test_wait_for_dependencies(world):
 def test_wait_for_dependencies_all_done(world):
     """All dependencies already stepped far enough. No waiting required."""
     world._df_cache = {0: {0: [], 1: []}}
-    evt = simulator.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 0
     assert evt.triggered
 
@@ -114,7 +114,7 @@ def test_get_input_data(world):
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['dataflows'] = [('2', '0', [('z', 'in')])]
-    data = simulator.get_input_data(world, world.sims[2])
+    data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {'in': {'0.1': 0, '1.2': 4, '3': 5},
                           'spam': {'3': 'eggs'}}}
 
@@ -124,7 +124,7 @@ def test_step(world):
     sim = world.sims[0]
     assert (sim.last_step, sim.next_step) == (float('-inf'), 0)
 
-    gen = simulator.step(world, sim, inputs)
+    gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -141,7 +141,7 @@ def test_get_outputs(world):
     sim = world.sims[0]
     sim.last_step, sim.next_step = 0, 1
 
-    gen = simulator.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -155,7 +155,7 @@ def test_get_outputs(world):
     for s in world.sims.values():
         s.last_step, s.next_step = 1, 2
     sim.last_step, sim.next_step = 2, 3
-    gen = simulator.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -172,18 +172,18 @@ def test_get_progress():
             self.next_step = time
 
     sims = {i: Sim(0) for i in range(2)}
-    assert simulator.get_progress(sims, 4) == 0
+    assert scheduler.get_progress(sims, 4) == 0
 
     sims[0].next_step = 1
-    assert simulator.get_progress(sims, 4) == 12.5
+    assert scheduler.get_progress(sims, 4) == 12.5
 
     sims[0].next_step = 2
-    assert simulator.get_progress(sims, 4) == 25
+    assert scheduler.get_progress(sims, 4) == 25
 
     sims[1].next_step = 3
     sims[0].next_step = 3
-    assert simulator.get_progress(sims, 4) == 75
+    assert scheduler.get_progress(sims, 4) == 75
 
     sims[0].next_step = 4
     sims[1].next_step = 6
-    assert simulator.get_progress(sims, 4) == 100
+    assert scheduler.get_progress(sims, 4) == 100

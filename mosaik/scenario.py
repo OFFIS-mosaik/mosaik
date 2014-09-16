@@ -15,7 +15,7 @@ import sys
 import networkx
 
 from mosaik import simmanager
-from mosaik import simulator
+from mosaik import scheduler
 from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
 
@@ -225,7 +225,7 @@ class World:
             import mosaik._debug as dbg
             dbg.enable()
         try:
-            util.sync_process(simulator.run(self, until), self)
+            util.sync_process(scheduler.run(self, until), self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
