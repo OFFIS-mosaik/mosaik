@@ -23,8 +23,8 @@ from mosaik.exceptions import ScenarioError, SimulationError
 backend = simmanager.backend
 base_config = {
     'addr': ('127.0.0.1', 5555),
-    'start_timeout': 2,  # seconds
-    'stop_timeout': 2,  # seconds
+    'start_timeout': 10,  # seconds
+    'stop_timeout': 10,  # seconds
 }
 
 FULL_ID = simmanager.FULL_ID
