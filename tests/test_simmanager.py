@@ -250,7 +250,7 @@ def test_valid_api_version(version, valid):
 
 def test_sim_proxy():
     """SimProxy should not be instantiateable."""
-    pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', {})
+    pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id', {})
 
 
 def test_sim_proxy_stop_impl():
@@ -259,13 +259,18 @@ def test_sim_proxy_stop_impl():
         def _proxy_call(self, name):
             return None
 
-    t = Test('spam', {})
+    t = Test('spam', 'id', {})
     pytest.raises(NotImplementedError, t.stop)
 
 
 def test_local_process():
+    class world:
+        env = None
+
     es = ExampleSim()
-    sp = simmanager.LocalProcess(None, 'ExampleSim-0', es, None, es.meta)
+    sp = simmanager.LocalProcess('ExampleSim', 'ExampleSim-0', es.meta, es,
+                                 world)
+    assert sp.name == 'ExampleSim'
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
     assert sp.meta is es.meta
@@ -291,10 +296,10 @@ def _rpc_get_related_entities(mosaik, world):
     entities['edges'].sort()
     assert entities == {
         'nodes': {
-            'X.0': {'type': 'A'},
-            'X.1': {'type': 'A'},
-            'X.2': {'type': 'A'},
-            'X.3': {'type': 'A'},
+            'X.0': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.1': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.2': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.3': {'sim': 'ExampleSim', 'type': 'A'},
         },
         'edges': [
             ['X.0', 'X.1', {}],
@@ -307,21 +312,21 @@ def _rpc_get_related_entities(mosaik, world):
     # Single string yields dict with related entities
     entities = yield mosaik.get_related_entities('X.0')
     assert entities == {
-        'X.1': {'type': 'A'},
-        'X.2': {'type': 'A'},
+        'X.1': {'sim': 'ExampleSim', 'type': 'A'},
+        'X.2': {'sim': 'ExampleSim', 'type': 'A'},
     }
 
     # List of strings yields dicts with related entities grouped by input ids
     entities = yield mosaik.get_related_entities(['X.1', 'X.2'])
     assert entities == {
         'X.1': {
-            'X.0': {'type': 'A'},
-            'X.2': {'type': 'A'},
+            'X.0': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.2': {'sim': 'ExampleSim', 'type': 'A'},
         },
         'X.2': {
-            'X.0': {'type': 'A'},
-            'X.1': {'type': 'A'},
-            'X.3': {'type': 'A'},
+            'X.0': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.1': {'sim': 'ExampleSim', 'type': 'A'},
+            'X.3': {'sim': 'ExampleSim', 'type': 'A'},
         },
     }
 
@@ -362,7 +367,7 @@ def test_mosaik_remote(rpc):
     edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
     world.entity_graph.add_edges_from(edges)
     for node in world.entity_graph:
-        world.entity_graph.add_node(node, type='A')
+        world.entity_graph.add_node(node, sim='ExampleSim', type='A')
     world.sim_progress = 23
     world._df_cache = {
         1: {
@@ -383,7 +388,7 @@ def test_mosaik_remote(rpc):
     def greeter():
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
-        proxy = simmanager.RemoteProcess(world, 'X', None, rpc_con, {})
+        proxy = simmanager.RemoteProcess('X', 'X', {}, None, rpc_con, world)
         proxy.last_step = proxy.next_step = 1
         world.sims['X'] = proxy
 

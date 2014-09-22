@@ -123,7 +123,7 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
     # instances. This may leed to problems if a user modfies it, so make
     # a deep copy of it for each instance:
     meta = copy.deepcopy(meta)
-    return LocalProcess(world, sim_id, sim, world.env, meta)
+    return LocalProcess(sim_name, sim_id, meta, sim, world)
 
 
 def start_proc(world, sim_name, sim_config, sim_id, sim_params):
@@ -230,7 +230,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
         else:
             meta = results[init]
 
-        return RemoteProcess(world, sim_id, proc, rpc_con, meta)
+        return RemoteProcess(sim_name, sim_id, meta, proc, rpc_con, world)
 
     return sync_process(greeter(), world)
 
@@ -243,7 +243,8 @@ def valid_api_version(simulator_version, expected_version):
 
 class SimProxy:
     """Simple proxy/facade for in-process simulators."""
-    def __init__(self, sid, meta):
+    def __init__(self, name, sid, meta):
+        self.name = name
         self.sid = sid
         self.meta = meta
         self.last_step = float('-inf')
@@ -272,9 +273,9 @@ class SimProxy:
 
 class LocalProcess(SimProxy):
     """Proxy for internal simulators."""
-    def __init__(self, world, sid, inst, env, meta):
+    def __init__(self, name, sid, meta, inst, world):
         self._inst = inst
-        self._env = env
+        self._env = world.env
 
         # Add MosaikRemote and patch its RPC methods to return events:
         inst.mosaik = MosaikRemote(world, sid)
@@ -284,9 +285,10 @@ class LocalProcess(SimProxy):
 
             func = getattr(inst.mosaik, attr)
             if hasattr(func, '__call__') and hasattr(func, 'rpc'):
-                setattr(inst.mosaik, attr, mosaik_api.get_wrapper(func, env))
+                setattr(inst.mosaik, attr,
+                        mosaik_api.get_wrapper(func, world.env))
 
-        super().__init__(sid, meta)
+        super().__init__(name, sid, meta)
 
     def stop(self):
         """Yield a triggered event but do nothing else."""
@@ -304,14 +306,14 @@ class LocalProcess(SimProxy):
 
 class RemoteProcess(SimProxy):
     """Proxy for external simulator processes."""
-    def __init__(self, world, sid, proc, rpc_con, meta):
+    def __init__(self, name, sid, meta, proc, rpc_con, world):
         self._proc = proc
         self._rpc_con = rpc_con
         self._env = world.env
         self._mosaik_remote = MosaikRemote(world, sid)
         self._stop_timeout = world.config['stop_timeout']
         rpc_con.router = self._mosaik_remote.rpc
-        super().__init__(sid, meta)
+        super().__init__(name, sid, meta)
 
     def stop(self):
         """Send a *stop* message to the process represented by this proxy and

@@ -107,11 +107,11 @@ Lets see what it is that gets returned to us:
 .. code-block:: python
 
    >>> print(a)
-   Entity('ExampleSim-0', '0.0', A)
+   Entity('ExampleSim-0', '0.0', 'ExampleSim', A)
    >>> a.sid, a.eid, a.full_id
    ('ExampleSim-0', '0.0', 'ExampleSim-0.0.0')
-   >>> a.type
-   'A'
+   >>> a.sim_name, a.type
+   ('ExampleSim', 'A')
    >>> a.children
    []
 

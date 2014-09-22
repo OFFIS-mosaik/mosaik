@@ -355,6 +355,7 @@ class ModelMock:
     def _make_entities(self, entity_dicts, assert_type=None):
         """Recursively create lists of :class:`Entity` instance from a list
         of *entity_dicts*."""
+        sim_name = self._sim.name
         sim_id = self._sim_id
         entity_graph = self._world.entity_graph
 
@@ -365,11 +366,11 @@ class ModelMock:
             children = e.get('children', [])
             if children:
                 children = self._make_entities(children)
-            entity = Entity(sim_id, e['eid'], e['type'], children,
+            entity = Entity(sim_id, e['eid'], sim_name, e['type'], children,
                             self._sim)
 
             entity_set.append(entity)
-            entity_graph.add_node(entity.full_id, type=e['type'])
+            entity_graph.add_node(entity.full_id, sim=sim_name, type=e['type'])
             for rel in e['rel']:
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sim_id, rel))
 
@@ -390,14 +391,17 @@ class ModelMock:
 
 class Entity:
     """An entity represents an instance of a simulation model within mosaik."""
-    __slots__ = ['sid', 'eid', 'type', 'children', 'sim']
+    __slots__ = ['sid', 'eid', 'sim_name', 'type', 'children', 'sim']
 
-    def __init__(self, sid, eid, type, children, sim):
+    def __init__(self, sid, eid, sim_name, type, children, sim):
         self.sid = sid
         """The ID of the simulator this entity belongs to."""
 
         self.eid = eid
         """The entity's ID."""
+
+        self.sim_name = sim_name
+        """The entity's simulator name."""
 
         self.type = type
         """The entity's type (or class)."""
@@ -415,9 +419,9 @@ class Entity:
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), self.type]))
+            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type]))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), self.type, repr(self.children),
-            repr(self.sim)]))
+            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type,
+            repr(self.children), repr(self.sim)]))

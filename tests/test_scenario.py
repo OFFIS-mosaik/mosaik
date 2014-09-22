@@ -26,13 +26,14 @@ def mf(world):
 
 def test_entity():
     sim = object()
-    e = scenario.Entity('0', '1', 'spam', [], sim)
+    e = scenario.Entity('0', '1', 'sim', 'spam', [], sim)
     assert e.sid == '0'
     assert e.eid == '1'
+    assert e.sim_name == 'sim'
     assert e.type == 'spam'
     assert e.sim is sim
-    assert str(e) == "Entity('0', '1', spam)"
-    assert repr(e) == "Entity('0', '1', spam, [], %r)" % sim
+    assert str(e) == "Entity('0', '1', 'sim', spam)"
+    assert repr(e) == "Entity('0', '1', 'sim', spam, [], %r)" % sim
 
 
 def test_world():
@@ -132,18 +133,23 @@ def test_world_connect_wrong_attr_names(world):
     """The entities to be connected must have the listed attributes."""
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'))
-    assert str(err.value) == ('At least one attribute does not exist: '
-                              "Entity('ExampleSim-0', '0.0', A).val")
-    err = pytest.raises(ScenarioError, world.connect, a, b, ('val_out', 'val'))
-    assert str(err.value) == ('At least one attribute does not exist: '
-                              "Entity('ExampleSim-1', '0.0', B).val")
+    err = pytest.raises(ScenarioError, world.connect, a, b,
+                        ('val', 'val_in'))
+    assert str(err.value) == (
+        'At least one attribute does not exist: '
+        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val")
+    err = pytest.raises(ScenarioError, world.connect, a, b,
+                        ('val_out', 'val'))
+    assert str(err.value) == (
+        'At least one attribute does not exist: '
+        "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).val")
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
                         'onoes')
-    assert str(err.value) == ('At least one attribute does not exist: '
-                              "Entity('ExampleSim-0', '0.0', A).val, "
-                              "Entity('ExampleSim-0', '0.0', A).onoes, "
-                              "Entity('ExampleSim-1', '0.0', B).onoes")
+    assert str(err.value) == (
+        'At least one attribute does not exist: '
+        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val, "
+        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).onoes, "
+        "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).onoes")
     assert world.df_graph.edges() == []
     assert world._df_outattr == {}
 
@@ -314,6 +320,7 @@ def test_model_mock_entity_graph(world):
     sp_mock = mock.Mock()
     sp_mock.create = create
     sp_mock.sid = 'E0'
+    sp_mock.name = 'ExampleSim'
     sp_mock.meta = {'models': {'A': {'params': []}}}
 
     fac = world.start('ExampleSim')
@@ -325,5 +332,7 @@ def test_model_mock_entity_graph(world):
         'E0.0': {'E0.1': {}},
         'E0.1': {'E0.0': {}},
     }
+    assert world.entity_graph.node['E0.0']['sim'] == 'ExampleSim'
+    assert world.entity_graph.node['E0.1']['sim'] == 'ExampleSim'
     assert world.entity_graph.node['E0.0']['type'] == 'A'
     assert world.entity_graph.node['E0.1']['type'] == 'A'

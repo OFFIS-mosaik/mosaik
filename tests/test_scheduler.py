@@ -7,8 +7,7 @@ from .util import SimMock
 @pytest.yield_fixture
 def world():
     world = scenario.World({})
-    world.sims = {i: simmanager.LocalProcess(world, i, SimMock(), world.env,
-                                             None)
+    world.sims = {i: simmanager.LocalProcess('', i, {}, SimMock(), world)
                   for i in range(4)}
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)],
                                   async_requests=False)
