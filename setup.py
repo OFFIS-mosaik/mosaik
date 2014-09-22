@@ -13,7 +13,7 @@ setup(
     url='https://moaik.offis.de',
     install_requires=[
         'networkx>=1.8.1',
-        'mosaik-api>=2.0a4',
+        'mosaik-api>=2.0',
         'simpy>=3.0.5',
         'simpy.io>=0.2',
     ],
