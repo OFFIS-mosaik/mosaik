@@ -89,7 +89,6 @@ Changelog
  You can find information about older versions on the `history page`__
 
 __ https://bitbucket.org/mosaik/mosaik-hdf5
-__ https://bitbucket.org/mosaik/mosaik-web
 __ https://bitbucket.org/mosaik/mosaik-api-python
 __ https://bitbucket.org/mosaik/mosaik-api-java
 __ https://mosaik.readthedocs.org/en/latest/about/history.html
