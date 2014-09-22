@@ -230,9 +230,9 @@ def test_start_init_error(capsys):
     pytest.raises(SystemExit, simmanager.start, world, 'spam', '', {'foo': 3})
 
     out, err = capsys.readouterr()
-    assert out == ('ERROR: [Errno 104] Connection reset by peer: Simulator '
-                   '"spam" closed its connection during the init() call.\n'
-                   'Mosaik terminating\n')
+    assert out.startswith('ERROR: ')
+    assert out.endswith('Simulator "spam" closed its connection during the '
+                        'init() call.\nMosaik terminating\n')
     assert err == ''
 
 
