@@ -8,5 +8,5 @@ Currently, this is only :class:`mosaik.scenario.World`.
 from mosaik.scenario import World
 
 
-__version__ = '2.0a4'
+__version__ = '2.0'
 __all__ = ['World']
