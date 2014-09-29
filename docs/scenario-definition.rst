@@ -419,6 +419,80 @@ The entities that you pass to this function don't need to belong to the same
 simulator (instance) as long as they all can provide the required attributes.
 
 
+How to access topology and data-flow information
+================================================
+
+The :class:`World` contains to `networkx Graphs
+<http://networkx.github.io/documentation/latest/overview.html>`_ which hold
+information about the data-flows between simulators and the simulation topology
+that you created in your scenario. You can use these graphs, for example, to
+export the simulation topology that mosaik created into a custom data or file
+format.
+
+:attr:`World.df_graph` is the directed *dataflow graph* for your scenarios. It
+contains a note for every simulator that you started. The simulator ID is used
+to label the nodes. If you established a data-flow between two simulators (by
+connecting at least two of their entities), a directed edge between two nodes
+is inserted.  The edges contain the *async_requests* flag (see
+:ref:`integrate-control-strategies`) and a list of the data-flows.
+
+The data-flow graph may, for example, look like this:
+
+.. code-block:: python
+
+   world.df_graph.node == {
+       'PvSim-0': {},
+       'PyPower-0': {},
+   }
+   world.df_graph.edge == {
+       'PvSim-0': {'PypPower-0': {
+           'async_requests': False,
+           'dataflows': [
+               ('PV_0', 'bus_0', ('P_out', 'P'), ('Q_out', 'Q')),
+               ('PV_1', 'bus_1', ('P_out', 'P'), ('Q_out', 'Q')),
+            ],
+       }},
+   }
+
+:attr:`World.entity_graph` is the undirected *entity graph*. It contains a node
+for every entity. The full entity ID (``'sim_id.entity_id'``) is used as node
+label.  Every node also stores the simulator name and entity type. An edge
+between two entities is inserted
+
+* if they are somehow related within a simulator (e.g., a PyPower branch is
+  related to the two PyPower buses to which it is adjacent) (see
+  :ref:`api.create`); or
+
+* if they are connected via :meth:`World.connect()`.
+
+The entity graph may, for example, look like this:
+
+.. code-block:: python
+
+    world.entity_graph.node == {
+        'PvSim_0.PV_0': {'sim': 'PvSim', 'type': 'PV'},
+        'PvSim_0.PV_1': {'sim': 'PvSim', 'type': 'PV'},
+        'PyPower_0.branch_0': {'sim': 'PyPower', 'type': 'Branch'},
+        'PyPower_0.bus_0': {'sim': 'PyPower', 'type': 'PQBus'},
+        'PyPower_0.bus_1': {'sim': 'PyPower', 'type': 'PQBus'},
+    }
+    world.entity_graph.edge == {
+        'PvSim_0.PV_0': {'PyPower_0.bus_0': {}},
+        'PvSim_0.PV_1': {'PyPower_0.bus_1': {}},
+        'PyPower_0.branch_0': {'PyPower_0.bus_0': {}, 'PyPower_0.bus_1': {}},
+        'PyPower_0.bus_0': {'PvSim_0.PV_0': {}, 'PyPower_0.branch_0': {}},
+        'PyPower_0.bus_1': {'PvSim_0.PV_1': {}, 'PyPower_0.branch_0': {}},
+    }
+
+The :ref:`rpc.get_related_entities` API call also uses and returns (parts of)
+the entity graph. So you can access it in your scenario definition as well as
+from with a simulator, control strategy or monitoring tool.
+
+Please consult the `networkx documentation
+<http://networkx.github.io/documentation/latest/>`_ for more details about
+working with graphs and directed graphs.
+
+
 How to destroy a world
 ======================
 

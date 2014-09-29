@@ -254,6 +254,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     'http://docs.python.org/3/': None,
     'http://simpy.readthedocs.org/en/latest/': None,
+    'http://networkx.github.io/documentation/latest/': None,
 }
 
 # Autodoc

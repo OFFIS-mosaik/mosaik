@@ -77,11 +77,13 @@ class World:
         """Mosaik's server socket."""
 
         self.df_graph = networkx.DiGraph()
-        """The directed dataflow graph for this scenario."""
+        """The directed data-flow :func:`graph <networkx.DiGraph>` for this
+        scenario."""
 
         self.entity_graph = networkx.Graph()
-        """The graph of related entities. Nodes are ``(sid, eid)`` tuples.
-        Each note has an attribute *entity* with an :class:`Entity`."""
+        """The :func:`graph <networkx.Graph>` of related entities. Nodes are
+        ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
+        :class:`Entity`."""
 
         self.sim_progress = 0
         """Progress of the current simulation."""
@@ -115,14 +117,14 @@ class World:
     def connect(self, src, dest, *attr_pairs, async_requests=False):
         """Connect the *src* entity to *dest* entity.
 
-        Establish a dataflow for each ``(src_attr, dest_attr)`` tuple in
+        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
         *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
         you can optionally only pass one of them as a single string.
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
         the same simulator instance, if at least one (src. or dest.) attribute
         in *attr_pairs* does not exist, or if the connection would introduce
-        a cycle in the dataflow (e.g., A → B → C → A).
+        a cycle in the data-flow (e.g., A → B → C → A).
 
         If the *dest* simulator may make asyncronous requests to mosaik to
         query data from *src* (or set data to it), *async_requests* should be
@@ -141,7 +143,7 @@ class World:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        # Add edge and check for cycles and the dataflow graph.
+        # Add edge and check for cycles and the data-flow graph.
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests)
         if not networkx.is_directed_acyclic_graph(self.df_graph):
