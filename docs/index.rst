@@ -13,7 +13,7 @@ Contents:
    mosaik-api/index
    scenario-definition
    simmanager
-   simulator
+   scheduler
    faq
    dev/index
    api_reference/index

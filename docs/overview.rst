@@ -15,15 +15,27 @@ Mosaik's main goal is to use existing :term:`simulators <simulator>` in
 a common context in order to perform a coordinated simulation of a given (Smart
 Grid) scenario.
 
-That means:
+That means that all simulators (or other tools and hardware-in-the-loop)
+involved in a simulation usually run in their own process with their own event
+loop. Mosaik just tries to synchronize these processes and manages the exchange
+of data between them.
 
-#. Mosaik provides an API for simulators to communicate with mosaik.
+To allow this, mosaik
 
-#. Mosaik allows the modelling of simulation scenarios involving the different
-   simulators.
+#. provides an API for simulators to communicate with mosaik,
 
-#. Mosaik schedules the event-based, step-wise execution of the different
-   simulators and manages the exchange of data (data flows) between them.
+#. implements handlers for different kinds of simulator processes,
+
+#. allows the modelling of simulation scenarios involving the different
+   simulators, and
+
+#. schedules the step-wise execution of the different simulators and manages
+   the exchange of data *(data-flows)* between them.
+
+Although mosaik is written in Python 3, its simulator API completely language
+agnostic. It doesn't matter if your simulator is written in Python 2, Java,
+C, matlab or anything else.
+
 
 A simple example
 ----------------
@@ -79,7 +91,7 @@ Mosaik's main components
 Mosaik consists of four main components that implement the different aspects of
 a co-simulation framework:
 
-1. The **mosaik API** defines the communication protocol between
+#. The **mosaik Sim API** defines the communication protocol between
    :term:`simulators <simulator>` and mosaik.
 
    Mosaik uses plain network sockets and JSON encoded messages to communicate
@@ -90,21 +102,21 @@ a co-simulation framework:
 
    :doc:`Read more … <mosaik-api/index>`
 
-2. The **Scenario Definition** provides a simple API that allows you to create
+#. The **Scenario API** provides a simple API that allows you to create
    your simulation scenarios in pure `Python <https://python.org>`_ (yes, no
    graphical modelling!).
 
    The scenario API allows you to start simulators and instantiate models from
    them. This will give you *entity sets* (sets of :term:`entities <entity>`).
-   You can then connect the entities with each other in order to establish data
-   flows between the simulators.
+   You can then connect the entities with each other in order to establish
+   data-flows between the simulators.
 
    Mosaik allows you both, connecting one entity at a time as well as
    connecting whole entity sets with each other.
 
    :doc:`Read more … <scenario-definition>`
 
-3. The **Simulator Manager** (or shorter, **SimManager**) is responsible for
+#. The **Simulator Manager** (or shorter, **SimManager**) is responsible for
    handling the simulator processes and communicating with them.
 
    It is able to *a)* start new simulator processes, *b)* connect to already
@@ -120,7 +132,7 @@ a co-simulation framework:
 
    :doc:`Read more … <simmanager>`
 
-4. Mosaik's **simulator** uses the event-discrete simulation library `SimPy
+#. Mosaik's **simulator** uses the event-discrete simulation library `SimPy
    <https://simpy.readthedocs.org>`_ for the coordinated simulation of
    a scenario.
 
@@ -133,4 +145,4 @@ a co-simulation framework:
    perform their simulation step in parallel if they don't depend on each
    other's data.
 
-   :doc:`Read more … <simulator>`
+   :doc:`Read more … <scheduler>`
