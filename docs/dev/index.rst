@@ -10,3 +10,4 @@ Contents:
    setup
    release_process
    requirements
+   design-decisions

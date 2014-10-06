@@ -110,7 +110,7 @@ Scenario definition
    filter sets of entities based on their attributes or on existing connections
    to other entities.
 
-#. Cyclic Data Flow Support: mosaik must offer a way to deal with cyclic data
+#. Cyclic Data-flow Support: mosaik must offer a way to deal with cyclic data
    flows, e.g. between a controllable energy producer and a control strategy
    which generates schedules based on the current feed-in.
 
