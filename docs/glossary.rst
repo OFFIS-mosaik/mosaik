@@ -11,6 +11,13 @@ Glossary
       connected to the power system; for example a multi-agent system that
       controls the feed-in of decentralized producers.
 
+   Data-flow
+      The exchange of data between two :term:`simulators <simulator>` or
+      between the :term:`entities <entity>` of two simulators.
+
+      Example: the (re)active power feed-in of a PV model that is sent to
+      a node of a power system simulator.
+
    Entity
       Represents an instance of a :term:`Model` within a mosaik
       :term:`simulation`.  Entities can be connected to establish a data-flow
@@ -45,3 +52,13 @@ Glossary
       Sometimes, the term *simulator* also refers all kinds of processes that
       can talk to mosaik, including actual simulators, control strategies,
       visualization servers, database adapters and so on.
+
+   Step
+      Mosaik executes simulators in discrete time steps. The step size of a
+      simulator can be an arbitrary integer. It can also vary during the
+      simulation.
+
+      Mosaik does not dictate a unit for the simulation time and step size. The
+      convention is to use seconds, but it is no problems if all simulators
+      used minutes or milli seconds – as long as all of them assume the same
+      unit.

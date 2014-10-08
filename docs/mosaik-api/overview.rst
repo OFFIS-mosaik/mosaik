@@ -40,6 +40,8 @@ These methods are usually sufficient to connect simple simulators to mosaik.
 However, control strategies, visualizations or database adapters may need to
 actively query mosaik for additional data.
 
+.. _async_requests_overview:
+
 Thus, while a simulator is executing a simulation step, it may make
 asynchronous requests to mosaik. It can get the current simulation progress
 (``get_progress()``), collect information about the simulated topology

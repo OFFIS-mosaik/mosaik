@@ -168,6 +168,8 @@ mechanism that is explained in one of the next sections
 (:ref:`integrate-control-strategies`).
 
 
+.. _running-the-simulation:
+
 Running the simulation
 ======================
 
@@ -181,7 +183,8 @@ finally run our simulation:
    Simulation finished successfully.
 
 This will execute the simulation from time 0 until we reach the time *until*
-(in simulated seconds).
+(in simulated seconds). The :doc:`scheduler section <scheduler>` explains in
+detail what happens when you call ``run()``.
 
 To wrap it all up, this is how our small example scenario finally looks like:
 

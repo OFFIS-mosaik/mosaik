@@ -225,9 +225,9 @@ For entities in the root list, *type* must be the same as the *model*
 parameter. The type for objects in sub-lists may be anything that can be found
 in ``meta['models']`` (see :ref:`api.init`).  *rel* is a list of related
 entities; "related" means that two entities are somehow connect within the
-simulator, either logically or via a real data-flow (e.g., grid nodes are
-related to their adjacent branches). The *children* entry is optional and may
-contain a sub-list of entities.
+simulator, either logically or via a real :term:`data-flow` (e.g., grid nodes
+are related to their adjacent branches). The *children* entry is optional and
+may contain a sub-list of entities.
 
 
 Example

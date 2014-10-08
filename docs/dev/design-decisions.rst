@@ -16,6 +16,8 @@ work.
    simulator/entity *A*.
 
 
+.. _circular-data-flows:
+
 Circular data-flows
 ===================
 

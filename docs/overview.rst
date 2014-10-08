@@ -30,7 +30,7 @@ To allow this, mosaik
    simulators, and
 
 #. schedules the step-wise execution of the different simulators and manages
-   the exchange of data *(data-flows)* between them.
+   the exchange of data (:term:`data-flows <data-flow>`) between them.
 
 Although mosaik is written in Python 3, its simulator API completely language
 agnostic. It doesn't matter if your simulator is written in Python 2, Java,
@@ -54,11 +54,11 @@ we are done with this, we can create a scenario where we connect the households
 to nodes in the power grid. Some of the households will also get a PV module.
 The monitoring / analysis tool will be connected to the power grid's
 transformer node. When we connect all these :term:`entities <entity>`, we also
-tell mosaik about the data flows between them (e.g., active power feed-in from
+tell mosaik about the data-flows between them (e.g., active power feed-in from
 the PV modules to a grid node).
 
 When we finally start the simulation, mosaik requests the simulators to perform
-simulation steps and exchanges data between them according to the data flows
+simulation steps and exchanges data between them according to the data-flows
 described in the scenario. For our simple example, that would roughly look like
 this:
 
@@ -109,7 +109,7 @@ a co-simulation framework:
    The scenario API allows you to start simulators and instantiate models from
    them. This will give you *entity sets* (sets of :term:`entities <entity>`).
    You can then connect the entities with each other in order to establish
-   data-flows between the simulators.
+   :term:`data-flows <data-flow>` between the simulators.
 
    Mosaik allows you both, connecting one entity at a time as well as
    connecting whole entity sets with each other.
