@@ -27,30 +27,15 @@ The data that a simulator computes during a step is valid for the right-open
 interval [*t*:sub:`now`, *t*:sub:`next`) as shown in the following figure.
 
 
-.. figure:: /_static/scheduler-step.svg
+.. figure:: /_static/scheduler-step.*
    :width: 600
    :align: center
    :alt: Anatomy of a step
 
-   ohai
-
-.. image:: /_static/scheduler-step.svg
-   :width: 600
-   :align: center
-   :alt: Anatomy of a step
-
-.. figure:: /_static/scheduler-step.png
-   :width: 600
-   :align: center
-   :alt: Anatomy of a step
-
-   ohai
-
-.. image:: /_static/scheduler-step.png
-   :width: 600
-   :align: center
-   :alt: Anatomy of a step
-
+   Schematic execution of a simulator *A*. For its first step *A-0*,
+   *t*:sub:`now`, *t*:sub:`next` and the time interval, in which the data
+   produced during that step is valid, are shown. The figure also shows that
+   the step size of a simulator may vary during the simulation.
 
 
 Synchronization and data-flows
