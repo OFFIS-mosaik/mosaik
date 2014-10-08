@@ -32,10 +32,9 @@ interval [*t*:sub:`now`, *t*:sub:`next`) as shown in the following figure.
    :align: center
    :alt: Anatomy of a step
 
-   Schematic execution of a simulator *A*. For its first step *A-0*,
-   *t*:sub:`now`, *t*:sub:`next` and the time interval, in which the data
-   produced during that step is valid, are shown. The figure also shows that
-   the step size of a simulator may vary during the simulation.
+   Schematic execution of a simulator *A*. *t*:sub:`now`, *t*:sub:`next` and
+   the validity interval for its first step 0 are shown. The figure also shows
+   that the step size of a simulator may vary during the simulation.
 
 
 Synchronization and data-flows
@@ -49,11 +48,19 @@ Let's assume we created a data-flow from a simulator *A* to a simulator *B* and
 *B* wants to perform a step from *t*:sub:`now(B)`. Mosaik determines which
 simulators provide input data for *B*. This is only *A* in this example. In
 order to provide data for *B*, *A* needs to step far enough to produce data for
-*t*:sub:`now(B)`, that means *t*:sub:`next(A)` > *t*:sub:`now(B)` (or just take
-a look at the next figure):
+*t*:sub:`now(B)`, that means *t*:sub:`next(A)` > *t*:sub:`now(B)` as the
+following figure illustrates.
 
-.. TODO figure die zeigt, wie weit a gesteppt sein muss, damit b steppen kann.
-TODO figure die zeigt, wie weit a gesteppt sein muss, damit b steppen kann.
+.. figure:: /_static/scheduler-step-dependencies.*
+   :width: 600
+   :align: center
+   :alt: t_next(A) must be greater then t_now(B) in order for B to step.
+
+   **(a)** *B* cannot yet step because *A* has not progressed far enough yet
+   (*t*:sub:`next(A) <= *t*:sub:`now(B)`).
+
+   **(b)** *B* can perform its next step, because *A* now has progressed far
+   enough (*t*:sub:`next(A) > *t*:sub:`now(B)`).
 
 If this condition is met for all simulators providing input for *B*, mosaik
 collects all input data for *B* that is valid at *t*:sub:`now(B)` (you could
@@ -64,21 +71,38 @@ this data to *B*. Based upon this (and *only* this) data, *B* performs its step
 This is relatively easy to understand if *A* and *B* have the same step size,
 as the following figures shows:
 
-.. TODO data-flow example für A(1) -> B(1)
-TODO data-flow example für A(1) -> B(1)
+.. figure:: /_static/scheduler-dataflow-1-1.*
+   :width: 600
+   :align: center
+   :alt: Dataflow from A to B where both simulators have the same step size.
+
+   In this example, *A* and *B* have the same step size. Mosaik steps them
+   in an alternating order starting with *A*, because it provides the input
+   data for *B*.
 
 If *B* had a larger step size then *A*, *A* would produce new data while *B*
 steps. *B* would still only use the data that was valid at *t*:sub:`now(B)`,
 because it only "measures" its inputs once at the beginning of its step:
 
-.. TODO data-flow example für A(1) -> B(3)
-TODO data-flow example für A(1) -> B(3)
+.. figure:: /_static/scheduler-dataflow-1-2.*
+   :width: 600
+   :align: center
+   :alt: Dataflow from A to B where B has a larger step size.
+
+   In this example, *B* has a larger step size. It doesn't consume all data
+   that *A* produces, because it only gets data once at the beginning of its
+   step.
 
 On the other hand, if *A* had a larger step size then *B*, we would reuse the
 same data from *A* multiple times as long as it is valid:
 
-.. TODO data-flow example für A(3) -> B(1)
-TODO data-flow example für A(3) -> B(1)
+.. figure:: /_static/scheduler-dataflow-2-1.*
+   :width: 600
+   :align: center
+   :alt: Dataflow from A to B where A has a larger step size.
+
+   In this example, *A* has a larger step size. *B* reuses the same data
+   multiple times because it is still valid.
 
 The last two examples may look like special cases, but they actually arise from
 the approach explained above.
@@ -119,8 +143,14 @@ The cycle can be resolved by first stepping *E* (e.g., from *t* = 0 to *t*
 step for the same interval. The commands/schedule that *C* generates for *E*
 will then be used in *E*\ ’s next step.
 
-.. TODO figure with cyclic data flow
-TODO figure with cyclic data flow
+.. figure:: /_static/scheduler-cyclic-dataflow.*
+   :width: 600
+   :align: center
+   :alt: Cyclic data-flow between a controller and a controlled entity.
+
+   In this example, a controlled entity *E* provides state data to the
+   controller *C*. The commands or schedule from *C* is used by *E* in its next
+   step.
 
 This resolution of the cycle makes sense if you think how this would work in
 real life. The controller would measure the data from the controlled unit at
