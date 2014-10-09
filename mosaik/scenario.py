@@ -373,7 +373,7 @@ class ModelMock:
 
             entity_set.append(entity)
             entity_graph.add_node(entity.full_id, sim=sim_name, type=e['type'])
-            for rel in e['rel']:
+            for rel in e.get('rel', []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sim_id, rel))
 
         return entity_set
