@@ -40,7 +40,7 @@ C, matlab or anything else.
 A simple example
 ----------------
 
-.. image:: _static/mosaik-slide.png
+.. image:: _static/mosaik-slide.*
    :width: 100%
    :align: center
    :alt: mosaik
