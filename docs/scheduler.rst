@@ -57,10 +57,10 @@ following figure illustrates.
    :alt: t_next(A) must be greater then t_now(B) in order for B to step.
 
    **(a)** *B* cannot yet step because *A* has not progressed far enough yet
-   (*t*:sub:`next(A) <= *t*:sub:`now(B)`).
+   (*t*:sub:`next(A)` <= *t*:sub:`now(B)`).
 
    **(b)** *B* can perform its next step, because *A* now has progressed far
-   enough (*t*:sub:`next(A) > *t*:sub:`now(B)`).
+   enough (*t*:sub:`next(A)` > *t*:sub:`now(B)`).
 
 If this condition is met for all simulators providing input for *B*, mosaik
 collects all input data for *B* that is valid at *t*:sub:`now(B)` (you could
