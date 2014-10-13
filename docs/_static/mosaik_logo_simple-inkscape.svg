@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="593.37439"
+   height="325"
+   id="svg3175"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="mosaik_logo_simple-inkscape.svg"
+   inkscape:export-filename="/home/stefan/mac/Code/mosaik/docs/_static/mosaik_logo_simple.png"
+   inkscape:export-xdpi="77.660004"
+   inkscape:export-ydpi="77.660004">
+  <defs
+     id="defs3177" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.5109637"
+     inkscape:cx="275.47248"
+     inkscape:cy="143.10921"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:snap-bbox="true"
+     inkscape:snap-bbox-midpoints="true"
+     inkscape:window-width="1680"
+     inkscape:window-height="995"
+     inkscape:window-x="0"
+     inkscape:window-y="-3"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0">
+    <inkscape:grid
+       type="xygrid"
+       id="grid3961"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true"
+       spacingx="5px"
+       spacingy="5px"
+       originx="-150px"
+       originy="-175px" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata3180">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-150,-552.36218)">
+    <text
+       xml:space="preserve"
+       style="font-size:120px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#202020;fill-opacity:1;stroke:none;font-family:Aller;-inkscape-font-specification:Aller"
+       x="360.39999"
+       y="700.92218"
+       id="text3183"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3185"
+         x="360.39999"
+         y="700.92218"
+         style="font-size:120px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#202020;fill-opacity:1;font-family:Aller;-inkscape-font-specification:Aller">mosaik</tspan></text>
+    <path
+       style="fill:#b81c1c;fill-opacity:1;stroke:none"
+       d="m 369,717.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-8"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#484848;fill-opacity:1;stroke:none"
+       d="m 274.5,662.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-84"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#5e8227;fill-opacity:1;stroke:none"
+       d="m 274.5,552.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-3"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#3b9ac4;fill-opacity:1;stroke:none"
+       d="m 180,607.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-4"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#d98d36;fill-opacity:1;stroke:none"
+       d="m 274.5,772.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-8-0"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#913a91;fill-opacity:1;stroke:none"
+       d="m 180,717.36218 -30,52.5 30,52.5 60,0 30,-52.5 -30,-52.5 z"
+       id="path4005-8-1"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>

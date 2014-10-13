@@ -11,3 +11,4 @@ Contents:
    release_process
    requirements
    design-decisions
+   logo-ci
