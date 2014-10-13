@@ -27,12 +27,11 @@ class Simulator(object):
         self.models = []
         self.data = []
 
-    def add_instances(self, num, init_val):
-        """Create *num* instances of ``Model`` with *init_val*."""
-        for i in range(num):
-            model = Model(init_val)
-            self.models.append(model)
-            self.data.append([])  # Add list for simulation data
+    def add_model(self, init_val):
+        """Create an instances of ``Model`` with *init_val*."""
+        model = Model(init_val)
+        self.models.append(model)
+        self.data.append([])  # Add list for simulation data
 
     def step(self, deltas=None):
         """Set new model inputs from *deltas* to the models and perform a
@@ -56,7 +55,8 @@ class Simulator(object):
 if __name__ == '__main__':
     # This is how the simulator could be used:
     sim = Simulator()
-    sim.add_instances(2, init_val=0)
+    for i in range(2):
+        sim.add_model(init_val=0)
     sim.step()
     sim.step({0: 23, 1: 42})
     assert sim.data == [
