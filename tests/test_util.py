@@ -7,6 +7,19 @@ import pytest
 from mosaik import exceptions, scenario, util
 
 
+class World:
+    """A dummy world for testing purposes."""
+    def __init__(self):
+        self.src_connects = set()
+        self.dest_connects = collections.defaultdict(lambda: 0)
+        self.async_requests = None
+
+    def connect(self, src, dest, *attr_pairs, async_requests=False):
+        self.async_requests = async_requests
+        self.src_connects.add(src)
+        self.dest_connects[dest] += 1
+
+
 def test_ordered_default_dict():
     d = util.OrderedDefaultdict(list)
     for i in [3, 0, 4, 1, 2]:
@@ -63,6 +76,19 @@ def test_sync_process_ignore_errors():
     util.sync_process(gen(), world, ignore_errors=True)
 
 
+def test_connect_many_to_one():
+    world = World()
+    src_set = [object() for i in range(3)]
+    dest = object()
+
+    util.connect_many_to_one(world, src_set, dest, 'a', 'b',
+                             async_requests=True)
+
+    assert world.async_requests is True
+    assert world.src_connects == set(src_set)
+    assert world.dest_connects == {dest: len(src_set)}
+
+
 @pytest.mark.parametrize(['src_size', 'dest_size', 'evenly', 'max_c',
                           'dest_connects'], [
     (20, 20, True, None, (1, 1)),
@@ -90,15 +116,6 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
     the dest set have at least or most to be connected.
 
     """
-    class World:
-        def __init__(self):
-            self.src_connects = set()
-            self.dest_connects = collections.defaultdict(lambda: 0)
-
-        def connect(self, src, dest, *attr_pairs):
-            self.src_connects.add(src)
-            self.dest_connects[dest] += 1
-
     for seed in range(100):
         random.seed(seed)
         world = World()

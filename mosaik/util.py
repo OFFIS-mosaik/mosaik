@@ -62,6 +62,17 @@ def sync_process(generator, world, *, ignore_errors=False):
         sys.exit(1)
 
 
+def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
+    """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
+    to *dest*.
+
+    See the :meth:`~mosaik.scenario.World.connect` for more details.
+
+    """
+    for src in src_set:
+        world.connect(src, dest, *attrs, async_requests=async_requests)
+
+
 def connect_randomly(world, src_set, dest_set, *attrs, evenly=True,
                      max_connects=float('inf')):
     """Randomly :meth:`~mosaik.scenario.World.connect` the entities from
