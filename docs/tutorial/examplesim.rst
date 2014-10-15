@@ -77,7 +77,7 @@ following way:
 .. code-block:: python
 
    # Model name and "params" are used for constructing instances:
-   model = Model(init_val=42)
+   model = ExampleModel(init_val=42)
    # "attrs" are normal attributes:
    print(model.val)
    print(model.delta)
@@ -202,7 +202,7 @@ The *outputs* parameter contains the query and may in our case look like this:
 
    {
        'Model_0': ['delta', 'value'],
-       'Model_0': ['value'],
+       'Model_1': ['value'],
    }
 
 The expected return value would then be:
@@ -211,7 +211,7 @@ The expected return value would then be:
 
    {
        'Model_0': {'delta': 1, 'value': 24},
-       'Model_0': {'value': 3},
+       'Model_1': {'value': 3},
    }
 
 In our implementation we loop over each entity ID for which data is requested.
