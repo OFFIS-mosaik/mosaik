@@ -55,7 +55,7 @@ will result in a call
 API calls
 ---------
 
-.. currentmodule:: mosaik_api
+.. module:: mosaik_api
 .. autoclass:: Simulator
    :members: init, create, step, get_data, configure, finalize
 

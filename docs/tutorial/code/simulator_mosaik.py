@@ -21,7 +21,7 @@ META = {
 
 class ExampleSim(mosaik_api.Simulator):
     def __init__(self):
-        super(ExampleSim, self).__init__(META)
+        super().__init__(META)
         self.simulator = simulator.Simulator()
         self.eid_prefix = 'Model_'
         self.entities = {}  # Maps EIDs to model indices in self.simulator
