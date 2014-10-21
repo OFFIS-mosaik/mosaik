@@ -292,6 +292,7 @@ class LocalProcess(SimProxy):
 
     def stop(self):
         """Yield a triggered event but do nothing else."""
+        self._inst.finalize()
         yield self._env.event().succeed()
 
     def _proxy_call(self, name):

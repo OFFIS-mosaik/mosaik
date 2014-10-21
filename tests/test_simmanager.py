@@ -4,13 +4,13 @@ from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc
 from simpy.io.message import Message
 from simpy.io.packet import PacketUTF8 as Packet
+import mosaik_api
 import pytest
 
 from mosaik import scenario
 from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
 import mosaik
-import mosaik_api
 
 
 sim_config = {
@@ -28,6 +28,9 @@ sim_config = {
     },
     'Fail': {
         'cmd': 'python -c "import time; time.sleep(0.2)"',
+    },
+    'SimMock': {
+        'python': 'tests.util:SimMock',
     },
 }
 
@@ -277,6 +280,14 @@ def test_local_process():
     assert sp.last_step == float('-inf')
     assert sp.next_step == 0
     assert sp.step_required is None
+
+
+def test_local_process_finalized(world):
+    """Test that ``finalize()`` is called for local processes (issue #23)."""
+    sm = world.start('SimMock')
+    assert sm._sim._inst.finalized is False
+    world.run(until=1)
+    assert sm._sim._inst.finalized is True
 
 
 def _rpc_get_progress(mosaik, world):
