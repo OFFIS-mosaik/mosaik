@@ -34,9 +34,9 @@ class Controller(mosaik_api.Simulator):
 
     def step(self, time, inputs):
         commands = {}
-        for eid, attrs in inputs.items():
+        for agent_eid, attrs in inputs.items():
             values = attrs.get('val_in', {})
-            for src, value in values.items():
+            for model_eid, value in values.items():
 
                 if value >= 3:
                     delta = -1
@@ -45,11 +45,11 @@ class Controller(mosaik_api.Simulator):
                 else:
                     continue
 
-                if eid not in commands:
-                    commands[eid] = {}
-                if src not in commands[eid]:
-                    commands[eid][src] = {}
-                commands[eid][src]['delta'] = delta
+                if agent_eid not in commands:
+                    commands[agent_eid] = {}
+                if model_eid not in commands[agent_eid]:
+                    commands[agent_eid][model_eid] = {}
+                commands[agent_eid][model_eid]['delta'] = delta
 
         yield self.mosaik.set_data(commands)
 

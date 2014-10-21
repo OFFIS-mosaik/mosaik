@@ -78,13 +78,12 @@ After finishing the loop, the ``commands`` dict may look like this:
 .. code-block:: python
 
    {
-       'Model_0': {'Agent_0': {'delta': 1}},
-       'Model_2': {'Agent_2': {'delta': -1}},
+       'Agent_0': {'Model_0': {'delta': 1}},
+       'Agent_2': {'Model_2': {'delta': -1}},
    }
 
-*Model_0* will receive the new *delta* = 1 from *Agent_0*. *Model_2* will
-receive the new *delta* = -1 from *Agent_2*. *Agent_1* did not set a new
-*delta*.
+*Agent_0* sets for *Model_0* the new *delta* = 1. *Agent_2* sets for *Model_2*
+the new *delta* = -1. *Agent_1* did not set a new *delta*.
 
 So now that we create all commands – how do they get to the example simulator?
 The way via :meth:`~mosaik_api.Simulator.get_data()` is not possible since it
