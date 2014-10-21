@@ -37,6 +37,11 @@ Here is a possible implementation of that simulation model in Python:
 
 .. literalinclude:: code/simulator.py
 
+If you run this script, you'll get the following output:
+
+.. literalinclude:: code/simulator.out
+
+
 Setup for the API implementation
 ================================
 

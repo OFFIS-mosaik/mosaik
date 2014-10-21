@@ -42,10 +42,15 @@ The important thing here is the ``async_requests=True`` argument that we pass
 to :meth:`~mosaik.scenario.World.connect()`. This tells mosaik that our
 control mechanism may do async. requests (e.g., setting data to the models).
 
-Finally, we can connect the models to the database and run the simulation:
+Finally, we can connect the models to the monitor and run the simulation:
 
 .. literalinclude:: code/demo_2.py
    :lines: 37-41
+
+In the output, you can clearly see the effect of our control mechanism:
+
+.. literalinclude:: code/demo_2.out
+   :lines: 1-10,41-
 
 This is the complete scenario:
 

@@ -59,7 +59,6 @@ if __name__ == '__main__':
         sim.add_model(init_val=0)
     sim.step()
     sim.step({0: 23, 1: 42})
-    assert sim.data == [
-        [1, 24],
-        [1, 43],
-    ]
+    print('Simulation finished with data:')
+    for i, inst in enumerate(sim.data):
+        print('%d: %s' % (i, inst))

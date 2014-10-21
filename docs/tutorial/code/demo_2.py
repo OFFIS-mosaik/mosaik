@@ -11,8 +11,8 @@ SIM_CONFIG = {
     'ExampleCtrl': {
         'python': 'controller:Controller',
     },
-    'HDF5': {
-        'python': 'mosaik_hdf5:MosaikHdf5',
+    'Collector': {
+        'cmd': 'python collector.py %(addr)s',
     },
 }
 END = 10 * 60  # 10 minutes
@@ -23,19 +23,18 @@ world = mosaik.World(SIM_CONFIG)
 # Start simulators
 examplesim = world.start('ExampleSim', eid_prefix='Model_')
 examplectrl = world.start('ExampleCtrl')
-hdf5 = world.start('HDF5', step_size=60, duration=END)
+collector = world.start('Collector', step_size=60)
 
 # Instantiate models
 models = [examplesim.ExampleModel(init_val=i) for i in range(-2, 3, 2)]
 agents = examplectrl.Agent.create(len(models))
-db = hdf5.Database(filename='demo_2.hdf5')
+monitor = collector.Monitor()
 
 # Connect entities
 for model, agent in zip(models, agents):
     world.connect(model, agent, ('val', 'val_in'), async_requests=True)
 
-mosaik.util.connect_many_to_one(world, models, db, 'val', 'delta')
-
+mosaik.util.connect_many_to_one(world, models, monitor, 'val', 'delta')
 
 # Run simulation
 world.run(until=END)

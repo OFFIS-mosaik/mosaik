@@ -1,0 +1,11 @@
+{'ExampleSim-0.Model_0': {'delta': [1, 1, 1, 1, 1, -1, -1, -1, -1, -1],
+                          'val': [-1, 0, 1, 2, 3, 2, 1, 0, -1, -2]},
+ 'ExampleSim-0.Model_1': {'delta': [1, 1, 1, -1, -1, -1, -1, -1, -1, 1],
+                          'val': [1, 2, 3, 2, 1, 0, -1, -2, -3, -2]},
+ 'ExampleSim-0.Model_2': {'delta': [1, -1, -1, -1, -1, -1, -1, 1, 1, 1],
+                          'val': [3, 2, 1, 0, -1, -2, -3, -2, -1, 0]}}
+Starting "ExampleSim" as "ExampleSim-0" ...
+Starting "ExampleCtrl" as "ExampleCtrl-0" ...
+Starting "Collector" as "Collector-0" ...
+Starting simulation.
+Progress: 3.33%Progress: 6.67%Progress: 10.00%Progress: 13.33%Progress: 16.67%Progress: 20.00%Progress: 23.33%Progress: 26.67%Progress: 30.00%Progress: 33.33%Progress: 36.67%Progress: 40.00%Progress: 43.33%Progress: 46.67%Progress: 50.00%Progress: 53.33%Progress: 56.67%Progress: 60.00%Progress: 63.33%Progress: 66.67%Progress: 70.00%Progress: 73.33%Progress: 76.67%Progress: 80.00%Progress: 83.33%Progress: 86.67%Progress: 90.00%Progress: 93.33%Progress: 96.67%Progress: 100.00%Simulation finished successfully.

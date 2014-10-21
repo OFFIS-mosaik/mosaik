@@ -6,13 +6,12 @@
 Creating and running simple simulation scenarios
 ================================================
 
-We will now create a simple scenario with mosaik in which we use
-`mosaik-hdf5`__ to collect data from the example simulator we just wrote. That
-means, we will instantiate a few ExampleModels and an HDF5 database. We will
-then connect the model instances to that database and simulate that for some
+We will now create a simple scenario with mosaik in which we use also use
+a simple data collector to get some nice output from our simulation. That
+means, we will instantiate a few ExampleModels and a data monitor. We will
+then connect the model instances to that monitor and simulate that for some
 time.
 
-__ https://pypi.python.org/pypi/mosaik-hdf5
 
 Configuration
 =============
@@ -37,12 +36,12 @@ just import it and execute it in-process. The line ``'python':
 'simulator_mosaik:ExampleSim'`` tells mosaik to import the package
 ``simulator_mosaik`` and instantiate the class ``ExampleSim`` from it.
 
-The HDF5 database will be started as external process which will communicate
-with mosaik via sockets. The line ``'cmd': 'mosaik-hdf5 %(addr)s'`` tells
-mosaik to start the simulator by executing the command ``mosaik-hdf5``.
-Beforehand, mosaik replaces the placeholder ``%(addr)s`` with its actual
-socket address HOSTNAME:PORT so that the simulator knows where to connect
-to.
+The data collector will be started as external process which will communicate
+with mosaik via sockets. The line ``'cmd': 'python collector.py %(addr)s'``
+tells mosaik to start the simulator by executing the command ``python
+collector.py``. Beforehand, mosaik replaces the placeholder ``%(addr)s`` with
+its actual socket address HOSTNAME:PORT so that the simulator knows where to
+connect to.
 
 The section about the :doc:`Sim Manager </simmanager>` explains all this in
 detail.
@@ -89,8 +88,8 @@ The *init_val* parameter that we passed to ``ExampleModel`` is the same as in
 the ``create()`` method of our Sim API implementation. Similarly, the database
 has a parameter for its filename.
 
-Now, we need to connect the example model with our database. That's who we tell
-mosaik to send the outputs of the example model into the database:
+Now, we need to connect the example model to the monitor. That's how we tell
+mosaik to send the outputs of the example model to the monotir.
 
 .. literalinclude:: code/demo_1.py
    :lines: 29-30
@@ -105,7 +104,7 @@ Usually, you will neither create single entities nor connect single entity
 pairs, but work with large(r) sets of entities. Mosaik allows you to easily
 create multiple entities with the same parameters at once. It also provides
 some utility functions for connecting sets of entities with each other. So lets
-create nine more entities and connect them to our database:
+create nine more entities and connect them to our monitor:
 
 .. literalinclude:: code/demo_1.py
    :lines: 3-4,32-34
@@ -133,17 +132,10 @@ how long we want our simulation to run:
 .. literalinclude:: code/demo_1.py
    :lines: 36-37
 
-Executing the scenario script will then give us the following output as well as
-an HDF5 file :file:`demo_1.hdf5`:
+Executing the scenario script will then give us the following output:
 
-.. code-block:: bash
-
-   $ python demo_1.py
-   Starting "ExampleSim" as "ExampleSim-0" ...
-   Starting "HDF5" as "HDF5-0" ...
-   INFO:mosaik_api:Starting MosaikHdf5 ...
-   Starting simulation.
-   Simulation finished successfully.
+.. literalinclude:: code/demo_1.out
+   :lines: 1-9,30-
 
 
 Summary
