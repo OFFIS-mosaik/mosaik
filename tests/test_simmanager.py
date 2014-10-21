@@ -3,6 +3,7 @@ import sys
 from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc
 from simpy.io.message import Message
+from simpy.io.network import RemoteException
 from simpy.io.packet import PacketUTF8 as Packet
 import mosaik_api
 import pytest
@@ -363,19 +364,46 @@ def _rpc_set_data(mosaik, world):
     }
 
 
-@pytest.mark.parametrize('rpc', [
-    _rpc_get_progress,
-    _rpc_get_related_entities,
-    _rpc_get_data,
-    _rpc_set_data,
+def _rpc_get_data_err1(mosaik, world):
+    """Required simulator not connected to us."""
+    yield mosaik.get_data({'Z.2': []})
+
+
+def _rpc_get_data_err2(mosaik, world):
+    """Async-requests flag not set for connection."""
+    yield mosaik.get_data({'Y.2': []})
+
+
+def _rpc_set_data_err1(mosaik, world):
+    """Required simulator not connected to us."""
+    yield mosaik.set_data({'src': {'Z.2': {'val': 42}}})
+
+
+def _rpc_set_data_err2(mosaik, world):
+    """Async-requests flag not set for connection."""
+    yield mosaik.set_data({'src': {'Y.2': {'val': 42}}})
+
+
+@pytest.mark.parametrize(('rpc', 'err'), [
+    (_rpc_get_progress, None),
+    (_rpc_get_related_entities, None),
+    (_rpc_get_data, None),
+    (_rpc_set_data, None),
+    (_rpc_get_data_err1, ScenarioError),
+    (_rpc_get_data_err2, ScenarioError),
+    (_rpc_set_data_err1, RemoteException),
+    (_rpc_set_data_err2, RemoteException),
 ])
-def test_mosaik_remote(rpc):
+def test_mosaik_remote(rpc, err):
     backend = simmanager.backend
     world = scenario.World({})
     env = world.env
 
     edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
     edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
+    world.df_graph.add_edge('X', 'X', async_requests=True)
+    world.df_graph.add_edge('Y', 'X', async_requests=False)
+    world.df_graph.add_node('Z')
     world.entity_graph.add_edges_from(edges)
     for node in world.entity_graph:
         world.entity_graph.add_node(node, sim='ExampleSim', type='A')
@@ -404,5 +432,8 @@ def test_mosaik_remote(rpc):
         world.sims['X'] = proxy
 
     env.process(greeter())
-    env.run(env.process(simulator()))
+    if err is None:
+        env.run(env.process(simulator()))
+    else:
+        pytest.raises(err, env.run, env.process(simulator()))
     world.srv_sock.close()

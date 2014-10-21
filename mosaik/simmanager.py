@@ -431,10 +431,15 @@ class MosaikRemote:
         data = {}
         missing = collections.defaultdict(
             lambda: collections.defaultdict(list))
+        dfg = self.world.df_graph
+        dest_sid = self.sim_id
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
-            data[full_id] = {}
             sid, eid = full_id.split(FULL_ID_SEP, 1)
+            # Check if async_requests are enabled.
+            self._assert_async_requests(dfg, sid, dest_sid)
+
+            data[full_id] = {}
             for attr in attr_names:
                 try:
                     data[full_id][attr] = cache_slice[sid][eid][attr]
@@ -464,9 +469,31 @@ class MosaikRemote:
 
         """
         sims = self.world.sims
+        dfg = self.world.df_graph
+        dest_sid = self.sim_id
         for src_full_id, dest in data.items():
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
+                self._assert_async_requests(dfg, sid, dest_sid)
                 inputs = sims[sid].input_buffer.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
+
+    def _assert_async_requests(self, dfg, src_sid, dest_sid):
+        """Check if async. requests are allowed from *dest_sid* to *src_sid*
+        and raise a :exc:`ScenarioError` if not."""
+        data = {
+            'src': src_sid,
+            'dest': dest_sid,
+        }
+        if dest_sid not in dfg[src_sid]:
+            raise ScenarioError(
+                'No connection from "%(src)s" to "%(dest)s": You need to '
+                'connect entities from both simulators and set '
+                '"async_requests=True".' % data)
+        if dfg[src_sid][dest_sid]['async_requests'] is not True:
+            raise ScenarioError(
+                'Async. requests not enabled for the connection from '
+                '"%(src)s" to "%(dest)s". Add the argument '
+                '"async_requests=True" to the connection of entities from '
+                '"%(src)s" to "%(dest)s".' % data)
