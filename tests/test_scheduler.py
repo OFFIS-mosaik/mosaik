@@ -18,7 +18,7 @@ def world():
 
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
-    def dummy_proc(world, sim, until):
+    def dummy_proc(world, sim, until, rt_factor, rt_strict):
         sim.proc_started = True
         yield world.env.event().succeed()
 
@@ -33,11 +33,14 @@ def test_run(monkeypatch):
     world.sims = {i: Sim() for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
-    world.run(until=1)
-
-    for sim in world.sims.values():
-        assert sim.proc_started
-    world.shutdown()
+    try:
+        world.run(until=1)
+    except:
+        world.shutdown()
+        raise
+    else:
+        for sim in world.sims.values():
+            assert sim.proc_started
 
 
 def test_sim_process():
@@ -56,7 +59,7 @@ def test_sim_process_error(monkeypatch):
                         get_keep_running_func)
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
-                            scheduler.sim_process(None, Sim(), None))
+                            scheduler.sim_process(None, Sim(), None, 1, False))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 

@@ -40,7 +40,8 @@ sim_config = {
 def world():
     world = scenario.World(sim_config)
     yield world
-    world.shutdown()
+    if world.srv_sock:
+        world.shutdown()
 
 
 def test_start(world, monkeypatch):

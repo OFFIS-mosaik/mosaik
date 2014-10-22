@@ -34,8 +34,7 @@ def run(world, until, rt_factor=None, rt_strict=False):
 
 def sim_process(world, sim, until, rt_factor, rt_strict):
     """SimPy simulation process for a certain simulator *sim*."""
-    if rt_factor:
-        rt_start = perf_counter()
+    rt_start = perf_counter()
 
     try:
         keep_running = get_keep_running_func(world, sim, until)

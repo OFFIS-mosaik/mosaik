@@ -59,8 +59,6 @@ def test_sync_process_error(error, errmsg, capsys):
 
     pytest.raises(SystemExit, util.sync_process, gen(), world)
 
-    world.shutdown()
-
     out, err = capsys.readouterr()
     assert out == errmsg
     assert err == ''
