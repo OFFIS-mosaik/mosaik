@@ -2,29 +2,41 @@
 This module is responsible for performing the simulation of a scenario.
 
 """
+from time import perf_counter
+
 from mosaik.exceptions import SimulationError
 from mosaik.simmanager import FULL_ID
 
 
-def run(world, until):
+def run(world, until, rt_factor=None, rt_strict=False):
     """Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
 
     Return the final simulation time.
 
+    See :meth:`mosaik.scenario.World.run()` for a detailed description of the
+    *rt_factor* and *rt_strict* arguments.
+
     """
+    if rt_factor is not None and rt_factor <= 0:
+        raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
+
     env = world.env
     procs = []
     for sim in world.sims.values():
-        proc = env.process(sim_process(world, sim, until))
+        proc = env.process(sim_process(world, sim, until, rt_factor,
+                                       rt_strict))
         sim.sim_proc = proc
         procs.append(proc)
 
     yield env.all_of(procs)
 
 
-def sim_process(world, sim, until):
+def sim_process(world, sim, until, rt_factor, rt_strict):
     """SimPy simulation process for a certain simulator *sim*."""
+    if rt_factor:
+        rt_start = perf_counter()
+
     try:
         keep_running = get_keep_running_func(world, sim, until)
         while keep_running():
@@ -37,7 +49,9 @@ def sim_process(world, sim, until):
 
             yield wait_for_dependencies(world, sim)
             input_data = get_input_data(world, sim)
+            yield from rt_sleep(rt_factor, rt_start, sim, world)
             yield from step(world, sim, input_data)
+            rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim)
             world.sim_progress = get_progress(world.sims, until)
             print('Progress: %.2f%%' % world.sim_progress, end='\r')
@@ -244,3 +258,26 @@ def get_progress(sims, until):
     times = [min(until, sim.next_step) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
+
+
+def rt_sleep(rt_factor, rt_start, sim, world):
+    """If in real-time mode, check if to sleep and do so if necessary."""
+    if rt_factor:
+        rt_passed = perf_counter() - rt_start
+        sleep = (rt_factor * sim.next_step) - rt_passed
+        if sleep > 0:
+            yield world.env.timeout(sleep)
+
+
+def rt_check(rt_factor, rt_start, rt_strict, sim):
+    """Check if simulation is fast enough for a given real-time factor."""
+    if rt_factor:
+        rt_passed = perf_counter() - rt_start
+        delta = rt_passed - (rt_factor * sim.next_step)
+        if delta > 0:
+            if rt_strict:
+                raise RuntimeError('Simulation too slow for real-time factor '
+                                   '%s' % rt_factor)
+            else:
+                print('Simulation too slow for real-time factor %s - %ss '
+                      'behind time.' % (rt_factor, delta))

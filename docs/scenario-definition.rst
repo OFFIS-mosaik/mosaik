@@ -509,3 +509,31 @@ This will, for instance, close mosaik's socket and allows new ``World``
 instances to reuse the same port again.
 
 :meth:`World.run()` automatically calls :meth:`World.shutdown()` for you.
+
+
+How to to real-time simulations
+===============================
+
+It is very easy to do real-time (or "wall-clock time") simulations in mosaik.
+You just pass an *rt_factor* to :meth:`World.run()` to enable it:
+
+.. code-block:: python
+
+   world.run(until=10, rt_factor=1)
+
+A real-time factor of 1 means, that 1 simulation time unit (usually
+a simulation second) takes 1 second of real time. Thus, if you set the
+real-time factor to 0.5, the simulation will run twice as fast as the real
+time. If you set it to 1/60, one simulated minute will take one real-time
+second.
+
+It may happen that the simulators are too slow for the real-time factor chosen.
+That means, they take longer than, e.g., one second to compute a step when
+a real-time factor of one second is set. If this happens, mosaik will by
+default just print a warning message to stdout. However, you can also let your
+simulation crash in this case by setting the parameter *rt_strict* to ``True``.
+Mosaik will then raise a :exc:`RuntimeError` if your simulation is too slow:
+
+.. code-block:: python
+
+   world.run(until=10, rt_factor=1/60, rt_strict=True)

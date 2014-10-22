@@ -4,9 +4,6 @@
 
 .. automodule:: mosaik.scenario
 
-.. autoclass:: Entity
-   :members:
-
 .. autoclass:: World
    :members:
 
@@ -14,4 +11,7 @@
    :members:
 
 .. autoclass:: ModelMock
+   :members:
+
+.. autoclass:: Entity
    :members:

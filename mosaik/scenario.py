@@ -214,24 +214,36 @@ class World:
 
         return results
 
-    def run(self, until):
+    def run(self, until, rt_factor=None, rt_strict=False):
         """Start the simulation until the simulation time *until* is reached.
 
-        Return the current simulation time (>= *until*).
+        In order to perform real-time simulations, you can set *rt_factor* to
+        a number > 0. An rt-factor of 1 means that 1 simulation time unit
+        (usually a second) takes 1 second in real-time. An rt-factor 0f 0.5
+        will let the simulation run twice as fast as real-time.
 
-        This method should only be called once!
+        If the simulators are too slow for the rt-factor you chose, mosaik
+        prints by default only a warning. In order to raise
+        a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
+
+        Before this method returns, it stops all simulators and closes mosaik's
+        server socket. So this method should only be called once.
 
         """
+        if self.srv_sock is None:
+            raise RuntimeError('Simulation has already been run and can only '
+                               'be run once for a World instance.')
+
         print('Starting simulation.')
         if self._debug:
             import mosaik._debug as dbg
             dbg.enable()
         try:
-            util.sync_process(scheduler.run(self, until), self)
+            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),
+                              self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
-            sys.exit(1)
         finally:
             self.shutdown()
             if self._debug:
@@ -242,6 +254,7 @@ class World:
         for sim in self.sims.values():
             util.sync_process(sim.stop(), self, ignore_errors=True)
         self.srv_sock.close()
+        self.srv_sock = None
 
     def _check_attributes(self, src, dest, attr_pairs):
         """Check if *src* and *dest* have the attributes in *attr_pairs*.

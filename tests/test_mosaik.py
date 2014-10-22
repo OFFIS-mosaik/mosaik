@@ -3,6 +3,7 @@ Test a complete mosaik simulation using mosaik as a library.
 
 """
 import importlib
+import time
 
 import networkx as nx
 import pytest
@@ -47,3 +48,32 @@ def test_mosaik(fixture, sim_config):
 
     for sim in world.sims.values():
         assert sim.last_step < fixture.until
+
+
+def test_rt_sim():
+    fixture = importlib.import_module('tests.fixtures.scenario_1')
+    world = scenario.World(sim_config_local)
+    fixture.create_scenario(world)
+
+    factor = 0.1
+    start = time.perf_counter()
+    world.run(until=fixture.until, rt_factor=factor)
+    duration = (time.perf_counter() - start) / factor
+
+    assert (fixture.until - 1) < duration < fixture.until
+
+
+@pytest.mark.parametrize('strict', [True, False])
+def test_rt_sim_too_slow(strict, capsys):
+    fixture = importlib.import_module('tests.fixtures.scenario_1')
+    world = scenario.World(sim_config_local)
+    fixture.create_scenario(world)
+
+    factor = 0.00001
+    if strict:
+        pytest.raises(RuntimeError, world.run, until=fixture.until,
+                      rt_factor=factor, rt_strict=strict)
+    else:
+        world.run(until=fixture.until, rt_factor=factor, rt_strict=strict)
+        out, err = capsys.readouterr()
+        assert 'too slow for real-time factor' in out
