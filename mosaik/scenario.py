@@ -291,19 +291,18 @@ class ModelFactory:
         self._world = world
         self._env = world.env
         self._sim = sim
-        self._model_cache = {}
+
+        for model, props in self.meta['models'].items():
+            if props['public']:
+                setattr(self, model, ModelMock(self._world, model, self._sim))
 
     def __getattr__(self, name):
-        if name not in self.meta['models']:
-            raise ScenarioError('Model factory for "%s" has no model "%s".' %
-                                (self._sim.sid, name))
-        if not self.meta['models'][name]['public']:
-            raise ScenarioError('Model "%s" is not public.' % name)
-
-        if name not in self._model_cache:
-            self._model_cache[name] = ModelMock(self._world, name, self._sim)
-
-        return self._model_cache[name]
+        models = self.meta['models']
+        if name in models and not models[name]['public']:
+            raise AttributeError('Model "%s" is not public.' % name)
+        else:
+            raise AttributeError('Model factory for "%s" has no model and no '
+                                 'function "%s".' % (self._sim.sid, name))
 
 
 class ModelMock:

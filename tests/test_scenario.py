@@ -234,6 +234,8 @@ def test_world_get_data(world):
 
 
 def test_model_factory(world, mf):
+    assert 'A' in dir(mf)
+    assert 'B' in dir(mf)
     assert mf.A._name == 'A'
     assert mf.A._sim_id == mf._sim.sid
     assert mf.B._name == 'B'
@@ -298,14 +300,14 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
 
 
 def test_model_factory_private_model(world, mf):
-    err = pytest.raises(ScenarioError, getattr, mf, 'C')
+    err = pytest.raises(AttributeError, getattr, mf, 'C')
     assert str(err.value) == 'Model "C" is not public.'
 
 
 def test_model_factory_unkown_model(world, mf):
-    err = pytest.raises(ScenarioError, getattr, mf, 'D')
+    err = pytest.raises(AttributeError, getattr, mf, 'D')
     assert str(err.value) == ('Model factory for "ExampleSim-0" has no model '
-                              '"D".')
+                              'and no function "D".')
 
 
 def test_model_mock_entity_graph(world):
@@ -321,10 +323,10 @@ def test_model_mock_entity_graph(world):
     sp_mock.create = create
     sp_mock.sid = 'E0'
     sp_mock.name = 'ExampleSim'
-    sp_mock.meta = {'models': {'A': {'params': []}}}
+    sp_mock.meta = {'models': {'A': {'public': True, 'params': []}}}
 
     fac = world.start('ExampleSim')
-    fac._sim = sp_mock
+    fac = scenario.ModelFactory(world, sp_mock)  # Override the factory
 
     assert world.entity_graph.adj == {}
     fac.A.create(2)
