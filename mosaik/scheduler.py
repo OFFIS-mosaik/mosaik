@@ -208,7 +208,7 @@ def step(world, sim, inputs):
 
     """
     sim.last_step = sim.next_step
-    sim.next_step = yield sim.step(sim.next_step, inputs)
+    sim.next_step = yield sim.proxy.step(sim.next_step, inputs)
 
 
 def get_outputs(world, sim):
@@ -222,7 +222,7 @@ def get_outputs(world, sim):
     sid = sim.sid
     outattr = world._df_outattr[sid]
     if outattr:
-        data = yield sim.get_data(outattr)
+        data = yield sim.proxy.get_data(outattr)
     else:
         data = {}  # Just to indicate that the step/get is completely done.
     # Create a cache entry for every point in time the data is valid for.

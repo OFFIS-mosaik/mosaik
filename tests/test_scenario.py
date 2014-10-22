@@ -16,7 +16,8 @@ sim_config = {
 def world():
     world = scenario.World(sim_config)
     yield world
-    world.shutdown()
+    if world.srv_sock:
+        world.shutdown()
 
 
 @pytest.fixture
@@ -233,6 +234,11 @@ def test_world_get_data(world):
     }
 
 
+def test_world_run_twice(world):
+    world.run(0)
+    pytest.raises(RuntimeError, world.run, 1)
+
+
 def test_model_factory(world, mf):
     assert 'A' in dir(mf)
     assert 'B' in dir(mf)
@@ -255,7 +261,7 @@ def test_model_factory_hierarchical_entities(world, mf):
             }],
         }]
     }])
-    mf.A._sim.create = mock.Mock(return_value=ret)
+    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
 
     a = mf.A(init_val=1)
     assert len(a.children) == 1
@@ -271,14 +277,14 @@ def test_model_factory_hierarchical_entities(world, mf):
 
 def test_model_factory_wrong_entity_count(world, mf):
     ret = world.env.event().succeed([None, None, None])
-    mf.A._sim.create = mock.Mock(return_value=ret)
+    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
     err = pytest.raises(AssertionError, mf.A.create, 2, init_val=0)
     assert str(err.value) == '2 entities were requested but 3 were created.'
 
 
 def test_model_factory_wrong_model(world, mf):
     ret = world.env.event().succeed([{'eid': 'spam_0', 'type': 'Spam'}])
-    mf.A._sim.create = mock.Mock(return_value=ret)
+    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
     err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
     assert str(err.value) == ('Entity "spam_0" has the wrong type: "Spam"; '
                               '"A" required.')
@@ -292,7 +298,7 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
             }],
         }]
     }])
-    mf.A._sim.create = mock.Mock(return_value=ret)
+    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
 
     err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
     assert str(err.value) == ('Type "Spam" of entity "c" not found in sim\'s '
@@ -319,22 +325,17 @@ def test_model_mock_entity_graph(world):
         ]
         return world.env.event().succeed(entities)
 
-    sp_mock = mock.Mock()
-    sp_mock.create = create
-    sp_mock.sid = 'E0'
-    sp_mock.name = 'ExampleSim'
-    sp_mock.meta = {'models': {'A': {'public': True, 'params': []}}}
-
     fac = world.start('ExampleSim')
-    fac = scenario.ModelFactory(world, sp_mock)  # Override the factory
+    sp = fac._sim
+    sp.proxy.create = create
 
     assert world.entity_graph.adj == {}
     fac.A.create(2)
     assert world.entity_graph.adj == {
-        'E0.0': {'E0.1': {}},
-        'E0.1': {'E0.0': {}},
+        'ExampleSim-0.0': {'ExampleSim-0.1': {}},
+        'ExampleSim-0.1': {'ExampleSim-0.0': {}},
     }
-    assert world.entity_graph.node['E0.0']['sim'] == 'ExampleSim'
-    assert world.entity_graph.node['E0.1']['sim'] == 'ExampleSim'
-    assert world.entity_graph.node['E0.0']['type'] == 'A'
-    assert world.entity_graph.node['E0.1']['type'] == 'A'
+    assert world.entity_graph.node['ExampleSim-0.0']['sim'] == 'ExampleSim'
+    assert world.entity_graph.node['ExampleSim-0.1']['sim'] == 'ExampleSim'
+    assert world.entity_graph.node['ExampleSim-0.0']['type'] == 'A'
+    assert world.entity_graph.node['ExampleSim-0.1']['type'] == 'A'

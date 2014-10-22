@@ -185,7 +185,7 @@ class World:
             outputs_by_sim[entity.sid][entity.eid] = attributes
 
         def request_data():
-            requests = {self.sims[sid].get_data(outputs): sid
+            requests = {self.sims[sid].proxy.get_data(outputs): sid
                         for sid, outputs in outputs_by_sim.items()}
             try:
                 results = yield self.env.all_of(requests)
@@ -266,7 +266,7 @@ class World:
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1].get('any_inputs', False)]
+        any_inputs = [False, emeta[1]['any_inputs']]
         attr_errors = []
         for attr_pair in attr_pairs:
             for i, attr in enumerate(attr_pair):
@@ -292,11 +292,13 @@ class ModelFactory:
         self._env = world.env
         self._sim = sim
 
+        # Create a ModelMock for every public model
         for model, props in self.meta['models'].items():
             if props['public']:
                 setattr(self, model, ModelMock(self._world, model, self._sim))
 
     def __getattr__(self, name):
+        # Implemented in order to improve error messages.
         models = self.meta['models']
         if name in models and not models[name]['public']:
             raise AttributeError('Model "%s" is not public.' % name)
@@ -343,8 +345,8 @@ class ModelMock:
         # behave like it was synchronous.
         def create_proc():
             try:
-                entities = yield self._sim.create(num, self._name,
-                                                  **model_params)
+                entities = yield self._sim.proxy.create(num, self._name,
+                                                        **model_params)
                 return entities
             except ConnectionError as e:
                 msg = ('Simulator "%s" closed its connection while creating %s'

@@ -7,8 +7,10 @@ from .util import SimMock
 @pytest.yield_fixture
 def world():
     world = scenario.World({})
-    world.sims = {i: simmanager.LocalProcess('', i, {}, SimMock(), world)
-                  for i in range(4)}
+    world.sims = {
+        i: simmanager.LocalProcess('', i, {'models': {}}, SimMock(), world)
+        for i in range(4)
+    }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3)],
                                   async_requests=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
@@ -41,6 +43,10 @@ def test_run(monkeypatch):
     else:
         for sim in world.sims.values():
             assert sim.proc_started
+
+
+def test_run_illegal_rt_factor():
+    pytest.raises(ValueError, next, scheduler.run(None, 10, -1))
 
 
 def test_sim_process():

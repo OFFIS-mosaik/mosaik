@@ -242,22 +242,43 @@ def valid_api_version(simulator_version, expected_version):
 
 
 class SimProxy:
-    """Simple proxy/facade for in-process simulators."""
+    """Handler for an external simulator.
+
+    It stores its simulation state and own the proxy object to the external
+    simulator.
+
+    """
     def __init__(self, name, sid, meta):
         self.name = name
         self.sid = sid
         self.meta = meta
+
+        # Meta data and remote method checks
+        api_methods = [
+            # "init" was called before the SimProxy was created
+            'create',
+            'step',
+            'get_data',
+        ]
+        # Set default value for optional "extra_methods" property
+        extra_methods = meta.setdefault('extra_methods', [])
+
+        self._check_model_and_meth_names(meta['models'], api_methods,
+                                         extra_methods)
+
+        # Set default value for optional "any_inputs" property
+        for model, props in meta['models'].items():
+            props.setdefault('any_inputs', False)
+
+        # Actual proxy object
+        self.proxy = self._get_proxy(api_methods + extra_methods)
+
+        # Simulation state
         self.last_step = float('-inf')
         self.next_step = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.sim_proc = None  # SimPy process
         self.step_required = None  # SimPy event
-
-        # Bind proxy calls to API methods to this instance. "init()" is missing
-        # here, because it is called before the SimProxy is created
-        remote_methods = ['create', 'step', 'get_data']
-        for name in remote_methods:
-            setattr(self, name, self._proxy_call(name))
 
     def stop(self):
         """Stop the simulator behind the proxy.
@@ -267,8 +288,27 @@ class SimProxy:
         """
         raise NotImplementedError
 
-    def _proxy_call(self, name):
+    def _get_proxy(self, methods):
         raise NotImplementedError
+
+    def _check_model_and_meth_names(self, models, api_methods, extra_methods):
+        """Check if there are any overlaps in model names and reserved API
+        methods as well as in them and extra API methods.
+
+        Raise a :exc:`~mosaik.exception.ScenarioError` if that's the case.
+
+        """
+        models = list(models)
+        illegal_models = set(models) & set(api_methods)
+        if illegal_models:
+            raise ScenarioError('Simulator "%s" uses illegal model names: %s' %
+                                (self.sid, ', '.join(illegal_models)))
+
+        illegal_meths = set(models + api_methods) & set(extra_methods)
+        if illegal_meths:
+            raise ScenarioError('Simulator "%s" uses illegal extra method '
+                                'names: %s' %
+                                (self.sid, ', '.join(illegal_meths)))
 
 
 class LocalProcess(SimProxy):
@@ -295,14 +335,14 @@ class LocalProcess(SimProxy):
         self._inst.finalize()
         yield self._env.event().succeed()
 
-    def _proxy_call(self, name):
-        """Return a wrapper method for the simulators method *name*.
-
-        The wrapper method will return an event with the original return value
-        as its value.
-
-        """
-        return mosaik_api.get_wrapper(getattr(self._inst, name), self._env)
+    def _get_proxy(self, methods):
+        """Return a proxy for the local simulator."""
+        proxy_dict = {
+            name: mosaik_api.get_wrapper(getattr(self._inst, name), self._env)
+            for name in methods
+        }
+        Proxy = type('Proxy', (), proxy_dict)
+        return Proxy
 
 
 class RemoteProcess(SimProxy):
@@ -333,9 +373,9 @@ class RemoteProcess(SimProxy):
         if self._proc:
             self._proc.wait()
 
-    def _proxy_call(self, name):
-        """Return the method *name* of the remote process."""
-        return getattr(self._rpc_con.remote, name)
+    def _get_proxy(self, methods):
+        """Return a proxy object for the remote simulator."""
+        return self._rpc_con.remote
 
 
 class MosaikRemote:
@@ -451,7 +491,7 @@ class MosaikRemote:
             dep = self.world.sims[sid]
             assert (dep.next_step > sim.last_step and
                     dep.last_step <= sim.last_step)
-            dep_data = yield dep.get_data(attrs)
+            dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
                 # to update the dict in that case.

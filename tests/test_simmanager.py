@@ -13,6 +13,8 @@ from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
 import mosaik
 
+from .util import SimMock
+
 
 sim_config = {
     'ExampleSimA': {
@@ -255,16 +257,31 @@ def test_valid_api_version(version, valid):
 
 def test_sim_proxy():
     """SimProxy should not be instantiateable."""
-    pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id', {})
+    pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id',
+                  {'models': {}})
+
+
+def test_sim_proxy_illegal_model_names(world):
+    pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
+                  {'models': {'step': {}}}, SimMock(), world)
+
+
+def test_sim_proxy_illegal_extra_methods(world):
+    pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
+                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimMock(),
+                  world)
+    pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
+                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimMock(),
+                  world)
 
 
 def test_sim_proxy_stop_impl():
     class Test(simmanager.SimProxy):
         # Does not implement SimProxy.stop(). Should raise an error.
-        def _proxy_call(self, name):
+        def _get_proxy(self, name):
             return None
 
-    t = Test('spam', 'id', {})
+    t = Test('spam', 'id', {'models': {}})
     pytest.raises(NotImplementedError, t.stop)
 
 
@@ -428,7 +445,8 @@ def test_mosaik_remote(rpc, err):
     def greeter():
         sock = yield world.srv_sock.accept()
         rpc_con = JsonRpc(Packet(sock))
-        proxy = simmanager.RemoteProcess('X', 'X', {}, None, rpc_con, world)
+        proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
+                                         rpc_con, world)
         proxy.last_step = proxy.next_step = 1
         world.sims['X'] = proxy
 
