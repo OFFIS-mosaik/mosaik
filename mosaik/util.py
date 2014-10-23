@@ -62,6 +62,30 @@ def sync_process(generator, world, *, ignore_errors=False):
         sys.exit(1)
 
 
+def sync_call(sim, funcname, args, kwargs):
+    """Start a SimPy process to make the *func()* call to a simulator behave
+    like it was synchronous.
+
+    Return the result of the *func()* call.
+
+    Raise an :exc:`~mosaik.exceptions.SimulationError` if an exception occurs.
+
+    """
+    # We have to start a SimPy process to make the "create()" call
+    # behave like it was synchronous.
+    def proc():
+        try:
+            func = getattr(sim.proxy, funcname)
+            ret = yield func(*args, **kwargs)
+            return ret
+        except ConnectionError as e:
+            err_msg = ('Simulator "%s" closed its connection while executing '
+                       '%s(*%s, **%s)' % (sim.sid, funcname, args, kwargs))
+            raise SimulationError(err_msg, e) from None
+
+    return sync_process(proc(), sim._world)
+
+
 def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
     """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.

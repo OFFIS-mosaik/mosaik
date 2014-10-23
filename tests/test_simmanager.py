@@ -258,7 +258,7 @@ def test_valid_api_version(version, valid):
 def test_sim_proxy():
     """SimProxy should not be instantiateable."""
     pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id',
-                  {'models': {}})
+                  {'models': {}}, None)
 
 
 def test_sim_proxy_illegal_model_names(world):
@@ -281,7 +281,7 @@ def test_sim_proxy_stop_impl():
         def _get_proxy(self, name):
             return None
 
-    t = Test('spam', 'id', {'models': {}})
+    t = Test('spam', 'id', {'models': {}}, None)
     pytest.raises(NotImplementedError, t.stop)
 
 

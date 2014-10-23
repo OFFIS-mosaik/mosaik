@@ -248,10 +248,11 @@ class SimProxy:
     simulator.
 
     """
-    def __init__(self, name, sid, meta):
+    def __init__(self, name, sid, meta, world):
         self.name = name
         self.sid = sid
         self.meta = meta
+        self._world = world
 
         # Meta data and remote method checks
         api_methods = [
@@ -315,7 +316,6 @@ class LocalProcess(SimProxy):
     """Proxy for internal simulators."""
     def __init__(self, name, sid, meta, inst, world):
         self._inst = inst
-        self._env = world.env
 
         # Add MosaikRemote and patch its RPC methods to return events:
         inst.mosaik = MosaikRemote(world, sid)
@@ -328,17 +328,18 @@ class LocalProcess(SimProxy):
                 setattr(inst.mosaik, attr,
                         mosaik_api.get_wrapper(func, world.env))
 
-        super().__init__(name, sid, meta)
+        super().__init__(name, sid, meta, world)
 
     def stop(self):
         """Yield a triggered event but do nothing else."""
         self._inst.finalize()
-        yield self._env.event().succeed()
+        yield self._world.env.event().succeed()
 
     def _get_proxy(self, methods):
         """Return a proxy for the local simulator."""
         proxy_dict = {
-            name: mosaik_api.get_wrapper(getattr(self._inst, name), self._env)
+            name: mosaik_api.get_wrapper(getattr(self._inst, name),
+                                         self._world.env)
             for name in methods
         }
         Proxy = type('Proxy', (), proxy_dict)
@@ -350,11 +351,10 @@ class RemoteProcess(SimProxy):
     def __init__(self, name, sid, meta, proc, rpc_con, world):
         self._proc = proc
         self._rpc_con = rpc_con
-        self._env = world.env
         self._mosaik_remote = MosaikRemote(world, sid)
         self._stop_timeout = world.config['stop_timeout']
         rpc_con.router = self._mosaik_remote.rpc
-        super().__init__(name, sid, meta)
+        super().__init__(name, sid, meta, world)
 
     def stop(self):
         """Send a *stop* message to the process represented by this proxy and
@@ -363,7 +363,7 @@ class RemoteProcess(SimProxy):
         """
         try:
             yield (self._rpc_con.remote.stop() |
-                   self._env.timeout(self._stop_timeout))
+                   self._world.env.timeout(self._stop_timeout))
             print('Simulator "%s" did not close its connection in time.' %
                   self.sid)
             self._rpc_con.close()

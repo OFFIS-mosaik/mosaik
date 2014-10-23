@@ -341,19 +341,8 @@ class ModelMock:
         """
         self._check_params(**model_params)
 
-        # We have to start a SimPy process to make the "create()" call
-        # behave like it was synchronous.
-        def create_proc():
-            try:
-                entities = yield self._sim.proxy.create(num, self._name,
-                                                        **model_params)
-                return entities
-            except ConnectionError as e:
-                msg = ('Simulator "%s" closed its connection while creating %s'
-                       ' instances of "%s".' % (self._sim_id, num, self._name))
-                raise SimulationError(msg, e) from None
-
-        entities = util.sync_process(create_proc(), self._world)
+        entities = util.sync_call(self._sim, 'create', [num, self._name],
+                                  model_params)
         assert len(entities) == num, (
             '%d entities were requested but %d were created.' %
             (num, len(entities)))
