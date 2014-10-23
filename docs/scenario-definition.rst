@@ -537,3 +537,29 @@ Mosaik will then raise a :exc:`RuntimeError` if your simulation is too slow:
 .. code-block:: python
 
    world.run(until=10, rt_factor=1/60, rt_strict=True)
+
+
+How to call extra methods of a simulator
+========================================
+
+A simulator may optionally define additional API methods (see :ref:`api.init`)
+that you can call from your scenario. These methods can implement operations,
+like setting some static data to a simulator, which don't really fit into
+``init()`` or ``create()``.
+
+These methods are exposed via the model factory that you get when you start
+a simulator. In the following example, we'll call the ``example_method()``
+that the example simulator shipped with the mosaik Python API:
+
+.. code-block:: python
+
+   >>> world = mosaik.World({'ExampleSim': {
+   ...     'python': 'example_sim.mosaik:ExampleSim'}})
+   >>> es = world.start('ExampleSim')
+   Starting "ExampleSim" as "ExampleSim-0" ...
+   >>>
+   >>> # Now brace yourself ...
+   >>> es.example_method(23)
+   23
+   >>>
+   >>> world.shutdown()

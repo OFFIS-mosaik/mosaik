@@ -106,6 +106,10 @@ Async. requests:
 API calls
 =========
 
+This section decribes the five API calls ``init()``, ``create()``, ``step()``,
+``get_data()`` and ``stop()``. In addition to these, a simulator may
+*optionally* expose additonal functions (referred to as *extra methods*). These
+methods can be called at composition time (when you create your scenario).
 
 .. _api.init:
 
@@ -132,7 +136,11 @@ The return value *meta* is an object with meta data about the simulator::
                 "any_inputs": true|false,
             },
             ...
-        }
+        },
+        "extra_methods": [
+            "do_cool_stuff",
+            "set_static_data"
+        ]
     }
 
 The *api_version* is a string that defines which version of the mosaik API the
@@ -149,6 +157,11 @@ or writing). If the optional *any_inputs* flag is set to ``true``, any
 attributes can be connected to the model, even if they are not *attrs*. This
 may, for example, be useful for databases that don't know in advance which
 attributes of an entity they'll receive.
+
+*extra_methods* is an optional list of methods that a simulator provides in
+addition to the standard API calls (``init()``, ``create()`` and so on). These
+methods can be called while the scenario is being created and can be used for
+operations that don't really belong into ``init()`` or ``create()``.
 
 
 Example
