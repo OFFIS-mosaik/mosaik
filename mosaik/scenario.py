@@ -297,6 +297,13 @@ class ModelFactory:
             if props['public']:
                 setattr(self, model, ModelMock(self._world, model, self._sim))
 
+        # Bind extra_methods to this instance:
+        for meth in self.meta['extra_methods']:
+            def wrapper(*args, **kwargs):
+                return util.sync_call(sim, meth, args, kwargs)
+            wrapper.__name__ = meth
+            setattr(self, meth, wrapper)
+
     def __getattr__(self, name):
         # Implemented in order to improve error messages.
         models = self.meta['models']
