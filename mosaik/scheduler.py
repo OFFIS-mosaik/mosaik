@@ -246,10 +246,10 @@ def get_outputs(world, sim):
             edge.pop('wait_async').succeed()
 
     # Prune dataflow cache
-    max_cache_time = min(s.next_step for s in world.sims.values())
-    for cache_time in world._df_cache.keys():
-        if cache_time < max_cache_time:
-            del world._df_cache[cache_time]
+    min_cache_time = min(s.next_step for s in world.sims.values())
+    for i in range(world._df_cache_min_time, min_cache_time):
+        del world._df_cache[i]
+    world._df_cache_min_time = min_cache_time
 
 
 def get_progress(sims, until):

@@ -10,7 +10,6 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 """
 from collections import defaultdict
 import itertools
-import sys
 
 import networkx
 
@@ -99,7 +98,8 @@ class World:
         # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
         self._df_outattr = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
-        self._df_cache = util.OrderedDefaultdict(dict)
+        self._df_cache = defaultdict(dict)
+        self._df_cache_min_time = 0
 
     def start(self, sim_name, **sim_params):
         """Start the simulator named *sim_name* and return a
