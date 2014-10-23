@@ -58,7 +58,7 @@ class World:
     that this increases the memory consumption and simulation time.
 
     """
-    def __init__(self, sim_config, mosaik_config=None, execution_graph=False):
+    def __init__(self, sim_config, mosaik_config=None, debug=False):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -89,7 +89,7 @@ class World:
         """Progress of the current simulation."""
 
         self._debug = False
-        if execution_graph:
+        if debug:
             self._debug = True
             self.execution_graph = networkx.DiGraph()
 

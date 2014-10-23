@@ -18,9 +18,11 @@ def enable():
     schedulerulation execution.
 
     """
-    def wrapped_step(world, scheduler, inputs):
-        pre_step(world, scheduler, inputs)
-        return _origs['step'](world, scheduler, inputs)
+    def wrapped_step(world, sim, inputs):
+        pre_step(world, sim, inputs)
+        ret = yield from _origs['step'](world, sim, inputs)
+        post_step(world, sim)
+        return ret
 
     scheduler.step = wrapped_step
 
@@ -45,7 +47,6 @@ def pre_step(world, sim, inputs):
     next_step = sim.next_step
     node = '%s-%s'
     node_id = node % (sid, next_step)
-    # print('###', node_id)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
     if sim.last_step >= 0:
@@ -69,3 +70,13 @@ def pre_step(world, sim, inputs):
     if next_steps:
         assert max(next_steps) >= next_step, (
             '"next_step" of all successors of "%s" is < %s' % (sid, next_step))
+
+
+def post_step(world, sim):
+    """Record time after a step."""
+    eg = world.execution_graph
+    sid = sim.sid
+    last_step = sim.last_step
+    node = '%s-%s'
+    node_id = node % (sid, last_step)
+    eg.node[node_id]['t_end'] = perf_counter()

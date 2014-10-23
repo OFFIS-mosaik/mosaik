@@ -31,7 +31,7 @@ test_cases.append(('scenario_6', sim_config_remote))
 @pytest.mark.parametrize(('fixture', 'sim_config'), test_cases)
 def test_mosaik(fixture, sim_config):
     fixture = importlib.import_module('tests.fixtures.%s' % fixture)
-    world = scenario.World(sim_config, execution_graph=True)
+    world = scenario.World(sim_config, debug=True)
     fixture.create_scenario(world)
     world.run(until=fixture.until)
 

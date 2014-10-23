@@ -52,7 +52,7 @@ def test_world():
 
 
 def test_world_debug():
-    world = scenario.World(sim_config, execution_graph=True)
+    world = scenario.World(sim_config, debug=True)
     assert world.execution_graph.adj == {}
     world.shutdown()
 
