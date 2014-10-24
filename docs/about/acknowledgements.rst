@@ -18,12 +18,13 @@ what it is today without any of them:
   of ideas. He held countless discussions with Steffen and Stefan whose results
   often greatly improved mosaik.
 
-- *Stefan Scherfke* is the primary author of mosaik 2 and fought a long fight
-  to make mosaik 1 and 2 open-source software.
+- *Stefan Scherfke* is the primary author of mosaik 2.0 and 2.1.
 
 - *Sebastian Rohjans* and *Sebastian Lehnhoff* accompanied mosaik's development
   as group and scientific leaders. They also put lots of effort into making
   mosaik open-source software.
+
+- *Okko Nannen* and *Florian Schlögl* joined the team in May / July 2014.
 
 We'd also like to thank everyone who worked with mosaik and gave us feedback to
 make it better.

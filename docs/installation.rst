@@ -93,7 +93,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
          (mosaik)$ pip wheel numpy
          (mosaik)$ pip install wheelhouse/numpy-1.8.2-cp34-cp34m-linux_x86_64.whl
          (mosaik)$ pip wheel scipy
-         (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-linux_x86_64.whl
+         (mosaik)$ pip install wheelhouse/scipy-0.14.0-cp34-cp34m-linux_x86_64.whl
          (mosaik)$ pip wheel h5py
          (mosaik)$ pip install wheelhouse/h5py-2.3.1-cp34-cp34m-linux_x86_64.whl
 
@@ -225,7 +225,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik)$ pip wheel numpy
       (mosaik)$ pip install wheelhouse/numpy-1.8.2-cp34-cp34m-macosx_10_9_x86_64.whl
       (mosaik)$ pip wheel scipy
-      (mosaik)$ pip install wheelhouse/scipy-0.13.3-cp34-cp34m-macosx_10_9_x86_64.whl
+      (mosaik)$ pip install wheelhouse/scipy-0.14.0-cp34-cp34m-macosx_10_9_x86_64.whl
       (mosaik)$ pip wheel h5py
       (mosaik)$ pip install wheelhouse/h5py-2.3.1-cp34-cp34m-macosx_10_9_x86_64.whl
 
@@ -335,7 +335,7 @@ This guide is based on *Windows 7, 64bit*.
    Mosaik should now be installed successfully.
 
 __ https://www.python.org/
-__ https://www.python.org/downloads/release/python-341/
+__ https://www.python.org/downloads/release/python-342/
 __ https://pip.readthedocs.org/
 __ https://virtualenv.readthedocs.org/
 
@@ -352,7 +352,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    `SciPy`__, `h5py`__). Select the appropriate files for your Python
    installation (32bit or 64bit, Python version), e.g.,
    *numpy‑MKL‑1.8.2.win‑amd64‑py3.4.exe*,
-   *scipy‑0.13.3.win‑amd64‑py3.4.exe*, *h5py-2.3.1.win-amd64-py3.4.exe*.
+   *scipy‑0.14.0.win‑amd64‑py3.4.exe*, *h5py-2.3.1.win-amd64-py3.4.exe*.
 
    .. note::
 
