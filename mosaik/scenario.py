@@ -234,6 +234,11 @@ class World:
             raise RuntimeError('Simulation has already been run and can only '
                                'be run once for a World instance.')
 
+        # Check if a simulator is not connected to anything:
+        for sid, deg in sorted(networkx.degree(self.df_graph).items()):
+            if deg == 0:
+                print('WARNING: %s has no connections.' % sid)
+
         print('Starting simulation.')
         if self._debug:
             import mosaik._debug as dbg
