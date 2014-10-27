@@ -247,9 +247,11 @@ def get_outputs(world, sim):
 
     # Prune dataflow cache
     min_cache_time = min(s.next_step for s in world.sims.values())
-    for i in range(world._df_cache_min_time, min_cache_time):
-        del world._df_cache[i]
-    world._df_cache_min_time = min_cache_time
+    for i in sorted(world._df_cache.keys()):
+        if i < min_cache_time:
+            del world._df_cache[i]
+        else:
+            break
 
 
 def get_progress(sims, until):

@@ -99,7 +99,6 @@ class World:
         self._df_outattr = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
         self._df_cache = defaultdict(dict)
-        self._df_cache_min_time = 0
 
     def start(self, sim_name, **sim_params):
         """Start the simulator named *sim_name* and return a
