@@ -296,7 +296,7 @@ def test_local_process():
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
     assert sp.meta is es.meta
-    assert sp.last_step == float('-inf')
+    assert sp.last_step == -1
     assert sp.next_step == 0
     assert sp.step_required is None
 

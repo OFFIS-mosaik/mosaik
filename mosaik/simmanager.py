@@ -275,7 +275,7 @@ class SimProxy:
         self.proxy = self._get_proxy(api_methods + extra_methods)
 
         # Simulation state
-        self.last_step = float('-inf')
+        self.last_step = -1
         self.next_step = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.sim_proc = None  # SimPy process

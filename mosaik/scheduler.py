@@ -208,7 +208,15 @@ def step(world, sim, inputs):
 
     """
     sim.last_step = sim.next_step
-    sim.next_step = yield sim.proxy.step(sim.next_step, inputs)
+    next_step = yield sim.proxy.step(sim.next_step, inputs)
+    if type(next_step) != int:
+        raise SimulationError('next_step must be of type int, but is "%s" for '
+                              'simulator "%s"' % (type(next_step), sim.sid))
+    if next_step <= sim.last_step:
+        raise SimulationError('next_step muste be > last_step, but %s <= %s '
+                              'for simulator "%s"' %
+                              (next_step, sim.last_step, sim.sid))
+    sim.next_step = next_step
 
 
 def get_outputs(world, sim):
@@ -246,12 +254,13 @@ def get_outputs(world, sim):
             edge.pop('wait_async').succeed()
 
     # Prune dataflow cache
-    min_cache_time = min(s.next_step for s in world.sims.values())
-    for i in sorted(world._df_cache.keys()):
-        if i < min_cache_time:
+    min_cache_time = min(s.last_step for s in world.sims.values())
+    for i in range(world._df_cache_min_time, min_cache_time):
+        try:
             del world._df_cache[i]
-        else:
-            break
+        except KeyError:
+            pass
+    world._df_cache_min_time = min_cache_time
 
 
 def get_progress(sims, until):

@@ -130,7 +130,7 @@ def test_get_input_data(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
-    assert (sim.last_step, sim.next_step) == (float('-inf'), 0)
+    assert (sim.last_step, sim.next_step) == (-1, 0)
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
@@ -170,6 +170,7 @@ def test_get_outputs(world):
     assert wait_event.triggered
     assert 'wait_event' not in world.df_graph[0][2]
     assert world._df_cache == {
+        1: {'foo': 'bar'},
         2: {0: {'0': {'x': 0, 'y': 1}}},
     }
 
