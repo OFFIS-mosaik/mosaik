@@ -258,8 +258,10 @@ class World:
         """Shut-down all simulators and close the server socket."""
         for sim in self.sims.values():
             util.sync_process(sim.stop(), self, ignore_errors=True)
-        self.srv_sock.close()
-        self.srv_sock = None
+
+        if self.srv_sock is not None:
+            self.srv_sock.close()
+            self.srv_sock = None
 
     def _check_attributes(self, src, dest, attr_pairs):
         """Check if *src* and *dest* have the attributes in *attr_pairs*.
