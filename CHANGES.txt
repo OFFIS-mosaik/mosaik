@@ -1,6 +1,14 @@
 Changelog
 =========
 
+2.1.1 – 2014-10-28
+------------------
+
+- [NEW] ``World.run()`` now prints a warning if you forget to connect
+  a simulator's entities.
+- [FIX] Fixed some problems with the data-flow cache.
+
+
 2.1 – 2014-10-24
 ----------------
 
