@@ -1,6 +1,16 @@
 Changelog
 =========
 
+2.1.2 – 2014-10-29
+------------------
+
+- [FIX] ``World.shutdown()`` now checks if the socket still exists before
+  attempting to close it.
+
+- [FIX] Fixed a bug that made the last extra method of a simulator shadow all
+  previous ones.
+
+
 2.1.1 – 2014-10-28
 ------------------
 
