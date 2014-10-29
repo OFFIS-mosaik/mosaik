@@ -306,10 +306,16 @@ class ModelFactory:
 
         # Bind extra_methods to this instance:
         for meth in self.meta['extra_methods']:
-            def wrapper(*args, **kwargs):
-                return util.sync_call(sim, meth, args, kwargs)
-            wrapper.__name__ = meth
-            setattr(self, meth, wrapper)
+            # We need get_wrapper() in order to avoid problems with scoping
+            # of the name "meth". Without it, "meth" would be the same for all
+            # wrappers.
+            def get_wrapper(sim, meth):
+                def wrapper(*args, **kwargs):
+                    return util.sync_call(sim, meth, args, kwargs)
+                wrapper.__name__ = meth
+                return wrapper
+
+            setattr(self, meth, get_wrapper(sim, meth))
 
     def __getattr__(self, name):
         # Implemented in order to improve error messages.
