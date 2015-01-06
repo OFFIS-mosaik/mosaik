@@ -362,12 +362,15 @@ class RemoteProcess(SimProxy):
 
         """
         try:
-            yield (self._rpc_con.remote.stop() |
-                   self._world.env.timeout(self._stop_timeout))
-            print('Simulator "%s" did not close its connection in time.' %
-                  self.sid)
-            self._rpc_con.close()
+            timeout = self._world.env.timeout(self._stop_timeout)
+            res = yield (self._rpc_con.remote.stop() | timeout)
+            if timeout in res:
+                print('Simulator "%s" did not close its connection in time.' %
+                      self.sid)
+                self._rpc_con.close()
         except ConnectionError:
+            # We may get a ConnectionError if the remote site closes its
+            # socket during the "stop()" call.
             pass
 
         if self._proc:
