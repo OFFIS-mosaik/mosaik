@@ -45,7 +45,7 @@ Python 3.4, so everything is okay.
 
    .. code-block:: bash
 
-       (mosaik)$ pip install --pre mosaik
+       (mosaik)$ pip install mosaik
 
    Mosaik should now be installed successfully.
 
