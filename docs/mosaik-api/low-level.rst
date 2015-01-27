@@ -495,11 +495,9 @@ entities:
 
    {
        "sid_0.eid_0": {
-           "sid_0.eid_1": {"type": "B"},
            "sid_1.eid_0": {"type": "B"},
        },
        "sid_0.eid_1": {
-           "sid_0.eid_1": {"type": "B"},
            "sid_1.eid_1": {"type": "B"},
        },
    }
