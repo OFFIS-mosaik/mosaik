@@ -15,7 +15,6 @@ PNG, 1920 × 1052 px, with transparency
 --------------------------------------
 
 .. image:: /_static/mosaik_logo.png
-   :target: /_static/mosaik_logo.png
    :width: 640px
    :align: center
    :alt: mosaik logo in PNG format
@@ -27,7 +26,6 @@ SVG for the web
 Letters converted to objects so that it nicely renders on all devices.
 
 .. image:: /_static/mosaik_logo.svg
-   :target: /_static/mosaik_logo.svg
    :width: 640px
    :align: center
    :alt: mosaik logo in SVG format for the web
@@ -42,7 +40,6 @@ you need to install the `Aller font`__.
 __ http://www.fontsquirrel.com/fonts/Aller
 
 .. image:: /_static/mosaik_logo-inkscape.svg
-   :target: /_static/mosaik_logo-inkscape.svg
    :width: 640px
    :align: center
    :alt: mosaik-logo in SVG format for editing in Inkscape
@@ -60,7 +57,6 @@ PNG, 512 × 280 px, with transparency
 --------------------------------------
 
 .. image:: /_static/mosaik_logo_simple.png
-   :target: /_static/mosaik_logo_simple.png
    :width: 256px
    :align: center
    :alt: Simple mosaik logo in PNG format
@@ -72,7 +68,6 @@ SVG for the web
 Letters converted to objects so that it nicely renders on all devices.
 
 .. image:: /_static/mosaik_logo_simple.svg
-   :target: /_static/mosaik_logo_simple.svg
    :width: 256px
    :align: center
    :alt: Simple mosaik logo in SVG format for the web
@@ -87,7 +82,6 @@ you need to install the `Aller font`__.
 __ http://www.fontsquirrel.com/fonts/Aller
 
 .. image:: /_static/mosaik_logo_simple-inkscape.svg
-   :target: /_static/mosaik_logo_simple-inkscape.svg
    :width: 256px
    :align: center
    :alt: Simple mosaik-logo in SVG format for editing in Inkscape
@@ -103,7 +97,6 @@ PNG, 512 × 512 px, with transparency
 ------------------------------------
 
 .. image:: /_static/mosaik_logo_icon.png
-   :target: /_static/mosaik_logo_icon.png
    :width: 256px
    :align: center
    :alt: mosaik icon in PNG format
@@ -113,7 +106,6 @@ SVG
 ---
 
 .. image:: /_static/mosaik_logo_icon.svg
-   :target: /_static/mosaik_logo_icon.svg
    :width: 256px
    :align: center
    :alt: mosaik icon in SVG format

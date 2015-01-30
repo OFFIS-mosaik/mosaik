@@ -10,8 +10,8 @@ Modeling or composing a scenario in mosaik comprises three steps:
 
 2. Instantiating models within the simulators, and
 
-3. Connecting the model instances of different simulators to establish data
-   flows between them.
+3. Connecting the model instances of different simulators to establish the data
+   flow between them.
 
 This page will show you how to create simple scenarios in these three steps.
 It will also provide some recipes that allow you to create more complex
@@ -25,9 +25,9 @@ The central class for creating scenarios is :class:`mosaik.scenario.World` (for
 your convenience, you can also import ``World`` directly from ``mosaik``). This
 class stores all data and state that belongs to your scenario and its
 simulation. It also provides various methods that allow you to start simulators
-and establish data-flows between them.
+and establish the data flows between them.
 
-During this tutorial, we'll create a very simple scenario using the examle
+In this tutorial, we'll create a very simple scenario using the example
 simulation that is provided with the `Python implementation of the simulator
 API`__.
 
@@ -46,12 +46,12 @@ a :class:`World` instance:
    >>>
    >>> world = mosaik.World(sim_config)
 
-Because we start simulator instances via our *world*, it needs to know what
+As we start simulator instances by using *world*, it needs to know what
 simulators are available and how to start them. This is called the *sim config*
 and is a dict that contains every simulator we want to use together with some
 information on how to start it.
 
-In this case, we only have the *ExampleSim*. It will be started by importing
+In our case, the only simulator is the *ExampleSim*. It will be started by importing
 the module ``example_sim.mosaik`` and instantiating the class ``ExampleSim``.
 This is only possible with simulators written in Python 3. You can also let
 mosaik start simulator as external processes or let it connect to already
@@ -91,7 +91,7 @@ Instantiating simulation models
 ===============================
 
 Simulators specify a set of public models in their meta data (see :ref:`init()
-API call <api.init>`). These models can be accessed via the
+API call <api.init>`). These models can be accessed with the
 :class:`ModelFactory` that :meth:`World.start()` returns as if they were normal
 Python classes. So to create one instance of *ExampleSim's* model *A* we just
 write:
