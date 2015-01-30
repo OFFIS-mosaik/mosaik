@@ -20,7 +20,9 @@ def enable():
     """
     def wrapped_step(world, sim, inputs):
         pre_step(world, sim, inputs)
-=======
+        ret = yield from _origs['step'](world, sim, inputs)
+        post_step(world, sim)
+        return ret
 
     scheduler.step = wrapped_step
 
@@ -70,10 +72,11 @@ def pre_step(world, sim, inputs):
             '"next_step" of all successors of "%s" is < %s' % (sid, next_step))
 
 
-=======
+def post_step(world, sim):
+    """Record time after a step."""
     eg = world.execution_graph
-=======
     sid = sim.sid
-=======
+    last_step = sim.last_step
     node = '%s-%s'
-=======
+    node_id = node % (sid, last_step)
+    eg.node[node_id]['t_end'] = perf_counter()
