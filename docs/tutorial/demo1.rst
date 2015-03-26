@@ -46,6 +46,9 @@ connect to.
 The section about the :doc:`Sim Manager </simmanager>` explains all this in
 detail.
 
+Here is the complete file of the data collector:
+
+.. literalinclude:: code/collector.py
 
 The World
 =========
