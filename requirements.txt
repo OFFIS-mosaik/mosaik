@@ -18,8 +18,8 @@ pyflakes==0.8.1
 pytest==2.6.3
 pytest-cov==1.8.0
 requests==2.4.3
-simpy==3.0.5
-simpy.io==0.2
+simpy==3.0.7
+simpy.io==0.2.1
 sphinx-rtd-theme==0.1.5
 tox==1.8.0
 twine==1.3.1
