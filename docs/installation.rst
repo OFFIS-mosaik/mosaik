@@ -142,9 +142,6 @@ This guide is based on *OS X 10.9 Mavericks*.
 
       $ pip install -U virtualenv
 
-   Optionally, you can also install `virtualenvwrapper`__ which makes working
-   with *virtualenv* easier. It's not necessary if you just want to get the
-   demo running, but very useful if you keep developing with Python.
 
 3. Now we need to create a virtual environment for mosaik and its dependencies.
    The common location for venvs is under :file:`~/.virtualenvs/`:
@@ -171,7 +168,6 @@ __ http://brew.sh/
 __ https://github.com/Homebrew/homebrew/wiki/Installation
 __ https://pip.readthedocs.org/
 __ https://virtualenv.readthedocs.org/
-__ https://virtualenvwrapper.readthedocs.org/
 
 
 Running the demo
@@ -243,7 +239,7 @@ Windows
 .. note::
 
    There is currently no one-click-exe-installer for mosaik. This is due to
-   its early development stage. The installion process will get easier in the
+   its early development stage. The installation process will get easier in the
    future, though.
 
 This guide is based on *Windows 7 or 8, 64bit*.
@@ -282,7 +278,7 @@ This guide is based on *Windows 7 or 8, 64bit*.
    .. note::
 
       If your Windows account type is *Standard User*, you need to open the
-      terminal with administarator priviledges (right-click the Terminal icon,
+      terminal with administarator privileges (right-click the Terminal icon,
       then *open as Administrator*). Make then sure that you are in your user
       directory:
 
