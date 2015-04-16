@@ -98,9 +98,26 @@ Of course, it only depends on your models. The basic models distributed
 with mosaik 2 only produce active power outputs (*cos phi = 1*), so we don't
 display reactive power.
 
-
 What are the power grid’s parameters? How are the cables’/lines’ parameters formatted?
 --------------------------------------------------------------------------------------
 
 Check https://bitbucket.org/mosaik/mosaik-pypower under "input file format".
 Typically, line values are given in *R per km* and *X per km*.
+
+Port 8000 on my local machine is already in use. How can I see the visualisation with WebVis?
+---------------------------------------------------------------------------------------------
+
+Port 8000 is used as default when using WebVis. You can overwrite the default
+value in demo.py.
+
+.. code-block:: python
+
+   ...
+   sim_config = {
+       ...
+       'WebVis': {
+           'cmd': 'mosaik-web -s 0.0.0.0:8000 %(addr)s',
+       },
+   }
+   ...
+

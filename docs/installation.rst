@@ -5,6 +5,9 @@ Installation
 This guide contains detailed installation instructions for :ref:`linux`,
 :ref:`os-x` and :ref:`windows`.
 
+It covers the installation of the mosaik framework followed by the instructions
+to install the demo.
+
 
 .. _linux:
 
@@ -90,7 +93,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik)$ python demo.py
 
    If no errors occur, the last command will start the demo. The web visualisation
-   shows the demo in your `browser`__. You can click the nodes of the 
+   shows the demo in your browser: http://localhost:8000. You can click the nodes of the 
    topology graph to show a time series of their values. You can also drag them 
    around to rearrange them.
    
@@ -98,7 +101,6 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
 __ https://github.com/rwl/PYPOWER
 __ https://bitbucket.org/mosaik/mosaik-demo
-__ http://localhost:8000
 
 
 .. _os-x:
@@ -111,7 +113,7 @@ This guide is based on *OS X 10.9 Mavericks*.
 1. Mosaik and the demo scenario require `Python`__ >= 3.3. OS X only ships with
    some outdated versions of Python, so we need to install a recent Python 2
    and 3 first. The `recommended way`__ of doing this is with `homebrew`__.
-   Therefore, we need to open *Terminal* and execute the following command:
+   Therefore, we need to open a *Terminal* and execute the following command:
 
    .. code-block:: bash
 
@@ -159,7 +161,7 @@ This guide is based on *OS X 10.9 Mavericks*.
 
    .. code-block:: bash
 
-       (mosaik)$ pip install --pre mosaik
+       (mosaik)$ pip install mosaik
 
    Mosaik should now be installed successfully.
 
@@ -222,7 +224,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik)$ python demo.py
 
    If no errors occur, the last command will start the demo. The web visualisation
-   shows the demo in your `browser`__. You can click the nodes of the 
+   shows the demo in your browser: http://localhost:8000. You can click the nodes of the 
    topology graph to show a time series of their values. You can also drag them 
    around to rearrange them.
 
@@ -231,7 +233,6 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 __ https://github.com/rwl/PYPOWER
 __ https://wheel.readthedocs.org/
 __ https://bitbucket.org/mosaik/mosaik-demo
-__ http://localhost:8000
 
 
 .. _windows:
@@ -375,8 +376,8 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    before that exception there was the output *Successfully installed PYPOWER
    mosaik-csv mosaik-householdsim ...*, everything is okay.
 
-   The web visualisation shows the demo in your `browser`__. You can
-   click the nodes of the topology graph to show a timeline of their values.
+   The web visualisation shows the demo in your browser: http://localhost:8000. 
+   You can click the nodes of the topology graph to show a timeline of their values.
    You can also drag them around to rearrange them.
 
    You can cancel the simulation by pressing :kbd:`Ctrl-C`. More exceptions
@@ -388,4 +389,3 @@ __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py
 __ http://mercurial.selenic.com/downloads
-__ http://localhost:8000
