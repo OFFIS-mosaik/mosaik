@@ -32,6 +32,9 @@ def test_run(monkeypatch):
                 return world.env.event().succeed()
 
         proc_started = False
+        meta = {
+            'api_version': 3,
+        }
 
         def stop(self):
             yield self.env.event().succeed()

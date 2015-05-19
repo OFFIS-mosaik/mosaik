@@ -300,6 +300,8 @@ simulator has been stepped yet.
 
 Implementing this method is optional.
 
+*Added in mosaik API version 3.*
+
 
 Example
 ^^^^^^^
