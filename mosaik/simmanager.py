@@ -258,6 +258,7 @@ class SimProxy:
         api_methods = [
             # "init" was called before the SimProxy was created
             'create',
+            'setup_done',
             'step',
             'get_data',
         ]

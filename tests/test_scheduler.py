@@ -20,17 +20,22 @@ def world():
 
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
+    world = scenario.World({})
+
     def dummy_proc(world, sim, until, rt_factor, rt_strict):
         sim.proc_started = True
         yield world.env.event().succeed()
 
     class Sim:
+        class proxy:
+            def setup_done():
+                return world.env.event().succeed()
+
         proc_started = False
 
         def stop(self):
             yield self.env.event().succeed()
 
-    world = scenario.World({})
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
 
