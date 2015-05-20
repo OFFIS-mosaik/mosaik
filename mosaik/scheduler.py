@@ -22,19 +22,21 @@ def run(world, until, rt_factor=None, rt_strict=False):
         raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
 
     env = world.env
+
     setup_done_evts = []
-    procs = []
     for sim in world.sims.values():
         if sim.meta['api_version'] >= 3:
             # setup_done() was added in API version 3:
             setup_done_evts.append(sim.proxy.setup_done())
+    results = yield env.all_of(setup_done_evts)
 
+    procs = []
+    for sim in world.sims.values():
         proc = env.process(sim_process(world, sim, until, rt_factor,
                                        rt_strict))
         sim.sim_proc = proc
         procs.append(proc)
 
-    yield env.all_of(setup_done_evts)
     yield env.all_of(procs)
 
 
