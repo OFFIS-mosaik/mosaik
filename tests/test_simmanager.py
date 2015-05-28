@@ -70,7 +70,7 @@ def test_start(world, monkeypatch):
 def test_start_wrong_api_version(world, monkeypatch):
     """An exception should be raised if the simulator uses an unsupported
     API version."""
-    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1)
+    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1000)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
     assert str(exc_info.value) == (
@@ -244,12 +244,12 @@ def test_start_init_error(capsys):
 
 
 @pytest.mark.parametrize(['version', 'valid'], [
+    (1, False),
     (2, True),
     (2.0, True),
-    ('2', False),
-    (1, False),
-    (2.1, False),
-    (3, False),
+    ('2', True),
+    (2.1, True),
+    (3, True),
 ])
 def test_valid_api_version(version, valid):
     assert simmanager.valid_api_version(version, 2) == valid

@@ -89,6 +89,7 @@ API calls:
 
 - :ref:`api.init`
 - :ref:`api.create`
+- :ref:`api.setup_done`
 - :ref:`api.step`
 - :ref:`api.get_data`
 - :ref:`api.stop`
@@ -106,10 +107,11 @@ Async. requests:
 API calls
 =========
 
-This section decribes the five API calls ``init()``, ``create()``, ``step()``,
-``get_data()`` and ``stop()``. In addition to these, a simulator may
-*optionally* expose additonal functions (referred to as *extra methods*). These
-methods can be called at composition time (when you create your scenario).
+This section decribes the API calls ``init()``, ``create()``, ``setup_done()``,
+``step()``, ``get_data()`` and ``stop()``.  In addition to these, a simulator
+may *optionally* expose additonal functions (referred to as *extra methods*).
+These methods can be called at composition time (when you create your
+scenario).
 
 .. _api.init:
 
@@ -178,7 +180,7 @@ Reply:
 .. code-block:: json
 
     {
-       "api_version": "2.0",
+       "api_version": 2,
        "models": {
             "Grid": {
                 "public": true,
@@ -278,6 +280,43 @@ Reply:
             ]
         }
     ]
+
+
+.. _api.setup_done:
+
+setup_done
+----------
+
+::
+
+   ["setup_done", [], {}] -> null
+
+
+Callback that indicates that the scenario setup is done and the actual
+simulation is about to start.
+
+At this point, all entities and all connections between them are know but no
+simulator has been stepped yet.
+
+Implementing this method is optional.
+
+*Added in mosaik API version 3.*
+
+
+Example
+^^^^^^^
+
+Request:
+
+.. code-block:: json
+
+    ["setup_done", [], {}]
+
+Reply:
+
+.. code-block:: json
+
+    null
 
 
 .. _api.step:
@@ -396,7 +435,7 @@ stop
 
 ::
 
-   ["stop", [], {}] ->
+   ["stop", [], {}] -> null
 
 Immediately stop the simulation and terminate.
 
