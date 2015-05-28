@@ -23,7 +23,7 @@ from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
 
-API_VERSION = 2  # Current version of the simulator API
+API_VERSION = '2.1'  # Current version of the simulator API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
