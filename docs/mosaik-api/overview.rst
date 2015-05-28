@@ -13,6 +13,10 @@ Following this, mosaik may call ``create()`` multiple times in order to
 instantiate one of the models that the simulator implements. The return value
 contains information describing the entities created.
 
+The end of *create* phase and the beginning of the *step* (or simulation) phase
+is marked by a call to ``setup_done()``.  At this point, all entities are
+created and all relations between them are established.
+
 When the simulation has been started, mosaik repeatedly calls ``step()``.  This
 allows the simulator to step forward in time. It returns the time at which it
 wants to perform its next step.

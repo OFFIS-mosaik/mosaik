@@ -57,7 +57,7 @@ API calls
 
 .. module:: mosaik_api
 .. autoclass:: Simulator
-   :members: init, create, step, get_data, configure, finalize
+   :members: init, create, setup_done, step, get_data, configure, finalize
 
    .. autoattribute:: meta
       :annotation:

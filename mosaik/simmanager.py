@@ -238,7 +238,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
 def valid_api_version(simulator_version, expected_version):
     """REturn ``True`` if the *simulator_version* equals the
     *expected_version*, else ``False``."""
-    return simulator_version == expected_version
+    return int(simulator_version) >= expected_version
 
 
 class SimProxy:
@@ -258,6 +258,7 @@ class SimProxy:
         api_methods = [
             # "init" was called before the SimProxy was created
             'create',
+            'setup_done',
             'step',
             'get_data',
         ]
