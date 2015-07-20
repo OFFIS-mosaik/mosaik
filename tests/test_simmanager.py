@@ -15,6 +15,12 @@ import mosaik
 
 from .util import SimMock
 
+# ONLY FOR PYCHARM:
+# Becasue of a missing entry in the environmet variable 'PATH' casued by PYCHARM is it necessarily to append
+# the missing part. The bug occurs only in PyCharm's run mode
+import os
+os.environ['PATH']= os.environ['PATH'] + ':/home/onannen/.virtualenvs/mosaik-demo/bin'
+
 
 sim_config = {
     'ExampleSimA': {
@@ -70,7 +76,7 @@ def test_start(world, monkeypatch):
 def test_start_wrong_api_version(world, monkeypatch):
     """An exception should be raised if the simulator uses an unsupported
     API version."""
-    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1000)
+    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', '1000')
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
     assert str(exc_info.value) == (
@@ -242,17 +248,16 @@ def test_start_init_error(capsys):
                         'init() call.\nMosaik terminating\n')
     assert err == ''
 
-
 @pytest.mark.parametrize(['version', 'valid'], [
-    (1, False),
-    (2, True),
-    (2.0, True),
-    ('2', True),
-    (2.1, True),
-    (3, True),
+    ('1', False),
+    ('2', False),
+    ('2.1', False),
+    ('2.2', True),
+    ('2.3', True),
+    ('3.1', True),
 ])
 def test_valid_api_version(version, valid):
-    assert simmanager.valid_api_version(version, 2) == valid
+    assert simmanager.valid_api_version(version, '2.2') == valid
 
 
 def test_sim_proxy():

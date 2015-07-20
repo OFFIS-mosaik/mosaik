@@ -10,6 +10,10 @@ import sys
 
 import pytest
 
+# ONLY FOR PYCHARM:
+# Becasue of a missing entry in the environmet variable 'PATH' casued by PYCHARM is it necessarily to append
+# the missing part. The bug occurs only in PyCharm's run mode
+os.environ['PATH']= os.environ['PATH'] + ':/home/onannen/.virtualenvs/mosaik-demo/bin'
 
 CODE_DIR = os.path.join(os.path.dirname(__file__), '..',
                         'docs', 'tutorial', 'code')

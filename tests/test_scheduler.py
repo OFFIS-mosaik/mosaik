@@ -33,7 +33,7 @@ def test_run(monkeypatch):
 
         proc_started = False
         meta = {
-            'api_version': 3,
+            'api_version': '2.2',
         }
 
         def stop(self):
