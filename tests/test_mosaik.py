@@ -10,12 +10,6 @@ import pytest
 
 from mosaik import scenario
 
-# ONLY FOR PYCHARM:
-# Becasue of a missing entry in the environmet variable 'PATH' casued by PYCHARM is it necessarily to append
-# the missing part. The bug occurs only in PyCharm's run mode
-import os
-os.environ['PATH']= os.environ['PATH'] + ':/home/onannen/.virtualenvs/mosaik-demo/bin'
-
 
 sim_config_local = {
     char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
