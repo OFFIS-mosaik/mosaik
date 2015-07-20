@@ -22,8 +22,7 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-
-API_VERSION = '2.1'  # Current version of the simulator API
+API_VERSION = '2.2'  # Current version of the simulator API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -236,9 +235,24 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
 
 
 def valid_api_version(simulator_version, expected_version):
-    """REturn ``True`` if the *simulator_version* equals the
+    """Return ``True`` if the *simulator_version* equals the
     *expected_version*, else ``False``."""
-    return int(simulator_version) >= expected_version
+    valid = False
+    sim_version = tuple(simulator_version.split('.'))
+    exp_version = tuple(expected_version.split('.'))
+
+    # Major ok?
+    if int(sim_version[0]) > int(exp_version[0]):
+        valid = True
+    elif int(sim_version[0]) == int(exp_version[0]):
+        # and minor ok?
+        try:
+            if int(sim_version[1]) >= int(exp_version[1]):
+                valid = True
+        except IndexError:
+            pass
+
+    return valid
 
 
 class SimProxy:
