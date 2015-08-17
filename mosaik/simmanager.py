@@ -17,12 +17,13 @@ import subprocess
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JsonRpc
+from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-API_VERSION = '2.2'  # Current version of the simulator API
+API_VERSION = _version.version_info[0]  # Current major version of the simulator API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -81,10 +82,12 @@ def start(world, sim_name, sim_id, sim_params):
     for sim_type, start in starters.items():
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
-            if not valid_api_version(proxy.meta['api_version'], API_VERSION):
+
+            proxy.meta['api_version'] = parse_api_version(proxy.meta['api_version'])
+            if proxy.meta['api_version'][0] < API_VERSION:
                 raise ScenarioError(
                     '"%s" API version %s is not compatible with mosaik '
-                    'version %s.' % (sim_name, proxy.meta['api_version'],
+                    'version %s.' % (sim_name, '.'.join(map(str, proxy.meta['api_version'])),
                                      API_VERSION))
             return proxy
     else:
@@ -234,25 +237,25 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
     return sync_process(greeter(), world)
 
 
-def valid_api_version(simulator_version, expected_version):
-    """Return ``True`` if the *simulator_version* equals the
-    *expected_version*, else ``False``."""
-    valid = False
-    sim_version = tuple(simulator_version.split('.'))
-    exp_version = tuple(expected_version.split('.'))
+def parse_api_version(version_str):
+    """Parseversion_str:Parrse the *version_str* and return a version tupple of integers.
 
-    # Major ok?
-    if int(sim_version[0]) > int(exp_version[0]):
-        valid = True
-    elif int(sim_version[0]) == int(exp_version[0]):
-        # and minor ok?
-        try:
-            if int(sim_version[1]) >= int(exp_version[1]):
-                valid = True
-        except IndexError:
-            pass
+    Raise a :exc: `ScenarioError` if the version string cannot be parsed.
 
-    return valid
+    """
+    version_tuple = version_str.split('.')
+    # try:
+    #     version_tuple = version_str.split('.')
+    # except AttributeError:
+    #     version_tuple = version_str
+    if len(version_tuple) != 2:
+        raise ScenarioError('Version must be formated like '
+                            "'major.minor'; but is %r" % version_str) from None
+    try:
+        return tuple(map(int, version_tuple))
+    except ValueError:
+        raise ScenarioError('Version parts of %r must be integer' %
+                            version_str) from None
 
 
 class SimProxy:
