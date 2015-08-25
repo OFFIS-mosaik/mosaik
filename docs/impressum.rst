@@ -4,7 +4,7 @@ Impressum
 
 
 Anschrift
-=========
+---------
 
 OFFIS e. V.
 Escherweg 2
@@ -16,7 +16,6 @@ Internet: `www.offis.de <http://www.offis.de/>`_
 
 
 Vertretungsberechtigter Vorstand
-================================
 
 Prof. Dr.-Ing. Wolfgang H. Nebel (Vorsitzender)
 
