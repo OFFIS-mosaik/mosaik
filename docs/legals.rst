@@ -4,43 +4,34 @@ Legals
 
 
 **Address**
-
 | OFFIS e. V.
 | Escherweg 2
 | 26121 Oldenburg
 | Germany
 | Phone +49 441 9722-0
 | Fax +49 441 9722-102
-| Email: institut [ A T ] offis.de
+| Email: `institut [ A T ] offis.de <institut@offis.de>`_
 | Internet: `www.offis.de <http://www.offis.de>`_
 
 
 **Board Members**
-
-Prof. Dr.-Ing. Wolfgang H. Nebel (Chairman)
-
-Prof. Dr. Dr. h.c. Hans-Jürgen Appelrath
-
-Prof. Dr. techn. Susanne Boll-Westermann
-
-Prof. Dr. Werner Damm
-
-Prof. Dr.-Ing. Andreas Hein
+| Prof. Dr.-Ing. Wolfgang H. Nebel (Chairman)
+| Prof. Dr. Dr. h.c. Hans-Jürgen Appelrath
+| Prof. Dr. techn. Susanne Boll-Westermann
+| Prof. Dr. Werner Damm
+| Prof. Dr.-Ing. Andreas Hein
 
 
 **Register Court**
-
 | Amtsgericht Oldenburg
 | Registernumber VR 1956
 
 
 **VAT Identification Number**
-
 DE 811582102
 
 
 **Responsible in the sense of § 55 RStV**
-
 | Dr. Christoph Mayer (Director)
 | OFFIS e.V.
 | Escherweg 2
