@@ -20,6 +20,10 @@ Contents:
    dev/index
    api_reference/index
    about/index
+   privacy
+   legals
+   datenschutz
+   impressum
    glossary
 
 
