@@ -4,6 +4,7 @@ Legals
 
 
 **Address**
+
 | OFFIS e. V.
 | Escherweg 2
 | 26121 Oldenburg
@@ -15,6 +16,7 @@ Legals
 
 
 **Board Members**
+
 | Prof. Dr.-Ing. Wolfgang H. Nebel (Chairman)
 | Prof. Dr. Dr. h.c. Hans-Jürgen Appelrath
 | Prof. Dr. techn. Susanne Boll-Westermann
@@ -23,15 +25,18 @@ Legals
 
 
 **Register Court**
+
 | Amtsgericht Oldenburg
 | Registernumber VR 1956
 
 
 **VAT Identification Number**
+
 DE 811582102
 
 
 **Responsible in the sense of § 55 RStV**
+
 | Dr. Christoph Mayer (Director)
 | OFFIS e.V.
 | Escherweg 2
