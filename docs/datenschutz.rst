@@ -1,10 +1,9 @@
-===========
 Datenschutz
 ===========
 
 
 Datenschutzerklärung
-====================
+--------------------
 
 Der OFFIS e.V., Escherweg 2, 26121 Oldenburg nimmt den Schutz Ihrer persönlichen Daten sehr ernst. Ihre Daten werden im Rahmen der gesetzlichen Vorschriften geschützt. Personenbezogene Daten werden auf unseren Internetseiten nur im notwendigen Umfang erhoben. In keinem Fall werden die erhobenen Daten verkauft oder aus anderen Gründen an Dritte weitergegeben.
 
@@ -74,7 +73,7 @@ Datenschutzbeauftragter
 
 Unser Datenschutzbeauftragter ist für alle Belange zum Thema Datenschutz bei OFFIS und auf unseren Webseiten zuständig, wenden Sie sich gern mit entsprechenden Fragen oder Eingaben an ihn:
 
-Dr. Uwe Schläger
-datenschutz nord GmbH
-`www.datenschutz-nord.de <http://www.datenschutz-nord.de>`_
-`office [ A T ] datenschutz-nord.de <office@datenschutz-nord.de>`_
+| Dr. Uwe Schläger
+| datenschutz nord GmbH
+| `www.datenschutz-nord.de <http://www.datenschutz-nord.de>`_
+| office [ A T ] datenschutz-nord.de
