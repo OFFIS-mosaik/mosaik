@@ -108,18 +108,18 @@ __ https://bitbucket.org/mosaik/mosaik-demo
 OS X
 ====
 
-This guide is based on *OS X 10.9 Mavericks*.
+This guide is based on *OS X 10.11 El Capitan*.
 
 1. Mosaik and the demo scenario require `Python`__ >= 3.3. OS X only ships with
    some outdated versions of Python, so we need to install a recent Python 2
-   and 3 first. The `recommended way`__ of doing this is with `homebrew`__.
-   Therefore, we need to open a *Terminal* and execute the following command:
+   and 3 first. The `recommended way`__ of doing this is with the packet manager `homebrew`__.
+   To install homebrew, we need to open a *Terminal* and execute the following command:
 
    .. code-block:: bash
 
-      $ ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)"
+      $ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
-   The homebrew installer may ask you to install the *command line developer
+   The homebrew installer asks you to install the *command line developer
    tools* for "xcode-select". Install them. When you are done, go back to the
    terminal and press :kbd:`Enter` so that the installer continues.
 
@@ -135,7 +135,7 @@ This guide is based on *OS X 10.9 Mavericks*.
 
    This will also install the Python package manager `pip`__.
 
-2. Furthermore, we need `virtualenv`__ which can create isolated Python
+2. Next, we need `virtualenv`__ which can create isolated Python
    environments for different projects:
 
    .. code-block:: bash
@@ -179,13 +179,14 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
 1. To clone the demo repository, we need to install *Mercurial*. In order to
    compile *NumPy*, *SciPy* and *h5py* (which are required by PYPOWER and the
-   database adapter) we also need to install *gfortran*. You should deactivate
+   database adapter) we also need to install *gfortran* which is included in *gcc*. You should deactivate
    the venv for this:
 
    .. code-block:: bash
 
       (mosaik)$ deactivate
-      $ brew install hg gfortran hdf5
+      $ brew install hg gcc hdf5
+      $ source ~/.virtualenvs/mosaik/bin/activate
 
 2. For NumPy and SciPy we build binary `wheel`__ packages that we can later
    reuse without re-compiling everything. We'll store these *wheels* in
@@ -193,15 +194,19 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bash
 
-      $ source ~/.virtualenvs/mosaik/bin/activate
       (mosaik)$ pip install wheel
       (mosaik)$ pip wheel numpy
-      (mosaik)$ pip install wheelhouse/numpy-1.8.2-cp34-cp34m-macosx_10_9_x86_64.whl
+      (mosaik)$ pip install wheelhouse/numpy-1.10.1-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
       (mosaik)$ pip wheel scipy
-      (mosaik)$ pip install wheelhouse/scipy-0.14.0-cp34-cp34m-macosx_10_9_x86_64.whl
+      (mosaik)$ pip install wheelhouse/scipy-0.16.0-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
       (mosaik)$ pip wheel h5py
-      (mosaik)$ pip install wheelhouse/h5py-2.3.1-cp34-cp34m-macosx_10_9_x86_64.whl
-
+      (mosaik)$ pip install wheelhouse/h5py-2.5.0-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
+      
+.. note::
+    The file names of the *wheels* (\*.whl-files) may change when version-numbers 
+    change. Please check the output of *pip install* or the wheelhouse-directory
+    for the exact file names.
+      
 2. You can now clone the `mosaik-demo repository`__ into a folder where you
    store all your code and repositories (we'll use :file:`~/Code/`):
 
