@@ -204,7 +204,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       
 .. note::
     The file names of the *wheels* (\*.whl-files) may change when version-numbers 
-    change. Please check the output of *pip install* or the wheelhouse-directory
+    change. Please check the output of *pip install* or the directory :file:`~/wheelhouse/`
     for the exact file names.
       
 2. You can now clone the `mosaik-demo repository`__ into a folder where you
