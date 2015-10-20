@@ -7,9 +7,9 @@ setup(
     author='Stefan Scherfke',
     author_email='stefan.scherfke at offis.de',
     description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
-    long_description=(open('README.txt').read() + '\n\n' +
-                      open('CHANGES.txt').read() + '\n\n' +
-                      open('AUTHORS.txt').read()),
+    long_description=(open('README.txt', encoding='utf-8').read() + '\n\n' +
+                      open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
+                      open('AUTHORS.txt', encoding='utf-8').read()),
     url='https://moaik.offis.de',
     install_requires=[
         'networkx>=1.8.1',

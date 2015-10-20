@@ -1,9 +1,9 @@
 Authors
 =======
 
-The original concepts for mosaik were developed by Steffen Schütten and Stefan
+The original concepts for mosaik were developed by Steffen Schütte and Stefan
 Scherfke.
 
 The author of mosaik version 2 is Stefan Scherfke.
 
-Okko Nannen and Florian Schlögl joined the team in May / July 2014.
+Okko Nannen and Florian Schloegl joined the team in May / July 2014.
