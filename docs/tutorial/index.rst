@@ -24,3 +24,5 @@ Contents of the tutorial:
    demo1
    examplectrl
    demo2
+   odysseus
+   odysseus2

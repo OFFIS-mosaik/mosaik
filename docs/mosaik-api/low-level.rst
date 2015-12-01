@@ -332,11 +332,11 @@ Perform the next simulation step from time *time* using input values from
 *inputs* and return the new simulation time (the time at which *step* should
 be called again).
 
-*time* and the time retuned are integers. Their unit is *seconds* (counted from
+*time* and the time returned are integers. Their unit is *seconds* (counted from
 simulation start).
 
 *inputs* is a dict of dicts mapping entity IDs to attributes and dicts of
-values (each simulator has do decide on its own how to reduce the values (e.g.,
+values (each simulator has to decide on its own how to reduce the values (e.g.,
 as its sum, average or maximum)::
 
     {

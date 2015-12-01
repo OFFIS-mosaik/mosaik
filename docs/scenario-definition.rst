@@ -511,7 +511,7 @@ instances to reuse the same port again.
 :meth:`World.run()` automatically calls :meth:`World.shutdown()` for you.
 
 
-How to to real-time simulations
+How to do real-time simulations
 ===============================
 
 It is very easy to do real-time (or "wall-clock time") simulations in mosaik.

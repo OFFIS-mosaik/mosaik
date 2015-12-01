@@ -27,7 +27,7 @@ are the *simulator configuration* and the *duration* of your simulation:
    :lines: 6-16
 
 The *sim config* specifies which simulators are available and how to start
-them. In the example above, we list our *ExampleSim* as well as *HDF5* (the
+them. In the example above, we list our *ExampleSim* as well as *Collector* (the
 names are arbitrarily chosen). For each simulator listed, we also specify how
 to start it.
 
@@ -107,7 +107,7 @@ Usually, you will neither create single entities nor connect single entity
 pairs, but work with large(r) sets of entities. Mosaik allows you to easily
 create multiple entities with the same parameters at once. It also provides
 some utility functions for connecting sets of entities with each other. So lets
-create nine more entities and connect them to our monitor:
+create two more entities and connect them to our monitor:
 
 .. literalinclude:: code/demo_1.py
    :lines: 3-4,32-34

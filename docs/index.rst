@@ -10,7 +10,7 @@ Contents:
    quickstart
    installation
    overview
-   ecosystem
+   ecosystem/index
    tutorial/index
    mosaik-api/index
    scenario-definition

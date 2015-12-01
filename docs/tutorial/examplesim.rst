@@ -157,7 +157,7 @@ step()
 ======
 
 The ``step()`` method tells your simulator to perform a simulation step. It
-returns to mosaik the time at which it it wants to to its next step. It
+returns to mosaik the time at which it wants to do its next step. It
 receives its current simulation time as well as a dictionary with input values
 from other simulators (if there are any):
 
