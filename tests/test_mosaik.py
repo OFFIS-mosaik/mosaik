@@ -10,7 +10,6 @@ import pytest
 
 from mosaik import scenario
 
-
 sim_config_local = {
     char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
 }

@@ -8,6 +8,7 @@ syntax: glob
 .coverage
 .coverage.*
 .tox/
+.idea/
 MANIFEST
 build/
 dist/

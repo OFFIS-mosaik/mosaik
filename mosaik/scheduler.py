@@ -25,8 +25,9 @@ def run(world, until, rt_factor=None, rt_strict=False):
 
     setup_done_evts = []
     for sim in world.sims.values():
-        if sim.meta['api_version'] >= 3:
-            # setup_done() was added in API version 3:
+
+        if sim.meta['api_version'] >= (2, 2):
+            # setup_done() was added in API version 2.2:
             setup_done_evts.append(sim.proxy.setup_done())
     results = yield env.all_of(setup_done_evts)
 
