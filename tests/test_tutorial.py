@@ -17,11 +17,9 @@ CASES = glob.glob(os.path.join(CODE_DIR, '*.out'))
 
 
 @pytest.mark.parametrize('outfile', CASES)
-def test_tutorial(outfile, monkeypatch):
+def test_tutorial(outfile):
     pyfile = outfile.rsplit('.', 1)[0] + '.py'
     expected = open(outfile).read()
-    # monkeypatch.syspath_prepend(CODE_DIR)
-    # monkeypatch.chdir(CODE_DIR)
     out = subprocess.check_output([sys.executable, pyfile], cwd=CODE_DIR,
                                   universal_newlines=True)
     assert out == expected
