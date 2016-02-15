@@ -1,9 +1,13 @@
-{'ExampleSim-0.Model_0': {'delta': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                          'val': [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
- 'ExampleSim-0.Model_1': {'delta': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                          'val': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]},
- 'ExampleSim-0.Model_2': {'delta': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                          'val': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}}
+Collected data:
+- ExampleSim-0.Model_0:
+  - delta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  - val: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+- ExampleSim-0.Model_1:
+  - delta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  - val: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+- ExampleSim-0.Model_2:
+  - delta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  - val: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 Starting "ExampleSim" as "ExampleSim-0" ...
 Starting "Collector" as "Collector-0" ...
 Starting simulation.

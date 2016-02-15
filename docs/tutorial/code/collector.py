@@ -48,7 +48,11 @@ class Collector(mosaik_api.Simulator):
         return time + self.step_size
 
     def finalize(self):
-        pprint.pprint(self.data)
+        print('Collected data:')
+        for sim, sim_data in sorted(self.data.items()):
+            print('- %s:' % sim)
+            for attr, values in sorted(sim_data.items()):
+                print('  - %s: %s' % (attr, values))
 
 
 if __name__ == '__main__':
