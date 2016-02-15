@@ -41,20 +41,24 @@ def test_world():
     sim_config = {'spam': 'eggs'}
     mosaik_config = {'start_timeout': 23}
     world = scenario.World(sim_config, mosaik_config)
-    assert world.sim_config is sim_config
-    assert world.config['start_timeout'] == 23
-    assert world.sims == {}
-    assert world.env
-    assert world.df_graph.nodes() == []
-    assert world.df_graph.edges() == []
-    assert not hasattr(world, 'execution_graph')
-    world.shutdown()
+    try:
+        assert world.sim_config is sim_config
+        assert world.config['start_timeout'] == 23
+        assert world.sims == {}
+        assert world.env
+        assert world.df_graph.nodes() == []
+        assert world.df_graph.edges() == []
+        assert not hasattr(world, 'execution_graph')
+    finally:
+        world.shutdown()
 
 
 def test_world_debug():
     world = scenario.World(sim_config, debug=True)
-    assert world.execution_graph.adj == {}
-    world.shutdown()
+    try:
+        assert world.execution_graph.adj == {}
+    finally:
+        world.shutdown()
 
 
 def test_world_start(world):

@@ -215,37 +215,45 @@ def test_start_connect_stop_timeout(world):
 def test_start_user_error(sim_config, err_msg):
     """Test failure at starting an in-proc simulator."""
     world = scenario.World(sim_config)
-    with pytest.raises(ScenarioError) as exc_info:
-        simmanager.start(world, 'spam', '', {})
-    if sys.platform != 'win32':  # pragma: no cover
-        # Windows has strange error messages which do not want to check :(
-        assert str(exc_info.value) == ('Simulator "spam" could not be '
-                                       'started: ' + err_msg)
-    world.shutdown()
+    try:
+        with pytest.raises(ScenarioError) as exc_info:
+            simmanager.start(world, 'spam', '', {})
+        if sys.platform != 'win32':  # pragma: no cover
+            # Windows has strange error messages which do not want to check :(
+            assert str(exc_info.value) == ('Simulator "spam" could not be '
+                                        'started: ' + err_msg)
+    finally:
+        world.shutdown()
 
 
 def test_start_sim_error(capsys):
     """Test connection failures of external processes."""
     world = scenario.World({'spam': {'connect': 'foo:1234'}})
-    pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
-                  {'foo': 'bar'})
+    try:
+        pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
+                    {'foo': 'bar'})
 
-    out, err = capsys.readouterr()
-    assert out == ('ERROR: Simulator "spam" could not be started: Could not '
-                   'connect to "foo:1234"\nMosaik terminating\n')
-    assert err == ''
+        out, err = capsys.readouterr()
+        assert out == ('ERROR: Simulator "spam" could not be started: Could '
+                       'not connect to "foo:1234"\nMosaik terminating\n')
+        assert err == ''
+    finally:
+        world.shutdown()
 
 
 def test_start_init_error(capsys):
     """Test simulator crashing during init()."""
     world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
-    pytest.raises(SystemExit, simmanager.start, world, 'spam', '', {'foo': 3})
+    try:
+        pytest.raises(SystemExit, simmanager.start, world, 'spam', '', {'foo': 3})
 
-    out, err = capsys.readouterr()
-    assert out.startswith('ERROR: ')
-    assert out.endswith('Simulator "spam" closed its connection during the '
-                        'init() call.\nMosaik terminating\n')
-    assert err == ''
+        out, err = capsys.readouterr()
+        assert out.startswith('ERROR: ')
+        assert out.endswith('Simulator "spam" closed its connection during the '
+                            'init() call.\nMosaik terminating\n')
+        assert err == ''
+    finally:
+        world.shutdown()
 
 
 # FIXME: Adjust test for new API version style
@@ -423,42 +431,45 @@ def test_mosaik_remote(rpc, err):
     world = scenario.World({})
     env = world.env
 
-    edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
-    edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
-    world.df_graph.add_edge('X', 'X', async_requests=True)
-    world.df_graph.add_edge('Y', 'X', async_requests=False)
-    world.df_graph.add_node('Z')
-    world.entity_graph.add_edges_from(edges)
-    for node in world.entity_graph:
-        world.entity_graph.add_node(node, sim='ExampleSim', type='A')
-    world.sim_progress = 23
-    world._df_cache = {
-        1: {
-            'X': {'2': {'attr': 'val'}},
-        },
-    }
+    try:
+        edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
+        edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
+        world.df_graph.add_edge('X', 'X', async_requests=True)
+        world.df_graph.add_edge('Y', 'X', async_requests=False)
+        world.df_graph.add_node('Z')
+        world.entity_graph.add_edges_from(edges)
+        for node in world.entity_graph:
+            world.entity_graph.add_node(node, sim='ExampleSim', type='A')
+        world.sim_progress = 23
+        world._df_cache = {
+            1: {
+                'X': {'2': {'attr': 'val'}},
+            },
+        }
 
-    def simulator():
-        sock = backend.TCPSocket.connection(env, ('localhost', 5555))
-        rpc_con = JsonRpc(Packet(sock))
-        mosaik = rpc_con.remote
+        def simulator():
+            sock = backend.TCPSocket.connection(env, ('localhost', 5555))
+            rpc_con = JsonRpc(Packet(sock))
+            mosaik = rpc_con.remote
 
-        try:
-            yield from rpc(mosaik, world)
-        finally:
-            sock.close()
+            try:
+                yield from rpc(mosaik, world)
+            finally:
+                sock.close()
 
-    def greeter():
-        sock = yield world.srv_sock.accept()
-        rpc_con = JsonRpc(Packet(sock))
-        proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
-                                         rpc_con, world)
-        proxy.last_step = proxy.next_step = 1
-        world.sims['X'] = proxy
+        def greeter():
+            sock = yield world.srv_sock.accept()
+            rpc_con = JsonRpc(Packet(sock))
+            proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
+                                            rpc_con, world)
+            proxy.last_step = proxy.next_step = 1
+            world.sims['X'] = proxy
 
-    env.process(greeter())
-    if err is None:
-        env.run(env.process(simulator()))
-    else:
-        pytest.raises(err, env.run, env.process(simulator()))
-    world.srv_sock.close()
+        env.process(greeter())
+        if err is None:
+            env.run(env.process(simulator()))
+        else:
+            pytest.raises(err, env.run, env.process(simulator()))
+
+    finally:
+        world.srv_sock.close()
