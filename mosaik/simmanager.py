@@ -234,7 +234,9 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
 
         return RemoteProcess(sim_name, sim_id, meta, proc, rpc_con, world)
 
-    return sync_process(greeter(), world)
+    # Add a error callback that waits for "proc" to stop if "proc" is not None:
+    cb = lambda: proc.wait() if proc is not None else None
+    return sync_process(greeter(), world, errback=cb)
 
 
 def parse_api_version(version_str):

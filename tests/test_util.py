@@ -44,6 +44,22 @@ def test_sync_process_error(error, errmsg, capsys):
     assert err == ''
 
 
+def test_sync_process_errback():
+    try:
+        world = scenario.World({})
+        test_list = []
+        cb = lambda: test_list.append('got called')
+
+        def gen():
+            raise ConnectionError()
+            yield world.env.event()
+
+        util.sync_process(gen(), world, errback=cb, ignore_errors=True)
+        assert test_list == ['got called']
+    finally:
+        world.shutdown()
+
+
 def test_sync_process_ignore_errors():
     world = scenario.World({})
 

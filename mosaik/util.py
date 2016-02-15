@@ -10,14 +10,14 @@ from simpy.io.network import RemoteException
 from mosaik.exceptions import SimulationError
 
 
-def sync_process(generator, world, *, ignore_errors=False):
+def sync_process(generator, world, *, errback=None, ignore_errors=False):
     """Synchronously execute a SimPy process defined by the generator object
     *generator*.
 
     A *world* instance is required to run the event loop.
 
-    You can optionally provide a *err_msg* that will be printed when the
-    remote site unexpectedly closes its connection.
+    You can optionally provide a *errback* (error callback) which will be
+    called with no arguments if an error occurs.
 
     If *ignore_errors* is set to ``True``, no errors will be printed.
 
@@ -25,6 +25,9 @@ def sync_process(generator, world, *, ignore_errors=False):
     try:
         return world.env.run(until=world.env.process(generator))
     except (ConnectionError, RemoteException, SimulationError) as exc:
+        if errback is not None:
+            errback()
+
         if ignore_errors:
             # Avoid endless recursions when called from "world.shutdown()"
             return
