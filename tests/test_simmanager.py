@@ -52,7 +52,7 @@ def test_start(world, monkeypatch):
             'api_version': mosaik_api.__api_version__,
         }
 
-    start = lambda *args, **kwargs: proxy
+    start = lambda *args, **kwargs: proxy  # flake8: noqa
     monkeypatch.setattr(simmanager, 'start_inproc', start)
     monkeypatch.setattr(simmanager, 'start_proc', start)
     monkeypatch.setattr(simmanager, 'start_connect', start)
@@ -60,7 +60,8 @@ def test_start(world, monkeypatch):
     ret = simmanager.start(world, 'ExampleSimA', '0', {})
     assert ret == proxy
 
-    # The api_version has to re-initialized, because it is changed in simmanger.start()
+    # The api_version has to be re-initialized, because it is changed in
+    # simmanger.start()
     proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimB', '0', {})
     assert ret == proxy
@@ -246,6 +247,8 @@ def test_start_init_error(capsys):
                         'init() call.\nMosaik terminating\n')
     assert err == ''
 
+
+# FIXME: Adjust test for new API version style
 # @pytest.mark.parametrize(['version', 'valid'], [
 #     ('1', False),
 #     ('2', False),

@@ -33,9 +33,6 @@ def test_run(monkeypatch):
 
         proc_started = False
         meta = {
-            #'api_version': '2.2',
-            # During the test run the version is not converted from string to a tuple lie it is done in real live.
-            # Therefore, we have to provide the version as a tuple
              'api_version': (2, 2),
         }
 

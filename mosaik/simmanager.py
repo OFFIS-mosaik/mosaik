@@ -23,7 +23,7 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-API_VERSION = _version.version_info[0]  # Current major version of the simulator API
+API_VERSION = _version.version_info[0]  # Current major version of the sim API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -83,12 +83,13 @@ def start(world, sim_name, sim_id, sim_params):
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
 
-            proxy.meta['api_version'] = parse_api_version(proxy.meta['api_version'])
+            proxy.meta['api_version'] = parse_api_version(
+                proxy.meta['api_version'])
             if proxy.meta['api_version'][0] < API_VERSION:
+                sim_ver = '.'.join(map(str, proxy.meta['api_version']))
                 raise ScenarioError(
                     '"%s" API version %s is not compatible with mosaik '
-                    'version %s.' % (sim_name, '.'.join(map(str, proxy.meta['api_version'])),
-                                     API_VERSION))
+                    'version %s.' % (sim_name, sim_ver, API_VERSION))
             return proxy
     else:
         raise ScenarioError('Simulator "%s" could not be started: Invalid '
@@ -235,21 +236,17 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
         return RemoteProcess(sim_name, sim_id, meta, proc, rpc_con, world)
 
     # Add a error callback that waits for "proc" to stop if "proc" is not None:
-    cb = lambda: proc.wait() if proc is not None else None
+    cb = lambda: proc.wait() if proc is not None else None  # flake8: noqa
     return sync_process(greeter(), world, errback=cb)
 
 
 def parse_api_version(version_str):
-    """Parseversion_str:Parrse the *version_str* and return a version tupple of integers.
+    """Parse the *version_str* and return a version tupple of integers.
 
     Raise a :exc: `ScenarioError` if the version string cannot be parsed.
 
     """
     version_tuple = version_str.split('.')
-    # try:
-    #     version_tuple = version_str.split('.')
-    # except AttributeError:
-    #     version_tuple = version_str
     if len(version_tuple) != 2:
         raise ScenarioError('Version must be formated like '
                             "'major.minor'; but is %r" % version_str) from None

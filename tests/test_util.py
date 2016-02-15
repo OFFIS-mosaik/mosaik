@@ -48,7 +48,7 @@ def test_sync_process_errback():
     try:
         world = scenario.World({})
         test_list = []
-        cb = lambda: test_list.append('got called')
+        cb = lambda: test_list.append('got called')  # flake8: noqa
 
         def gen():
             raise ConnectionError()
