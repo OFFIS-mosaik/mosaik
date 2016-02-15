@@ -13,8 +13,8 @@ setup(
     url='https://moaik.offis.de',
     install_requires=[
         'networkx>=1.8.1',
-        'mosaik-api>=2.1',
-        'simpy>=3.0.7',
+        'mosaik-api>=2.2',
+        'simpy>=3.0.8',
         'simpy.io>=0.2',
     ],
     packages=find_packages(exclude=['tests*']),
@@ -35,6 +35,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
