@@ -8,6 +8,20 @@ commit`__ happened on that day. Since then, we've come a long way …
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
 
+2.2.0 - 2016-02-15
+==================
+
+- [NEW] API version 2.2: Added an optional "setup_done()" method.
+
+- [CHANGE] API version validation: The API version is no longer an integer but
+  a "major.minor" string.  The *major* part has to math with mosaiks major
+  version.  The *minor* part may be lower or equal to mosaik's minor version.
+
+- [FIX] Various minor fixes and stability improvements.
+
+- [FIX] Various docuentation updates and fixes.
+
+
 2.1 – 2014-10-24
 ================
 
