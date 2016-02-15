@@ -100,7 +100,7 @@ the event, e.g.:
 .. automethod:: MosaikRemote.set_data
    :noindex:
 
-The *mosaik-api* package provides an `example “multi-agent system”
+The *mosaik-api* package provides an `example "multi-agent system"
 <https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_mas/mosaik.py>`_
 that demonstrates how to perform asynchronous requests can be implemented.
 
