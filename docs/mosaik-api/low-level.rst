@@ -129,7 +129,7 @@ arguments (*sim_params*).
 The return value *meta* is an object with meta data about the simulator::
 
     {
-        "api_version": "x.y.z",
+        "api_version": "x.y",
         "models": {
             "ModelName": {
                 "public": true|false,
@@ -146,22 +146,22 @@ The return value *meta* is an object with meta data about the simulator::
     }
 
 The *api_version* is a string that defines which version of the mosaik API the
-simulator implements. The simulator's `major versions <http://semver.org/>`_
-("x", in the snippet above) has to be the same as mosaik's. Mosaik will cancel
-the simulation if a version mismatch occurs.
+simulator implements.  Since mosaik API version 2.2, the simulator's `major
+version <http://semver.org/>`_ ("x", in the snippet above) has to be equal to
+mosaik's.  Mosaik will cancel the simulation if a version mismatch occurs.
 
 *models* is an object describing the models provided by this simulator. The
 entry *public* determines whether a model can be instantiated by a user
 (``true``) or if it is a sub-model that cannot be created directly (``false``).
 *params* is a list of parameter names that can be passed to the model when
 creating it. *attrs* is a list of attribute names that can be accessed (reading
-or writing). If the optional *any_inputs* flag is set to ``true``, any
+or writing).  If the optional *any_inputs* flag is set to ``true``, any
 attributes can be connected to the model, even if they are not *attrs*. This
 may, for example, be useful for databases that don't know in advance which
 attributes of an entity they'll receive.
 
 *extra_methods* is an optional list of methods that a simulator provides in
-addition to the standard API calls (``init()``, ``create()`` and so on). These
+addition to the standard API calls (``init()``, ``create()`` and so on).  These
 methods can be called while the scenario is being created and can be used for
 operations that don't really belong into ``init()`` or ``create()``.
 
@@ -180,7 +180,7 @@ Reply:
 .. code-block:: json
 
     {
-       "api_version": 2,
+       "api_version": "2.2",
        "models": {
             "Grid": {
                 "public": true,
@@ -300,7 +300,7 @@ simulator has been stepped yet.
 
 Implementing this method is optional.
 
-*Added in mosaik API version 3.*
+*Added in mosaik API version 2.2.*
 
 
 Example
