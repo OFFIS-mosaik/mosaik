@@ -5,10 +5,11 @@ syntax: glob
 *.ropeproject
 *~
 .DS_Store
+.cache/
 .coverage
 .coverage.*
-.tox/
 .idea/
+.tox/
 MANIFEST
 build/
 dist/
