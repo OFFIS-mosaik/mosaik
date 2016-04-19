@@ -83,17 +83,14 @@ def start(world, sim_name, sim_id, sim_params):
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
 
-            proxy.meta['api_version'] = parse_api_version(
-                proxy.meta['api_version'])
-            if proxy.meta['api_version'][0] < API_VERSION:
-                sim_ver = '.'.join(map(str, proxy.meta['api_version']))
-                raise ScenarioError(
-                    '"%s" API version %s is not compatible with mosaik '
-                    'version %s.' % (sim_name, sim_ver, API_VERSION))
-            return proxy
+            try:
+                proxy.meta['api_version'] = validate_api_version(proxy.meta['api_version'])
+                return proxy
+            except ScenarioError as se:
+                raise ScenarioError('Simulator "%s" could not be started: Invalid version "%s" : %s'
+                                    % (sim_name, proxy.meta['api_version'], se))
     else:
-        raise ScenarioError('Simulator "%s" could not be started: Invalid '
-                            'configuration' % sim_name)
+        raise ScenarioError('Simulator "%s" could not be started: Invalid configuration' % sim_name)
 
 
 def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
@@ -240,21 +237,25 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
     return sync_process(greeter(), world, errback=cb)
 
 
-def parse_api_version(version_str):
-    """Parse the *version_str* and return a version tupple of integers.
+def validate_api_version(version):
+    """Validate the *version*.
 
-    Raise a :exc: `ScenarioError` if the version string cannot be parsed.
+    Raise a :exc: `ScenarioError` if the version format is wrong or does not match the min requeriments.
 
     """
-    version_tuple = version_str.split('.')
-    if len(version_tuple) != 2:
-        raise ScenarioError('Version must be formated like '
-                            "'major.minor'; but is %r" % version_str) from None
     try:
-        return tuple(map(int, version_tuple))
+        version_tuple = str(version).split('.')
+        v_tuple = tuple(map(int, version_tuple))
     except ValueError:
         raise ScenarioError('Version parts of %r must be integer' %
-                            version_str) from None
+                            version) from None
+    if len(v_tuple) != 2:
+        raise ScenarioError('Version must be formated like '
+                            "'major.minor'; but is %r" % version) from None
+    if v_tuple[0] < API_VERSION:
+        raise ScenarioError( 'API version is not compatible with mosaik version %s.' % API_VERSION)
+
+    return v_tuple
 
 
 class SimProxy:

@@ -78,10 +78,9 @@ def test_start_wrong_api_version(world, monkeypatch):
     monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1000)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
-    assert str(exc_info.value) == (
-        '"ExampleSimA" API version %s is not compatible with '
-        'mosaik version %s.' % (mosaik_api.__api_version__,
-                                mosaik.simmanager.API_VERSION))
+
+    assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be started: Invalid version '
+                                   '"2.2" : API version is not compatible with mosaik version 1000.')
 
 
 def test_start_inproc(world):
@@ -256,17 +255,30 @@ def test_start_init_error(capsys):
         world.shutdown()
 
 
-# FIXME: Adjust test for new API version style
-# @pytest.mark.parametrize(['version', 'valid'], [
-#     ('1', False),
-#     ('2', False),
-#     ('2,1', False),
-#     ('2.2', True),
-#     ('2.11', True),
-#     ('3.1', True),
-# ])
-# def test_parse_api_version(version, valid):
-#     assert simmanager.parse_api_version(version, '2.2') == valid
+@pytest.mark.parametrize(['version', 'result'], [
+    ('2.0', (2, 0)),
+    ( 2.1, (2, 1)),
+    ('2.2', (2, 2)),
+    ( 2.11, (2, 11)),
+    ('2.11', (2, 11)),
+    ('3.1', (3, 1)),
+ ])
+def test_validate_api_version(version, result):
+    assert simmanager.validate_api_version(version) == result
+
+
+@pytest.mark.parametrize('version', [
+    ('1'),
+    # ('1.2'),
+    ('2'),
+    ('2,1'),
+    ( 2),
+    ('2a'),
+ ])
+def test_validate_api_version_wrong_version(version):
+    with pytest.raises(ScenarioError) as se:
+        simmanager.validate_api_version(version)
+        assert 'Invalid version' in str(se.value)
 
 
 def test_sim_proxy():
