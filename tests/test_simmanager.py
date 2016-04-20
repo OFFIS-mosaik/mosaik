@@ -75,12 +75,13 @@ def test_start(world, monkeypatch):
 def test_start_wrong_api_version(world, monkeypatch):
     """An exception should be raised if the simulator uses an unsupported
     API version."""
-    monkeypatch.setattr(mosaik.simmanager, 'API_VERSION', 1000)
+    monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
 
-    assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be started: Invalid version '
-                                   '"2.2" : API version is not compatible with mosaik version 1000.')
+    assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be '
+                                   'started: Invalid version "2.2": '
+                                   'Latest mosaik API version 2.2')
 
 
 def test_start_inproc(world):
@@ -220,7 +221,7 @@ def test_start_user_error(sim_config, err_msg):
         if sys.platform != 'win32':  # pragma: no cover
             # Windows has strange error messages which do not want to check :(
             assert str(exc_info.value) == ('Simulator "spam" could not be '
-                                        'started: ' + err_msg)
+                                           'started: ' + err_msg)
     finally:
         world.shutdown()
 
@@ -244,12 +245,13 @@ def test_start_init_error(capsys):
     """Test simulator crashing during init()."""
     world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
     try:
-        pytest.raises(SystemExit, simmanager.start, world, 'spam', '', {'foo': 3})
+        pytest.raises(SystemExit, simmanager.start, world,
+                      'spam', '', {'foo': 3})
 
         out, err = capsys.readouterr()
         assert out.startswith('ERROR: ')
-        assert out.endswith('Simulator "spam" closed its connection during the '
-                            'init() call.\nMosaik terminating\n')
+        assert out.endswith('Simulator "spam" closed its connection during '
+                            'the init() call.\nMosaik terminating\n')
         assert err == ''
     finally:
         world.shutdown()
@@ -257,23 +259,23 @@ def test_start_init_error(capsys):
 
 @pytest.mark.parametrize(['version', 'result'], [
     ('2.0', (2, 0)),
-    ( 2.1, (2, 1)),
+    (2.1, (2, 1)),
     ('2.2', (2, 2)),
-    ( 2.11, (2, 11)),
-    ('2.11', (2, 11)),
-    ('3.1', (3, 1)),
  ])
 def test_validate_api_version(version, result):
     assert simmanager.validate_api_version(version) == result
 
 
 @pytest.mark.parametrize('version', [
-    ('1'),
-    # ('1.2'),
-    ('2'),
-    ('2,1'),
-    ( 2),
-    ('2a'),
+    '1',
+    '1.2',
+    '2',
+    '2,1',
+    2,
+    2.11,
+    '2.11',
+    '3.1',
+    '2a',
  ])
 def test_validate_api_version_wrong_version(version):
     with pytest.raises(ScenarioError) as se:
