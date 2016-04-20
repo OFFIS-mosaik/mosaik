@@ -259,7 +259,9 @@ def validate_api_version(version):
         raise ScenarioError('Version must be formated like '
                             '"major.minor", but is %r' % version) from None
     if not (v_tuple[0] == API_MAJOR and v_tuple[1] <= API_MINOR):
-        raise ScenarioError('Latest mosaik API version %s' % API_VERSION)
+        raise ScenarioError('Version must be between %(major)s.0 and '
+                            '%(major)s.%(minor)s' % {'major': API_MAJOR,
+                                                     'minor': API_MINOR})
 
     return v_tuple
 
@@ -516,8 +518,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.next_step > sim.last_step and
-                    dep.last_step <= sim.last_step)
+            assert (dep.next_step > sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need

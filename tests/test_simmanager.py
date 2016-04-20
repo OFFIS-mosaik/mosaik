@@ -80,8 +80,8 @@ def test_start_wrong_api_version(world, monkeypatch):
                              'ExampleSimA', '0', {})
 
     assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be '
-                                   'started: Invalid version "2.2": '
-                                   'Latest mosaik API version 2.2')
+                                   'started: Invalid version "2.2": Version '
+                                   'must be between 1000.0 and 1000.2')
 
 
 def test_start_inproc(world):
