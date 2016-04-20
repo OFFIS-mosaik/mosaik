@@ -25,7 +25,7 @@ from mosaik.util import sync_process
 
 API_MAJOR = _version.version_info[0]  # Current major version of the sim API
 API_MINOR = _version.version_info[1]  # Current minor version of the sim API
-API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the sim API
+API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -259,8 +259,7 @@ def validate_api_version(version):
         raise ScenarioError('Version must be formated like '
                             '"major.minor", but is %r' % version) from None
     if not (v_tuple[0] == API_MAJOR and v_tuple[1] <= API_MINOR):
-        raise ScenarioError('Latest mosaik API version %s'
-                             % API_VERSION)
+        raise ScenarioError('Latest mosaik API version %s' % API_VERSION)
 
     return v_tuple
 
