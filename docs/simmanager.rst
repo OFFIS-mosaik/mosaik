@@ -79,6 +79,9 @@ a *python*, *cmd* or *connect* entry:
   This tells mosaik to execute the specified command *cmd* in order to start a
   new sub-process for the simulator.
 
+  You can use the placeholder ``%(python)s`` to use the same Python interpreter
+  and virtualenv that mosaik currently uses (see :attr:`sys.executable`).
+
   In order to create a socket connection to mosaik the simulator needs to know
   the address of mosaik's server socket. Mosaik will pass this address (in the
   form ``host:port``) as a command line argument, so you need to include the

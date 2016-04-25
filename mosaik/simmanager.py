@@ -13,6 +13,7 @@ import copy
 import importlib
 import shlex
 import subprocess
+import sys
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -139,7 +140,11 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     instantiated.
 
     """
-    cmd = sim_config['cmd'] % {'addr': '%s:%s' % world.config['addr']}
+    replacements = {
+        'addr': '%s:%s' % world.config['addr'],
+        'python': sys.executable,
+    }
+    cmd = sim_config['cmd'] % replacements
     cmd = shlex.split(cmd)
     cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
 
