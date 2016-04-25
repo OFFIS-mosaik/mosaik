@@ -253,8 +253,8 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'http://docs.python.org/3/': None,
-    'http://simpy.readthedocs.org/en/latest/': None,
-    'http://networkx.github.io/documentation/latest/': None,
+    'https://simpy.readthedocs.org/en/latest/': None,
+    'https://networkx.readthedocs.org/en/stable/': None,
 }
 
 # Autodoc
