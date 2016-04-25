@@ -111,6 +111,33 @@ def test_start_proc_timeout_accept(world, capsys):
     assert err == ''
 
 
+def test_start_proc_with_envvars(world, tmpdir):
+    """Assert that you can set environment variables for a new sub-process."""
+    # Replace sim_config for this test:
+    print(tmpdir.strpath)
+    world.sim_config = {'SimMockTmp': {
+        'cmd': '%(python)s -m simmock %(addr)s',
+        'env': {
+            'PYTHONPATH': tmpdir.strpath,
+        },
+    }}
+
+    # Write the module "simmock.py" to tmpdir:
+    tmpdir.join('simmock.py').write("""
+import mosaik_api
+
+
+class SimMock(mosaik_api.Simulator):
+    def __init__(self):
+        super().__init__(meta={})
+
+
+if __name__ == '__main__':
+    mosaik_api.start_simulation(SimMock())
+""")
+    sim = world.start('SimMockTmp')
+
+
 def test_start_connect(world):
     """Test connecting to an already running simulator."""
     env = world.env

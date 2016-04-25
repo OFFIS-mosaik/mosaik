@@ -11,6 +11,7 @@ already running simulators and manage access to them.
 import collections
 import copy
 import importlib
+import os
 import shlex
 import subprocess
 import sys
@@ -148,10 +149,16 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     cmd = shlex.split(cmd)
     cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
 
+    # Make a copy of the current env. vars dictionary and update it with the
+    # user provided values (or an empty dict as a default):
+    env = dict(os.environ)
+    env.update(sim_config.get('env', {}))
+
     kwargs = {
         'bufsize': 1,
         'cwd': cwd,
         'universal_newlines': True,
+        'env': env,  # pass the new env dict to the sub process
     }
     try:
         proc = subprocess.Popen(cmd, **kwargs)
