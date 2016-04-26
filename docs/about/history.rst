@@ -7,6 +7,11 @@ commit`__ happened on that day. Since then, we've come a long way …
 
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
+2.3.0 - 2016-04-26
+==================
+- [NEW] Allow passing environment vars to sup processes
+- [FIX] Fixed a bug in the version validation which raised an error when using
+  a floating point for the version
 
 2.2.0 - 2016-02-15
 ==================
