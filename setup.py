@@ -3,16 +3,16 @@ from setuptools import setup, find_packages
 
 setup(
     name='mosaik',
-    version='2.2.0',
+    version='2.3.0',
     author='Stefan Scherfke',
-    author_email='stefan.scherfke at offis.de',
+    author_email='mosaik at offis.de',
     description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
     long_description=(open('README.txt', encoding='utf-8').read() + '\n\n' +
                       open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
                       open('AUTHORS.txt', encoding='utf-8').read()),
     url='https://moaik.offis.de',
     install_requires=[
-        'networkx>=1.8.1',
+        'networkx>=1.11',
         'mosaik-api>=2.2',
         'simpy>=3.0.8',
         'simpy.io>=0.2',
