@@ -36,8 +36,7 @@ def test_mosaik(fixture, sim_config):
         world.run(until=fixture.until)
 
         expected_graph = nx.parse_edgelist(fixture.execution_graph.split('\n'),
-                                        create_using=nx.DiGraph(),
-                                        data=())
+                                           create_using=nx.DiGraph(), data=())
         for node, inputs in fixture.inputs.items():
             expected_graph.add_node(node, inputs=inputs)
 
@@ -45,7 +44,8 @@ def test_mosaik(fixture, sim_config):
         assert world.execution_graph.adj == expected_graph.adj
 
         for node, data in world.execution_graph.node.items():
-            assert data['inputs'] == expected_graph.node[node].get('inputs', {})
+            assert data['inputs'] == expected_graph.node[node].get(
+                'inputs', {})
 
         for sim in world.sims.values():
             assert sim.last_step < fixture.until

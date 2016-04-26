@@ -25,7 +25,9 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-API_VERSION = _version.version_info[0]  # Current major version of the sim API
+API_MAJOR = _version.version_info[0]  # Current major version of the sim API
+API_MINOR = _version.version_info[1]  # Current minor version of the sim API
+API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
@@ -85,17 +87,17 @@ def start(world, sim_name, sim_id, sim_params):
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
 
-            proxy.meta['api_version'] = parse_api_version(
-                proxy.meta['api_version'])
-            if proxy.meta['api_version'][0] < API_VERSION:
-                sim_ver = '.'.join(map(str, proxy.meta['api_version']))
-                raise ScenarioError(
-                    '"%s" API version %s is not compatible with mosaik '
-                    'version %s.' % (sim_name, sim_ver, API_VERSION))
-            return proxy
+            try:
+                proxy.meta['api_version'] = validate_api_version(
+                    proxy.meta['api_version'])
+                return proxy
+            except ScenarioError as se:
+                raise ScenarioError('Simulator "%s" could not be started:'
+                                    ' Invalid version "%s": %s' %
+                                    (sim_name, proxy.meta['api_version'], se))
     else:
-        raise ScenarioError('Simulator "%s" could not be started: Invalid '
-                            'configuration' % sim_name)
+        raise ScenarioError('Simulator "%s" could not be started: '
+                            'Invalid configuration' % sim_name)
 
 
 def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
@@ -163,8 +165,8 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     try:
         proc = subprocess.Popen(cmd, **kwargs)
     except (FileNotFoundError, NotADirectoryError) as e:
-        raise ScenarioError('Simulator "%s" could not be started: %s' %
-                            (sim_name, e.args[1])) from None
+        raise ScenarioError('Simulator "%s" could not be started: %s'
+                            % (sim_name, e.args[1])) from None
 
     proxy = make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                        proc=proc)
@@ -252,21 +254,28 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
     return sync_process(greeter(), world, errback=cb)
 
 
-def parse_api_version(version_str):
-    """Parse the *version_str* and return a version tupple of integers.
+def validate_api_version(version):
+    """Validate the *version*.
 
-    Raise a :exc: `ScenarioError` if the version string cannot be parsed.
+    Raise a :exc: `ScenarioError` if the version format is wrong or
+    does not match the min requirements.
 
     """
-    version_tuple = version_str.split('.')
-    if len(version_tuple) != 2:
-        raise ScenarioError('Version must be formated like '
-                            "'major.minor'; but is %r" % version_str) from None
     try:
-        return tuple(map(int, version_tuple))
+        version_tuple = str(version).split('.')
+        v_tuple = tuple(map(int, version_tuple))
     except ValueError:
         raise ScenarioError('Version parts of %r must be integer' %
-                            version_str) from None
+                            version) from None
+    if len(v_tuple) != 2:
+        raise ScenarioError('Version must be formated like '
+                            '"major.minor", but is %r' % version) from None
+    if not (v_tuple[0] == API_MAJOR and v_tuple[1] <= API_MINOR):
+        raise ScenarioError('Version must be between %(major)s.0 and '
+                            '%(major)s.%(minor)s' % {'major': API_MAJOR,
+                                                     'minor': API_MINOR})
+
+    return v_tuple
 
 
 class SimProxy:
@@ -331,8 +340,8 @@ class SimProxy:
         models = list(models)
         illegal_models = set(models) & set(api_methods)
         if illegal_models:
-            raise ScenarioError('Simulator "%s" uses illegal model names: %s' %
-                                (self.sid, ', '.join(illegal_models)))
+            raise ScenarioError('Simulator "%s" uses illegal model names: %s'
+                                % (self.sid, ', '.join(illegal_models)))
 
         illegal_meths = set(models + api_methods) & set(extra_methods)
         if illegal_meths:
@@ -521,8 +530,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.next_step > sim.last_step and
-                    dep.last_step <= sim.last_step)
+            assert (dep.next_step > sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
