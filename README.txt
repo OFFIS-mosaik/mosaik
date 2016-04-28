@@ -8,6 +8,7 @@ Smart Grid scenarios. Mosaik offers powerful mechanisms to specify and compose
 these scenarios.
 
 Version: 2.3.0
+
 License: LGPL
 
 Example
@@ -54,7 +55,7 @@ __ http://virtualenv.readthedocs.org/en/latest/
 Documentation, Source code and issues
 -------------------------------------
 
-The documentation is available at https://mosaik.readthedocs.org.
+The documentation is available at https://mosaik.readthedocs.io.
 
 Please report bugs and ideas for improvment to our `issue tracker`__.
 

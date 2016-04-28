@@ -68,6 +68,26 @@ In the example above, we declare three different simulators. You can freely
 choose a name for a simulator. Its configuration should either contain
 a *python*, *cmd* or *connect* entry:
 
+Since mosaik 2.3.0 it is possible to pass environment variables to
+sub-processes. Using the key *env* in sim_config allows you to set new
+environment variables. That could look like this:
+
+.. code-block:: python
+
+   >>> import mosaik
+   >>>
+   >>> sim_config = {
+   ...     'SimA': {
+   ...         'python': 'package.module:SimClass',
+   ...         'env': {
+   ...            'PYTHONPATH': 'src/',
+   ...         },
+   ...     },
+   ... }
+   >>>
+   >>> world = mosaik.World(sim_config)
+
+
 *python*
   This tells mosaik to run the simulator in process. As a value, you need to
   specify the module and class name of the simulator separated by a colon.
