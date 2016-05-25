@@ -3,6 +3,7 @@ A simple data collector that prints all data when the simulation finishes.
 
 """
 import collections
+import pprint
 
 import mosaik_api
 

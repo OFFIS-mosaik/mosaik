@@ -7,6 +7,7 @@ Integrating a simulation model into the mosaik ecosystem
 In this section we'll first implement a simple example simulator. We'll then
 implement mosaik's SimAPI step-by-step
 
+.. _the_simulator:
 
 The simulator
 =============
@@ -33,6 +34,8 @@ value.
    Schematic diagram of our example model. You can change the *delta* input and
    collect the *val* output.
 
+.. _model_python:
+
 Here is a possible implementation of that simulation model in Python:
 
 .. literalinclude:: code/simulator.py
@@ -41,6 +44,7 @@ If you run this script, you'll get the following output:
 
 .. literalinclude:: code/simulator.out
 
+.. _simulator_class:
 
 Setup for the API implementation
 ================================
@@ -60,6 +64,7 @@ containing the mosaik API as well as our simulator:
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 1-8
 
+.. _meta_data:
 
 Simulator meta data
 ===================
@@ -87,6 +92,7 @@ following way:
    print(model.val)
    print(model.delta)
 
+.. _mosaik_API:
 
 The ``Simulator`` class
 =======================
@@ -164,6 +170,8 @@ from other simulators (if there are any):
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 46-58
 
+.. _inputs:
+
 In this example, the *inputs* could be something like this:
 
 .. code-block:: python
@@ -200,6 +208,8 @@ the simulator meta data):
 
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 60-73
+
+.. _outputs:
 
 The *outputs* parameter contains the query and may in our case look like this:
 

@@ -12,6 +12,7 @@ means, we will instantiate a few ExampleModels and a data monitor. We will
 then connect the model instances to that monitor and simulate that for some
 time.
 
+.. _sim_config:
 
 Configuration
 =============
@@ -134,6 +135,8 @@ how long we want our simulation to run:
 
 .. literalinclude:: code/demo_1.py
    :lines: 36-37
+
+.. _demo1_output:
 
 Executing the scenario script will then give us the following output:
 
