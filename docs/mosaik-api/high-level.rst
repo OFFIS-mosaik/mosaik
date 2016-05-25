@@ -4,8 +4,8 @@
 The high-level API
 ==================
 
-Currently, there is only a high-level API for Python. Once there are
-implementations for other languages available, this document will be updated.
+Currently, there are high-level API for Python and Java. Implementations for 
+C# and MatLab will be available soon.
 
 
 Installation
@@ -19,6 +19,8 @@ an can easily be installed via `pip <https://pip.pypa.io>`_:
    pip install mosaik-api
 
 It supports Python 2.7, >= 3.3 and PyPy.
+
+For the use of the Java-API please refer to the :doc:`Java-tutorial</tutorials/tutorial_api-java>`.
 
 
 Usage

@@ -11,7 +11,7 @@ Contents:
    installation
    overview
    ecosystem/index
-   tutorial/index
+   tutorials/index
    mosaik-api/index
    scenario-definition
    simmanager
