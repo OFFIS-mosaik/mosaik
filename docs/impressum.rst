@@ -17,10 +17,10 @@ Impressum
 **Vertretungsberechtigter Vorstand**
 
 | Prof. Dr.-Ing. Wolfgang H. Nebel (Vorsitzender)
-| Prof. Dr. Dr. h.c. Hans-Jürgen Appelrath
 | Prof. Dr. techn. Susanne Boll-Westermann
 | Prof. Dr. Werner Damm
 | Prof. Dr.-Ing. Andreas Hein
+| Prof. Dr. Sebastian Lehnhoff
 
 
 **Registergericht**

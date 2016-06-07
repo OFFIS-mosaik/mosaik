@@ -18,10 +18,10 @@ Legals
 **Board Members**
 
 | Prof. Dr.-Ing. Wolfgang H. Nebel (Chairman)
-| Prof. Dr. Dr. h.c. Hans-Jürgen Appelrath
 | Prof. Dr. techn. Susanne Boll-Westermann
 | Prof. Dr. Werner Damm
 | Prof. Dr.-Ing. Andreas Hein
+| Prof. Dr. Sebastian Lehnhoff
 
 
 **Register Court**
