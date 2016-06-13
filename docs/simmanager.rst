@@ -63,6 +63,7 @@ names and description of how to start them:
    ... }
    >>>
    >>> world = mosaik.World(sim_config)
+   >>> world.shutdown()
 
 In the example above, we declare three different simulators. You can freely
 choose a name for a simulator. Its configuration should either contain
@@ -86,6 +87,7 @@ environment variables. That could look like this:
    ... }
    >>>
    >>> world = mosaik.World(sim_config)
+   >>> world.shutdown()
 
 
 *python*

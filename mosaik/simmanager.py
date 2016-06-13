@@ -250,7 +250,16 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
         return RemoteProcess(sim_name, sim_id, meta, proc, rpc_con, world)
 
     # Add a error callback that waits for "proc" to stop if "proc" is not None:
-    cb = lambda: proc.wait() if proc is not None else None  # flake8: noqa
+    def terminate():
+        try:
+            # See if it terminates on its own ...
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            # ... or kill it ...
+            proc.terminate()
+            proc.wait(timeout=1)
+
+    cb = None if proc is None else terminate
     return sync_process(greeter(), world, errback=cb)
 
 
