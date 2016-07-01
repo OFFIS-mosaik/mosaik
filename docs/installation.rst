@@ -243,9 +243,10 @@ Windows
 
 .. note::
 
-   There is currently no one-click-exe-installer for mosaik. This is due to
-   its early development stage. The installation process will get easier in the
-   future, though.
+   Installer for mosaik including the demo are available for 32bit and 64bit 
+   Windows-systems and different Python-versions. You can find them on our 
+   website `here`__. The following instructions are for those who want to go 
+   through installation process step-by-step.
 
 This guide is based on *Windows 7 or 8, 64bit*.
 
@@ -312,6 +313,7 @@ This guide is based on *Windows 7 or 8, 64bit*.
 
    Mosaik should now be installed successfully.
 
+__ https://mosaik.offis.de/install/#windows-installer
 __ https://www.python.org/
 __ https://www.python.org/downloads/release/python-342/
 __ https://pip.readthedocs.org/
