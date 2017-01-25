@@ -1,0 +1,29 @@
+#PARSER PQL
+#METADATA TimeInterval
+#QUERY
+mosaikCon := MOSAIK({SOURCE = 'mosaik', type='simapi'})
+#QUERY
+mosaikCon1 := ACCESS({TRANSPORT = 'TCPServer',
+                    PROTOCOL = 'mosaik',
+                    SOURCE = 'mosaik',
+                    DATAHANDLER = 'KeyValueObject',
+                    WRAPPER = 'GenericPush',
+                    OPTIONS = [
+                      ['port', '5555'],
+                      ['mosaikPort', '5554'],
+                      ['byteorder', 'LITTLE_ENDIAN']
+                    ]})
+#QUERY
+mosaikCon2 := MOSAIK({SOURCE = 'mosaik', type='zeromq'})
+#QUERY
+mosaikCon3 := ACCESS({TRANSPORT = 'ZeroMQ',
+                    PROTOCOL = 'JSON',
+                    SOURCE = 'mosaik',
+                    DATAHANDLER = 'KeyValueObject',
+                    WRAPPER = 'GenericPush',
+                    OPTIONS = [
+                      ['host', '127.0.0.1'],
+                      ['readport', '5558'],
+                      ['writeport', '5559'],
+                      ['byteorder', 'LITTLE_ENDIAN']
+                    ]})

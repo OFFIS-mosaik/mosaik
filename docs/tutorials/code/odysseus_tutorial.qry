@@ -1,0 +1,47 @@
+#PARSER PQL
+#METADATA TimeInterval
+#QUERY
+tuples = KEYVALUETOTUPLE({
+        SCHEMA = [
+                ['odysseus_0.Vm.PyPower-0.0-tr_sec', 'Double'],
+                ['odysseus_0.Vm.PyPower-0.0-node_b1', 'Double'],
+                ['odysseus_0.Vm.PyPower-0.0-node_b2', 'Double'],
+                ['odysseus_0.Vm.PyPower-0.0-node_b3', 'Double'],
+                ['odysseus_0.Vm.PyPower-0.0-node_b4', 'Double'],
+                ['timestamp', 'STARTTIMESTAMP']
+        ],
+        TYPE = 'mosaik'},
+        mosaikCon)
+
+renamedTuples = RENAME({aliases =
+                ['tr_sec_Vm', 'node1_Vm', 'node2_Vm', 'node3_Vm', 'node4_Vm', 'timestamp']
+        }, tuples)
+
+voltageDeviation = MAP({EXPRESSIONS = [
+                ['abs(230 - tr_sec_Vm)', 'dev_tr_sec_Vm'],
+                ['abs(230 - Node1_Vm)', 'dev_Node1_Vm'],
+                ['abs(230 - Node2_Vm)', 'dev_Node2_Vm'],
+                ['abs(230 - Node3_Vm)', 'dev_Node3_Vm'],
+                ['abs(230 - Node4_Vm)', 'dev_Node4_Vm']
+        ]}, renamedTuples)
+
+windowedTuples = TIMEWINDOW({SIZE = [5, 'MINUTES']}, voltageDeviation)
+aggregatedTuples = AGGREGATE({
+        AGGREGATIONS = [
+                ['AVG', 'dev_tr_sec_Vm', 'AVG_dev_tr_sec_P'],
+                ['AVG', 'dev_Node1_Vm', 'AVG_dev_Node1_P'],
+                ['AVG', 'dev_Node2_Vm', 'AVG_dev_Node2_P'],
+                ['AVG', 'dev_Node3_Vm', 'AVG_dev_Node3_P'],
+                ['AVG', 'dev_Node4_Vm', 'AVG_dev_Node4_P']
+                ]},
+        windowedTuples)
+
+send = SENDER({
+        SINK='writeCSV',
+        transport='File',
+        wrapper='GenericPush',
+        protocol='CSV',
+        dataHandler='Tuple',
+        options=[
+                ['filename','${WORKSPACEPROJECT}\output2.csv']
+        ]}, aggregatedTuples)

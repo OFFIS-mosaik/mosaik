@@ -12,6 +12,8 @@ We recommend to use the SimAPI version for beginners.
 
 No matter which connection we use, we first have to 
 `download <http://odysseus.informatik.uni-oldenburg.de/index.php?id=76&L=2>`_ Odysseus Server and Studio Client.
+For the first start of Odysseus Studio the default user "System" and password "manager" have to be used, 
+the tenant can be left empty.
 
 .. _mosaik_protocol_handler:
 
@@ -33,36 +35,22 @@ in odysseus:
 * server / key value processsing
 
 After installing the features we create a new Odysseus project and in the 
-project a new Odysseus script file. To use mosaik as source we can 
+project a new Odysseus script file (more information on Odysseus projects and script files can be found in this 
+`tutorial <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_). 
+To use mosaik as source we can 
 use the mosaik operator which contains a standard configuration of mandatory parameters.
 The script-code in the Odysseus query language `PQL 
-<http://odysseus.offis.uni-oldenburg.de:8090/display/ODYSSEUS/The+Odysseus+Procedural+Query+Language+%28PQL%29+Framework>`_ 
+<http://wiki.odysseus.informatik.uni-oldenburg.de/pages/viewpage.action?pageId=4587829>`_ 
 looks like this:
 
-.. code-block:: sql
-   
-  #PARSER PQL
-  #METADATA TimeInterval
-  #QUERY
-  mosaikCon = MOSAIK({SOURCE = 'mosaik', type='simapi'})
+.. literalinclude:: code/odysseus_tutorial_sources.qry
+   :lines: 1-4
 
 This is for the standard configuration. If you want to change something, for example
 to use another port, you need a more detailed configuration:
 
-.. code-block:: sql
-   
-  #PARSER PQL
-  #METADATA TimeInterval
-  #QUERY
-  mosaikCon = ACCESS({TRANSPORT = 'TCPServer',
-                      PROTOCOL = 'mosaik',
-                      SOURCE = 'mosaik',
-                      DATAHANDLER = 'KeyValueObject',
-                      WRAPPER = 'GenericPush',
-                      OPTIONS = [
-                        ['port', '5554'],
-                        ['byteorder', 'LITTLE_ENDIAN']
-                      ]})
+.. literalinclude:: code/odysseus_tutorial_sources.qry
+   :lines: 1-3,6-15
 
 As we can see the protocol 'mosaik' is chosen. When the query is started, the mosaik 
 protocol handler in Odysseus opens a TCP server for receiving data from mosaik.
@@ -73,36 +61,14 @@ just like any other component in mosaik. It has to be added to the ``SIM_CONFIG`
 For the connection to the simulator the ``connect`` command is used and the IP 
 address and port of Odysseus have to be specified:
 
-.. code-block:: python
-
-	SIM_CONFIG = {
-	
-	    ...
-	    
-	    'Odysseus': {
-	        'connect': '127.0.0.1:5554'
-	    }
-	}
+.. literalinclude:: code/odysseus_mosaik_scenario.py
+   :lines: 9,25-27
 
 After that, we have to initialize the simulator and connect it to all components whose data we want to revceive in Odysseus.
 For the mosaik-demo, we have to add the following lines of code to the scenario definition:
 
-.. code-block:: python
-
-  ... 
-   
-  # Start simulators
-  odysseusModel = world.start('Odysseus', step_size=15*60)
-
-  # Instantiate models
-  odysseus = odysseusModel.Odysseus.create(1)
-
-  # Connect entities to odysseus
-  connect_many_to_one(world, nodes, odysseus[0], 'P', 'Vm')
-  connect_many_to_one(world, houses, odysseus[0], 'P_out')
-  connect_many_to_one(world, pvs, odysseus[0], 'P')
-  
-  ...
+.. literalinclude:: code/odysseus_mosaik_scenario.py
+   :lines: 47,51,53,54,60-61,63-64,79-81
 
 Now we have set up everything to receive mosaiks data in Odysseus.
 To begin transfering data we have to start first the query in Odysseus and then the simulation in mosaik.
@@ -133,78 +99,33 @@ and in the project a new Odysseus script file.
 The messages sent by mosaik are formatted in JSON format and sent via ZeroMQ. 
 So we have to choose the corresponding ZeroMQ transport handler and JSON protocol handler:
 
-.. code-block:: sql
-   
-  #PARSER PQL
-  #METADATA TimeInterval
-  #QUERY
-  mosaikCon = ACCESS({TRANSPORT = 'ZeroMQ',
-                      PROTOCOL = 'JSON',
-                      SOURCE = 'mosaik',
-                      DATAHANDLER = 'KeyValueObject',
-                      WRAPPER = 'GenericPush',
-                      OPTIONS = [
-                        ['host', '127.0.0.1'],
-                        ['readport', '5558'],
-                        ['writeport', '5559'],
-                        ['byteorder', 'LITTLE_ENDIAN']
-                      ]})
+.. literalinclude:: code/odysseus_tutorial_sources.qry
+   :lines: 1-2,18-29
 
 If you use the standard configurtion you can use the short version (feature "wrapper / mosaik" has to be installed):
 
-.. code-block:: sql
-   
-  #PARSER PQL
-  #METADATA TimeInterval
-  #QUERY  
-  mosaikCon = MOSAIK({SOURCE = 'mosaik', type='zeromq'})
+.. literalinclude:: code/odysseus_tutorial_sources.qry
+   :lines: 1-3,17
 
 After setting up Odysseus we have to install the mosaik-zmq adapter in our mosaik virtualenv.
-It can be downloaded from the mosaik wrapper folder in the odysseus SVN 
-`repository <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Development+with+Odysseus>`_:
-
-* User: lesend
-* Password: rurome48
-* URL: http://isdb1.offis.uni-oldenburg.de/repos/odysseus/trunk/wrapper/mosaik/mosaik-zmq-simulator/
-
-To install it we have to activate our mosaik virtualenv and execute:
+It is available on `bitbucket <https://bitbucket.org/mosaik/mosaik-zmq>`_ and PyPI.
+To install it we have to activate our mosaik virtualenv and execute (if there are errors during installation have a look at the readme on
+`bitbucket <https://bitbucket.org/mosaik/mosaik-zmq>`_):
 
 .. code-block:: python
 
-  pip install *path*/mosaik-zmq-0.1.tar.gz
+  pip install mosaik-zmq
 
 The mosaik-zmq adapter is treated in mosaik like any other component of the simulation.
 If we use the mosaik demo for an example we have to add the new simulator to 
 the ``SIM_CONFIG`` parameter:
 
-.. code-block:: python
-
-  SIM_CONFIG = {
-  
-      ...
-      
-      'ZMQ': {
-          'cmd': 'mosaik-zmq %(addr)s'
-      } 
-  }
+.. literalinclude:: code/odysseus_mosaik_scenario.py
+   :lines: 9,13-15
 
 Also we have to initialize the ZeroMQ simulator and connect it to other components:
 
-.. code-block:: python
-
-  ...
-  
-  # Start simulators
-  zmqModel = world.start'ZMQ', step_size=15*60, duration=END)
-
-  # Instantiate models
-  zmq = zmqModel.Socket(host='tcp://*:', port=5558, socket_type='PUB')
-
-  # Connect entities to zeromq
-  connect_many_to_one(world, nodes, zmq, 'P', 'Vm')
-  connect_many_to_one(world, houses, zmq, 'P_out')
-  connect_many_to_one(world, pvs, zmq, 'P')
-  
-  ...
+.. literalinclude:: code/odysseus_mosaik_scenario.py
+   :lines: 47,52-54,62-64,83-85
 
 For more information on how to use Odysseus visit :doc:`part two <odysseus2>`.
