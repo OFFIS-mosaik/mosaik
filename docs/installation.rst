@@ -391,4 +391,4 @@ __ http://www.lfd.uci.edu/~gohlke/pythonlibs/
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py
-__ http://mercurial.selenic.com/downloads
+__ https://www.mercurial-scm.org/downloads
