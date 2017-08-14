@@ -123,6 +123,9 @@ environment variables. That could look like this:
 
   in order to start *SimB*.
 
+.. note::
+	Please use for the *cwd* command and for paths in the *cmd* call only the UNIX/Linux path notation with 	slashes even if you are using windows. Do not use backslashes or double backslashes.
+
 *connect*
   This tells mosaik to establish a network connection to a running simulator
   instance. It will simply connect to ``host:port`` – ``localhost:5678`` for
