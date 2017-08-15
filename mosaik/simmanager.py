@@ -148,7 +148,7 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
         'python': sys.executable,
     }
     cmd = sim_config['cmd'] % replacements
-    cmd = shlex.split(cmd)
+    cmd = shlex.split(cmd, posix=(os.name != 'nt'))
     cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
 
     # Make a copy of the current env. vars dictionary and update it with the

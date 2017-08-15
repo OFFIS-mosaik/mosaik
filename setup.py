@@ -10,7 +10,7 @@ setup(
     long_description=(open('README.txt', encoding='utf-8').read() + '\n\n' +
                       open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
                       open('AUTHORS.txt', encoding='utf-8').read()),
-    url='https://moaik.offis.de',
+    url='https://mosaik.offis.de',
     install_requires=[
         'networkx>=1.11',
         'mosaik-api>=2.2',
