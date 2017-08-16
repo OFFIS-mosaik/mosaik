@@ -5,7 +5,7 @@ setup(
     name='mosaik',
     version='2.3.0',
     author='Stefan Scherfke',
-    author_email='mosaik at offis.de',
+    author_email='mosaik@offis.de',
     description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
     long_description=(open('README.txt', encoding='utf-8').read() + '\n\n' +
                       open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
