@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mosaik',
-    version='2.3.0',
+    version='2.3.1.',
     author='Stefan Scherfke',
     author_email='mosaik@offis.de',
     description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
@@ -17,6 +17,7 @@ setup(
         'simpy>=3.0.8',
         'simpy.io>=0.2',
     ],
+
     packages=find_packages(exclude=['tests*']),
     include_package_data=True,
     entry_points={
