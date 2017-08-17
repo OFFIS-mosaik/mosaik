@@ -119,14 +119,14 @@ Build and release
         test
 
     [test]
-    repository = https://testpypi.python.org/pypi
-    username = <your test user name goes here>
-    password = <your test password goes here>
+    repository: https://test.pypi.org/legacy/
+    username: <your test user name goes here>
+    password: <your test password goes here>
 
     [pypi]
-    repository = https://pypi.python.org/pypi
-    username = <your production user name goes here>
-    password = <your production password goes here>
+    repository: https://upload.pypi.org/legacy/
+    username: <your production user name goes here>
+    password: <your production password goes here>
 
 #. Upload the distributions for the new version to the test server and test the
    installation again:
