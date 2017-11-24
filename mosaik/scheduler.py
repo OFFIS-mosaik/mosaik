@@ -67,7 +67,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left for which they need to provide data.
-        for pre_sid in world.df_graph.predecessors_iter(sim.sid):
+        for pre_sid in world.df_graph.predecessors(sim.sid):
             evt = world.sims[pre_sid].step_required
             if not evt.triggered:
                 evt.fail(StopIteration())
@@ -97,7 +97,7 @@ def get_keep_running_func(world, sim, until):
         # If all successors have finished, there's no need for us to continue
         # running.
         procs = [world.sims[suc_sid].sim_proc
-                 for suc_sid in world.df_graph.successors_iter(sim.sid)]
+                 for suc_sid in world.df_graph.successors(sim.sid)]
 
         def keep_running():
             return check_time() and not all(proc.triggered for proc in procs)
@@ -121,7 +121,7 @@ def step_required(world, sim):
     sid = sim.sid
 
     if dfg.out_degree(sid) == 0 or any(('wait_event' in dfg[sid][s])
-                                       for s in dfg.successors_iter(sid)):
+                                       for s in dfg.successors(sid)):
         # A step is required if there are no outgoing edges or if one of the
         sim.step_required.succeed()
     # else:
@@ -146,7 +146,7 @@ def wait_for_dependencies(world, sim):
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
-    for dep_sid in dfg.predecessors_iter(sim.sid):
+    for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
         if t in world._df_cache and dep_sid in world._df_cache[t]:
             continue
@@ -162,7 +162,7 @@ def wait_for_dependencies(world, sim):
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
-    for suc_sid in dfg.successors_iter(sim.sid):
+    for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
         if dfg[sim.sid][suc_sid]['async_requests'] and suc.next_step < t:
             evt = world.env.event()
@@ -196,7 +196,7 @@ def get_input_data(world, sim):
     """
     input_data = sim.input_buffer
     sim.input_buffer = {}
-    for src_sid in world.df_graph.predecessors_iter(sim.sid):
+    for src_sid in world.df_graph.predecessors(sim.sid):
         dataflows = world.df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
@@ -249,14 +249,14 @@ def get_outputs(world, sim):
     next_step = sim.next_step
 
     # Notify simulators waiting for inputs from us.
-    for suc_sid in world.df_graph.successors_iter(sid):
+    for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
         if 'wait_event' in edge and dest_sim.next_step < next_step:
             edge.pop('wait_event').succeed()
 
     # Notify simulators waiting for async. requests from us.
-    for pre_sid in world.df_graph.predecessors_iter(sid):
+    for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
         if 'wait_async' in edge and pre_sim.next_step <= next_step:

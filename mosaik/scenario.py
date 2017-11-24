@@ -235,7 +235,7 @@ class World:
                                'be run once for a World instance.')
 
         # Check if a simulator is not connected to anything:
-        for sid, deg in sorted(networkx.degree(self.df_graph).items()):
+        for sid, deg in sorted(list(networkx.degree(self.df_graph))):
             if deg == 0:
                 print('WARNING: %s has no connections.' % sid)
 
