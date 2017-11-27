@@ -5,7 +5,7 @@ Changelog
 ------------------
 
 - [NEW] Allow passing environment vars to sup processes
-- [FIX] Fixed a bug in the version validation which raised an errro when using
+- [FIX] Fixed a bug in the version validation which raised an error when using
   a floating point for the version
 
 2.2.0 - 2016-02-15
@@ -14,8 +14,8 @@ Changelog
 - [NEW] API version 2.2: Added an optional "setup_done()" method.
 
 - [CHANGE] API version validation: The API version is no longer an integer but
-  a "major.minor" string.  The *major* part has to math with mosaiks major
-  version.  The *minor* part may be lower or equal to mosaik's minor version.
+  a "major.minor" string.  The *major* part has to match with mosaik's major
+  version. The *minor* part may be lower or equal to mosaik's minor version.
 
 - [FIX] Various minor fixes and stability improvements.
 

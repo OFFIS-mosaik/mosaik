@@ -321,7 +321,7 @@ def test_model_factory_unkown_model(world, mf):
 
 
 def test_model_mock_entity_graph(world):
-    """Test if related entites are added to the entity_graph."""
+    """Test if related entities are added to the entity_graph."""
     def create(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},

@@ -57,6 +57,6 @@ Documentation, Source code and issues
 
 The documentation is available at https://mosaik.readthedocs.io.
 
-Please report bugs and ideas for improvment to our `issue tracker`__.
+Please report bugs and ideas for improvement to our `issue tracker`__.
 
 __ https://bitbucket.org/mosaik/mosaik/issues
