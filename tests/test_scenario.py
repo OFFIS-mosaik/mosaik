@@ -46,8 +46,8 @@ def test_world():
         assert world.config['start_timeout'] == 23
         assert world.sims == {}
         assert world.env
-        assert world.df_graph.nodes() == []
-        assert world.df_graph.edges() == []
+        assert list(world.df_graph.nodes()) == []
+        assert list(world.df_graph.edges()) == []
         assert not hasattr(world, 'execution_graph')
     finally:
         world.shutdown()
@@ -116,8 +116,8 @@ def test_world_connect_same_simulator(world):
         world.connect(a[0], a[1], ('val_out', 'val_out'))
     assert str(err.value) == ('Cannot connect entities sharing the same '
                               'simulator.')
-    assert world.df_graph.edges() == []
-    assert world._df_outattr == {}
+    assert list(world.df_graph.edges()) == []
+    assert dict(world._df_outattr) == {}
 
 
 def test_world_connect_cycle(world):
@@ -130,7 +130,7 @@ def test_world_connect_cycle(world):
         world.connect(b, a, ('val_in', 'val_out'))
     assert str(err.value) == ('Connection from "ExampleSim-1" to '
                               '"ExampleSim-0" introduces cyclic dependencies.')
-    assert world.df_graph.edges() == [('ExampleSim-0', 'ExampleSim-1')]
+    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1')]
     assert len(world._df_outattr) == 1
 
 
@@ -155,7 +155,7 @@ def test_world_connect_wrong_attr_names(world):
         "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val, "
         "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).onoes, "
         "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).onoes")
-    assert world.df_graph.edges() == []
+    assert list(world.df_graph.edges()) == []
     assert world._df_outattr == {}
 
 
