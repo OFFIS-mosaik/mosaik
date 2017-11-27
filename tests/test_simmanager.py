@@ -502,7 +502,7 @@ def test_mosaik_remote(rpc, err):
             sock = yield world.srv_sock.accept()
             rpc_con = JsonRpc(Packet(sock))
             proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
-                                            rpc_con, world)
+                                             rpc_con, world)
             proxy.last_step = proxy.next_step = 1
             world.sims['X'] = proxy
 

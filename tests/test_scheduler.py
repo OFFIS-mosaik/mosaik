@@ -28,7 +28,8 @@ def test_run(monkeypatch):
 
     class Sim:
         class proxy:
-            def setup_done():
+            @classmethod
+            def setup_done(cls):
                 return world.env.event().succeed()
 
         proc_started = False

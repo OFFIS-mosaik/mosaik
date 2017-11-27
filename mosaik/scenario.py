@@ -240,8 +240,8 @@ class World:
                 print('WARNING: %s has no connections.' % sid)
 
         print('Starting simulation.')
+        import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
-            import mosaik._debug as dbg
             dbg.enable()
         try:
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),

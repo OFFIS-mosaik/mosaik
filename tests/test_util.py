@@ -45,8 +45,8 @@ def test_sync_process_error(error, errmsg, capsys):
 
 
 def test_sync_process_errback():
+    world = scenario.World({})
     try:
-        world = scenario.World({})
         test_list = []
         cb = lambda: test_list.append('got called')  # flake8: noqa
 

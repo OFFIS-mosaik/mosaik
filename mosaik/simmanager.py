@@ -150,7 +150,7 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
 
     """
     replacements = {
-        'addr': '%s:%s' % world.config['addr'],
+        'addr': '%s:%s' % (world.config['addr'][0], world.config['addr'][1]),
         'python': sys.executable,
     }
     cmd = sim_config['cmd'] % replacements
