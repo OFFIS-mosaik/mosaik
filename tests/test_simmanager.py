@@ -1,7 +1,7 @@
 import sys
 
 from example_sim.mosaik import ExampleSim
-from simpy.io.json import JSON as JsonRpc
+from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
 from simpy.io.message import Message
 from simpy.io.network import RemoteException
 from simpy.io.packet import PacketUTF8 as Packet
@@ -14,6 +14,7 @@ from mosaik.exceptions import ScenarioError
 import mosaik
 
 from .util import SimMock
+
 
 sim_config = {
     'ExampleSimA': {
@@ -61,7 +62,7 @@ def test_start(world, monkeypatch):
     assert ret == proxy
 
     # The api_version has to be re-initialized, because it is changed in
-    # simmanger.start()
+    # simmanager.start()
     proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimB', '0', {})
     assert ret == proxy
@@ -84,7 +85,7 @@ def test_start_wrong_api_version(world, monkeypatch):
                                    'must be between 1000.0 and 1000.3')
 
 
-def test_start_inproc(world):
+def test_start_in_process(world):
     """Test starting an in-proc simulator."""
     sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0',
                           {'step_size': 2})
@@ -94,7 +95,7 @@ def test_start_inproc(world):
     assert sp._inst.step_size == 2
 
 
-def test_start_proc(world):
+def test_start_external_process(world):
     """Test starting a simulator as external process."""
     sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', {})
     assert sp.sid == 'ExampleSim-0'
@@ -111,7 +112,7 @@ def test_start_proc_timeout_accept(world, capsys):
     assert err == ''
 
 
-def test_start_proc_with_envvars(world, tmpdir):
+def test_start_external_process_with_environment_variables(world, tmpdir):
     """Assert that you can set environment variables for a new sub-process."""
     # Replace sim_config for this test:
     print(tmpdir.strpath)
@@ -367,8 +368,8 @@ def test_local_process_finalized(world):
 def _rpc_get_progress(mosaik, world):
     """Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC."""
-    prog = yield mosaik.get_progress()
-    assert prog == 23
+    progress = yield mosaik.get_progress()
+    assert progress == 23
 
 
 def _rpc_get_related_entities(mosaik, world):
@@ -491,10 +492,10 @@ def test_mosaik_remote(rpc, err):
         def simulator():
             sock = backend.TCPSocket.connection(env, ('localhost', 5555))
             rpc_con = JsonRpc(Packet(sock))
-            mosaik = rpc_con.remote
+            mosaik_remote = rpc_con.remote
 
             try:
-                yield from rpc(mosaik, world)
+                yield from rpc(mosaik_remote, world)
             finally:
                 sock.close()
 
