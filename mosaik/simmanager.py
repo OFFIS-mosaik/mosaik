@@ -8,6 +8,8 @@ instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 
 """
+from ast import literal_eval
+
 import collections
 import copy
 import importlib
@@ -18,7 +20,7 @@ import sys
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
-from simpy.io.json import JSON as JsonRpc
+from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
 from mosaik import _version
 import mosaik_api
 
@@ -460,7 +462,7 @@ class MosaikRemote:
     def get_related_entities(self, entities=None):
         """Return information about the related entities of *entities*.
 
-        If *entitites* omitted (or ``None``), return the complete entity
+        If *entities* omitted (or ``None``), return the complete entity
         graph, e.g.::
 
             {
@@ -497,14 +499,21 @@ class MosaikRemote:
             }
 
         """
-        eg = self.world.entity_graph
+        graph = self.world.entity_graph
         if entities is None:
-            return {'nodes': eg.node, 'edges': eg.edges(data=True)}
+            # repackage NodeViews and EdgeViews to maintain compatibility
+            nodes_list = literal_eval(str(graph.node(data=True)))
+            nodes_dict = {node[0]: node[1] for node in nodes_list}
+
+            edges_list = literal_eval(str(graph.edges))
+            edges_tuple = tuple(list(edge) + [{}] for edge in edges_list)
+
+            return {'nodes': nodes_dict, 'edges': edges_tuple}
         elif type(entities) is str:
-            return {n: eg.node[n] for n in eg[entities]}
+            return {n: graph.node[n] for n in graph[entities]}
         else:
             return {
-                eid: {n: eg.node[n] for n in eg[eid]}
+                eid: {n: graph.node[n] for n in graph[eid]}
                 for eid in entities
             }
 
@@ -515,8 +524,9 @@ class MosaikRemote:
         *attrs* is a dict of (fully qualified) entity IDs mapping to lists
         of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
 
-        The return value is a dict mapping the input entity IDs to data
-        dictionaries mapping attribute names to there respective values
+        The return value is a dictionary, which maps the input entity IDs to
+        data dictionaries, which in turn map attribute names to their
+        respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
 
         """
