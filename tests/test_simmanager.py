@@ -1,5 +1,6 @@
 import sys
 
+import aiomas as aiomas
 from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
 from simpy.io.message import Message
@@ -440,12 +441,27 @@ def _rpc_set_data(mosaik, world):
 
 def _rpc_get_data_err1(mosaik, world):
     """Required simulator not connected to us."""
-    yield mosaik.get_data({'Z.2': []})
+    try:
+        yield mosaik.get_data({'Z.2': []})
+    except RemoteException as exception:
+        if _remote_exception_type(exception) == \
+                'mosaik.exceptions.ScenarioError':
+            raise ScenarioError
+
+def _remote_exception_type(exception):
+    remote_exception_type = \
+        exception.remote_traceback.split('\n')[-2].split(':')[0]
+    return remote_exception_type
 
 
 def _rpc_get_data_err2(mosaik, world):
     """Async-requests flag not set for connection."""
-    yield mosaik.get_data({'Y.2': []})
+    try:
+        yield mosaik.get_data({'Y.2': []})
+    except RemoteException as exception:
+        if _remote_exception_type(exception) == \
+                'mosaik.exceptions.ScenarioError':
+            raise ScenarioError
 
 
 def _rpc_set_data_err1(mosaik, world):

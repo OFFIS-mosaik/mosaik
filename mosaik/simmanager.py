@@ -503,7 +503,7 @@ class MosaikRemote:
         if entities is None:
             # repackage NodeViews and EdgeViews to maintain compatibility
             nodes_list = literal_eval(str(graph.node(data=True)))
-            nodes_dict = {node[0]: node[1] for node in nodes_list}
+            nodes_dict = dict({node[0]: node[1] for node in nodes_list})
 
             edges_list = literal_eval(str(graph.edges))
             edges_tuple = tuple(list(edge) + [{}] for edge in edges_list)
