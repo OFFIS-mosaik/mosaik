@@ -10,7 +10,6 @@ imagesize==0.7.1
 Jinja2==2.8
 MarkupSafe==0.23
 mccabe==0.4.0
-mosaik==2.2.0
 mosaik-api==2.2
 networkx==2.0
 pep8==1.7.0
