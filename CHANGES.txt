@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.4.0 - 2017-12-06
+------------------
+
+- [NEW] Compatible to the new versions of networkx, simpy and simpy.io
+- [CHANGE] python 3.4, 3.5 and 3.6 are currently supported python 3.3 is no longer supported
+- [FIX] Various bug fixes
+
 2.3.0 - 2016-04-26
 ------------------
 
@@ -21,7 +28,6 @@ Changelog
 
 - [FIX] Various documentation updates and fixes.
 
-
 2.1.2 – 2014-10-29
 ------------------
 
@@ -31,14 +37,12 @@ Changelog
 - [FIX] Fixed a bug that made the last extra method of a simulator shadow all
   previous ones.
 
-
 2.1.1 – 2014-10-28
 ------------------
 
 - [NEW] ``World.run()`` now prints a warning if you forget to connect
   a simulator's entities.
 - [FIX] Fixed some problems with the data-flow cache.
-
 
 2.1 – 2014-10-24
 ----------------
