@@ -32,6 +32,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.graphviz',
     'sphinxcontrib.plantuml',
     'sphinx.ext.imgmath',
 ]
@@ -265,4 +266,5 @@ intersphinx_mapping = {
 # Autodoc
 autodoc_member_order = 'bysource'
 
-plantuml = 'java -jar /home/ael-ama/PlantUML/Jar/plantuml.jar'
+# PlantUML
+plantuml = 'java -jar ~/PlantUML/Jar/plantuml.jar'
