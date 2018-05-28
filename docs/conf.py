@@ -32,6 +32,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    'sphinxcontrib.plantuml',
+    'sphinx.ext.imgmath',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -262,3 +264,5 @@ intersphinx_mapping = {
 
 # Autodoc
 autodoc_member_order = 'bysource'
+
+plantuml = 'java -jar /home/ael-ama/PlantUML/Jar/plantuml.jar'
