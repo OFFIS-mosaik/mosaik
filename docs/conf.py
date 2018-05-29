@@ -265,6 +265,3 @@ intersphinx_mapping = {
 
 # Autodoc
 autodoc_member_order = 'bysource'
-
-# PlantUML
-plantuml = 'java -jar ~/PlantUML/Jar/plantuml.jar'
