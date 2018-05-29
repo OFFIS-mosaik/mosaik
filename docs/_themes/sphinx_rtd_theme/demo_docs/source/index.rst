@@ -239,9 +239,9 @@ Download links
 
 :download:`This long long long long long long long long long long long long long long long download link should be blue with icon, and should wrap white-spaces <static/yi_jing_01_chien.jpg>`
 
-.. uml::
 
-    @startuml
+.. graphviz::
+
     digraph classesmosaik {
     graph [dpi = 0, ratio = "1"]
     charset="utf-8"
@@ -307,4 +307,3 @@ Download links
     "25" -> "6" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="sock", style="solid"];
     "26" -> "6" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="sock", style="solid"];
     }
-    @enduml
