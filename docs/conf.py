@@ -33,7 +33,6 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
-    'sphinxcontrib.plantuml',
     'sphinx.ext.imgmath',
 ]
 
