@@ -101,7 +101,7 @@ mosaik to send the outputs of the example model to the monotir.
 The method :meth:`World.connect()` takes one entity pair – the source and the
 destination entity, as well as a list of attributes or attribute tuples. If you
 only provide single attribute names, mosaik assumes that the source and
-destination use the same attribute name. If they deffer, you can instead pass
+destination use the same attribute name. If they differ, you can instead pass
 a tuple like ``('val_out', 'val_in')``.
 
 Usually, you will neither create single entities nor connect single entity
