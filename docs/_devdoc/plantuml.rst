@@ -8,6 +8,17 @@ PlantUML-Diagrams
    Alice <- Bob: How are you?
 
 
+Since Pythagoras, we know that :math:`a^2 + b^2 = c^2`.
+
+.. math::
+
+   SPEZ = \frac{d}{{b + d}}
+
+   (a + b)^2 = a^2 + 2ab + b^2
+
+   (a - b)^2 = a^2 - 2ab + b^2
+
+
 ..    digraph packages_mosaik {
     charset="utf-8"
     rankdir=BT

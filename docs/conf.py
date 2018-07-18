@@ -36,6 +36,14 @@ extensions = [
     'sphinx.ext.imgmath',
 ]
 
+# -- Options for Graphviz -------------------------------------------------
+graphviz_dot = 'dot'
+graphviz_dot_args = ['-Tsvg']
+graphviz_output_format = 'svg'
+
+# -- Options for imgmath -------------------------------------------------
+imgmath_image_format = 'svg'
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
