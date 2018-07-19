@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/PR-SVG-20010719/DTD/svg10.dtd">
+<svg width="27cm" height="12cm" viewBox="84 113 527 236" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g id="Hintergrund">
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="85" y="115" width="270" height="172" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="220" y="204.9">
+        <tspan x="220" y="204.9"></tspan>
+      </text>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="107" y="212" width="178" height="40" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="196" y="235.9">
+        <tspan x="196" y="235.9"></tspan>
+      </text>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="229" y="137" width="46" height="38" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="252" y="159.9">
+        <tspan x="252" y="159.9"></tspan>
+      </text>
+    </g>
+    <g>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="251.776" y1="185.724" x2="252.232" y2="202.268"/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="251.57,178.227 256.843,188.085 251.776,185.724 246.847,188.361 "/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="252.438,209.765 247.165,199.906 252.232,202.268 257.161,199.631 "/>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="127" y="137.9" width="46" height="38" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="150" y="160.8">
+        <tspan x="150" y="160.8"></tspan>
+      </text>
+    </g>
+    <g>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="150.404" y1="185.628" x2="151.096" y2="202.272"/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="150.093,178.134 155.504,187.918 150.404,185.628 145.512,188.333 "/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="151.407,209.766 145.996,199.982 151.096,202.272 155.988,199.567 "/>
+    </g>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="150" y="156.9">
+      <tspan x="150" y="156.9"></tspan>
+    </text>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="137" y="160.9">
+      <tspan x="137" y="160.9">gen</tspan>
+    </text>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="240" y="160.8">
+      <tspan x="240" y="160.8">gen</tspan>
+    </text>
+    <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="224.5" y1="212" x2="224.5" y2="252"/>
+    <text font-size="16.9785" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="143" y="235">
+      <tspan x="143" y="235">simpy</tspan>
+    </text>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="196" y="232">
+      <tspan x="196" y="232"></tspan>
+    </text>
+    <text font-size="16.9333" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="246" y="237">
+      <tspan x="246" y="237">io</tspan>
+    </text>
+    <text font-size="16.9333" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="170" y="274.5">
+      <tspan x="170" y="274.5">mosaik</tspan>
+    </text>
+    <g>
+      <polygon style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="306.5,222 321,236.5 306.5,251 292,236.5 "/>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="292" y1="236.5" x2="321" y2="236.5"/>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="408" y="114.8" width="202" height="172" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="509" y="204.7">
+        <tspan x="509" y="204.7"></tspan>
+      </text>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="418.7" y="213.8" width="178" height="40" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="507.7" y="237.7">
+        <tspan x="507.7" y="237.7"></tspan>
+      </text>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="437.7" y="139.7" width="140.3" height="38" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="507.85" y="162.6">
+        <tspan x="507.85" y="162.6"></tspan>
+      </text>
+    </g>
+    <g>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="507.81" y1="187.436" x2="507.74" y2="204.064"/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="507.841,179.936 512.799,189.957 507.81,187.436 502.799,189.915 "/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="507.709,211.564 502.751,201.543 507.74,204.064 512.751,201.585 "/>
+    </g>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="507.85" y="158.7">
+      <tspan x="507.85" y="158.7"></tspan>
+    </text>
+    <text font-size="22.5778" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="489.85" y="165.7">
+      <tspan x="489.85" y="165.7">API</tspan>
+    </text>
+    <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="536.2" y1="213.8" x2="536.2" y2="253.8"/>
+    <text font-size="16.9785" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="454.7" y="236.8">
+      <tspan x="454.7" y="236.8">simpy</tspan>
+    </text>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="507.7" y="233.8">
+      <tspan x="507.7" y="233.8"></tspan>
+    </text>
+    <text font-size="16.9333" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="557.7" y="238.8">
+      <tspan x="557.7" y="238.8">io</tspan>
+    </text>
+    <text font-size="16.9333" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="440.7" y="276.3">
+      <tspan x="440.7" y="276.3">Python-Simulator</tspan>
+    </text>
+    <g>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x1="364.736" y1="235.963" x2="398.264" y2="235.837"/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="357.236,235.992 367.217,230.954 364.736,235.963 367.255,240.954 "/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" fill-rule="evenodd" points="405.764,235.808 395.783,240.846 398.264,235.837 395.745,230.846 "/>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 2; stroke: #000000" x="85" y="299" width="525" height="49" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="347.5" y="327.4">
+        <tspan x="347.5" y="327.4"></tspan>
+      </text>
+    </g>
+    <text font-size="28.2222" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="329.5" y="334.5">
+      <tspan x="329.5" y="334.5">OS</tspan>
+    </text>
+    <path style="fill: none; stroke-opacity: 1; stroke-width: 1.8; stroke-linecap: round; stroke: #000000" d="M 340.212 259.259 L 345.606,259.194 L 345.589,260.787 L 331.307,260.942 L 331.324,259.349 L 332.61,259.424 C 332.154,259.112 331.745,258.633 331.399,258.062 C 331.129,257.477 330.999,256.786 330.993,255.913 C 330.991,254.641 331.508,253.589 332.62,252.743 C 333.579,251.926 334.946,251.588 336.861,251.624 C 338.363,251.578 339.63,251.975 340.587,252.828 C 341.514,253.527 342.01,254.467 342.088,255.724 C 342.017,256.612 341.841,257.361 341.573,258.048 C 341.229,258.749 340.826,259.143 340.212,259.259 L 340.212,259.259M 336.844 253.217 C 335.433,253.325 334.296,253.619 333.524,254.162 C 332.8,254.538 332.379,255.253 332.337,256.295 C 332.343,257.168 332.656,257.984 333.415,258.635 C 334.146,259.133 335.307,259.391 336.718,259.283 C 337.99,259.281 339.05,259.002 339.731,258.396 C 340.272,257.896 340.617,257.195 340.611,256.321 C 340.576,255.294 340.339,254.465 339.84,253.923 C 339.109,253.425 338.116,253.215 336.844,253.217 L 336.844,253.217M 332.697 242.631 C 332.74,242.861 332.707,243.106 332.506,243.303 C 332.352,243.332 332.228,243.515 332.257,243.668 C 332.306,244.772 332.634,245.664 333.393,246.316 C 334.123,246.814 335.131,247.1 336.389,247.022 L 341.783,246.957 L 341.766,248.55 L 331.285,248.622 L 331.302,247.029 L 332.588,247.104 C 332.131,246.793 331.723,246.313 331.377,245.743 C 331.107,245.158 330.976,244.467 330.97,243.593 C 330.941,243.44 331.066,243.257 331.219,243.228 C 331.19,243.075 331.147,242.844 331.103,242.614 L 332.697,242.631M 332.38 236.33 C 332.43,237.434 332.729,238.173 333.459,238.671 C 334.189,239.169 335.351,239.426 336.762,239.319 C 338.033,239.317 339.108,239.114 339.832,238.738 C 340.374,238.238 340.704,237.461 340.654,236.357 C 340.509,235.589 340.211,234.85 339.634,234.323 C 338.875,233.672 337.852,233.308 336.58,233.31 C 335.169,233.418 334.032,233.712 333.261,234.256 C 332.58,234.861 332.235,235.563 332.38,236.33 L 332.38,236.33M 331.152 236.562 C 331.121,235.137 331.532,233.946 332.414,233.144 C 333.344,232.173 334.682,231.681 336.597,231.717 C 338.099,231.672 339.367,232.068 340.323,232.921 C 341.524,233.807 342.14,234.963 342.248,236.374 C 342.106,238.15 341.618,239.355 340.737,240.158 C 339.595,240.85 338.305,241.174 336.803,241.219 C 334.888,241.183 333.467,240.816 332.463,240.131 C 331.55,239.508 331.088,238.324 331.152,236.562 L 331.152,236.562M 331.234 220.168 L 336.404,223.962 L 341.658,219.789 L 341.699,221.689 L 337.499,224.709 L 341.88,227.697 L 341.672,229.963 L 336.503,226.169 L 331.44,229.67 L 331.341,227.463 L 334.677,224.924 L 331.275,222.069 L 331.234,220.168M 342.896 212.876 C 344.283,213.488 345.09,213.972 345.393,214.312 C 345.634,214.744 345.721,215.204 345.683,215.847 L 345.666,217.441 L 344.745,217.615 L 344.571,216.694 C 344.652,216.281 344.517,215.988 344.09,215.831 C 343.787,215.49 343.302,215.025 342.572,214.527 L 341.592,214.394 L 331.251,218.575 L 331.21,216.674 L 339.211,213.572 L 331.22,209.994 L 331.237,208.401 L 342.896,212.876"/>
+    <text font-size="28.2222" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="179.5" y="165">
+      <tspan x="179.5" y="165">. . .</tspan>
+    </text>
+  </g>
+</svg>
