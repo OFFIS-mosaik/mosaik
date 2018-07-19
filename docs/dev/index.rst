@@ -7,6 +7,7 @@ Contents:
 .. toctree::
    :maxdepth: 1
 
+   design
    setup
    release_process
    requirements
