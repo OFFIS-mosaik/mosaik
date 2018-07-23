@@ -3,6 +3,12 @@ UML-Activity-Diagrams
 =====================
 The activity diagrams reflect the program flow within the individual methods, regardless of simple or object-oriented declaration. The methods are displayed file-wise and not nested. To follow an integrated method call (possibly across files), it is recommended to enlarge the correct image and use the search function of the respective browser. You can find the symbol key of the diagrams `here`__.
 
+.. figure:: /_static/UML/activity/elementkey.*
+   :width: 100
+   :align: center
+   :alt: __init__.py
+
+
 __ https://mosaik.readthedocs.io/en/latest/_images/elementkey.svg
 
 |
