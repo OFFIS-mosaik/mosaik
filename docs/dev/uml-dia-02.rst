@@ -5,12 +5,6 @@ The activity diagrams reflect the program flow within the individual methods, re
 
 __ https://mosaik.readthedocs.io/en/latest/_images/elementkey.svg
 
-.. figure:: /_static/UML/activity/elementkey.*
-   :width: 100
-   :align: center
-   :alt: elementkey.svg
-
-
 |
 |
 
