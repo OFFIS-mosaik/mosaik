@@ -223,6 +223,31 @@ def test_world_connect_async_requests(world):
     }
 
 
+def test_world_connect_time_shifted(world):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
+
+    assert world.shifted_graph.adj == {
+        'ExampleSim-0': {
+            'ExampleSim-1': {
+                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+            },
+        },
+        'ExampleSim-1': {},
+    }
+
+    assert world._shifted_cache == {
+        0: {
+            'ExampleSim-0': {
+                a.eid: {
+                    'val_out': 1.0
+                },
+            },
+        },
+    }
+
+
 def test_world_get_data(world):
     sim1 = world.start('ExampleSim')
     sim2 = world.start('ExampleSim')

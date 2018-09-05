@@ -1,6 +1,5 @@
 import sys
 
-import aiomas as aiomas
 from example_sim.mosaik import ExampleSim
 from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
 from simpy.io.message import Message

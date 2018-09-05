@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.5.0 - 2018-09-05
+------------------
+
+- [NEW] Connection option "time_shifted" added as alternative to async_requests. This will
+  make creating cyclic data dependencies between simulators more usable since usage of
+  set_data with an API implementation will no longer be needed.
+
 2.4.0 - 2017-12-06
 ------------------
 

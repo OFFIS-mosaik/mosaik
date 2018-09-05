@@ -79,6 +79,10 @@ class World:
         """The directed data-flow :func:`graph <networkx.DiGraph>` for this
         scenario."""
 
+        self.shifted_graph = networkx.DiGraph()
+        """A second directed data-flow graph for flows that are shifted in 
+        time to enable cyclic data dependencies."""
+
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
         ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
@@ -99,6 +103,7 @@ class World:
         self._df_outattr = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
         self._df_cache = defaultdict(dict)
+        self._shifted_cache = defaultdict(dict)
         self._df_cache_min_time = 0
 
     def start(self, sim_name, **sim_params):
@@ -112,9 +117,11 @@ class World:
         sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
+        self.shifted_graph.add_node(sim_id)
         return ModelFactory(self, sim)
 
-    def connect(self, src, dest, *attr_pairs, async_requests=False):
+    def connect(self, src, dest, *attr_pairs, async_requests=False,
+                time_shifted=False, initial_data=None):
         """Connect the *src* entity to *dest* entity.
 
         Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
@@ -126,14 +133,26 @@ class World:
         in *attr_pairs* does not exist, or if the connection would introduce
         a cycle in the data-flow (e.g., A → B → C → A).
 
-        If the *dest* simulator may make asyncronous requests to mosaik to
+        If the *dest* simulator may make asynchronous requests to mosaik to
         query data from *src* (or set data to it), *async_requests* should be
         set to ``True`` so that the *src* simulator stays in sync with *dest*.
+
+        An alternative to asynchronous requests are time-shifted connections.
+        Their data flow is always resolved after normal connections so that
+        cycles in the data-flow can be realized without introducing deadlocks.
+        For such a connection *time_shifted* should be set to ``True`` and
+        *initial_data* should contain a dict with input data for the first
+        simulation step of the receiving simulator.
 
         """
         if src.sid == dest.sid:
             raise ScenarioError('Cannot connect entities sharing the same '
                                 'simulator.')
+
+        if async_requests and time_shifted:
+            raise ScenarioError('Async_requests and time_shifted connections '
+                                'are incongruous methods for handling of cyclic '
+                                'data-flow. Choose one!')
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
@@ -143,16 +162,39 @@ class World:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        # Add edge and check for cycles and the data-flow graph.
-        self.df_graph.add_edge(src.sid, dest.sid,
-                               async_requests=async_requests)
-        if not networkx.is_directed_acyclic_graph(self.df_graph):
-            self.df_graph.remove_edge(src.sid, dest.sid)
-            raise ScenarioError('Connection from "%s" to "%s" introduces '
-                                'cyclic dependencies.' % (src.sid, dest.sid))
+        # Time-shifted connections for closing data-flow cycles:
+        if time_shifted:
+            self.shifted_graph.add_edge(src.sid, dest.sid)
 
-        dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-        dfs.append((src.eid, dest.eid, attr_pairs))
+            dfs = self.shifted_graph[src.sid][dest.sid].setdefault('dataflows',
+                                                                   [])
+            dfs.append((src.eid, dest.eid, attr_pairs))
+
+            if type(initial_data) is not dict or initial_data == {}:
+                raise ScenarioError('Time shifted connections have to be '
+                                    'set with default inputs for the first step.')
+            # list for assertion of correct assignment:
+            check_attrs = [a[0] for a in attr_pairs]
+            # Set default values for first data exchange:
+            for attr, val in initial_data.items():
+                if attr not in check_attrs:
+                    raise ScenarioError('Incorrect attr "%s" in "initial_data".'
+                                        % attr)
+                self._shifted_cache[0].setdefault(src.sid, {})
+                self._shifted_cache[0][src.sid].setdefault(src.eid, {})
+                self._shifted_cache[0][src.sid][src.eid][attr] = val
+        # Standard connections:
+        else:
+            # Add edge and check for cycles and the data-flow graph.
+            self.df_graph.add_edge(src.sid, dest.sid,
+                                   async_requests=async_requests)
+            if not networkx.is_directed_acyclic_graph(self.df_graph):
+                self.df_graph.remove_edge(src.sid, dest.sid)
+                raise ScenarioError('Connection from "%s" to "%s" introduces '
+                                    'cyclic dependencies.' % (src.sid, dest.sid))
+
+            dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
+            dfs.append((src.eid, dest.eid, attr_pairs))
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)

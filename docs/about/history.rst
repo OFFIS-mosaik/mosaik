@@ -7,6 +7,20 @@ commit`__ happened on that day. Since then, we've come a long way …
 
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
+2.5.0 - 2018-09-05
+==================
+
+- [NEW] Connection option "time_shifted" added as alternative to async_requests. This will
+  make creating cyclic data dependencies between simulators more usable since usage of
+  set_data with an API implementation will no longer be needed.
+
+2.4.0 - 2017-12-06
+==================
+
+- [NEW] Compatible to the new versions of networkx, simpy and simpy.io
+- [CHANGE] python 3.4, 3.5 and 3.6 are currently supported python 3.3 is no longer supported
+- [FIX] Various bug fixes
+
 2.3.0 - 2016-04-26
 ==================
 - [NEW] Allow passing environment vars to sup processes

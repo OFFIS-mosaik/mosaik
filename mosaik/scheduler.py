@@ -169,6 +169,16 @@ def wait_for_dependencies(world, sim):
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
 
+    # Check if all predecessors with time-shifted input for us
+    # have stepped for enough to provide the required input data:
+    clg = world.shifted_graph
+    for dep_sid in clg.predecessors(sim.sid):
+        dep = world.sims[dep_sid]
+        if dep.next_step < t:
+            evt = world.env.event()
+            events.append(evt)
+            clg[dep_sid][sim.sid]['wait_shifted'] = evt
+
     return world.env.all_of(events)
 
 
@@ -196,14 +206,17 @@ def get_input_data(world, sim):
     """
     input_data = sim.input_buffer
     sim.input_buffer = {}
-    for src_sid in world.df_graph.predecessors(sim.sid):
-        dataflows = world.df_graph[src_sid][sim.sid]['dataflows']
-        for src_eid, dest_eid, attrs in dataflows:
-            for src_attr, dest_attr in attrs:
-                v = world._df_cache[sim.next_step][src_sid][src_eid][src_attr]
-                vals = input_data.setdefault(dest_eid, {}) \
-                                 .setdefault(dest_attr, {})
-                vals[FULL_ID % (src_sid, src_eid)] = v
+    graphs = [world.df_graph, world.shifted_graph]
+    caches = [world._df_cache, world._shifted_cache]
+    for i in range(len(graphs)):
+        for src_sid in graphs[i].predecessors(sim.sid):
+            dataflows = graphs[i][src_sid][sim.sid]['dataflows']
+            for src_eid, dest_eid, attrs in dataflows:
+                for src_attr, dest_attr in attrs:
+                    v = caches[i][sim.next_step][src_sid][src_eid][src_attr]
+                    vals = input_data.setdefault(dest_eid, {}) \
+                        .setdefault(dest_attr, {})
+                    vals[FULL_ID % (src_sid, src_eid)] = v
 
     return input_data
 
@@ -245,6 +258,10 @@ def get_outputs(world, sim):
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.next_step):
         world._df_cache[i][sim.sid] = data
+    # Create cache entries for the data from time-shifted connections.
+    for i in range(sim.last_step, sim.next_step+1):
+        world._shifted_cache[i].setdefault(sim.sid, {})
+        world._shifted_cache[i][sim.sid].update(data)
 
     next_step = sim.next_step
 
@@ -262,11 +279,19 @@ def get_outputs(world, sim):
         if 'wait_async' in edge and pre_sim.next_step <= next_step:
             edge.pop('wait_async').succeed()
 
+    # Notify simulators waiting for time-shifted input.
+    for suc_sid in world.shifted_graph.successors(sid):
+        edge = world.shifted_graph[sid][suc_sid]
+        dest_sim = world.sims[suc_sid]
+        if 'wait_shifted' in edge and dest_sim.next_step <= next_step:
+            edge.pop('wait_shifted').succeed()
+
     # Prune dataflow cache
     min_cache_time = min(s.last_step for s in world.sims.values())
     for i in range(world._df_cache_min_time, min_cache_time):
         try:
             del world._df_cache[i]
+            del world._shifted_cache[i]
         except KeyError:
             pass
     world._df_cache_min_time = min_cache_time
