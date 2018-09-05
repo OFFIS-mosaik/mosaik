@@ -82,7 +82,7 @@ def test_start_wrong_api_version(world, monkeypatch):
 
     assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be '
                                    'started: Invalid version "2.2": Version '
-                                   'must be between 1000.0 and 1000.4')
+                                   'must be between 1000.0 and 1000.5')
 
 
 def test_start_in_process(world):
