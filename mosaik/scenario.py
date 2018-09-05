@@ -144,6 +144,12 @@ class World:
         *initial_data* should contain a dict with input data for the first
         simulation step of the receiving simulator.
 
+        An alternative to using async_requests to realize cyclic data-flow
+        is given by the time_shifted kwarg. If set to ``True`` it marks the connection
+        as cycle-closing (e.g. C → A). It must always be used with initial_data
+        specifying a dict with the data sent to the dest simulator at the first
+        step (e.g. {‘src_attr’: value}).
+
         """
         if src.sid == dest.sid:
             raise ScenarioError('Cannot connect entities sharing the same '

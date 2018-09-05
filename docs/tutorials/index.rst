@@ -33,6 +33,7 @@ Basic tutorial
    demo1
    examplectrl
    demo2
+   cyclicdf
 
 Odysseus tutorial
 
