@@ -148,7 +148,7 @@ class World:
         is given by the time_shifted kwarg. If set to ``True`` it marks the connection
         as cycle-closing (e.g. C → A). It must always be used with initial_data
         specifying a dict with the data sent to the dest simulator at the first
-        step (e.g. {‘src_attr’: value}).
+        step (e.g. *{‘src_attr’: value}*).
 
         """
         if src.sid == dest.sid:
