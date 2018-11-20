@@ -15,7 +15,7 @@ _originals = {
 
 def enable():
     """Wrap :func:`~mosaik.scheduler.step()` to collect more data about the
-    schedulerulation execution.
+    scheduler execution.
 
     """
     def wrapped_step(world, sim, inputs):
