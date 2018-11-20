@@ -7,14 +7,14 @@ Scenario 3::
 
 
 def create_scenario(world):
-    exsim_a = world.start('A', step_size=2)
-    exsim_b = world.start('B')
-    a = exsim_a.A(init_val=0)
-    b = exsim_b.B(init_val=0)
-    world.connect(a, b, ('val_out', 'val_in'))
+    simulator_a = world.start('A', step_size=2)
+    simulator_b = world.start('B')
+    model_a = simulator_a.A(init_val=0)
+    model_b = simulator_b.B(init_val=0)
+    world.connect(model_a, model_b, ('val_out', 'val_in'))
 
 
-execution_graph = """
+EXECUTION_GRAPH = """
 A-0-0 A-0-2
 A-0-0 B-0-0
 A-0-0 B-0-1
@@ -23,10 +23,10 @@ B-0-0 B-0-1
 B-0-1 B-0-2
 """
 
-inputs = {
+INPUTS = {
     'B-0-0': {'0.0': {'val_in': {'A-0.0.0': 2}}},
     'B-0-1': {'0.0': {'val_in': {'A-0.0.0': 2}}},
     'B-0-2': {'0.0': {'val_in': {'A-0.0.0': 4}}},
 }
 
-until = 3
+UNTIL = 3

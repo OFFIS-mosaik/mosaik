@@ -9,23 +9,23 @@ Scenario 5
 
 
 def create_scenario(world):
-    exsim_a = world.start('A', step_size=1)
-    exsim_b = world.start('B', step_size=2)
-    exsim_c = world.start('C', step_size=1)
-    exsim_d = world.start('D', step_size=4)
-    exsim_e = world.start('E', step_size=3)
-    a = exsim_a.A(init_val=0)
-    b = exsim_b.B(init_val=0)
-    c = exsim_c.B(init_val=0)
-    d = exsim_d.B(init_val=0)
-    e = exsim_e.B(init_val=0)
-    world.connect(a, b, ('val_out', 'val_in'))
-    world.connect(d, b, ('val_out', 'val_in'))
-    world.connect(b, c, ('val_out', 'val_in'))
-    world.connect(b, e, ('val_out', 'val_in'))
+    simulator_a = world.start('A', step_size=1)
+    simulator_b = world.start('B', step_size=2)
+    simulator_c = world.start('C', step_size=1)
+    simulator_d = world.start('D', step_size=4)
+    simulator_e = world.start('E', step_size=3)
+    model_a = simulator_a.A(init_val=0)
+    model_b = simulator_b.B(init_val=0)
+    model_c = simulator_c.B(init_val=0)
+    model_d = simulator_d.B(init_val=0)
+    model_e = simulator_e.B(init_val=0)
+    world.connect(model_a, model_b, ('val_out', 'val_in'))
+    world.connect(model_d, model_b, ('val_out', 'val_in'))
+    world.connect(model_b, model_c, ('val_out', 'val_in'))
+    world.connect(model_b, model_e, ('val_out', 'val_in'))
 
 
-execution_graph = """
+EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-0 B-0-0
 A-0-1 A-0-2
@@ -53,7 +53,7 @@ D-0-4 B-0-4
 E-0-0 E-0-3
 """
 
-inputs = {
+INPUTS = {
     'B-0-0': {'0.0': {'val_in': {'A-0.0.0': 1, 'D-0.0.0': 0}}},
     'B-0-2': {'0.0': {'val_in': {'A-0.0.0': 3, 'D-0.0.0': 0}}},
     'B-0-4': {'0.0': {'val_in': {'A-0.0.0': 5, 'D-0.0.0': 0}}},
@@ -66,4 +66,4 @@ inputs = {
     'E-0-3': {'0.0': {'val_in': {'B-0.0.0': 3}}},
 }
 
-until = 5
+UNTIL = 5

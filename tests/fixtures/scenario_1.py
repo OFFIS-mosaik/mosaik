@@ -7,15 +7,15 @@ Scenario 1::
 
 
 def create_scenario(world):
-    exsim = world.start('A')
-    exsim.A(init_val=0)
+    example_simulator = world.start('A')
+    example_simulator.A(init_val=0)
 
 
-execution_graph = """
+EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-1 A-0-2
 """
 
-inputs = {}
+INPUTS = {}
 
-until = 3
+UNTIL = 3
