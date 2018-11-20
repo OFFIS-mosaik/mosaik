@@ -20,15 +20,15 @@ import sys
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
-from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
+from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
 from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-API_MAJOR = _version.version_info[0]  # Current major version of the sim API
-API_MINOR = _version.version_info[1]  # Current minor version of the sim API
+API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
+API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
 API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
