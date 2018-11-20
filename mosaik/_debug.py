@@ -8,7 +8,7 @@ from time import perf_counter
 from mosaik import scheduler
 
 
-_origs = {
+_originals = {
     'step': scheduler.step,
 }
 
@@ -20,7 +20,7 @@ def enable():
     """
     def wrapped_step(world, sim, inputs):
         pre_step(world, sim, inputs)
-        ret = yield from _origs['step'](world, sim, inputs)
+        ret = yield from _originals['step'](world, sim, inputs)
         post_step(world, sim)
         return ret
 
@@ -29,7 +29,7 @@ def enable():
 
 def disable():
     """Restore all wrapped functions to their original."""
-    for k, v in _origs.items():
+    for k, v in _originals.items():
         setattr(scheduler, k, v)
 
 
