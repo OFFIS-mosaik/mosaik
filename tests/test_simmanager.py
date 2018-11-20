@@ -1,7 +1,7 @@
 import sys
 
 from example_sim.mosaik import ExampleSim
-from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
+from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
 from simpy.io.message import Message
 from simpy.io.network import RemoteException
 from simpy.io.packet import PacketUTF8 as Packet
@@ -506,7 +506,7 @@ def test_mosaik_remote(rpc, err):
 
         def simulator():
             sock = backend.TCPSocket.connection(env, ('localhost', 5555))
-            rpc_con = JsonRpc(Packet(sock))
+            rpc_con = JSON_RPC(Packet(sock))
             mosaik_remote = rpc_con.remote
 
             try:
@@ -516,7 +516,7 @@ def test_mosaik_remote(rpc, err):
 
         def greeter():
             sock = yield world.srv_sock.accept()
-            rpc_con = JsonRpc(Packet(sock))
+            rpc_con = JSON_RPC(Packet(sock))
             proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
                                              rpc_con, world)
             proxy.last_step = proxy.next_step = 1

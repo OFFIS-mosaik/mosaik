@@ -239,7 +239,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                                       'Could not connect to "%s"' %
                                       (sim_name, sim_config['connect']))
 
-        rpc_con = JsonRpc(Packet(sock, max_packet_size=10*1024*1024))
+        rpc_con = JSON_RPC(Packet(sock, max_packet_size=10 * 1024 * 1024))
 
         # Make init() API call and wait for sim_name's meta data.
         init = rpc_con.remote.init(sim_id, **sim_params)
@@ -442,8 +442,8 @@ class MosaikRemote:
     a ``step()`` command.
 
     """
-    @JsonRpc.Descriptor
-    class rpc(JsonRpc.Accessor):
+    @JSON_RPC.Descriptor
+    class rpc(JSON_RPC.Accessor):
         parent = None
 
     def __init__(self, world, sim_id):
