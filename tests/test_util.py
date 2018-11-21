@@ -7,8 +7,10 @@ import pytest
 from mosaik import exceptions, scenario, util
 
 
-class World:
-    """A dummy world for testing purposes."""
+class World(object):
+    """
+    A dummy world for testing purposes.
+    """
     def __init__(self):
         self.src_connects = set()
         self.dest_connects = collections.defaultdict(lambda: 0)
@@ -30,7 +32,9 @@ class World:
 
 ])
 def test_sync_process_error(error, errmsg, capsys):
-    """Test sims breaking during their start."""
+    """
+    Test sims breaking during their start.
+    """
     world = scenario.World({})
 
     def gen():
@@ -100,7 +104,8 @@ def test_connect_many_to_one():
     (90, 20, False, 6, (0, 6)),
 ])
 def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
-    """Test if connect_randomly() connects the correct amount of entities.
+    """
+    Test if connect_randomly() connects the correct amount of entities.
 
     *src_size* and *dest_size* denote the size of the src/dest entity sets.
 
@@ -108,7 +113,6 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
 
     *dest_connects* is a ``(min, max)`` tuple describing how many entities of
     the dest set have at least or most to be connected.
-
     """
     for seed in range(100):
         random.seed(seed)

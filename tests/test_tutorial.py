@@ -1,7 +1,6 @@
 """
 Executes all files in /docs/tutorial/code for which an *.out file exists and
 compares the output of the script to the contents of the *.out file.
-
 """
 import glob
 import os

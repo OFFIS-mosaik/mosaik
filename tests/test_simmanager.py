@@ -47,8 +47,10 @@ def world():
 
 
 def test_start(world, monkeypatch):
-    """Test if start() dispatches to the correct start functions."""
-    class proxy:
+    """
+    Test if start() dispatches to the correct start functions.
+    """
+    class proxy(object):
         meta = {
             'api_version': mosaik_api.__api_version__,
         }
@@ -74,7 +76,8 @@ def test_start(world, monkeypatch):
 
 
 def test_start_wrong_api_version(world, monkeypatch):
-    """An exception should be raised if the simulator uses an unsupported
+    """
+    An exception should be raised if the simulator uses an unsupported
     API version."""
     monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
@@ -86,7 +89,8 @@ def test_start_wrong_api_version(world, monkeypatch):
 
 
 def test_start_in_process(world):
-    """Test starting an in-proc simulator."""
+    """
+    Test starting an in-proc simulator."""
     sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0',
                           {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
@@ -96,7 +100,8 @@ def test_start_in_process(world):
 
 
 def test_start_external_process(world):
-    """Test starting a simulator as external process."""
+    """
+    Test starting a simulator as external process."""
     sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', {})
     assert sp.sid == 'ExampleSim-0'
     assert 'api_version' in sp.meta and 'models' in sp.meta
@@ -113,7 +118,9 @@ def test_start_proc_timeout_accept(world, capsys):
 
 
 def test_start_external_process_with_environment_variables(world, tmpdir):
-    """Assert that you can set environment variables for a new sub-process."""
+    """
+    Assert that you can set environment variables for a new sub-process.
+    """
     # Replace sim_config for this test:
     print(tmpdir.strpath)
     world.sim_config = {'SimMockTmp': {
@@ -140,7 +147,9 @@ if __name__ == '__main__':
 
 
 def test_start_connect(world):
-    """Test connecting to an already running simulator."""
+    """
+    Test connecting to an already running simulator.
+    """
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
@@ -167,7 +176,9 @@ def test_start_connect(world):
 
 
 def test_start_connect_timeout_init(world, capsys):
-    """Test connecting to an already running simulator."""
+    """
+    Test connecting to an already running simulator.
+    """
     world.config['start_timeout'] = 0.1
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
@@ -197,10 +208,10 @@ def test_start_connect_timeout_init(world, capsys):
 
 
 def test_start_connect_stop_timeout(world):
-    """Test connecting to an already running simulator.
+    """
+    Test connecting to an already running simulator.
 
     When asked to stop, the simulator times out.
-
     """
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
@@ -241,7 +252,9 @@ def test_start_connect_stop_timeout(world):
     ({'spam': {'connect': 'eggs'}}, 'Could not parse address "eggs"'),
 ])
 def test_start_user_error(sim_config, err_msg):
-    """Test failure at starting an in-proc simulator."""
+    """
+    Test failure at starting an in-proc simulator.
+    """
     world = scenario.World(sim_config)
     try:
         with pytest.raises(ScenarioError) as exc_info:
@@ -255,7 +268,9 @@ def test_start_user_error(sim_config, err_msg):
 
 
 def test_start_sim_error(capsys):
-    """Test connection failures of external processes."""
+    """
+    Test connection failures of external processes.
+    """
     world = scenario.World({'spam': {'connect': 'foo:1234'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
@@ -270,7 +285,9 @@ def test_start_sim_error(capsys):
 
 
 def test_start_init_error(capsys):
-    """Test simulator crashing during init()."""
+    """
+    Test simulator crashing during init().
+    """
     world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world,
@@ -312,7 +329,9 @@ def test_validate_api_version_wrong_version(version):
 
 
 def test_sim_proxy():
-    """SimProxy should not be instantiateable."""
+    """
+    SimProxy should not be instantiateable.
+    """
     pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id',
                   {'models': {}}, None)
 
@@ -358,7 +377,9 @@ def test_local_process():
 
 
 def test_local_process_finalized(world):
-    """Test that ``finalize()`` is called for local processes (issue #23)."""
+    """
+    Test that ``finalize()`` is called for local processes (issue #23).
+    """
     sm = world.start('SimMock')
     assert sm._sim._inst.finalized is False
     world.run(until=1)
@@ -366,15 +387,19 @@ def test_local_process_finalized(world):
 
 
 def _rpc_get_progress(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
+    RPC.
+    """
     progress = yield mosaik.get_progress()
     assert progress == 23
 
 
 def _rpc_get_related_entities(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the
-    "get_related_entities()" RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the
+    "get_related_entities()" RPC.
+    """
     # No param yields complete entity graph
     entities = yield mosaik.get_related_entities()
     for edge in entities['edges']:
@@ -418,15 +443,19 @@ def _rpc_get_related_entities(mosaik, world):
 
 
 def _rpc_get_data(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
+    RPC.
+    """
     data = yield mosaik.get_data({'X.2': ['attr']})
     assert data == {'X.2': {'attr': 'val'}}
 
 
 def _rpc_set_data(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
+    RPC.
+    """
     yield mosaik.set_data({'src': {'X.2': {'val': 23}}})
     assert world.sims['X'].input_buffer == {
         '2': {'val': {'src': 23}},
@@ -439,7 +468,9 @@ def _rpc_set_data(mosaik, world):
 
 
 def _rpc_get_data_err1(mosaik, world):
-    """Required simulator not connected to us."""
+    """
+    Required simulator not connected to us.
+    """
     try:
         yield mosaik.get_data({'Z.2': []})
     except RemoteException as exception:
@@ -454,7 +485,9 @@ def _remote_exception_type(exception):
 
 
 def _rpc_get_data_err2(mosaik, world):
-    """Async-requests flag not set for connection."""
+    """
+    Async-requests flag not set for connection.
+    """
     try:
         yield mosaik.get_data({'Y.2': []})
     except RemoteException as exception:
@@ -464,12 +497,16 @@ def _rpc_get_data_err2(mosaik, world):
 
 
 def _rpc_set_data_err1(mosaik, world):
-    """Required simulator not connected to us."""
+    """
+    Required simulator not connected to us.
+    """
     yield mosaik.set_data({'src': {'Z.2': {'val': 42}}})
 
 
 def _rpc_set_data_err2(mosaik, world):
-    """Async-requests flag not set for connection."""
+    """
+    Async-requests flag not set for connection.
+    """
     yield mosaik.set_data({'src': {'Y.2': {'val': 42}}})
 
 

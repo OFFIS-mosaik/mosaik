@@ -11,7 +11,8 @@ from mosaik.exceptions import SimulationError
 
 
 def sync_process(generator, world, *, errback=None, ignore_errors=False):
-    """Synchronously execute a SimPy process defined by the generator object
+    """
+    Synchronously execute a SimPy process defined by the generator object
     *generator*.
 
     A *world* instance is required to run the event loop.
@@ -20,7 +21,6 @@ def sync_process(generator, world, *, errback=None, ignore_errors=False):
     called with no arguments if an error occurs.
 
     If *ignore_errors* is set to ``True``, no errors will be printed.
-
     """
     try:
         return world.env.run(until=world.env.process(generator))
@@ -45,13 +45,13 @@ def sync_process(generator, world, *, errback=None, ignore_errors=False):
 
 
 def sync_call(sim, funcname, args, kwargs):
-    """Start a SimPy process to make the *func()* call to a simulator behave
+    """
+    Start a SimPy process to make the *func()* call to a simulator behave
     like it was synchronous.
 
     Return the result of the *func()* call.
 
     Raise an :exc:`~mosaik.exceptions.SimulationError` if an exception occurs.
-
     """
     # We have to start a SimPy process to make the "create()" call
     # behave like it was synchronous.
@@ -69,11 +69,11 @@ def sync_call(sim, funcname, args, kwargs):
 
 
 def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
-    """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
+    """
+    :meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
 
     See the :meth:`~mosaik.scenario.World.connect` for more details.
-
     """
     for src in src_set:
         world.connect(src, dest, *attrs, async_requests=async_requests)
@@ -81,7 +81,8 @@ def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
 
 def connect_randomly(world, src_set, dest_set, *attrs, evenly=True,
                      max_connects=float('inf')):
-    """Randomly :meth:`~mosaik.scenario.World.connect` the entities from
+    """
+    Randomly :meth:`~mosaik.scenario.World.connect` the entities from
     *src_set* to the entities from *dest_set* and return a subset of *dest_set*
     containing all entities with a connection.
 
@@ -111,7 +112,6 @@ def connect_randomly(world, src_set, dest_set, *attrs, evenly=True,
     *max_connects* lets you set the maximum number of connections that an
     entity of *dest_set* may receive. This argument is only taken into account
     if *evenly* is set to ``False``.
-
     """
     dest_set = list(dest_set)
     assert dest_set

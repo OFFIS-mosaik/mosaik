@@ -9,40 +9,42 @@ from mosaik.simmanager import FULL_ID
 
 
 def run(world, until, rt_factor=None, rt_strict=False):
-    """Run the simulation for a :class:`~mosaik.scenario.World` until
+    """
+    Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
 
     Return the final simulation time.
 
     See :meth:`mosaik.scenario.World.run()` for a detailed description of the
     *rt_factor* and *rt_strict* arguments.
-
     """
     if rt_factor is not None and rt_factor <= 0:
         raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
 
     env = world.env
 
-    setup_done_evts = []
+    setup_done_events = []
     for sim in world.sims.values():
         if sim.meta['api_version'] >= (2, 2):
             # setup_done() was added in API version 2.2:
-            setup_done_evts.append(sim.proxy.setup_done())
+            setup_done_events.append(sim.proxy.setup_done())
 
-    yield env.all_of(setup_done_evts)
+    yield env.all_of(setup_done_events)
 
-    procs = []
+    processes = []
     for sim in world.sims.values():
-        proc = env.process(sim_process(world, sim, until, rt_factor,
-                                       rt_strict))
-        sim.sim_proc = proc
-        procs.append(proc)
+        process = env.process(sim_process(world, sim, until, rt_factor,
+                                          rt_strict))
+        sim.sim_proc = process
+        processes.append(process)
 
-    yield env.all_of(procs)
+    yield env.all_of(processes)
 
 
 def sim_process(world, sim, until, rt_factor, rt_strict):
-    """SimPy simulation process for a certain simulator *sim*."""
+    """
+    SimPy simulation process for a certain simulator *sim*.
+    """
     rt_start = perf_counter()
 
     try:
@@ -78,12 +80,12 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
 
 
 def get_keep_running_func(world, sim, until):
-    """Return a function that the :func:`sim_process()` uses to determine
+    """
+    Return a function that the :func:`sim_process()` uses to determine
     when to stop.
 
     Depending on whether the process has any successors in the dataflow graph,
     the condition for when to stop differs.
-
     """
     def check_time():
         return sim.next_step < until
@@ -96,17 +98,19 @@ def get_keep_running_func(world, sim, until):
         # If there are any successors, we also check if they are still alive.
         # If all successors have finished, there's no need for us to continue
         # running.
-        procs = [world.sims[suc_sid].sim_proc
-                 for suc_sid in world.df_graph.successors(sim.sid)]
+        processes = [world.sims[suc_sid].sim_proc
+                     for suc_sid in world.df_graph.successors(sim.sid)]
 
         def keep_running():
-            return check_time() and not all(proc.triggered for proc in procs)
+            return check_time() and not all(process.triggered
+                                            for process in processes)
 
     return keep_running
 
 
 def step_required(world, sim):
-    """Return an :class:`~simpy.events.Event` that is triggered when *sim*
+    """
+    Return an :class:`~simpy.events.Event` that is triggered when *sim*
     needs to perform its next step.
 
     The event will already be triggered if the simulator is a "sink" (no other
@@ -114,7 +118,6 @@ def step_required(world, sim):
     waiting for it.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
-
     """
     sim.step_required = world.env.event()
     dfg = world.df_graph
@@ -132,13 +135,13 @@ def step_required(world, sim):
 
 
 def wait_for_dependencies(world, sim):
-    """Return an event (:class:`simpy.events.AllOf`) that is triggered when
+    """
+    Return an event (:class:`simpy.events.AllOf`) that is triggered when
     all dependencies can provide input data for *sim*.
 
     Also notify any simulator that is already waiting to perform its next step.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
-
     """
     events = []
     t = sim.next_step
@@ -183,7 +186,8 @@ def wait_for_dependencies(world, sim):
 
 
 def get_input_data(world, sim):
-    """Return a dictionary with the input data for *sim*.
+    """
+    Return a dictionary with the input data for *sim*.
 
     The dict will look like::
 
@@ -198,11 +202,10 @@ def get_input_data(world, sim):
     For every entity, there is an entry in the dict and each entry is itself
     a dict with attributes and a list of values. This is, because we may have
     inputs from multiple simulators (e.g., different consumers that provide
-    loads for a node in a power grid) and cannot know how to aggreate that data
-    (sum, max, ...?).
+    loads for a node in a power grid) and cannot know how to aggregate that
+    data (sum, max, ...?).
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
-
     """
     input_data = sim.input_buffer
     sim.input_buffer = {}
@@ -222,12 +225,12 @@ def get_input_data(world, sim):
 
 
 def step(world, sim, inputs):
-    """Advance (step) a simulator *sim* with the given *inputs*. Return an
+    """
+    Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
 
     *inputs* is a dictionary, that maps entity IDs to data dictionaries which
     map attribute names to lists of values (see :func:`get_input_data()`).
-
     """
     sim.last_step = sim.next_step
     next_step = yield sim.proxy.step(sim.next_step, inputs)
@@ -242,12 +245,12 @@ def step(world, sim, inputs):
 
 
 def get_outputs(world, sim):
-    """Get all required output data from a simulator *sim*, notify all
+    """
+    Get all required output data from a simulator *sim*, notify all
     simulators that are waiting for that data and prune the data flow cache.
     Return an event that is triggered when all output data is received.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
-
     """
     sid = sim.sid
     outattr = world._df_outattr[sid]
@@ -298,14 +301,18 @@ def get_outputs(world, sim):
 
 
 def get_progress(sims, until):
-    """Return the current progress of the simulation in percent."""
+    """
+    Return the current progress of the simulation in percent.
+    """
     times = [min(until, sim.next_step) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 
 
 def rt_sleep(rt_factor, rt_start, sim, world):
-    """If in real-time mode, check if to sleep and do so if necessary."""
+    """
+    If in real-time mode, check if to sleep and do so if necessary.
+    """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
         sleep = (rt_factor * sim.next_step) - rt_passed
@@ -314,7 +321,9 @@ def rt_sleep(rt_factor, rt_start, sim, world):
 
 
 def rt_check(rt_factor, rt_start, rt_strict, sim):
-    """Check if simulation is fast enough for a given real-time factor."""
+    """
+    Check if simulation is fast enough for a given real-time factor.
+    """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
         delta = rt_passed - (rt_factor * sim.next_step)

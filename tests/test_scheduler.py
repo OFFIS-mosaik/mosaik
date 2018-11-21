@@ -61,7 +61,9 @@ def test_run_illegal_rt_factor():
 
 
 def test_sim_process():
-    """``sim_process()`` is tested via test_mosaik.py."""
+    """
+    ``sim_process()`` is tested via test_mosaik.py.
+    """
     assert True
 
 
@@ -82,13 +84,17 @@ def test_sim_process_error(monkeypatch):
 
 
 def test_step_required(world):
-    """Test *step_required is True*, becauce a simulator is waiting for us."""
+    """
+    Test *step_required is True*, because a simulator is waiting for us.
+    """
     evt = scheduler.step_required(world, world.sims[0])
     assert evt.triggered
 
 
 def test_step_not_required(world):
-    """Test *step_required is False*, because noone is waiting for us."""
+    """
+    Test *step_required is False*, because noone is waiting for us.
+    """
     evt = scheduler.step_required(world, world.sims[1])
     assert not evt.triggered
 
@@ -97,14 +103,18 @@ def test_step_not_required(world):
 
 
 def test_step_required_no_successors(world):
-    """Test *step_required is True*, because there is noone that could be
-    waiting for us."""
+    """
+    Test *step_required is True*, because there is noone that could be
+    waiting for us.
+    """
     evt = scheduler.step_required(world, world.sims[3])
     assert evt.triggered
 
 
 def test_wait_for_dependencies(world):
-    """Test waiting for dependencies and triggering them."""
+    """
+    Test waiting for dependencies and triggering them.
+    """
     for i in range(2):
         world.sims[i].step_required = world.env.event()
         if i == 0:
@@ -117,7 +127,9 @@ def test_wait_for_dependencies(world):
 
 
 def test_wait_for_dependencies_all_done(world):
-    """All dependencies already stepped far enough. No waiting required."""
+    """
+    All dependencies already stepped far enough. No waiting required.
+    """
     world._df_cache = {0: {0: [], 1: []}}
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 0
@@ -125,7 +137,9 @@ def test_wait_for_dependencies_all_done(world):
 
 
 def test_wait_for_dependencies_shifted(world):
-    """Shifted dependency is not yet stepped far enough. Waiting is required."""
+    """
+    Shifted dependency is not yet stepped far enough. Waiting is required.
+    """
     world.sims[4].next_step = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[4])
     assert len(evt._events) == 1
@@ -133,7 +147,9 @@ def test_wait_for_dependencies_shifted(world):
 
 
 def test_get_input_data(world):
-    """Simple test for get_input_data()."""
+    """
+    Simple test for get_input_data().
+    """
     world._df_cache = {0: {
         0: {'1': {'x': 0, 'y': 1}},
         1: {'2': {'x': 2, 'z': 4}},
@@ -147,7 +163,9 @@ def test_get_input_data(world):
 
 
 def test_get_input_data_shifted(world):
-    """Getting input data transmitted via a shifted connection."""
+    """
+    Getting input data transmitted via a shifted connection.
+    """
     world._shifted_cache = {0: {
         5: {'1': {'z': 7}}
     }}
