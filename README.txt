@@ -23,14 +23,13 @@ A simple demo scenario with mosaik::
    ... }
    >>>
    >>> def create_scenario(world):
-   ...     exsim1 = world.start('ExampleSim')
-   ...     exsim2 = world.start('ExampleSim')
+   ...     simulator = world.start('ExampleSim')
    ...
-   ...     a = [exsim1.A(init_val=0) for i in range(3)]
-   ...     b = exsim2.B.create(2, init_val=0)
+   ...     producers = [simulator.Producer(init_val=0) for _ in range(3)]
+   ...     consumers = [simulator.Consumer(init_val=0) for _ in range(3)]
    ...
-   ...     for i, j in zip(a, b):
-   ...         world.connect(i, j, ('val_out', 'val_in'))
+   ...     for producer, consumer in zip(producers, consumers):
+   ...         world.connect(producer, consumer, ('val_out', 'val_in'))
    >>>
    >>> world = mosaik.World(sim_config)
    >>> create_scenario(world)
@@ -52,7 +51,7 @@ a `virtualenv`__::
 __ http://pip.readthedocs.org/en/latest/installing.html
 __ http://virtualenv.readthedocs.org/en/latest/
 
-Documentation, Source code and issues
+Documentation, Source Code and Issues
 -------------------------------------
 
 The documentation is available at https://mosaik.readthedocs.io.
