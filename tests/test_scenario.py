@@ -12,8 +12,8 @@ sim_config = {
 }
 
 
-@pytest.yield_fixture
-def world():
+@pytest.yield_fixture(name='world')
+def world_fixture():
     world = scenario.World(sim_config)
     yield world
     if world.srv_sock:

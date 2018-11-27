@@ -4,8 +4,8 @@ import pytest
 from .util import SimMock
 
 
-@pytest.yield_fixture
-def world():
+@pytest.yield_fixture(name='world')
+def world_fixture():
     world = scenario.World({})
     world.sims = {
         i: simmanager.LocalProcess('', i, {'models': {}}, SimMock(), world)
