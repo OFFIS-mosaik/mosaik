@@ -108,3 +108,6 @@ venv.bak/
 
 # Dolphin .directory meta data files
 .directory
+
+# tox temporary artifacts
+/mosaik-*.*.*/
