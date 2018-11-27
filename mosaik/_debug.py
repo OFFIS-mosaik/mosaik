@@ -1,7 +1,6 @@
 """
 This module allows you to activate some debugging functionality that makes
 mosaik collect more data when the simulation is being executed.
-
 """
 from time import perf_counter
 
@@ -14,9 +13,9 @@ _originals = {
 
 
 def enable():
-    """Wrap :func:`~mosaik.scheduler.step()` to collect more data about the
+    """
+    Wrap :func:`~mosaik.scheduler.step()` to collect more data about the
     scheduler execution.
-
     """
     def wrapped_step(world, sim, inputs):
         pre_step(world, sim, inputs)
@@ -28,17 +27,19 @@ def enable():
 
 
 def disable():
-    """Restore all wrapped functions to their original."""
+    """
+    Restore all wrapped functions to their original.
+    """
     for k, v in _originals.items():
         setattr(scheduler, k, v)
 
 
 def pre_step(world, sim, inputs):
-    """Add a node for the current step and edges from all dependencies to the
+    """
+    Add a node for the current step and edges from all dependencies to the
     :attr:`mosaik.scenario.World.execution_graph`.
 
     Also perform some checks and annotate the graph with the dataflows.
-
     """
     eg = world.execution_graph
     sims = world.sims
@@ -73,7 +74,9 @@ def pre_step(world, sim, inputs):
 
 
 def post_step(world, sim):
-    """Record time after a step."""
+    """
+    Record time after a step.
+    """
     eg = world.execution_graph
     sid = sim.sid
     last_step = sim.last_step

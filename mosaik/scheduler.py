@@ -1,6 +1,5 @@
 """
 This module is responsible for performing the simulation of a scenario.
-
 """
 from time import perf_counter
 

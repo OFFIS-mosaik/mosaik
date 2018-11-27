@@ -6,7 +6,6 @@ The :class:`World` holds all necessary data for the simulation and allows the
 user to start simulators. It provides a :class:`ModelFactory` (and
 a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The method :meth:`World.run()` finally starts the simulation.
-
 """
 from collections import defaultdict
 import itertools
