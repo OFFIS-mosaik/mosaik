@@ -13,7 +13,7 @@ from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
 import mosaik
 
-from .util import SimMock
+from tests.mocks.simulator_mock import SimulatorMock
 
 
 sim_config = {
@@ -32,8 +32,8 @@ sim_config = {
     'Fail': {
         'cmd': 'python -c "import time; time.sleep(0.2)"',
     },
-    'SimMock': {
-        'python': 'tests.util:SimMock',
+    'SimulatorMock': {
+        'python': 'tests.mocks.simulator_mock:SimulatorMock',
     },
 }
 
@@ -123,27 +123,27 @@ def test_start_external_process_with_environment_variables(world, tmpdir):
     """
     # Replace sim_config for this test:
     print(tmpdir.strpath)
-    world.sim_config = {'SimMockTmp': {
-        'cmd': '%(python)s -m simmock %(addr)s',
+    world.sim_config = {'SimulatorMockTmp': {
+        'cmd': '%(python)s -m simulator_mock %(addr)s',
         'env': {
             'PYTHONPATH': tmpdir.strpath,
         },
     }}
 
-    # Write the module "simmock.py" to tmpdir:
-    tmpdir.join('simmock.py').write("""
+    # Write the module "simulator_mock.py" to tmpdir:
+    tmpdir.join('simulator_mock.py').write("""
 import mosaik_api
 
 
-class SimMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(meta={})
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(SimMock())
+    mosaik_api.start_simulation(SimulatorMock())
 """)
-    sim = world.start('SimMockTmp')
+    sim = world.start('SimulatorMockTmp')
 
 
 def test_start_connect(world):
@@ -338,15 +338,15 @@ def test_sim_proxy():
 
 def test_sim_proxy_illegal_model_names(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'step': {}}}, SimMock(), world)
+                  {'models': {'step': {}}}, SimulatorMock(), world)
 
 
 def test_sim_proxy_illegal_extra_methods(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimMock(),
+                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimulatorMock(),
                   world)
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimMock(),
+                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimulatorMock(),
                   world)
 
 
@@ -380,7 +380,7 @@ def test_local_process_finalized(world):
     """
     Test that ``finalize()`` is called for local processes (issue #23).
     """
-    sm = world.start('SimMock')
+    sm = world.start('SimulatorMock')
     assert sm._sim._inst.finalized is False
     world.run(until=1)
     assert sm._sim._inst.finalized is True

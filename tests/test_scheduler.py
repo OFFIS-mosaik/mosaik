@@ -1,14 +1,14 @@
 from mosaik import exceptions, scenario, scheduler, simmanager
 import pytest
 
-from .util import SimMock
+from tests.mocks.simulator_mock import SimulatorMock
 
 
 @pytest.yield_fixture(name='world')
 def world_fixture():
     world = scenario.World({})
     world.sims = {
-        i: simmanager.LocalProcess('', i, {'models': {}}, SimMock(), world)
+        i: simmanager.LocalProcess('', i, {'models': {}}, SimulatorMock(), world)
         for i in range(6)
     }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
