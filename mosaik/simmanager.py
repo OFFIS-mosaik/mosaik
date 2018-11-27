@@ -25,7 +25,7 @@ from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.util import sync_process
+from mosaik.util.simpy import sync_process
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
