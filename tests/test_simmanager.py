@@ -50,29 +50,29 @@ def test_start(world, monkeypatch):
     """
     Test if start() dispatches to the correct start functions.
     """
-    class proxy(object):
+    class Proxy(object):
         meta = {
             'api_version': mosaik_api.__api_version__,
         }
 
-    start = lambda *args, **kwargs: proxy  # flake8: noqa
+    start = lambda *args, **kwargs: Proxy  # flake8: noqa
     monkeypatch.setattr(simmanager, 'start_inproc', start)
     monkeypatch.setattr(simmanager, 'start_proc', start)
     monkeypatch.setattr(simmanager, 'start_connect', start)
 
     ret = simmanager.start(world, 'ExampleSimA', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
-    proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimB', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
     # The api_version has to re-initialized
-    proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimC', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
 
 def test_start_wrong_api_version(world, monkeypatch):
@@ -154,8 +154,8 @@ def test_start_connect(world):
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
         yield channel.recv()  # Wait for stop message
@@ -184,8 +184,8 @@ def test_start_connect_timeout_init(world, capsys):
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         yield channel.recv()
         import time
         time.sleep(0.15)
@@ -217,8 +217,8 @@ def test_start_connect_stop_timeout(world):
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
         yield channel.recv()  # Wait for stop message
@@ -352,6 +352,9 @@ def test_sim_proxy_illegal_extra_methods(world):
 
 def test_sim_proxy_stop_impl():
     class Test(simmanager.SimProxy):
+        def stop(self):
+            raise NotImplementedError()
+
         # Does not implement SimProxy.stop(). Should raise an error.
         def _get_proxy(self, name):
             return None
@@ -361,12 +364,12 @@ def test_sim_proxy_stop_impl():
 
 
 def test_local_process():
-    class world:
+    class World:
         env = None
 
     es = ExampleSim()
     sp = simmanager.LocalProcess('ExampleSim', 'ExampleSim-0', es.meta, es,
-                                 world)
+                                 World)
     assert sp.name == 'ExampleSim'
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
@@ -380,10 +383,10 @@ def test_local_process_finalized(world):
     """
     Test that ``finalize()`` is called for local processes (issue #23).
     """
-    sm = world.start('SimulatorMock')
-    assert sm._sim._inst.finalized is False
+    simulator = world.start('SimulatorMock')
+    assert simulator._sim._inst.finalized is False
     world.run(until=1)
-    assert sm._sim._inst.finalized is True
+    assert simulator._sim._inst.finalized is True
 
 
 def _rpc_get_progress(mosaik, world):
