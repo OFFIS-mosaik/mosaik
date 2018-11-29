@@ -7,6 +7,13 @@ commit`__ happened on that day. Since then, we've come a long way …
 
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
+2.5.1 - 2018-11-29
+==================
+
+- [NEW] When calling the world.start() command for a simulator, users can now set a predefined
+  value for the posix flag (e.g. True) to prevent automatic detection of the operating system.
+  This facilitates the creation of some co-simulation cases across OS (e.g. Windows and Linux).
+
 2.5.0 - 2018-09-05
 ==================
 
