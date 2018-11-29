@@ -12,7 +12,7 @@ import pytest
 
 
 CODE_DIR = os.path.join(os.path.dirname(__file__), '..',
-                        'docs', 'tutorial', 'code')
+                        'docs', 'tutorials', 'code')
 CASES = glob.glob(os.path.join(CODE_DIR, '*.out'))
 
 

@@ -85,6 +85,7 @@ def get_keep_running_func(world, sim, until):
     the condition for when to stop differs.
 
     """
+
     def check_time():
         return sim.next_step < until
 
@@ -235,7 +236,7 @@ def step(world, sim, inputs):
         raise SimulationError('next_step must be of type int, but is "%s" for '
                               'simulator "%s"' % (type(next_step), sim.sid))
     if next_step <= sim.last_step:
-        raise SimulationError('next_step muste be > last_step, but %s <= %s '
+        raise SimulationError('next_step must be > last_step, but %s <= %s '
                               'for simulator "%s"' %
                               (next_step, sim.last_step, sim.sid))
     sim.next_step = next_step
@@ -259,7 +260,7 @@ def get_outputs(world, sim):
     for i in range(sim.last_step, sim.next_step):
         world._df_cache[i][sim.sid] = data
     # Create cache entries for the data from time-shifted connections.
-    for i in range(sim.last_step, sim.next_step+1):
+    for i in range(sim.last_step, sim.next_step + 1):
         world._shifted_cache[i].setdefault(sim.sid, {})
         world._shifted_cache[i][sim.sid].update(data)
 
