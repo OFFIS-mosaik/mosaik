@@ -4,11 +4,11 @@ Adding a control mechanism to a scenario
 ========================================
 
 Now that we integrated our first simulator into mosaik and tested it in
-a simple scenario, we should a control mechanism and mess around with our
+a simple scenario, we should implement a control mechanism and mess around with our
 example simulator a little bit.
 
 As you remember, our example models had a *value* to which they added something
-in each step. Eventually, their value will end up to be very high. We'll use
+in each step. Eventually, their value will end up beeing very high. We'll use
 a multi-agent system to keep the values of our models in [-3, 3]. The agents
 will monitor the current *value* of their respective models and when it reaches
 -3/3, they will set *delta* to 1/-1 for their model.
@@ -55,12 +55,12 @@ do it. This okay, since we'll implement the agent's "intelligence" directly in
    :lines: 35-38
 
 The ``commands`` dict will contain the commands that our control mechanism is
-going to send to the example simulator. We fill this dict in the following
-loop. In that, we iterate over all inputs and extract the input values for each
+going to send to the example simulator. We'll fill this dict in the following
+loop. In that loop, we iterate over all inputs and extract the input values for each
 agent; so ``values`` is a dict containing the current values of all models
 connected to that agent, e.g., `values == {'Model_0': 1}`
 
-We now check the every input value:
+We now check every input value:
 
 .. literalinclude:: code/controller.py
    :lines: 39-46
@@ -85,7 +85,7 @@ After finishing the loop, the ``commands`` dict may look like this:
 *Agent_0* sets for *Model_0* the new *delta* = 1. *Agent_2* sets for *Model_2*
 the new *delta* = -1. *Agent_1* did not set a new *delta*.
 
-So now that we create all commands – how do they get to the example simulator?
+So now that we created all commands – how do they get to the example simulator?
 The way via :meth:`~mosaik_api.Simulator.get_data()` is not possible since it
 would require a circular data-flow like ``connect(model, agent); connect(agent,
 model)`` which mosaik cannot resolve (You can read :ref:`the details
@@ -112,7 +112,7 @@ step.
    ``step()`` until all commands are sent to mosaik. After that, the method
    will normally continue its execution.
 
-When all commands are sent to mosaik, we are done with our step and return the
+When all commands were sent to mosaik, we are done with our step and return the
 time for our next one (which should be in one minute).
 
 That's it. Since there's no data to be retrieved, we don't need to implement
