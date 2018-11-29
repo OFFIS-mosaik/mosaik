@@ -4,7 +4,7 @@ Integrating a control mechanism
 ===============================
 
 The scenario that we're going to create in this last part of the tutorial will
-be similar to the one we create before but incorporate the control mechanism
+be similar to the one we created before but incorporate the control mechanism
 that we just created.
 
 Again, we start by setting some configuration values and creating a simulation
