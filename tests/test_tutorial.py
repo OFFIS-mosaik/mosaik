@@ -10,9 +10,8 @@ import sys
 
 import pytest
 
+CODE_DIR = os.path.join(os.path.abspath('.'), '..', 'docs', 'tutorials', 'code')
 
-CODE_DIR = os.path.join(os.path.dirname(__file__), '..',
-                        'docs', 'tutorials', 'code')
 CASES = glob.glob(os.path.join(CODE_DIR, '*.out'))
 
 
