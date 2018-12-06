@@ -2,7 +2,7 @@
 Welcome to mosaik's documentation!
 ==================================
 
-(Yes!) Contents:
+Contents:
 
 .. toctree::
    :maxdepth: 2
