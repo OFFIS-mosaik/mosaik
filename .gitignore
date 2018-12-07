@@ -106,8 +106,11 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# dolphin
+# Dolphin .directory meta data files
 .directory
 
+# tox temporary artifacts
+/mosaik-*.*.*/
+
 # patch
-*/*.rej
+*.rej
