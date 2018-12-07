@@ -72,9 +72,9 @@ Now that the basic set-up is done, we can start our simulators:
 
 .. code-block:: python
 
-   >>> exsim_0 = world.start('ExampleSim', step_size=2)
+   >>> simulator_0 = world.start('ExampleSim', step_size=2)
    Starting "ExampleSim" as "ExampleSim-0" ...
-   >>> exsim_1 = world.start('ExampleSim')
+   >>> simulator_1 = world.start('ExampleSim')
    Starting "ExampleSim" as "ExampleSim-1" ...
 
 To start a simulator, we call :meth:`World.start()` and pass the name of the
@@ -98,7 +98,7 @@ write:
 
 .. code-block:: python
 
-   >>> a = exsim_0.A(init_val=0)
+   >>> a = simulator_0.A(init_val=0)
 
 This will create one instance of the *A* simulation model and pass the model
 parameter ``init_val=0`` to it (see :ref:`create() API call <api.create>`).
@@ -128,8 +128,8 @@ a simple list comprehension (or ``for`` loop) or call the static method
 
 .. code-block:: python
 
-   >>> a_set = [exsim_0.A(init_val=i) for i in range(2)]
-   >>> b_set = exsim_1.B.create(3, init_val=1)
+   >>> a_set = [simulator_0.A(init_val=i) for i in range(2)]
+   >>> b_set = simulator_1.B.create(3, init_val=1)
 
 The list comprehension is more verbose but allows you to pass individual
 parameter values to each instance. Using ``create()`` is more concise but all
@@ -140,7 +140,7 @@ get a list of entities (aka :term:`entity sets <entity set>`).
 Connecting entities
 ===================
 
-If we would now run our simulation, both, *exsim_0* and *exsim_1* would run
+If we would now run our simulation, both, *simulator_0* and *simulator_1* would run
 in parallel and never exchange any data. To change that, we need to connect
 the models providing input data to entities requiring this data. In our case,
 we will connect the *val_out* attribute of the *A* instances with the *val_in*
@@ -200,12 +200,12 @@ To wrap it all up, this is how our small example scenario finally looks like:
    world = mosaik.World(sim_config)
 
    # Start simulators
-   exsim_0 = world.start('ExampleSim', step_size=2)
-   exsim_1 = world.start('ExampleSim')
+   simulator_0 = world.start('ExampleSim', step_size=2)
+   simulator_1 = world.start('ExampleSim')
 
    # Instantiate models
-   a_set = [exsim_0.A(init_val=i) for i in range(3)]
-   b_set = exsim_1.B.create(3, init_val=1)
+   a_set = [simulator_0.A(init_val=i) for i in range(3)]
+   b_set = simulator_1.B.create(3, init_val=1)
 
    # Connect entities
    for a, b in zip(a_set, b_set):
@@ -411,9 +411,9 @@ via :meth:`World.get_data()`:
 
 .. code-block:: python
 
-   >>> exsim = world.start('ExampleSim')
+   >>> example_simulator = world.start('ExampleSim')
    Starting "ExampleSim" as "ExampleSim-2" ...
-   >>> entities = exsim.A.create(3, init_val=42)
+   >>> entities = example_simulator.A.create(3, init_val=42)
    >>> data = world.get_data(entities, 'val_out')
    >>> data[entities[0]]
    {'val_out': 42}
