@@ -46,7 +46,7 @@ all development dependencies. Finally, install mosaik in `editable mode
 .. code-block:: bash
 
    $ cd ~/Code
-   $ hg clone ssh://hg@bitbucket.org/mosaik/mosaik
+   $ git clone ssh://git@bitbucket.org/mosaik/mosaik.git
    $ cd mosaik
    $ mkvirtualenv -p /usr/bin/python3 mosaik
    (mosaik)$ pip install -r requirements.txt

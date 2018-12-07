@@ -51,14 +51,14 @@ Preparations
 
    .. code-block:: bash
 
-    $ hg ci -m 'Updated change log for the upcoming release.'
+    $ git commit -m 'Updated change log for the upcoming release.'
 
 #. Update the version number in :file:`mosaik/_version.py`, :file:`setup.py`
    and :file:`docs/conf.py` and commit:
 
    .. code-block:: bash
 
-    $ hg ci -m 'Bump version from x.y.z to a.b.c'
+    $ git commit -m 'Bump version from x.y.z to a.b.c'
 
    .. warning::
 
@@ -157,8 +157,8 @@ Post release
 
    .. code-block:: bash
 
-    $ hg tag a.b.c
-    $ hg push ssh://hg@bitbucket.org/mosaik/mosaik
+    $ git tag a.b.c
+    $ git push ssh://git@bitbucket.org/mosaik/mosaik.git
 
 #. Remove the :file:`build/` directory:
 

@@ -61,15 +61,15 @@ a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
 1. PYPOWER requires *NumPy* and *SciPy*. We also need to install the revision
-   control tool *Mercurial*. You can use the packages shipped
+   control tool *git*. You can use the packages shipped
    with Ubuntu. We use :program:`apt-get` to install NumPy, SciPy, and h5py as 
-   well as Mercurial. By default, venvs are isolated from globally installed
+   well as git. By default, venvs are isolated from globally installed
    packages. To make them visible, we also have to recreate the venv and set
    the ``--system-site-packages`` flag:
 
    .. code-block:: bash
 
-      $ sudo apt-get install mercurial python3-numpy python3-scipy python3-h5py
+      $ sudo apt-get install git python3-numpy python3-scipy python3-h5py
       $ rm -rf ~/.virtualenvs/mosaik
       $ virtualenv -p /usr/bin/python3 --system-site-packages ~/.virtualenvs/mosaik
       $ source ~/.virtualenvs/mosaik/bin/activate
@@ -81,7 +81,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ hg clone https://bitbucket.org/mosaik/mosaik-demo ~/Code/mosaik-demo
+      (mosaik)$ git clone https://git@bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -177,7 +177,7 @@ Mosaik alone is not very useful (because it needs other simulators to perform
 a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
-1. To clone the demo repository, we need to install *Mercurial*. In order to
+1. To clone the demo repository, we need to install *git*. In order to
    compile *NumPy*, *SciPy* and *h5py* (which are required by PYPOWER and the
    database adapter) we also need to install *gfortran* which is included in *gcc*. You should deactivate
    the venv for this:
@@ -185,7 +185,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ deactivate
-      $ brew install hg gcc hdf5
+      $ brew install git gcc hdf5
       $ source ~/.virtualenvs/mosaik/bin/activate
 
 2. For NumPy and SciPy we build binary `wheel`__ packages that we can later
@@ -213,7 +213,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ hg clone https://bitbucket.org/mosaik/mosaik-demo ~/Code/mosaik-demo
+      (mosaik)$ git clone https://git@bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -351,7 +351,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik) C:\Users\yourname> pip install Downloads\scipy-0.15.1-cp34-none-win_amd64.whl
       (mosaik) C:\Users\yourname> pip install Downloads\h5py-2.5.0-cp34-none-win_amd64.whl
 
-2. Download and install `Mercurial`__.
+2. Download and install `git`__.
 
    **Restart the command** prompt (as Admin if necessary and make sure you are
    in the right directory again) and activate the virtualenv again:
@@ -364,7 +364,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bat
 
-      (mosaik)C:\Users\yourname> hg clone https://bitbucket.org/mosaik/mosaik-demo
+      (mosaik)C:\Users\yourname> git clone https://git@bitbucket.org/mosaik/mosaik-demo.git
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -391,4 +391,4 @@ __ http://www.lfd.uci.edu/~gohlke/pythonlibs/
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 __ http://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py
-__ https://www.mercurial-scm.org/downloads
+__ https://git-scm.com/downloads
