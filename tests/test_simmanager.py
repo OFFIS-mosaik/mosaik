@@ -1,7 +1,7 @@
 import sys
 
 from example_sim.mosaik import ExampleSim
-from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
+from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
 from simpy.io.message import Message
 from simpy.io.network import RemoteException
 from simpy.io.packet import PacketUTF8 as Packet
@@ -13,7 +13,7 @@ from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
 import mosaik
 
-from .util import SimMock
+from tests.mocks.simulator_mock import SimulatorMock
 
 
 sim_config = {
@@ -32,14 +32,14 @@ sim_config = {
     'Fail': {
         'cmd': 'python -c "import time; time.sleep(0.2)"',
     },
-    'SimMock': {
-        'python': 'tests.util:SimMock',
+    'SimulatorMock': {
+        'python': 'tests.mocks.simulator_mock:SimulatorMock',
     },
 }
 
 
-@pytest.yield_fixture
-def world():
+@pytest.yield_fixture(name='world')
+def world_fixture():
     world = scenario.World(sim_config)
     yield world
     if world.srv_sock:
@@ -47,34 +47,37 @@ def world():
 
 
 def test_start(world, monkeypatch):
-    """Test if start() dispatches to the correct start functions."""
-    class proxy:
+    """
+    Test if start() dispatches to the correct start functions.
+    """
+    class Proxy(object):
         meta = {
             'api_version': mosaik_api.__api_version__,
         }
 
-    start = lambda *args, **kwargs: proxy  # flake8: noqa
+    start = lambda *args, **kwargs: Proxy  # flake8: noqa
     monkeypatch.setattr(simmanager, 'start_inproc', start)
     monkeypatch.setattr(simmanager, 'start_proc', start)
     monkeypatch.setattr(simmanager, 'start_connect', start)
 
     ret = simmanager.start(world, 'ExampleSimA', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
-    proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimB', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
     # The api_version has to re-initialized
-    proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = mosaik_api.__api_version__
     ret = simmanager.start(world, 'ExampleSimC', '0', {})
-    assert ret == proxy
+    assert ret == Proxy
 
 
 def test_start_wrong_api_version(world, monkeypatch):
-    """An exception should be raised if the simulator uses an unsupported
+    """
+    An exception should be raised if the simulator uses an unsupported
     API version."""
     monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
@@ -86,7 +89,8 @@ def test_start_wrong_api_version(world, monkeypatch):
 
 
 def test_start_in_process(world):
-    """Test starting an in-proc simulator."""
+    """
+    Test starting an in-proc simulator."""
     sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0',
                           {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
@@ -96,7 +100,8 @@ def test_start_in_process(world):
 
 
 def test_start_external_process(world):
-    """Test starting a simulator as external process."""
+    """
+    Test starting a simulator as external process."""
     sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', {})
     assert sp.sid == 'ExampleSim-0'
     assert 'api_version' in sp.meta and 'models' in sp.meta
@@ -113,40 +118,44 @@ def test_start_proc_timeout_accept(world, capsys):
 
 
 def test_start_external_process_with_environment_variables(world, tmpdir):
-    """Assert that you can set environment variables for a new sub-process."""
+    """
+    Assert that you can set environment variables for a new sub-process.
+    """
     # Replace sim_config for this test:
     print(tmpdir.strpath)
-    world.sim_config = {'SimMockTmp': {
-        'cmd': '%(python)s -m simmock %(addr)s',
+    world.sim_config = {'SimulatorMockTmp': {
+        'cmd': '%(python)s -m simulator_mock %(addr)s',
         'env': {
             'PYTHONPATH': tmpdir.strpath,
         },
     }}
 
-    # Write the module "simmock.py" to tmpdir:
-    tmpdir.join('simmock.py').write("""
+    # Write the module "simulator_mock.py" to tmpdir:
+    tmpdir.join('simulator_mock.py').write("""
 import mosaik_api
 
 
-class SimMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(meta={})
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(SimMock())
+    mosaik_api.start_simulation(SimulatorMock())
 """)
-    sim = world.start('SimMockTmp')
+    sim = world.start('SimulatorMockTmp')
 
 
 def test_start_connect(world):
-    """Test connecting to an already running simulator."""
+    """
+    Test connecting to an already running simulator.
+    """
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
         yield channel.recv()  # Wait for stop message
@@ -167,14 +176,16 @@ def test_start_connect(world):
 
 
 def test_start_connect_timeout_init(world, capsys):
-    """Test connecting to an already running simulator."""
+    """
+    Test connecting to an already running simulator.
+    """
     world.config['start_timeout'] = 0.1
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         yield channel.recv()
         import time
         time.sleep(0.15)
@@ -197,17 +208,17 @@ def test_start_connect_timeout_init(world, capsys):
 
 
 def test_start_connect_stop_timeout(world):
-    """Test connecting to an already running simulator.
+    """
+    Test connecting to an already running simulator.
 
     When asked to stop, the simulator times out.
-
     """
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
 
     def sim():
-        msock = yield sock.accept()
-        channel = Message(env, Packet(msock))
+        socket = yield sock.accept()
+        channel = Message(env, Packet(socket))
         req = yield channel.recv()
         req.succeed(ExampleSim().meta)
         yield channel.recv()  # Wait for stop message
@@ -241,7 +252,9 @@ def test_start_connect_stop_timeout(world):
     ({'spam': {'connect': 'eggs'}}, 'Could not parse address "eggs"'),
 ])
 def test_start_user_error(sim_config, err_msg):
-    """Test failure at starting an in-proc simulator."""
+    """
+    Test failure at starting an in-proc simulator.
+    """
     world = scenario.World(sim_config)
     try:
         with pytest.raises(ScenarioError) as exc_info:
@@ -255,7 +268,9 @@ def test_start_user_error(sim_config, err_msg):
 
 
 def test_start_sim_error(capsys):
-    """Test connection failures of external processes."""
+    """
+    Test connection failures of external processes.
+    """
     world = scenario.World({'spam': {'connect': 'foo:1234'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
@@ -270,7 +285,9 @@ def test_start_sim_error(capsys):
 
 
 def test_start_init_error(capsys):
-    """Test simulator crashing during init()."""
+    """
+    Test simulator crashing during init().
+    """
     world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world,
@@ -312,27 +329,32 @@ def test_validate_api_version_wrong_version(version):
 
 
 def test_sim_proxy():
-    """SimProxy should not be instantiateable."""
+    """
+    SimProxy should not be instantiateable.
+    """
     pytest.raises(NotImplementedError, simmanager.SimProxy, 'spam', 'id',
                   {'models': {}}, None)
 
 
 def test_sim_proxy_illegal_model_names(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'step': {}}}, SimMock(), world)
+                  {'models': {'step': {}}}, SimulatorMock(), world)
 
 
 def test_sim_proxy_illegal_extra_methods(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimMock(),
+                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimulatorMock(),
                   world)
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimMock(),
+                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimulatorMock(),
                   world)
 
 
 def test_sim_proxy_stop_impl():
     class Test(simmanager.SimProxy):
+        def stop(self):
+            raise NotImplementedError()
+
         # Does not implement SimProxy.stop(). Should raise an error.
         def _get_proxy(self, name):
             return None
@@ -342,12 +364,12 @@ def test_sim_proxy_stop_impl():
 
 
 def test_local_process():
-    class world:
+    class World:
         env = None
 
     es = ExampleSim()
     sp = simmanager.LocalProcess('ExampleSim', 'ExampleSim-0', es.meta, es,
-                                 world)
+                                 World)
     assert sp.name == 'ExampleSim'
     assert sp.sid == 'ExampleSim-0'
     assert sp._inst is es
@@ -358,23 +380,29 @@ def test_local_process():
 
 
 def test_local_process_finalized(world):
-    """Test that ``finalize()`` is called for local processes (issue #23)."""
-    sm = world.start('SimMock')
-    assert sm._sim._inst.finalized is False
+    """
+    Test that ``finalize()`` is called for local processes (issue #23).
+    """
+    simulator = world.start('SimulatorMock')
+    assert simulator._sim._inst.finalized is False
     world.run(until=1)
-    assert sm._sim._inst.finalized is True
+    assert simulator._sim._inst.finalized is True
 
 
 def _rpc_get_progress(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
+    RPC.
+    """
     progress = yield mosaik.get_progress()
     assert progress == 23
 
 
 def _rpc_get_related_entities(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the
-    "get_related_entities()" RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the
+    "get_related_entities()" RPC.
+    """
     # No param yields complete entity graph
     entities = yield mosaik.get_related_entities()
     for edge in entities['edges']:
@@ -418,15 +446,19 @@ def _rpc_get_related_entities(mosaik, world):
 
 
 def _rpc_get_data(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
+    RPC.
+    """
     data = yield mosaik.get_data({'X.2': ['attr']})
     assert data == {'X.2': {'attr': 'val'}}
 
 
 def _rpc_set_data(mosaik, world):
-    """Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
-    RPC."""
+    """
+    Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
+    RPC.
+    """
     yield mosaik.set_data({'src': {'X.2': {'val': 23}}})
     assert world.sims['X'].input_buffer == {
         '2': {'val': {'src': 23}},
@@ -439,7 +471,9 @@ def _rpc_set_data(mosaik, world):
 
 
 def _rpc_get_data_err1(mosaik, world):
-    """Required simulator not connected to us."""
+    """
+    Required simulator not connected to us.
+    """
     try:
         yield mosaik.get_data({'Z.2': []})
     except RemoteException as exception:
@@ -454,7 +488,9 @@ def _remote_exception_type(exception):
 
 
 def _rpc_get_data_err2(mosaik, world):
-    """Async-requests flag not set for connection."""
+    """
+    Async-requests flag not set for connection.
+    """
     try:
         yield mosaik.get_data({'Y.2': []})
     except RemoteException as exception:
@@ -464,12 +500,16 @@ def _rpc_get_data_err2(mosaik, world):
 
 
 def _rpc_set_data_err1(mosaik, world):
-    """Required simulator not connected to us."""
+    """
+    Required simulator not connected to us.
+    """
     yield mosaik.set_data({'src': {'Z.2': {'val': 42}}})
 
 
 def _rpc_set_data_err2(mosaik, world):
-    """Async-requests flag not set for connection."""
+    """
+    Async-requests flag not set for connection.
+    """
     yield mosaik.set_data({'src': {'Y.2': {'val': 42}}})
 
 
@@ -506,7 +546,7 @@ def test_mosaik_remote(rpc, err):
 
         def simulator():
             sock = backend.TCPSocket.connection(env, ('localhost', 5555))
-            rpc_con = JsonRpc(Packet(sock))
+            rpc_con = JSON_RPC(Packet(sock))
             mosaik_remote = rpc_con.remote
 
             try:
@@ -516,7 +556,7 @@ def test_mosaik_remote(rpc, err):
 
         def greeter():
             sock = yield world.srv_sock.accept()
-            rpc_con = JsonRpc(Packet(sock))
+            rpc_con = JSON_RPC(Packet(sock))
             proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
                                              rpc_con, world)
             proxy.last_step = proxy.next_step = 1

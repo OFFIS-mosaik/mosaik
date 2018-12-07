@@ -53,8 +53,9 @@ class Controller(mosaik_api.Simulator):
 
         yield self.mosaik.set_data(commands)
 
-        return time + 60 #this works only for Python versions >=3.3. 
-        #For older versions use: raise StopIteration(time + 60)
+        # this works only for Python versions >=3.3.
+        # For older versions use: raise StopIteration(time + 60)
+        return time + 60
 
 
 def main():

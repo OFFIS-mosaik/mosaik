@@ -68,7 +68,7 @@ def create_scenario(world):
     # Database
     #hdf5 = db.Database(filename='demo.hdf5')
 
-    nodes = [e for e in grid if e.type in ('RefBus, PQBus')]
+    nodes = [e for e in grid if e.type in 'RefBus, PQBus']
 
     # Web visualization
     # webvis = world.start('WebVis', start_date=START, step_size=60)

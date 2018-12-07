@@ -1,14 +1,14 @@
 import collections
 import random
 
-from simpy.io.network import RemoteException
 import pytest
+from mosaik.util.connect import connect_many_to_one, connect_randomly
 
-from mosaik import exceptions, scenario, util
 
-
-class World:
-    """A dummy world for testing purposes."""
+class World(object):
+    """
+    A dummy world for testing purposes.
+    """
     def __init__(self):
         self.src_connects = set()
         self.dest_connects = collections.defaultdict(lambda: 0)
@@ -20,63 +20,13 @@ class World:
         self.dest_connects[dest] += 1
 
 
-@pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError('Spam'),
-     'ERROR: Spam\nMosaik terminating\n'),
-    (RemoteException('spam', 'eggs'),
-     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
-    (exceptions.SimulationError('spam'),
-     'ERROR: spam\nMosaik terminating\n'),
-
-])
-def test_sync_process_error(error, errmsg, capsys):
-    """Test sims breaking during their start."""
-    world = scenario.World({})
-
-    def gen():
-        raise error
-        yield world.env.event()
-
-    pytest.raises(SystemExit, util.sync_process, gen(), world)
-
-    out, err = capsys.readouterr()
-    assert out == errmsg
-    assert err == ''
-
-
-def test_sync_process_errback():
-    world = scenario.World({})
-    try:
-        test_list = []
-        cb = lambda: test_list.append('got called')  # flake8: noqa
-
-        def gen():
-            raise ConnectionError()
-            yield world.env.event()
-
-        util.sync_process(gen(), world, errback=cb, ignore_errors=True)
-        assert test_list == ['got called']
-    finally:
-        world.shutdown()
-
-
-def test_sync_process_ignore_errors():
-    world = scenario.World({})
-
-    def gen():
-        raise ConnectionError()
-        yield world.env.event()
-
-    util.sync_process(gen(), world, ignore_errors=True)
-
-
 def test_connect_many_to_one():
     world = World()
     src_set = [object() for i in range(3)]
     dest = object()
 
-    util.connect_many_to_one(world, src_set, dest, 'a', 'b',
-                             async_requests=True)
+    connect_many_to_one(world, src_set, dest, 'a', 'b',
+                        async_requests=True)
 
     assert world.async_requests is True
     assert world.src_connects == set(src_set)
@@ -100,7 +50,8 @@ def test_connect_many_to_one():
     (90, 20, False, 6, (0, 6)),
 ])
 def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
-    """Test if connect_randomly() connects the correct amount of entities.
+    """
+    Test if connect_randomly() connects the correct amount of entities.
 
     *src_size* and *dest_size* denote the size of the src/dest entity sets.
 
@@ -108,7 +59,6 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
 
     *dest_connects* is a ``(min, max)`` tuple describing how many entities of
     the dest set have at least or most to be connected.
-
     """
     for seed in range(100):
         random.seed(seed)
@@ -116,8 +66,8 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
         src_set = [object() for i in range(src_size)]
         dest_set = [object() for i in range(dest_size)]
 
-        connected = util.connect_randomly(world, src_set, dest_set, 'a', 'b',
-                                          evenly=evenly, max_connects=max_c)
+        connected = connect_randomly(world, src_set, dest_set, 'a', 'b',
+                                     evenly=evenly, max_connects=max_c)
         if evenly:
             assert len(connected) == min(src_size, dest_size)
         else:

@@ -1,7 +1,10 @@
 import mosaik_api
 
 
-class SimMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api.Simulator):
+    def create(self, num, model, **model_params):
+        raise NotImplementedError()
+
     def __init__(self):
         super().__init__(meta={})
         self.finalized = False

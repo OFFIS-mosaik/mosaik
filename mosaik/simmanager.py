@@ -6,7 +6,6 @@ processes.
 It is able to start pure Python simulators in-process (by importing and
 instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
-
 """
 from ast import literal_eval
 
@@ -20,22 +19,23 @@ import sys
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
-from simpy.io.json import JSON as JsonRpc  # JSON is actually an object
+from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
 from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.util import sync_process
+from mosaik.util.simpy import sync_process
 
-API_MAJOR = _version.version_info[0]  # Current major version of the sim API
-API_MINOR = _version.version_info[1]  # Current minor version of the sim API
+API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
+API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
 API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
 
 def start(world, sim_name, sim_id, sim_params):
-    """Start the simulator *sim_name* based on the configuration im
+    """
+    Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the parameters of the
     dict *sim_params* to it.
 
@@ -72,7 +72,6 @@ def start(world, sim_name, sim_id, sim_params):
     could not be started.
 
     Return a :class:`SimProxy` instance.
-
     """
     try:
         sim_config = world.sim_config[sim_name]
@@ -103,14 +102,14 @@ def start(world, sim_name, sim_id, sim_params):
 
 
 def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
-    """Import and instantiate the Python simulator *sim_name* based on its
+    """
+    Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
 
     Return a :class:`LocalProcess` instance.
 
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
-
     """
     try:
         mod_name, cls_name = sim_config['python'].split(':')
@@ -142,14 +141,14 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
 
 
 def start_proc(world, sim_name, sim_config, sim_id, sim_params):
-    """Start a new process for simulator *sim_name* based on its config entry
+    """
+    Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
-
     """
     replacements = {
         'addr': '%s:%s' % (world.config['addr'][0], world.config['addr'][1]),
@@ -186,14 +185,14 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
 
 
 def start_connect(world, sim_name, sim_config, sim_id, sim_params):
-    """Connect to the already running simulator *sim_name* based on its config
+    """
+    Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
-
     """
     addr = sim_config['connect']
     try:
@@ -211,7 +210,8 @@ def start_connect(world, sim_name, sim_config, sim_id, sim_params):
 
 def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                proc=None, addr=None):
-    """Try to establish a connection with *sim_name* and perform the ``init()``
+    """
+    Try to establish a connection with *sim_name* and perform the ``init()``
     API call.
 
     Return a new :class:`RemoteProcess` sim proxy.
@@ -220,7 +220,6 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
 
     This method is a SimPy process used by :func:`start_proc()` and
     :func:`start_connect()`.
-
     """
     start_timeout = world.env.timeout(world.config['start_timeout'])
 
@@ -243,7 +242,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                                       'Could not connect to "%s"' %
                                       (sim_name, sim_config['connect']))
 
-        rpc_con = JsonRpc(Packet(sock, max_packet_size=10*1024*1024))
+        rpc_con = JSON_RPC(Packet(sock, max_packet_size=10 * 1024 * 1024))
 
         # Make init() API call and wait for sim_name's meta data.
         init = rpc_con.remote.init(sim_id, **sim_params)
@@ -276,11 +275,11 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
 
 
 def validate_api_version(version):
-    """Validate the *version*.
+    """
+    Validate the *version*.
 
     Raise a :exc: `ScenarioError` if the version format is wrong or
     does not match the min requirements.
-
     """
     try:
         version_tuple = str(version).split('.')
@@ -300,11 +299,11 @@ def validate_api_version(version):
 
 
 class SimProxy:
-    """Handler for an external simulator.
+    """
+    Handler for an external simulator.
 
     It stores its simulation state and own the proxy object to the external
     simulator.
-
     """
     def __init__(self, name, sid, meta, world):
         self.name = name
@@ -341,10 +340,10 @@ class SimProxy:
         self.step_required = None  # SimPy event
 
     def stop(self):
-        """Stop the simulator behind the proxy.
+        """
+        Stop the simulator behind the proxy.
 
         The default implementation does nothing.
-
         """
         raise NotImplementedError
 
@@ -352,11 +351,11 @@ class SimProxy:
         raise NotImplementedError
 
     def _check_model_and_meth_names(self, models, api_methods, extra_methods):
-        """Check if there are any overlaps in model names and reserved API
+        """
+        Check if there are any overlaps in model names and reserved API
         methods as well as in them and extra API methods.
 
         Raise a :exc:`~mosaik.exception.ScenarioError` if that's the case.
-
         """
         models = list(models)
         illegal_models = set(models) & set(api_methods)
@@ -372,7 +371,9 @@ class SimProxy:
 
 
 class LocalProcess(SimProxy):
-    """Proxy for internal simulators."""
+    """
+    Proxy for internal simulators.
+    """
     def __init__(self, name, sid, meta, inst, world):
         self._inst = inst
 
@@ -390,12 +391,16 @@ class LocalProcess(SimProxy):
         super().__init__(name, sid, meta, world)
 
     def stop(self):
-        """Yield a triggered event but do nothing else."""
+        """
+        Yield a triggered event but do nothing else.
+        """
         self._inst.finalize()
         yield self._world.env.event().succeed()
 
     def _get_proxy(self, methods):
-        """Return a proxy for the local simulator."""
+        """
+        Return a proxy for the local simulator.
+        """
         proxy_dict = {
             name: mosaik_api.get_wrapper(getattr(self._inst, name),
                                          self._world.env)
@@ -406,7 +411,9 @@ class LocalProcess(SimProxy):
 
 
 class RemoteProcess(SimProxy):
-    """Proxy for external simulator processes."""
+    """
+    Proxy for external simulator processes.
+    """
     def __init__(self, name, sid, meta, proc, rpc_con, world):
         self._proc = proc
         self._rpc_con = rpc_con
@@ -416,9 +423,9 @@ class RemoteProcess(SimProxy):
         super().__init__(name, sid, meta, world)
 
     def stop(self):
-        """Send a *stop* message to the process represented by this proxy and
+        """
+        Send a *stop* message to the process represented by this proxy and
         wait for it to terminate.
-
         """
         try:
             timeout = self._world.env.timeout(self._stop_timeout)
@@ -436,18 +443,20 @@ class RemoteProcess(SimProxy):
             self._proc.wait()
 
     def _get_proxy(self, methods):
-        """Return a proxy object for the remote simulator."""
+        """
+        Return a proxy object for the remote simulator.
+        """
         return self._rpc_con.remote
 
 
 class MosaikRemote:
-    """This class provides an RPC interface for remote processes to query
+    """
+    This class provides an RPC interface for remote processes to query
     mosaik and other processes (simulators) for data while they are executing
     a ``step()`` command.
-
     """
-    @JsonRpc.Descriptor
-    class rpc(JsonRpc.Accessor):
+    @JSON_RPC.Descriptor
+    class rpc(JSON_RPC.Accessor):
         parent = None
 
     def __init__(self, world, sim_id):
@@ -456,15 +465,16 @@ class MosaikRemote:
 
     @rpc
     def get_progress(self):
-        """Return the current simulation progress from
+        """
+        Return the current simulation progress from
         :attr:`~mosaik.scenario.World.sim_progress`.
-
         """
         return self.world.sim_progress
 
     @rpc
     def get_related_entities(self, entities=None):
-        """Return information about the related entities of *entities*.
+        """
+        Return information about the related entities of *entities*.
 
         If *entities* omitted (or ``None``), return the complete entity
         graph, e.g.::
@@ -501,7 +511,6 @@ class MosaikRemote:
                     'sid_1.eid_1': {'type': 'B'},
                 },
             }
-
         """
         graph = self.world.entity_graph
         if entities is None:
@@ -523,7 +532,8 @@ class MosaikRemote:
 
     @rpc.process
     def get_data(self, attrs):
-        """Return the data for the requested attributes *attrs*.
+        """
+        Return the data for the requested attributes *attrs*.
 
         *attrs* is a dict of (fully qualified) entity IDs mapping to lists
         of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
@@ -532,7 +542,6 @@ class MosaikRemote:
         data dictionaries, which in turn map attribute names to their
         respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
-
         """
         sim = self.world.sims[self.sim_id]
         assert sim.next_step == sim.last_step  # Assert simulator is in step()
@@ -570,12 +579,12 @@ class MosaikRemote:
 
     @rpc
     def set_data(self, data):
-        """Set *data* as input data for all affected simulators.
+        """
+        Set *data* as input data for all affected simulators.
 
         *data* is a dictionary mapping source entity IDs to destination entity
         IDs with dictionaries of attributes and values (``{'src_full_id':
         {'dest_full_id': {'attr1': 'val1', 'attr2': 'val2'}}}``).
-
         """
         sims = self.world.sims
         dfg = self.world.df_graph
@@ -589,8 +598,10 @@ class MosaikRemote:
                     inputs.setdefault(attr, {})[src_full_id] = val
 
     def _assert_async_requests(self, dfg, src_sid, dest_sid):
-        """Check if async. requests are allowed from *dest_sid* to *src_sid*
-        and raise a :exc:`ScenarioError` if not."""
+        """
+        Check if async. requests are allowed from *dest_sid* to *src_sid*
+        and raise a :exc:`ScenarioError` if not.
+        """
         data = {
             'src': src_sid,
             'dest': dest_sid,

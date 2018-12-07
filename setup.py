@@ -6,7 +6,7 @@ setup(
     version='2.5.1',
     author='Stefan Scherfke',
     author_email='mosaik@offis.de',
-    description=('Mosaik is a flexible Smart-Grid co-simulation framework.'),
+    description='Mosaik is a flexible Smart-Grid co-simulation framework.',
     long_description=(open('README.txt', encoding='utf-8').read() + '\n\n' +
                       open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
                       open('AUTHORS.txt', encoding='utf-8').read()),
@@ -34,9 +34,8 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],

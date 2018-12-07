@@ -6,18 +6,17 @@ The :class:`World` holds all necessary data for the simulation and allows the
 user to start simulators. It provides a :class:`ModelFactory` (and
 a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The method :meth:`World.run()` finally starts the simulation.
-
 """
 from collections import defaultdict
 import itertools
 
 import networkx
 
+import mosaik.util.simpy
 from mosaik import simmanager
 from mosaik import scheduler
-from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
-
+from mosaik.util.simpy import sync_process
 
 backend = simmanager.backend
 base_config = {
@@ -29,8 +28,9 @@ base_config = {
 FULL_ID = simmanager.FULL_ID
 
 
-class World:
-    """The world holds all data required to specify and run the scenario.
+class World(object):
+    """
+    The world holds all data required to specify and run the scenario.
 
     It provides a method to start a simulator process (:meth:`start()`) and
     manages the simulator instances.
@@ -55,7 +55,6 @@ class World:
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
-
     """
     def __init__(self, sim_config, mosaik_config=None, debug=False):
         self.sim_config = sim_config
@@ -107,9 +106,9 @@ class World:
         self._df_cache_min_time = 0
 
     def start(self, sim_name, **sim_params):
-        """Start the simulator named *sim_name* and return a
+        """
+        Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
-
         """
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
@@ -122,7 +121,8 @@ class World:
 
     def connect(self, src, dest, *attr_pairs, async_requests=False,
                 time_shifted=False, initial_data=None):
-        """Connect the *src* entity to *dest* entity.
+        """
+        Connect the *src* entity to *dest* entity.
 
         Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
         *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
@@ -145,11 +145,10 @@ class World:
         simulation step of the receiving simulator.
 
         An alternative to using async_requests to realize cyclic data-flow
-        is given by the time_shifted kwarg. If set to ``True`` it marks the connection
-        as cycle-closing (e.g. C → A). It must always be used with initial_data
-        specifying a dict with the data sent to the dest simulator at the first
-        step (e.g. *{‘src_attr’: value}*).
-
+        is given by the time_shifted kwarg. If set to ``True`` it marks the
+        connection as cycle-closing (e.g. C → A). It must always be used with
+        initial_data specifying a dict with the data sent to the destination
+        simulator at the first step (e.g. *{‘src_attr’: value}*).
         """
         if src.sid == dest.sid:
             raise ScenarioError('Cannot connect entities sharing the same '
@@ -212,7 +211,8 @@ class World:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
     def get_data(self, entity_set, *attributes):
-        """Get and return the values of all *attributes* for each entity of an
+        """
+        Get and return the values of all *attributes* for each entity of an
         *entity_set*.
 
         The return value is a dict mapping the entities of *entity_set* to
@@ -226,7 +226,6 @@ class World:
                 },
                 ...
             }
-
         """
         outputs_by_sim = defaultdict(dict)
         for entity in entity_set:
@@ -255,7 +254,7 @@ class World:
 
             return results_by_sim
 
-        results_by_sim = util.sync_process(request_data(), self)
+        results_by_sim = sync_process(request_data(), self)
         results = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
@@ -263,7 +262,8 @@ class World:
         return results
 
     def run(self, until, rt_factor=None, rt_strict=False):
-        """Start the simulation until the simulation time *until* is reached.
+        """
+        Start the simulation until the simulation time *until* is reached.
 
         In order to perform real-time simulations, you can set *rt_factor* to
         a number > 0. An rt-factor of 1 means that 1 simulation time unit
@@ -276,7 +276,6 @@ class World:
 
         Before this method returns, it stops all simulators and closes mosaik's
         server socket. So this method should only be called once.
-
         """
         if self.srv_sock is None:
             raise RuntimeError('Simulation has already been run and can only '
@@ -292,8 +291,8 @@ class World:
         if self._debug:
             dbg.enable()
         try:
-            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),
-                              self)
+            sync_process(scheduler.run(self, until, rt_factor, rt_strict),
+                                self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
@@ -303,21 +302,23 @@ class World:
                 dbg.disable()
 
     def shutdown(self):
-        """Shut-down all simulators and close the server socket."""
+        """
+        Shut-down all simulators and close the server socket.
+        """
         for sim in self.sims.values():
-            util.sync_process(sim.stop(), self, ignore_errors=True)
+            sync_process(sim.stop(), self, ignore_errors=True)
 
         if self.srv_sock is not None:
             self.srv_sock.close()
             self.srv_sock = None
 
     def _check_attributes(self, src, dest, attr_pairs):
-        """Check if *src* and *dest* have the attributes in *attr_pairs*.
+        """
+        Check if *src* and *dest* have the attributes in *attr_pairs*.
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
         not exist. Exception: If the meta data for *dest* declares
         ``'any_inputs': True``.
-
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
@@ -330,8 +331,9 @@ class World:
         return attr_errors
 
 
-class ModelFactory:
-    """This is a facade for a simulator *sim* that allows the user to create
+class ModelFactory():
+    """
+    This is a facade for a simulator *sim* that allows the user to create
     new model instances (entities) within that simulator.
 
     For every model that a simulator publicly exposes, the ``ModelFactory``
@@ -339,7 +341,6 @@ class ModelFactory:
 
     If you access an attribute that is not a model or if the model is not
     marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
-
     """
     def __init__(self, world, sim):
         self.meta = sim.meta
@@ -359,7 +360,7 @@ class ModelFactory:
             # wrappers.
             def get_wrapper(sim, meth):
                 def wrapper(*args, **kwargs):
-                    return util.sync_call(sim, meth, args, kwargs)
+                    return mosaik.util.simpy.sync_call(sim, meth, args, kwargs)
                 wrapper.__name__ = meth
                 return wrapper
 
@@ -375,15 +376,15 @@ class ModelFactory:
                                  'function "%s".' % (self._sim.sid, name))
 
 
-class ModelMock:
-    """Instances of this class are exposed as attributes of
+class ModelMock(object):
+    """
+    Instances of this class are exposed as attributes of
     :class:`ModelFactory` and allow the instantiation of simulator models.
 
     You can *call* an instance of this class to create exactly one entiy:
     ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
     method to create multiple entities with the same set of parameters at once:
     ``sim.ModelName.create(3, x=23)``.
-
     """
     def __init__(self, world, name, sim):
         self._world = world
@@ -394,23 +395,25 @@ class ModelMock:
         self._params = sim.meta['models'][name]['params']
 
     def __call__(self, **model_params):
-        """Call :meth:`create()` to instantiate one model."""
+        """
+        Call :meth:`create()` to instantiate one model.
+        """
         self._check_params(**model_params)
         return self.create(1, **model_params)[0]
 
     def create(self, num, **model_params):
-        """Create *num* entities with the specified *model_params* and return
+        """
+        Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.
 
         The returned list of entities is the same as returned by
         :meth:`mosaik_api.Simulator.create()`, but the simulator is prepended
         to every entity ID to make them globally unique.
-
         """
         self._check_params(**model_params)
 
-        entities = util.sync_call(self._sim, 'create', [num, self._name],
-                                  model_params)
+        entities = mosaik.util.simpy.sync_call(self._sim, 'create', [num, self._name],
+                                               model_params)
         assert len(entities) == num, (
             '%d entities were requested but %d were created.' %
             (num, len(entities)))
@@ -426,8 +429,10 @@ class ModelMock:
             expected_params.remove(param)
 
     def _make_entities(self, entity_dicts, assert_type=None):
-        """Recursively create lists of :class:`Entity` instance from a list
-        of *entity_dicts*."""
+        """
+        Recursively create lists of :class:`Entity` instance from a list
+        of *entity_dicts*.
+        """
         sim_name = self._sim.name
         sim_id = self._sim_id
         entity_graph = self._world.entity_graph
@@ -450,8 +455,10 @@ class ModelMock:
         return entity_set
 
     def _assert_model_type(self, assert_type, e):
-        """Assert that entity *e* has either type *assert_type* if is not none
-        or else any valid type."""
+        """
+        Assert that entity *e* has either type *assert_type* if is not none
+        or else any valid type.
+        """
         if assert_type is not None:
             assert e['type'] == assert_type, (
                 'Entity "%s" has the wrong type: "%s"; "%s" required.' %
@@ -462,8 +469,10 @@ class ModelMock:
                 (e['type'], e['eid']))
 
 
-class Entity:
-    """An entity represents an instance of a simulation model within mosaik."""
+class Entity(object):
+    """
+    An entity represents an instance of a simulation model within mosaik.
+    """
     __slots__ = ['sid', 'eid', 'sim_name', 'type', 'children', 'sim']
 
     def __init__(self, sid, eid, sim_name, type, children, sim):
@@ -487,7 +496,9 @@ class Entity:
 
     @property
     def full_id(self):
-        """Full, globally unique entity id ``sid.eid``."""
+        """
+        Full, globally unique entity id ``sid.eid``.
+        """
         return FULL_ID % (self.sid, self.eid)
 
     def __str__(self):

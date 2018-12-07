@@ -33,11 +33,11 @@ def test_mosaik(fixture, sim_config):
     world = scenario.World(sim_config, debug=True)
     try:
         fixture.create_scenario(world)
-        world.run(until=fixture.until)
+        world.run(until=fixture.UNTIL)
 
-        expected_graph = nx.parse_edgelist(fixture.execution_graph.split('\n'),
+        expected_graph = nx.parse_edgelist(fixture.EXECUTION_GRAPH.split('\n'),
                                            create_using=nx.DiGraph(), data=())
-        for node, inputs in fixture.inputs.items():
+        for node, inputs in fixture.INPUTS.items():
             expected_graph.add_node(node, inputs=inputs)
 
         print(world.execution_graph.adj)
@@ -48,7 +48,7 @@ def test_mosaik(fixture, sim_config):
                 'inputs', {})
 
         for sim in world.sims.values():
-            assert sim.last_step < fixture.until
+            assert sim.last_step < fixture.UNTIL
     finally:
         world.shutdown()
 
@@ -57,8 +57,8 @@ def test_mosaik(fixture, sim_config):
 def test_call_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
-        A = world.start('A')
-        ret = A.example_method(23)
+        model_a = world.start('A')
+        ret = model_a.example_method(23)
     finally:
         world.shutdown()
 
@@ -73,10 +73,10 @@ def test_rt_sim():
 
         factor = 0.1
         start = time.perf_counter()
-        world.run(until=fixture.until, rt_factor=factor)
+        world.run(until=fixture.UNTIL, rt_factor=factor)
         duration = (time.perf_counter() - start) / factor
 
-        assert (fixture.until - 1) < duration < fixture.until
+        assert (fixture.UNTIL - 1) < duration < fixture.UNTIL
     finally:
         world.shutdown()
 
@@ -90,10 +90,10 @@ def test_rt_sim_too_slow(strict, capsys):
 
         factor = 0.00001
         if strict:
-            pytest.raises(RuntimeError, world.run, until=fixture.until,
+            pytest.raises(RuntimeError, world.run, until=fixture.UNTIL,
                           rt_factor=factor, rt_strict=strict)
         else:
-            world.run(until=fixture.until, rt_factor=factor, rt_strict=strict)
+            world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
             out, err = capsys.readouterr()
             assert 'too slow for real-time factor' in out
     finally:

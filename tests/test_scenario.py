@@ -12,8 +12,8 @@ sim_config = {
 }
 
 
-@pytest.yield_fixture
-def world():
+@pytest.yield_fixture(name='world')
+def world_fixture():
     world = scenario.World(sim_config)
     yield world
     if world.srv_sock:
@@ -62,7 +62,9 @@ def test_world_debug():
 
 
 def test_world_start(world):
-    """Test starting new simulators and getting IDs for them."""
+    """
+    Test starting new simulators and getting IDs for them.
+    """
     fac = world.start('ExampleSim', step_size=2)
     assert isinstance(fac, scenario.ModelFactory)
     assert world.sims == {'ExampleSim-0': fac._sim}
@@ -75,7 +77,9 @@ def test_world_start(world):
 
 
 def test_world_connect(world):
-    """Test connecting to single entities."""
+    """
+    Test connecting to single entities.
+    """
     a = world.start('ExampleSim').A.create(2, init_val=0)
     b = world.start('ExampleSim').B.create(2, init_val=0)
     for i, j in zip(a, b):
@@ -110,7 +114,9 @@ def test_world_connect(world):
 
 
 def test_world_connect_same_simulator(world):
-    """Connecting to entities belonging to the same simulator must fail."""
+    """
+    Connecting to entities belonging to the same simulator must fail.
+    """
     a = world.start('ExampleSim').A.create(2, init_val=0)
     with pytest.raises(ScenarioError) as err:
         world.connect(a[0], a[1], ('val_out', 'val_out'))
@@ -121,8 +127,10 @@ def test_world_connect_same_simulator(world):
 
 
 def test_world_connect_cycle(world):
-    """If connecting two entities results in a cycle in the dataflow graph,
-    an error must be raised."""
+    """
+    If connecting two entities results in a cycle in the dataflow graph,
+    an error must be raised.
+    """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, ('val_out', 'val_in'))
@@ -135,7 +143,9 @@ def test_world_connect_cycle(world):
 
 
 def test_world_connect_wrong_attr_names(world):
-    """The entities to be connected must have the listed attributes."""
+    """
+    The entities to be connected must have the listed attributes.
+    """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     err = pytest.raises(ScenarioError, world.connect, a, b,
@@ -160,7 +170,9 @@ def test_world_connect_wrong_attr_names(world):
 
 
 def test_world_connect_no_attrs(world):
-    """Connecting two entities without passing a list of attrs should work."""
+    """
+    Connecting two entities without passing a list of attrs should work.
+    """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b)
@@ -182,8 +194,10 @@ def test_world_connect_no_attrs(world):
 
 
 def test_world_connect_any_inputs(world):
-    """Check if a model sets ``'any_inputs': True`` in its meta data,
-    everything can be connected to it."""
+    """
+    Check if a model sets ``'any_inputs': True`` in its meta data,
+    everything can be connected to it.
+    """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     b.sim.meta['models']['B']['any_inputs'] = True
@@ -346,7 +360,9 @@ def test_model_factory_unkown_model(world, mf):
 
 
 def test_model_mock_entity_graph(world):
-    """Test if related entities are added to the entity_graph."""
+    """
+    Test if related entities are added to the entity_graph.
+    """
     def create(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},

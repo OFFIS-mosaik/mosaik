@@ -8,5 +8,5 @@ Currently, this is only :class:`mosaik.scenario.World`.
 from mosaik.scenario import World
 from mosaik import _version
 
-__version__ = _version.version
+__version__ = _version.VERSION
 __all__ = ['World']
