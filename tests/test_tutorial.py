@@ -12,7 +12,7 @@ import pytest
 
 CODE_DIR = os.path.join(os.path.abspath('.'), '..', 'docs', 'tutorials', 'code')
 
-CASES = glob.glob(os.path.join(CODE_DIR, '*.out'))
+CASES = glob.glob(os.path.join(glob.escape(CODE_DIR), '*.out'))
 
 
 @pytest.mark.parametrize('outfile', CASES)
