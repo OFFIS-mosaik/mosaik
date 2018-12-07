@@ -111,6 +111,3 @@ venv.bak/
 
 # tox temporary artifacts
 /mosaik-*.*.*/
-
-# patch
-*.rej
