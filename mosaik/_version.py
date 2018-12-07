@@ -1,7 +1,6 @@
 """
 This module provides convenient access to the version.
-
 """
 
-version_info = (2, 5, 1)
-version = '.'.join(map(str, version_info))
+VERSION_INFO = (2, 5, 0)
+VERSION = '.'.join(map(str, VERSION_INFO))
