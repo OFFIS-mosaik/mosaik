@@ -15,7 +15,6 @@ import mosaik
 
 from tests.mocks.simulator_mock import SimulatorMock
 
-
 sim_config = {
     'ExampleSimA': {
         'python': 'example_sim.mosaik:ExampleSim',
@@ -38,7 +37,7 @@ sim_config = {
 }
 
 
-@pytest.yield_fixture(name='world')
+@pytest.fixture(name='world')
 def world_fixture():
     world = scenario.World(sim_config)
     yield world
@@ -50,6 +49,7 @@ def test_start(world, monkeypatch):
     """
     Test if start() dispatches to the correct start functions.
     """
+
     class Proxy(object):
         meta = {
             'api_version': mosaik_api.__api_version__,
@@ -274,7 +274,7 @@ def test_start_sim_error(capsys):
     world = scenario.World({'spam': {'connect': 'foo:1234'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
-                    {'foo': 'bar'})
+                      {'foo': 'bar'})
 
         out, err = capsys.readouterr()
         assert out == ('ERROR: Simulator "spam" could not be started: Could '
@@ -306,7 +306,7 @@ def test_start_init_error(capsys):
     ('2.0', (2, 0)),
     (2.1, (2, 1)),
     ('2.2', (2, 2)),
- ])
+])
 def test_validate_api_version(version, result):
     assert simmanager.validate_api_version(version) == result
 
@@ -321,7 +321,7 @@ def test_validate_api_version(version, result):
     '2.11',
     '3.1',
     '2a',
- ])
+])
 def test_validate_api_version_wrong_version(version):
     with pytest.raises(ScenarioError) as se:
         simmanager.validate_api_version(version)
@@ -480,6 +480,7 @@ def _rpc_get_data_err1(mosaik, world):
         if _remote_exception_type(exception) == \
                 'mosaik.exceptions.ScenarioError':
             raise ScenarioError
+
 
 def _remote_exception_type(exception):
     remote_exception_type = \

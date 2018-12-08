@@ -15,6 +15,7 @@ class SimulationError(Exception):
     This exception is raised if a simulator cannot be started or if
     a problem arises during the execution of a simulation.
     """
+
     def __init__(self, msg, exc=None):
         arg = ''
         if exc:

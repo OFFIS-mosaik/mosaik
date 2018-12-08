@@ -4,7 +4,7 @@ import pytest
 from tests.mocks.simulator_mock import SimulatorMock
 
 
-@pytest.yield_fixture(name='world')
+@pytest.fixture(name='world')
 def world_fixture():
     world = scenario.World({})
     world.sims = {
@@ -36,7 +36,7 @@ def test_run(monkeypatch):
 
         proc_started = False
         meta = {
-             'api_version': (2, 2),
+            'api_version': (2, 2),
         }
 
         def stop(self):

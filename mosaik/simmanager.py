@@ -116,18 +116,18 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     except (AttributeError, ImportError, KeyError, ValueError) as err:
-        if sys.version_info.major <=3 and sys.version_info.minor < 6:
+        if sys.version_info.major <= 3 and sys.version_info.minor < 6:
             detail_msgs = {
                 ValueError: 'Malformed Python class name: Expected "module:Class"',
                 ImportError: 'Could not import module: %s' % err.args[0],
                 AttributeError: 'Class not found in module',
-                }
+            }
         else:
             detail_msgs = {
                 ValueError: 'Malformed Python class name: Expected "module:Class"',
                 ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
                 AttributeError: 'Class not found in module',
-                }
+            }
         details = detail_msgs[type(err)]
         raise ScenarioError('Simulator "%s" could not be started: %s' %
                             (sim_name, details)) from None
@@ -305,6 +305,7 @@ class SimProxy:
     It stores its simulation state and own the proxy object to the external
     simulator.
     """
+
     def __init__(self, name, sid, meta, world):
         self.name = name
         self.sid = sid
@@ -374,6 +375,7 @@ class LocalProcess(SimProxy):
     """
     Proxy for internal simulators.
     """
+
     def __init__(self, name, sid, meta, inst, world):
         self._inst = inst
 
@@ -414,6 +416,7 @@ class RemoteProcess(SimProxy):
     """
     Proxy for external simulator processes.
     """
+
     def __init__(self, name, sid, meta, proc, rpc_con, world):
         self._proc = proc
         self._rpc_con = rpc_con
@@ -455,6 +458,7 @@ class MosaikRemote:
     mosaik and other processes (simulators) for data while they are executing
     a ``step()`` command.
     """
+
     @JSON_RPC.Descriptor
     class rpc(JSON_RPC.Accessor):
         parent = None

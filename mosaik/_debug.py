@@ -6,7 +6,6 @@ from time import perf_counter
 
 from mosaik import scheduler
 
-
 _originals = {
     'step': scheduler.step,
 }
@@ -17,6 +16,7 @@ def enable():
     Wrap :func:`~mosaik.scheduler.step()` to collect more data about the
     scheduler execution.
     """
+
     def wrapped_step(world, sim, inputs):
         pre_step(world, sim, inputs)
         ret = yield from _originals['step'](world, sim, inputs)
@@ -70,7 +70,7 @@ def pre_step(world, sim, inputs):
     # we are going to execute).
     if next_steps:
         assert max(next_steps) >= next_step, (
-            '"next_step" of all successors of "%s" is < %s' % (sid, next_step))
+                '"next_step" of all successors of "%s" is < %s' % (sid, next_step))
 
 
 def post_step(world, sim):

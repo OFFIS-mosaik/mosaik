@@ -1,6 +1,6 @@
 # demo_1.py
 import mosaik
-import mosaik.util
+from mosaik.util import connect
 
 
 # Sim config. and other parameters
@@ -30,7 +30,7 @@ world.connect(model, monitor, 'val', 'delta')
 
 # Create more entities
 more_models = examplesim.ExampleModel.create(2, init_val=3)
-mosaik.util.connect_many_to_one(world, more_models, monitor, 'val', 'delta')
+mosaik.util.connect.connect_many_to_one(world, more_models, monitor, 'val', 'delta')
 
 # Run simulation
 world.run(until=END)

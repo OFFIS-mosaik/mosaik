@@ -56,6 +56,7 @@ class World(object):
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
     """
+
     def __init__(self, sim_config, mosaik_config=None, debug=False):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
@@ -292,7 +293,7 @@ class World(object):
             dbg.enable()
         try:
             sync_process(scheduler.run(self, until, rt_factor, rt_strict),
-                                self)
+                         self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
@@ -342,6 +343,7 @@ class ModelFactory():
     If you access an attribute that is not a model or if the model is not
     marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
     """
+
     def __init__(self, world, sim):
         self.meta = sim.meta
         self._world = world
@@ -361,6 +363,7 @@ class ModelFactory():
             def get_wrapper(sim, meth):
                 def wrapper(*args, **kwargs):
                     return mosaik.util.simpy.sync_call(sim, meth, args, kwargs)
+
                 wrapper.__name__ = meth
                 return wrapper
 
@@ -386,6 +389,7 @@ class ModelMock(object):
     method to create multiple entities with the same set of parameters at once:
     ``sim.ModelName.create(3, x=23)``.
     """
+
     def __init__(self, world, name, sim):
         self._world = world
         self._env = world.env
@@ -415,8 +419,8 @@ class ModelMock(object):
         entities = mosaik.util.simpy.sync_call(self._sim, 'create', [num, self._name],
                                                model_params)
         assert len(entities) == num, (
-            '%d entities were requested but %d were created.' %
-            (num, len(entities)))
+                '%d entities were requested but %d were created.' %
+                (num, len(entities)))
 
         return self._make_entities(entities, assert_type=self._name)
 
@@ -461,12 +465,12 @@ class ModelMock(object):
         """
         if assert_type is not None:
             assert e['type'] == assert_type, (
-                'Entity "%s" has the wrong type: "%s"; "%s" required.' %
-                (e['eid'], e['type'], assert_type))
+                    'Entity "%s" has the wrong type: "%s"; "%s" required.' %
+                    (e['eid'], e['type'], assert_type))
         else:
             assert e['type'] in self._sim.meta['models'], (
-                'Type "%s" of entity "%s" not found in sim\'s meta data.' %
-                (e['type'], e['eid']))
+                    'Type "%s" of entity "%s" not found in sim\'s meta data.' %
+                    (e['type'], e['eid']))
 
 
 class Entity(object):

@@ -4,7 +4,6 @@ from mosaik import scenario
 from mosaik.exceptions import ScenarioError
 import pytest
 
-
 sim_config = {
     'ExampleSim': {
         'python': 'example_sim.mosaik:ExampleSim',
@@ -12,7 +11,7 @@ sim_config = {
 }
 
 
-@pytest.yield_fixture(name='world')
+@pytest.fixture(name='world')
 def world_fixture():
     world = scenario.World(sim_config)
     yield world
@@ -292,7 +291,7 @@ def test_model_factory(world, mf):
 
 def test_model_factory_check_params(world, mf):
     einfo = pytest.raises(TypeError, mf.A, spam='eggs')
-    assert str(einfo.value) == "create() got an unexpected keyword argument "\
+    assert str(einfo.value) == "create() got an unexpected keyword argument " \
                                "'spam'"
 
 
@@ -363,6 +362,7 @@ def test_model_mock_entity_graph(world):
     """
     Test if related entities are added to the entity_graph.
     """
+
     def create(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},

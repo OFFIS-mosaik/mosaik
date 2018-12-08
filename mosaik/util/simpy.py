@@ -52,6 +52,7 @@ def sync_call(sim, funcname, args, kwargs):
 
     Raise an :exc:`~mosaik.exceptions.SimulationError` if an exception occurs.
     """
+
     # We have to start a SimPy process to make the "create()" call
     # behave like it was synchronous.
     def proc():
