@@ -129,8 +129,9 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
                 AttributeError: 'Class not found in module',
             }
         details = detail_msgs[type(err)]
-        raise ScenarioError('Simulator "%s" could not be started: %s' %
-                            (sim_name, details)) from None
+        origerr = err.args[0]
+        raise ScenarioError('Simulator "%s" could not be started: %s --> %s' %
+                            (sim_name, details, origerr)) from None
     sim = cls()
     meta = sim.init(sim_id, **sim_params)
     # "meta" is module global and thus shared between all "LocalProcess"

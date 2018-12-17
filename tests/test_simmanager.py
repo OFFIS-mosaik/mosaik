@@ -241,11 +241,12 @@ def test_start_connect_stop_timeout(world):
 @pytest.mark.parametrize(('sim_config', 'err_msg'), [
     ({}, 'Not found in sim_config'),
     ({'spam': {}}, 'Invalid configuration'),
-    ({'spam': {'python': 'eggs'}}, 'Malformed Python class name: Expected '
-                                   '"module:Class"'),
+    ({'spam': {'python': 'eggs'}}, 'Malformed Python class name: Expected "module:Class" --> not enough values to '
+                                   'unpack (expected 2, got 1)'),
     ({'spam': {'python': 'eggs:Bacon'}}, 'Could not import module: '
-                                         "No module named 'eggs'"),
-    ({'spam': {'python': 'example_sim:Bacon'}}, 'Class not found in module'),
+                                         "No module named 'eggs' --> No module named 'eggs'"),
+    ({'spam': {'python': 'example_sim:Bacon'}}, "Class not found in module --> module 'example_sim' has no attribute "
+                                                "'Bacon'"),
     ({'spam': {'cmd': 'foo'}}, "No such file or directory: 'foo'"),
     ({'spam': {'cmd': 'python', 'cwd': 'bar'}}, "No such file or directory: "
                                                 "'bar'"),
