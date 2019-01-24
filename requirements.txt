@@ -10,7 +10,7 @@ imagesize==0.7.1
 Jinja2==2.8
 MarkupSafe==0.23
 mccabe==0.4.0
-mosaik-api==2.2
+mosaik-api==2.3
 networkx==2.0
 pep8==1.7.0
 pkginfo==1.2.1
