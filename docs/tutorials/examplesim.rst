@@ -1,5 +1,8 @@
 .. _examplesim:
 
+.. role::  raw-html(raw)
+    :format: html
+
 ========================================================
 Integrating a simulation model into the mosaik ecosystem
 ========================================================
@@ -247,6 +250,19 @@ in your ``main()`` and pass an instance of your simulator class to it:
 
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 76-81
+
+Simulators running on different nodes than the mosaik instance are supported
+explicitly with the mosaik Python-API v2.4 upward via the “remote” flag. A simulator
+with the start_simulation() method in its main() can then be called e.g. via python
+simulator_mosaik –r HOST:PORT in the command line. The mosaik scenario, started
+independently, can then connect to the simulator via the statement connect: HOST:PORT
+in its sim_config
+( :raw-html:`&rarr;` `Configuration) <https://mosaik.readthedocs.io/en/latest/tutorials/demo1.html#configuration>`_.
+Note that it may make sense to introduce a short waiting
+time into your scenario to give you enough time to start both processes. Alternatively,
+the remote connection of simulators supports also a timeout (via the timeout flag,
+e.g. –t 60 in the command line call will cause your simulator to wait for 60 seconds
+for an initial message from mosaik).
 
 
 Summary
