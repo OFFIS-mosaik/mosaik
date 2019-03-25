@@ -6,7 +6,7 @@
 Creating and running simple simulation scenarios
 ================================================
 
-We will now create a simple scenario with mosaik in which we use also use
+We will now create a simple scenario with mosaik in which we use
 a simple data collector to get some nice output from our simulation. That
 means, we will instantiate a few ExampleModels and a data monitor. We will
 then connect the model instances to that monitor and simulate that for some
@@ -82,7 +82,7 @@ ends. What gets returned by :meth:`World.start()` is called a *model factory*.
 We can use this factory object to create model instances within the respective
 simulator. In your scenario, such an instance is represented as an
 :class:`Entity`. The model factory presents the available models as if they
-were classes within the factory's namespace. So this how we can create one
+were classes within the factory's namespace. So this is how we can create one
 instance of our example model and one database instance:
 
 .. literalinclude:: code/demo_1.py
@@ -93,7 +93,7 @@ the ``create()`` method of our Sim API implementation. Similarly, the database
 has a parameter for its filename.
 
 Now, we need to connect the example model to the monitor. That's how we tell
-mosaik to send the outputs of the example model to the monotir.
+mosaik to send the outputs of the example model to the monitor.
 
 .. literalinclude:: code/demo_1.py
    :lines: 29-30
