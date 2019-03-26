@@ -251,7 +251,7 @@ The *step* implementation of the controller could roughly look like this:
 
 .. code-block:: python
 
-   class Conroller(Simulator):
+   class Controller(Simulator):
 
        def step(self, t, inputs):
           schedule = self._get_schedule(inputs)
