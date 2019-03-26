@@ -263,11 +263,11 @@ How to filter entity sets
 =========================
 
 When you create large-scale scenarios, you often work with large sets of
-entities rather then single ones. This section provides some examples how you
+entities rather than single ones. This section provides some examples how you
 can extract a sub-set of entities from a larger entity set based on arbitrary
 criteria.
 
-Lets assume that we have created a power grid with `mosaik-pypower`__:
+Let's assume that we have created a power grid with `mosaik-pypower`__:
 
 .. code-block:: python
 
@@ -368,7 +368,7 @@ takes two sets and connects them either evenly or purely randomly:
                                  evenly=False, max_connects=3)
 
 Another relatively common use case is connecting a set of entities to one other
-entities, e.g., when you want to connect a number of controllable energy
+entity, e.g., when you want to connect a number of controllable energy
 producers to a central scheduler:
 
 .. code-block:: python
@@ -425,15 +425,15 @@ simulator (instance) as long as they all can provide the required attributes.
 How to access topology and data-flow information
 ================================================
 
-The :class:`World` contains to `networkx Graphs
-<http://networkx.github.io/documentation/latest/overview.html>`_ which hold
+The :class:`World` contains two `networkx Graphs
+<https://networkx.github.io/documentation/latest/>`_ which hold
 information about the data-flows between simulators and the simulation topology
 that you created in your scenario. You can use these graphs, for example, to
 export the simulation topology that mosaik created into a custom data or file
 format.
 
 :attr:`World.df_graph` is the directed *dataflow graph* for your scenarios. It
-contains a note for every simulator that you started. The simulator ID is used
+contains a node for every simulator that you started. The simulator ID is used
 to label the nodes. If you established a data-flow between two simulators (by
 connecting at least two of their entities), a directed edge between two nodes
 is inserted.  The edges contain the *async_requests* flag (see
@@ -448,7 +448,7 @@ The data-flow graph may, for example, look like this:
        'PyPower-0': {},
    }
    world.df_graph.edge == {
-       'PvSim-0': {'PypPower-0': {
+       'PvSim-0': {'PyPower-0': {
            'async_requests': False,
            'dataflows': [
                ('PV_0', 'bus_0', ('P_out', 'P'), ('Q_out', 'Q')),
