@@ -1,6 +1,6 @@
 # demo_2.py
 import mosaik
-import mosaik.util
+from mosaik.util import connect
 
 
 # Sim config. and other parameters
@@ -34,7 +34,7 @@ monitor = collector.Monitor()
 for model, agent in zip(models, agents):
     world.connect(model, agent, ('val', 'val_in'), async_requests=True)
 
-mosaik.util.connect_many_to_one(world, models, monitor, 'val', 'delta')
+mosaik.util.connect.connect_many_to_one(world, models, monitor, 'val', 'delta')
 
 # Run simulation
 world.run(until=END)
