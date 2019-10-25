@@ -5,7 +5,7 @@ from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
 from simpy.io.message import Message
 from simpy.io.network import RemoteException
 from simpy.io.packet import PacketUTF8 as Packet
-import mosaik_api
+from mosaik_api import __api_version__ as api_version
 import pytest
 
 from mosaik import scenario
@@ -52,7 +52,7 @@ def test_start(world, monkeypatch):
 
     class Proxy(object):
         meta = {
-            'api_version': mosaik_api.__api_version__,
+            'api_version': api_version,
         }
 
     start = lambda *args, **kwargs: Proxy  # flake8: noqa
@@ -65,12 +65,12 @@ def test_start(world, monkeypatch):
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
-    Proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = api_version
     ret = simmanager.start(world, 'ExampleSimB', '0', {})
     assert ret == Proxy
 
     # The api_version has to re-initialized
-    Proxy.meta['api_version'] = mosaik_api.__api_version__
+    Proxy.meta['api_version'] = api_version
     ret = simmanager.start(world, 'ExampleSimC', '0', {})
     assert ret == Proxy
 
@@ -84,8 +84,9 @@ def test_start_wrong_api_version(world, monkeypatch):
                              'ExampleSimA', '0', {})
 
     assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be '
-                                   'started: Invalid version "2.3": Version '
-                                   'must be between 1000.0 and 1000.5')
+                                   'started: Invalid version "%(API_VERSION)s":'
+                                   ' Version must be between 1000.0 and 1000.5'
+                                   % {'API_VERSION': api_version})
 
 
 def test_start_in_process(world):
