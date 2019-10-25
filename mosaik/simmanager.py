@@ -520,7 +520,7 @@ class MosaikRemote:
         graph = self.world.entity_graph
         if entities is None:
             # repackage NodeViews and EdgeViews to maintain compatibility
-            nodes_list = literal_eval(str(graph.node(data=True)))
+            nodes_list = literal_eval(str(graph.nodes(data=True)))
             nodes_dict = dict({node[0]: node[1] for node in nodes_list})
 
             edges_list = literal_eval(str(graph.edges))
@@ -528,10 +528,10 @@ class MosaikRemote:
 
             return {'nodes': nodes_dict, 'edges': edges_tuple}
         elif type(entities) is str:
-            return {n: graph.node[n] for n in graph[entities]}
+            return {n: graph.nodes[n] for n in graph[entities]}
         else:
             return {
-                eid: {n: graph.node[n] for n in graph[eid]}
+                eid: {n: graph.nodes[n] for n in graph[eid]}
                 for eid in entities
             }
 

@@ -43,8 +43,8 @@ def test_mosaik(fixture, sim_config):
         print(world.execution_graph.adj)
         assert world.execution_graph.adj == expected_graph.adj
 
-        for node, data in world.execution_graph.node.items():
-            assert data['inputs'] == expected_graph.node[node].get(
+        for node, data in world.execution_graph.nodes.items():
+            assert data['inputs'] == expected_graph.nodes[node].get(
                 'inputs', {})
 
         for sim in world.sims.values():
