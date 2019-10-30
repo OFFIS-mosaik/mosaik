@@ -74,7 +74,7 @@ Simulator meta data
 
 Next, we prepare the meta data dictionary that tells mosaik which models our
 simulator implements and which parameters and attributes it has. Since this
-data usually constant, we defines this at module level (which improves
+data is usually constant, we define this at module level (which improves
 readability):
 
 .. literalinclude:: code/simulator_mosaik.py

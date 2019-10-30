@@ -165,7 +165,7 @@ Instead you have to ``connect(E, C, async_requests=True)`` and use the
 ’s *step()* implementation in order to send the commands or schedule from *C*
 to *E*.
 
-You can take a look at our :ref:`discussion of design decissions
+You can take a look at our :ref:`discussion of design decisions
 <circular-data-flows>` to learn why cyclic data-flows are handled this way.
 
 
