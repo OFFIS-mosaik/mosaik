@@ -177,8 +177,15 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     try:
         proc = subprocess.Popen(cmd, **kwargs)
     except (FileNotFoundError, NotADirectoryError) as e:
+        # This distinction has to be made due to a change in python 3.8.0.
+        # It might become unecessary for future releases supporting
+        # python >= 3.8 only.
+        if str(e).count(':')==2:
+            eout = e.args[1]
+        else:
+            eout = str(e).split('] ')[1]
         raise ScenarioError('Simulator "%s" could not be started: %s'
-                            % (sim_name, e.args[1])) from None
+                            % (sim_name, eout)) from None
 
     proxy = make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                        proc=proc)
