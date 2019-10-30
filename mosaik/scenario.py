@@ -12,11 +12,11 @@ import itertools
 
 import networkx
 
-import mosaik.util.simpy
 from mosaik import simmanager
 from mosaik import scheduler
+from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.util.simpy import sync_process
+
 
 backend = simmanager.backend
 base_config = {
@@ -255,7 +255,7 @@ class World(object):
 
             return results_by_sim
 
-        results_by_sim = sync_process(request_data(), self)
+        results_by_sim = util.sync_process(request_data(), self)
         results = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
@@ -292,8 +292,9 @@ class World(object):
         if self._debug:
             dbg.enable()
         try:
-            sync_process(scheduler.run(self, until, rt_factor, rt_strict),
-                         self)
+
+            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),
+                              self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
@@ -307,7 +308,7 @@ class World(object):
         Shut-down all simulators and close the server socket.
         """
         for sim in self.sims.values():
-            sync_process(sim.stop(), self, ignore_errors=True)
+            util.sync_process(sim.stop(), self, ignore_errors=True)
 
         if self.srv_sock is not None:
             self.srv_sock.close()
@@ -362,8 +363,7 @@ class ModelFactory():
             # wrappers.
             def get_wrapper(sim, meth):
                 def wrapper(*args, **kwargs):
-                    return mosaik.util.simpy.sync_call(sim, meth, args, kwargs)
-
+                    return util.sync_call(sim, meth, args, kwargs)
                 wrapper.__name__ = meth
                 return wrapper
 
@@ -416,8 +416,8 @@ class ModelMock(object):
         """
         self._check_params(**model_params)
 
-        entities = mosaik.util.simpy.sync_call(self._sim, 'create', [num, self._name],
-                                               model_params)
+        entities = util.sync_call(self._sim, 'create', [num, self._name],
+                                  model_params)
         assert len(entities) == num, (
                 '%d entities were requested but %d were created.' %
                 (num, len(entities)))
