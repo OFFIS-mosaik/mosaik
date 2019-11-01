@@ -14,18 +14,14 @@ General questions
 Are there graphical tools for scenario design?
 ----------------------------------------------
 
-An environment for graphical analysis as well as scenario design is currently
-developed and will presumably be released in 2015. However, we argue that
-graphical tools are not feasible for the design of large and complex scenarios.
-For most applications the more flexible scenario design by code is
-advantageous.
-
-
-Where can I find a mosaik Tutorial/Manual?
-------------------------------------------
-
-There is none yet but it's quite on top of our to-do list. You'll soon find one
-here.
+Maverig, an environment for graphical analysis as well as scenario design has
+been developed and is currently in a prototypical state. It may be used for
+demonstration purposes, but its maintenance and further development is not our
+top priority right now. Please understand, if the installation guide is not
+up-to-date with the newest package versions.
+However, we argue that graphical tools are not feasible for the design of large
+and complex scenarios. For most applications the more flexible scenario design
+by code is advantageous.
 
 
 Is there a mosaik-Wiki?
@@ -73,8 +69,8 @@ repetitive work and unnecessary overhead, we provide so called *high-level*
 APIs for certain languages that provide a base class that you can inherit and
 just need to implement a few methods representing the API calls.
 
-Currently, a high-level API is only available for Python, but implementations
-for JAVA and other languages will follow soon.
+Currently, high-level API are available for Python, JAVA, and C#,
+but an implementation for C++ will follow soon.
 
 __ http://en.wikipedia.org/wiki/Network_socket
 __ http://en.wikipedia.org/wiki/JSON

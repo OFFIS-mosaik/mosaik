@@ -14,10 +14,11 @@ to install the demo.
 Linux
 =====
 
-This guide is based on *(K)ubuntu 14.04 Trusty Tahr, 64bit*.
+This guide is based on *(K)ubuntu 18.04 Bionic Beaver, 64bit*.
 
-Mosaik and the demo scenario require `Python`__ >= 3.3. Ubuntu ships with
-Python 3.4, so everything is okay.
+Mosaik and the demo scenario require `Python`__ >= 3.3, which should be fine
+for any recent linux distribution. Note that we test mosaik only for the most
+(typically three) recent python versions though.
 
 1. We also need `pip`__, a package manager for Python packages, and
    `virtualenv`__, which can create isolated Python environments for different
@@ -81,7 +82,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://git@bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
+      (mosaik)$ git clone https://bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -213,7 +214,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://git@bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
+      (mosaik)$ git clone https://bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -364,7 +365,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bat
 
-      (mosaik)C:\Users\yourname> git clone https://git@bitbucket.org/mosaik/mosaik-demo.git
+      (mosaik)C:\Users\yourname> git clone https://bitbucket.org/mosaik/mosaik-demo.git
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
