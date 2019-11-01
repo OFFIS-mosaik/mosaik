@@ -56,7 +56,7 @@ def pre_step(world, sim, inputs):
     for pre in world.df_graph.predecessors(sid):
         pre_node = node % (pre, sims[pre].last_step)
         eg.add_edge(pre_node, node_id)
-        assert eg.node[pre_node]['t'] <= eg.node[node_id]['t']
+        assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
     next_steps = []
     for suc in world.df_graph.successors(sid):
@@ -82,4 +82,4 @@ def post_step(world, sim):
     last_step = sim.last_step
     node = '%s-%s'
     node_id = node % (sid, last_step)
-    eg.node[node_id]['t_end'] = perf_counter()
+    eg.nodes[node_id]['t_end'] = perf_counter()

@@ -3,7 +3,7 @@ Modular Design
 ==============
 
 Mosaik as a co-simulation tool organizes the data exchange between simulators
-and to coordinates the execution of the connected simulaters. This part is called
+and coordinates the execution of the connected simulaters. This part is called
 |mosaik| ``mosaik-core``.
 
     .. figure:: /_static/mosaik-ecosystem.*

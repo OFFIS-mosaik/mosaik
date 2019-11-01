@@ -67,7 +67,7 @@ To run all tests, simply execute :command:`py.test`:
    $ py.test
 
 It will automatically run all code examples in the :file:`docs/` as well as the
-actual tests from :file:`mosaik/test/`. Pytest's behavior can be controlled via
+actual tests from :file:`tests/`. Pytest's behavior can be controlled via
 the ``[pytest]`` section in the `setup.cfg` file and via command line arguments
 (see its `documentation <http://pytest.org/latest/>`_ or :command:`py.test
 --help`).

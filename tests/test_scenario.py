@@ -380,7 +380,7 @@ def test_model_mock_entity_graph(world):
         'ExampleSim-0.0': {'ExampleSim-0.1': {}},
         'ExampleSim-0.1': {'ExampleSim-0.0': {}},
     }
-    assert world.entity_graph.node['ExampleSim-0.0']['sim'] == 'ExampleSim'
-    assert world.entity_graph.node['ExampleSim-0.1']['sim'] == 'ExampleSim'
-    assert world.entity_graph.node['ExampleSim-0.0']['type'] == 'A'
-    assert world.entity_graph.node['ExampleSim-0.1']['type'] == 'A'
+    assert world.entity_graph.nodes['ExampleSim-0.0']['sim'] == 'ExampleSim'
+    assert world.entity_graph.nodes['ExampleSim-0.1']['sim'] == 'ExampleSim'
+    assert world.entity_graph.nodes['ExampleSim-0.0']['type'] == 'A'
+    assert world.entity_graph.nodes['ExampleSim-0.1']['type'] == 'A'

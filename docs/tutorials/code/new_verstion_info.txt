@@ -1,2 +1,0 @@
-# changes for mosaik version > 2.5.1
-The new file verions for the transformation from the util file to the util folder 

@@ -7,6 +7,15 @@ commit`__ happened on that day. Since then, we've come a long way …
 
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
+2.5.2 - 2019-11-01
+==================
+
+- [NEW] Special characters are now allowed in path names
+- [NEW] Compatible to the new versions of networkx
+- [CHANGE] python 3.6, 3.7 and 3.8 are currently supported, python 3.4 and 3.5 not anymore.
+- [FIX] Various minor internal changes
+- [FIX] Various documentation updates and fixes
+
 2.5.1 - 2018-11-29
 ==================
 

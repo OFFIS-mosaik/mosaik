@@ -24,7 +24,7 @@ from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.util.simpy import sync_process
+from mosaik.util import sync_process
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -177,8 +177,15 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
     try:
         proc = subprocess.Popen(cmd, **kwargs)
     except (FileNotFoundError, NotADirectoryError) as e:
+        # This distinction has to be made due to a change in python 3.8.0.
+        # It might become unecessary for future releases supporting
+        # python >= 3.8 only.
+        if str(e).count(':')==2:
+            eout = e.args[1]
+        else:
+            eout = str(e).split('] ')[1]
         raise ScenarioError('Simulator "%s" could not be started: %s'
-                            % (sim_name, e.args[1])) from None
+                            % (sim_name, eout)) from None
 
     proxy = make_proxy(world, sim_name, sim_config, sim_id, sim_params,
                        proc=proc)
@@ -520,7 +527,7 @@ class MosaikRemote:
         graph = self.world.entity_graph
         if entities is None:
             # repackage NodeViews and EdgeViews to maintain compatibility
-            nodes_list = literal_eval(str(graph.node(data=True)))
+            nodes_list = literal_eval(str(graph.nodes(data=True)))
             nodes_dict = dict({node[0]: node[1] for node in nodes_list})
 
             edges_list = literal_eval(str(graph.edges))
@@ -528,10 +535,10 @@ class MosaikRemote:
 
             return {'nodes': nodes_dict, 'edges': edges_tuple}
         elif type(entities) is str:
-            return {n: graph.node[n] for n in graph[entities]}
+            return {n: graph.nodes[n] for n in graph[entities]}
         else:
             return {
-                eid: {n: graph.node[n] for n in graph[eid]}
+                eid: {n: graph.nodes[n] for n in graph[eid]}
                 for eid in entities
             }
 

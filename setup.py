@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mosaik',
-    version='2.5.1',
+    version='2.5.2',
     author='Stefan Scherfke',
     author_email='mosaik@offis.de',
     description='Mosaik is a flexible Smart-Grid co-simulation framework.',
@@ -36,6 +36,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],

@@ -100,8 +100,8 @@ The implementation of *A.step()* and *A.get_data()* would be the same. In
 *B.step()* you would still receive the state information from *A* and compute
 the schedules. However, you wouldn't store them somewhere so that
 *B.get_data()* can return them. Instead, you would just pass them actively to
-*set_data()*. Mosaik stores that data in the same buffer in which it would
-store data that it retrieved via *B.get_data()*.
+*set_data()*. Mosaik stores that data in a special input_buffer of *A* which
+will be added to the input of *A*'s next step.
 
 So to wrap this up, there would be two possibilities to achieve cyclic
 data-flows:
