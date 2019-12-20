@@ -103,7 +103,6 @@ class World(object):
         self._df_outattr = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
         self._df_cache = defaultdict(dict)
-        self._shifted_cache = defaultdict(dict)
         self._df_cache_min_time = 0
 
     def start(self, sim_name, **sim_params):
@@ -186,9 +185,9 @@ class World(object):
                 if attr not in check_attrs:
                     raise ScenarioError('Incorrect attr "%s" in "initial_data".'
                                         % attr)
-                self._shifted_cache[0].setdefault(src.sid, {})
-                self._shifted_cache[0][src.sid].setdefault(src.eid, {})
-                self._shifted_cache[0][src.sid][src.eid][attr] = val
+                self._df_cache[-1].setdefault(src.sid, {})
+                self._df_cache[-1][src.sid].setdefault(src.eid, {})
+                self._df_cache[-1][src.sid][src.eid][attr] = val
         # Standard connections:
         else:
             # Add edge and check for cycles and the data-flow graph.
