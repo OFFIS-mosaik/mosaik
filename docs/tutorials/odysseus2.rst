@@ -20,7 +20,7 @@ Processing
 Mosaik sends data in JSON format and so the key-value-object has to be used as datatype for receiving in Odysseus.
 But most operators in Odysseus are based on relational tuples with a fixed schema,
 so it can be useful to transform arriving key-value objects to relational tuples.
-For this the `keyvaluetotuple <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/KeyValueToTuple+operator>`_ operator can be used.
+For this the `totuple <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/ToTuple+operato>`_ operator can be used.
 It creates relational tuples with the given attributes and omitts all data, which is not included in the schema:
 
 .. literalinclude:: code/odysseus_tutorial.qry

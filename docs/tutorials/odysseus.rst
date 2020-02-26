@@ -11,7 +11,7 @@ Both have their advantages and disadvantages and therefore, the right choice dep
 We recommend to use the SimAPI version for beginners.
 
 No matter which connection we use, we first have to 
-`download <http://odysseus.informatik.uni-oldenburg.de/index.php?id=76&L=2>`_ Odysseus Server and Studio Client.
+`download <hhttp://odysseus.informatik.uni-oldenburg.de/downloads>`_ Odysseus Server and Studio Client.
 For the first start of Odysseus Studio the default user "System" and password "manager" have to be used, 
 the tenant can be left empty.
 
@@ -27,14 +27,11 @@ of mosaik and Odysseus. With this, a blocked simulation in mosaik or a blocked
 processing in Odysseus will block the other system as well. If this is a problem 
 in your use case, you should look in the section :ref:`zero_mq`.
 
-First we have to install the following `features 
+First we have to install the mosaik `feature 
 <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_ 
-in odysseus:
+from the incubcation site in odysseus, which can be found in the Odysseus Wrapper Plugins.
 
-* wrapper / mosaik
-* server / key value processsing
-
-After installing the features we create a new Odysseus project and in the 
+After installing the feature we create a new Odysseus project and in the 
 project a new Odysseus script file (more information on Odysseus projects and script files can be found in this 
 `tutorial <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_). 
 To use mosaik as source we can 
@@ -81,20 +78,23 @@ Connecting via ZeroMQ
 =====================
 
 In contrast to the close coupling via mosaik protocol handler the coupling via 
-`ZeroMQ <https://en.wikipedia.org/wiki/%C3%98MQ>`_ is more loose.
+`ZeroMQ <https://zeromq.org/>`_ is more loose.
 Mosaik sends all data as data stream with ZeroMQ and Odysseus can even be closed 
 and restarted during the simulation without affecting mosaik.
 This behaviour holds the risk of loosing data so it should only be used if this 
 doesn't cause problems.
 
 First we have to install the following `features <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_
-for Odysseus:
+for Odysseus from incubation site:
 
-* wrapper / Zero MQ
-* server / key value processsing
-* wrapper / mosaik (only if you want to use the mosaik operator)
+* Odysseus Wrapper Plugins / Zero MQ
+* Odysseus Wrapper Plugins / mosaik (only if you want to use the mosaik operator)
 
-After installing the feature we create a new Odysseus project 
+And from the update site:
+
+* Odysseus Odysseus_core Plugins / Json Wrapper
+
+After installing the features we create a new Odysseus project 
 and in the project a new Odysseus script file.
 The messages sent by mosaik are formatted in JSON format and sent via ZeroMQ. 
 So we have to choose the corresponding ZeroMQ transport handler and JSON protocol handler:
@@ -109,15 +109,15 @@ If you use the standard configurtion you can use the short version (feature "wra
 
 After setting up Odysseus we have to install the mosaik-zmq adapter in our mosaik virtualenv.
 It is available on `bitbucket <https://bitbucket.org/mosaik/mosaik-zmq>`_ and PyPI.
-To install it we have to activate our mosaik virtualenv and execute (if there are errors during installation have a look at the readme on
-`bitbucket <https://bitbucket.org/mosaik/mosaik-zmq>`_):
+To install it we have to activate our mosaik virtualenv and execute (if there are errors during installation have a look in the 
+`readme <https://bitbucket.org/mosaik/mosaik-zmq>`_):
 
 .. code-block:: python
 
   pip install mosaik-zmq
 
 The mosaik-zmq adapter is treated in mosaik like any other component of the simulation.
-If we use the mosaik demo for an example we have to add the new simulator to 
+If we use the mosaik demo, we have to add the new simulator to 
 the ``SIM_CONFIG`` parameter:
 
 .. literalinclude:: code/odysseus_mosaik_scenario.py
