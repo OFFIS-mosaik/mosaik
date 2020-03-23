@@ -135,7 +135,7 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
     sim = cls()
     meta = sim.init(sim_id, **sim_params)
     # "meta" is module global and thus shared between all "LocalProcess"
-    # instances. This may leed to problems if a user modfies it, so make
+    # instances. This may lead to problems if a user modifies it, so make
     # a deep copy of it for each instance:
     meta = copy.deepcopy(meta)
     return LocalProcess(sim_name, sim_id, meta, sim, world)
