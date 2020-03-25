@@ -82,7 +82,8 @@ def test_world_connect(world):
     a = world.start('ExampleSim').A.create(2, init_val=0)
     b = world.start('ExampleSim').B.create(2, init_val=0)
     for i, j in zip(a, b):
-        world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
+        world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'),
+                      ('message_out', 'message_in'))
 
     assert world.df_graph.adj == {
         'ExampleSim-0': {
@@ -93,6 +94,10 @@ def test_world_connect(world):
                                           ('dummy_out', 'dummy_in'))),
                     (a[1].eid, b[1].eid, (('val_out', 'val_in'),
                                           ('dummy_out', 'dummy_in'))),
+                ],
+                'messageflows': [
+                    (a[0].eid, b[0].eid, (('message_out', 'message_in'),)),
+                    (a[1].eid, b[1].eid, (('message_out', 'message_in'),)),
                 ],
             },
         },
@@ -106,8 +111,8 @@ def test_world_connect(world):
     }
     assert world._df_outattr == {
         'ExampleSim-0': {
-            '0.0': ['val_out', 'dummy_out'],
-            '0.1': ['val_out', 'dummy_out']
+            '0.0': ['val_out', 'dummy_out', 'message_out'],
+            '0.1': ['val_out', 'dummy_out', 'message_out']
         },
     }
 
@@ -150,17 +155,17 @@ def test_world_connect_wrong_attr_names(world):
     err = pytest.raises(ScenarioError, world.connect, a, b,
                         ('val', 'val_in'))
     assert str(err.value) == (
-        'At least one attribute does not exist: '
+        'At least one attribute/message does not exist: '
         "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val")
     err = pytest.raises(ScenarioError, world.connect, a, b,
                         ('val_out', 'val'))
     assert str(err.value) == (
-        'At least one attribute does not exist: '
+        'At least one attribute/message does not exist: '
         "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).val")
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
                         'onoes')
     assert str(err.value) == (
-        'At least one attribute does not exist: '
+        'At least one attribute/message does not exist: '
         "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val, "
         "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).onoes, "
         "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).onoes")
@@ -181,6 +186,7 @@ def test_world_connect_no_attrs(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'dataflows': [(a.eid, b.eid, ())],
+                'messageflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},
@@ -207,6 +213,7 @@ def test_world_connect_any_inputs(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'messageflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},
@@ -230,6 +237,7 @@ def test_world_connect_async_requests(world):
             'ExampleSim-1': {
                 'async_requests': True,
                 'dataflows': [(a.eid, b.eid, ())],
+                'messageflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},
@@ -245,6 +253,7 @@ def test_world_connect_time_shifted(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'messageflows': [(a.eid, b.eid, ())],
             },
         },
         'ExampleSim-1': {},

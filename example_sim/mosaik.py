@@ -21,11 +21,13 @@ example_sim_meta = {
             'public': True,
             'params': ['init_val'],
             'attrs': ['val_out', 'dummy_out'],
+            'messages': ['message_out'],
         },
         'B': {
             'public': True,
             'params': ['init_val'],
             'attrs': ['val_in', 'val_out', 'dummy_in'],
+            'messages': ['message_in'],
         },
         'C': {  # Doesn't actually exist. Used for testing.
             'public': False,

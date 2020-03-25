@@ -162,18 +162,21 @@ class World(object):
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
 
-        missing_attrs = self._check_attributes(src, dest, attr_pairs)
+        connection_lists, missing_attrs = \
+            self._check_attributes(src, dest, attr_pairs)
+        print('connection_lists',connection_lists)
         if missing_attrs:
-            raise ScenarioError('At least one attribute does not exist: %s' %
+            raise ScenarioError('At least one attribute/message does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         # Time-shifted connections for closing data-flow cycles:
         if time_shifted:
             self.shifted_graph.add_edge(src.sid, dest.sid)
-
-            dfs = self.shifted_graph[src.sid][dest.sid].setdefault('dataflows',
-                                                                   [])
-            dfs.append((src.eid, dest.eid, attr_pairs))
+            for connection_list, edge_attribute in zip(connection_lists,
+                                        ['dataflows', 'messageflows']):
+                dfs = self.shifted_graph[src.sid][dest.sid].setdefault(
+                                                            edge_attribute, [])
+                dfs.append((src.eid, dest.eid, connection_list))
 
             if type(initial_data) is not dict or initial_data == {}:
                 raise ScenarioError('Time shifted connections have to be '
@@ -198,8 +201,11 @@ class World(object):
                 raise ScenarioError('Connection from "%s" to "%s" introduces '
                                     'cyclic dependencies.' % (src.sid, dest.sid))
 
-            dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-            dfs.append((src.eid, dest.eid, attr_pairs))
+            for connection_list, edge_attribute in zip(connection_lists,
+                                        ['dataflows', 'messageflows']):
+                dfs = self.df_graph[src.sid][dest.sid].setdefault(
+                                                            edge_attribute, [])
+                dfs.append((src.eid, dest.eid, connection_list))
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
@@ -315,21 +321,29 @@ class World(object):
 
     def _check_attributes(self, src, dest, attr_pairs):
         """
-        Check if *src* and *dest* have the attributes in *attr_pairs*.
+        Check if *src* and *dest* have the attributes/messages in *attr_pairs*.
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
         not exist. Exception: If the meta data for *dest* declares
-        ``'any_inputs': True``.
+        ``'any_inputs': True``. Then the connection is treated as message type.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
         any_inputs = [False, emeta[1]['any_inputs']]
+        attribute_list = []
+        message_list = []
         attr_errors = []
         for attr_pair in attr_pairs:
             for i, attr in enumerate(attr_pair):
-                if not (any_inputs[i] or attr in emeta[i]['attrs']):
+                if not (any_inputs[i] or attr in emeta[i]['attrs']
+                                               + emeta[i].get('messages', [])):
                     attr_errors.append((entities[i], attr))
-        return attr_errors
+            # 'any_inputs' are treated as attributes:
+            if attr in emeta[1].get('messages', []):
+                message_list.append(attr_pair)
+            else:
+                attribute_list.append(attr_pair)
+        return [tuple(attribute_list), tuple(message_list)], attr_errors
 
 
 class ModelFactory():
