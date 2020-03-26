@@ -16,6 +16,7 @@ from mosaik import simmanager
 from mosaik import scheduler
 from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.input_messages import InputMessages
 
 
 backend = simmanager.backend
@@ -291,6 +292,12 @@ class World(object):
         for sid, deg in sorted(list(networkx.degree(self.df_graph))):
             if deg == 0:
                 print('WARNING: %s has no connections.' % sid)
+
+        for sid, sim in self.sims.items():
+            input_messages = InputMessages()
+            input_messages.set_connections([self.df_graph, self.shifted_graph], sid)
+            if input_messages.predecessors:
+                sim.input_messages = input_messages
 
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested

@@ -44,6 +44,9 @@ def test_run(monkeypatch):
 
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
+    for sim_id in world.sims:
+        world.df_graph.add_node(sim_id)
+        world.shifted_graph.add_node(sim_id)
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
