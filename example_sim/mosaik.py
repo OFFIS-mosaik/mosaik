@@ -77,7 +77,7 @@ class ExampleSim(mosaik_api.Simulator):
             sid, idx = map(int, eid.split('.'))
             data[eid] = {}
             for attr in attrs:
-                if attr != 'val_out':
+                if attr not in ['val_out', 'message_out']:
                     continue
                 data[eid][attr] = self.simulators[sid].results[idx]
         return data
