@@ -221,7 +221,20 @@ def get_input_data(world, sim):
                         .setdefault(dest_attr, {})
                     vals[FULL_ID % (src_sid, src_eid)] = v
 
+    if sim.input_messages:
+        input_messages = sim.input_messages.get_messages(sim.next_step)
+        recursive_update(input_data, input_messages)
+
     return input_data
+
+
+def recursive_update(d, u):
+    for k, v in u.items():
+        if isinstance(v, dict):
+            d[k] = recursive_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 def step(world, sim, inputs):
@@ -258,6 +271,19 @@ def get_outputs(world, sim):
         data = yield sim.proxy.get_data(outattr)
     else:
         data = {}  # Just to indicate that the step/get is completely done.
+
+    graphs = [world.df_graph, world.shifted_graph]
+    for i, graph in enumerate(graphs):
+        message_time = sim.last_step + i  # +1 for shifted connections
+        for dest_sid in graph.successors(sid):
+            messageflows = graph[sid][dest_sid]['messageflows']
+            if messageflows:
+                input_messages = world.sims[dest_sid].input_messages
+                for src_eid, dest_eid, messages in messageflows:
+                    for src_msg, dest_msg in messages:
+                        content = data.get(src_eid, {}).get(src_msg, None)
+                        input_messages.add(message_time, sid, src_eid, src_msg, content)
+
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.next_step):
         world._df_cache[i][sim.sid] = data
