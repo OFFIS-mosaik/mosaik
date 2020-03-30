@@ -61,9 +61,9 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
 
             yield wait_for_dependencies(world, sim)
             input_data = get_input_data(world, sim)
+            rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from rt_sleep(rt_factor, rt_start, sim, world)
             yield from step(world, sim, input_data)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim)
             world.sim_progress = get_progress(world.sims, until)
             print('Progress: %.2f%%' % world.sim_progress, end='\r')
