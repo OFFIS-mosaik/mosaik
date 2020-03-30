@@ -20,6 +20,9 @@ class InputMessages:
         self.predecessors[(src_sid, src_eid, src_msg)]['input_queue'][message_time] = value
         self.times_set.add(message_time)
 
+    def add_empty_time(self, message_time):
+        self.times_set.add(message_time)
+
     def get_messages(self, step):
         messages = {}
         for src_tuple, src_dict in self.predecessors.items():

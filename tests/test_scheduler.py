@@ -238,7 +238,7 @@ def test_get_outputs(world):
     assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'y')][
                     'input_queue']) == {0: 1, 2: 1}
     assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'z')][
-                    'input_queue']) == {0: None, 2: None}
+                    'input_queue']) == {}
 
 
 def test_get_outputs_shifted(world):

@@ -7,6 +7,9 @@ from mosaik.exceptions import SimulationError
 from mosaik.simmanager import FULL_ID
 
 
+SENTINEL = object()
+
+
 def run(world, until, rt_factor=None, rt_strict=False):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
@@ -281,8 +284,11 @@ def get_outputs(world, sim):
                 input_messages = world.sims[dest_sid].input_messages
                 for src_eid, dest_eid, messages in messageflows:
                     for src_msg, dest_msg in messages:
-                        content = data.get(src_eid, {}).get(src_msg, None)
-                        input_messages.add(message_time, sid, src_eid, src_msg, content)
+                        content = data.get(src_eid, {}).get(src_msg, SENTINEL)
+                        if content is not SENTINEL:
+                            input_messages.add(message_time, sid, src_eid, src_msg, content)
+                        else:
+                            input_messages.add_empty_time(message_time)
 
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.next_step):
