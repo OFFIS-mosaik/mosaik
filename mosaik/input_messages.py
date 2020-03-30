@@ -28,7 +28,7 @@ class InputMessages:
             # TODO: We use the full message id here, as different messages from
             #  one source entity could be connected to the same message of the
             #  destination entity. Are there use cases for this?
-            src_msg_full_id = '.'.join(src_tuple)  # TODO: Replace by FULL_ID?
+            src_msg_full_id = '.'.join(map(str, src_tuple))  # TODO: Replace by FULL_ID?
             if actual_messages:
                 message_list = []
                 for _ in actual_messages:

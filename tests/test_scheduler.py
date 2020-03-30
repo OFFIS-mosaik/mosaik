@@ -1,4 +1,5 @@
 from mosaik import exceptions, scenario, scheduler, simmanager
+from mosaik.input_messages import InputMessages
 import pytest
 
 from tests.mocks.simulator_mock import SimulatorMock
@@ -160,8 +161,15 @@ def test_get_input_data(world):
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['dataflows'] = [('2', '0', [('z', 'in')])]
+    world.df_graph[0][2]['messageflows'] = [('0', '0', [('y', 'in')])]
+    world.df_graph[1][2]['messageflows'] = []
+    world.sims[2].input_messages = InputMessages()
+    world.sims[2].input_messages.set_connections(
+        [world.df_graph, world.shifted_graph], 2)
+    print(world.sims[2].input_messages.predecessors)
+    world.sims[2].input_messages.add(0, 0, '0', 'y', 3)
     data = scheduler.get_input_data(world, world.sims[2])
-    assert data == {'0': {'in': {'0.1': 0, '1.2': 4, '3': 5},
+    assert data == {'0': {'in': {'0.0.y': [3], '0.1': 0, '1.2': 4, '3': 5},
                           'spam': {'3': 'eggs'}}}
 
 
@@ -195,7 +203,11 @@ def test_get_outputs(world):
     world._df_outattr[0][0] = ['x', 'y']
     wait_event = world.env.event()
     world.df_graph[0][2]['wait_event'] = wait_event
+    world.df_graph[0][2]['messageflows'] = [('0', '0', [('y', 'in'), ('z', 'in')])]
+    world.df_graph[1][2]['messageflows'] = []
     world.sims[2].next_step = 2
+    world.sims[2].input_messages = InputMessages()
+    world.sims[2].input_messages.set_connections([world.df_graph, world.shifted_graph], 2)
     sim = world.sims[0]
     sim.last_step, sim.next_step = 0, 1
 
@@ -223,16 +235,24 @@ def test_get_outputs(world):
         1: {'foo': 'bar'},
         2: {0: {'0': {'x': 0, 'y': 1}}},
     }
+    assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'y')][
+                    'input_queue']) == {0: 1, 2: 1}
+    assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'z')][
+                    'input_queue']) == {0: None, 2: None}
 
 
 def test_get_outputs_shifted(world):
     world._df_cache[1] = {'spam': 'eggs'}
     world._df_outattr[5][0] = ['x', 'y']
+    world.shifted_graph[5][4]['messageflows'] = [('0', '0', [('y', 'in'),])]
     wait_event = world.env.event()
     world.shifted_graph[5][4]['wait_shifted'] = wait_event
     sim = world.sims[5]
     sim.last_step, sim.next_step = 1, 2
     world.sims[4].next_step = 2
+    world.sims[4].input_messages = InputMessages()
+    world.sims[4].input_messages.set_connections(
+        [world.df_graph, world.shifted_graph], 4)
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
@@ -243,6 +263,8 @@ def test_get_outputs_shifted(world):
     assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
     }
+    assert dict(world.sims[4].input_messages.predecessors[(5, '0', 'y')][
+                    'input_queue']) == {2: 1}
 
 
 def test_get_progress():
