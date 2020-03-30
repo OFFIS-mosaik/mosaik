@@ -154,23 +154,21 @@ def wait_for_dependencies(world, sim):
     # to provide the required input data for us:
     for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
-        if t in world._df_cache and dep_sid in world._df_cache[t]:
-            continue
+        if dep.progress <= t:
+            # Wait for dep_sim if it hasn't progressed until actual time step
+            evt = world.env.event()
+            events.append(evt)
+            world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
-        # Wait for dep_sim if there's not data for it yet.
-        evt = world.env.event()
-        events.append(evt)
-        world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
-
-        if not dep.step_required.triggered:
-            dep.step_required.succeed()
+            if not dep.step_required.triggered:
+                dep.step_required.succeed()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
     for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
-        if dfg[sim.sid][suc_sid]['async_requests'] and suc.next_step < t:
+        if dfg[sim.sid][suc_sid]['async_requests'] and suc.progress < t:
             evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
@@ -180,7 +178,7 @@ def wait_for_dependencies(world, sim):
     clg = world.shifted_graph
     for dep_sid in clg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
-        if dep.next_step < t:
+        if dep.progress < t:
             evt = world.env.event()
             events.append(evt)
             clg[dep_sid][sim.sid]['wait_shifted'] = evt
@@ -258,6 +256,7 @@ def step(world, sim, inputs):
                               'for simulator "%s"' %
                               (next_step, sim.last_step, sim.sid))
     sim.next_step = next_step
+    sim.progress = next_step
 
 
 def get_outputs(world, sim):
@@ -290,31 +289,31 @@ def get_outputs(world, sim):
                         else:
                             input_messages.add_empty_time(message_time)
 
-    # Create a cache entry for every point in time the data is valid for.
-    for i in range(sim.last_step, sim.next_step):
-        world._df_cache[i][sim.sid] = data
+    progress = sim.progress
 
-    next_step = sim.next_step
+    # Create a cache entry for every point in time the data is valid for.
+    for i in range(sim.last_step, progress):
+        world._df_cache[i][sim.sid] = data
 
     # Notify simulators waiting for inputs from us.
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if 'wait_event' in edge and dest_sim.next_step < next_step:
+        if 'wait_event' in edge and dest_sim.next_step < progress:
             edge.pop('wait_event').succeed()
 
     # Notify simulators waiting for async. requests from us.
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_async' in edge and pre_sim.next_step <= next_step:
+        if 'wait_async' in edge and pre_sim.next_step <= progress:
             edge.pop('wait_async').succeed()
 
     # Notify simulators waiting for time-shifted input.
     for suc_sid in world.shifted_graph.successors(sid):
         edge = world.shifted_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if 'wait_shifted' in edge and dest_sim.next_step <= next_step:
+        if 'wait_shifted' in edge and dest_sim.next_step <= progress:
             edge.pop('wait_shifted').succeed()
 
     # Prune dataflow cache
@@ -331,7 +330,7 @@ def get_progress(sims, until):
     """
     Return the current progress of the simulation in percent.
     """
-    times = [min(until, sim.next_step) for sim in sims.values()]
+    times = [min(until, sim.progress) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 
