@@ -214,6 +214,7 @@ def test_get_outputs(world):
     world.sims[2].next_step = 2
     world.sims[2].input_messages = InputMessages()
     world.sims[2].input_messages.set_connections([world.df_graph, world.shifted_graph], 2)
+    world.sims[2].has_next_step = world.env.event()
     sim = world.sims[0]
     sim.last_step, sim.progress_tmp, sim.next_step = 0, 1, 1
 
@@ -260,6 +261,7 @@ def test_get_outputs_shifted(world):
     world.sims[4].input_messages = InputMessages()
     world.sims[4].input_messages.set_connections(
         [world.df_graph, world.shifted_graph], 4)
+    world.sims[4].has_next_step = world.env.event()
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)

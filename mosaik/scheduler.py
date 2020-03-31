@@ -328,6 +328,9 @@ def get_outputs(world, sim):
                         else:
                             input_messages.add_empty_time(message_time)
 
+                if not world.sims[dest_sid].has_next_step.triggered:
+                    world.sims[dest_sid].has_next_step.succeed()
+
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.progress_tmp):
         world._df_cache[i][sim.sid] = data
