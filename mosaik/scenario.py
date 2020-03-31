@@ -328,11 +328,13 @@ class World(object):
 
     def _check_attributes(self, src, dest, attr_pairs):
         """
-        Check if *src* and *dest* have the attributes/messages in *attr_pairs*.
+        Check if *src* and *dest* have the attributes/messages in *attr_pairs*
+        and classify the connection as either attribute or message type
+        according to the destination's type (except for any_inputs).
 
         Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
         not exist. Exception: If the meta data for *dest* declares
-        ``'any_inputs': True``. Then the connection is treated as message type.
+        ``'any_inputs': True``.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
@@ -346,7 +348,8 @@ class World(object):
                                                + emeta[i].get('messages', [])):
                     attr_errors.append((entities[i], attr))
             # 'any_inputs' are treated as attributes:
-            if attr in emeta[1].get('messages', []):
+            if (attr_pair[1] in emeta[1].get('messages', [])) or \
+                    any_inputs[1] and attr_pair[0] in emeta[0].get('messages', []):
                 message_list.append(attr_pair)
             else:
                 attribute_list.append(attr_pair)
