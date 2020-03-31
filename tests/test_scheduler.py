@@ -119,6 +119,7 @@ def test_wait_for_dependencies(world):
     """
     Test waiting for dependencies and triggering them.
     """
+    world.sims[2].next_step = 0
     for i in range(2):
         world.sims[i].step_required = world.env.event()
         if i == 0:
@@ -134,6 +135,7 @@ def test_wait_for_dependencies_all_done(world):
     """
     All dependencies already stepped far enough. No waiting required.
     """
+    world.sims[2].next_step = 0
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
@@ -155,6 +157,7 @@ def test_get_input_data(world):
     """
     Simple test for get_input_data().
     """
+    world.sims[2].next_step = 0
     world._df_cache = {0: {
         0: {'1': {'x': 0, 'y': 1}},
         1: {'2': {'x': 2, 'z': 4}},
@@ -181,6 +184,7 @@ def test_get_input_data_shifted(world):
     world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
+    world.sims[4].next_step = 0
     world.shifted_graph[5][4]['dataflows'] = [('1', '0', [('z', 'in')])]
     data = scheduler.get_input_data(world, world.sims[4])
     assert data == {'0': {'in': {'5.1': 7}}}
@@ -189,13 +193,14 @@ def test_get_input_data_shifted(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
-    assert (sim.last_step, sim.progress, sim.next_step) == (-1, 0, 0)
+    sim.next_step = 0
+    assert (sim.last_step, sim.progress, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress, sim.next_step) == (0, 1, 1)
+    assert (sim.last_step, sim.progress, sim.next_self_step, sim.next_step) == (0, 1, 1, None)
 
 
 def test_get_outputs(world):

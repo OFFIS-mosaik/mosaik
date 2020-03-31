@@ -52,6 +52,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
     try:
         keep_running = get_keep_running_func(world, sim, until)
         while keep_running():
+            yield from has_next_step(world, sim)
             try:
                 yield step_required(world, sim)
             except StopIteration:
@@ -91,7 +92,7 @@ def get_keep_running_func(world, sim, until):
     """
 
     def check_time():
-        return sim.next_step < until
+        return sim.progress < until
 
     if world.df_graph.out_degree(sim.sid) == 0:
         # If a sim process has no successors (no one needs its data), we just
@@ -109,6 +110,43 @@ def get_keep_running_func(world, sim, until):
                                             for process in processes)
 
     return keep_running
+
+
+def get_next_step(sim):
+    if sim.input_messages:
+        next_input_message = sim.input_messages.peek_next_time()
+        next_input_step = max(next_input_message, sim.progress)
+    else:
+        next_input_step = None
+
+    next_steps = [istep for istep in [next_input_step, sim.next_self_step] if istep is not None]
+    if next_steps:
+        next_step = min(next_steps)
+    else:
+        next_step = None
+
+    return next_step
+
+
+def has_next_step(world, sim):
+    """
+    Return an :class:`~simpy.events.Event` that is triggered when *sim*
+    has a next step.
+
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    """
+    sim.has_next_step = world.env.event()
+    next_step = get_next_step(sim)
+
+    if next_step is not None:
+        sim.has_next_step.succeed()
+        yield sim.has_next_step
+    else:
+        yield sim.has_next_step
+        next_input_message = sim.input_messages.peek_next_time()
+        next_step = max(next_input_message, sim.progress)
+
+    sim.next_step = next_step
 
 
 def step_required(world, sim):
@@ -255,7 +293,8 @@ def step(world, sim, inputs):
         raise SimulationError('next_step must be > last_step, but %s <= %s '
                               'for simulator "%s"' %
                               (next_step, sim.last_step, sim.sid))
-    sim.next_step = next_step
+    sim.next_step = None
+    sim.next_self_step = next_step
     sim.progress = next_step
 
 
