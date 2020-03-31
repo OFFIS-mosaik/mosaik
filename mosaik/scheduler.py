@@ -295,7 +295,7 @@ def step(world, sim, inputs):
                               (next_step, sim.last_step, sim.sid))
     sim.next_step = None
     sim.next_self_step = next_step
-    sim.progress = next_step
+    sim.progress_tmp = next_step
 
 
 def get_outputs(world, sim):
@@ -328,11 +328,11 @@ def get_outputs(world, sim):
                         else:
                             input_messages.add_empty_time(message_time)
 
-    progress = sim.progress
-
     # Create a cache entry for every point in time the data is valid for.
-    for i in range(sim.last_step, progress):
+    for i in range(sim.last_step, sim.progress_tmp):
         world._df_cache[i][sim.sid] = data
+
+    progress = sim.progress = sim.progress_tmp
 
     # Notify simulators waiting for inputs from us.
     for suc_sid in world.df_graph.successors(sid):

@@ -194,13 +194,13 @@ def test_step(world):
     inputs = object()
     sim = world.sims[0]
     sim.next_step = 0
-    assert (sim.last_step, sim.progress, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress, sim.next_self_step, sim.next_step) == (0, 1, 1, None)
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (0, 1, 1, None)
 
 
 def test_get_outputs(world):
@@ -215,7 +215,7 @@ def test_get_outputs(world):
     world.sims[2].input_messages = InputMessages()
     world.sims[2].input_messages.set_connections([world.df_graph, world.shifted_graph], 2)
     sim = world.sims[0]
-    sim.last_step, sim.progress, sim.next_step = 0, 1, 1
+    sim.last_step, sim.progress_tmp, sim.next_step = 0, 1, 1
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
@@ -230,7 +230,7 @@ def test_get_outputs(world):
 
     for s in world.sims.values():
         s.last_step, s.progress, s.next_step = 1, 2, 2
-    sim.last_step, sim.progress, sim.next_step = 2, 3, 3
+    sim.last_step, sim.progress_tmp, sim.next_step = 2, 3, 3
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
@@ -245,6 +245,7 @@ def test_get_outputs(world):
                     'input_queue']) == {0: 1, 2: 1}
     assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'z')][
                     'input_queue']) == {}
+    assert sim.progress == 3
 
 
 def test_get_outputs_shifted(world):
@@ -254,7 +255,7 @@ def test_get_outputs_shifted(world):
     wait_event = world.env.event()
     world.shifted_graph[5][4]['wait_shifted'] = wait_event
     sim = world.sims[5]
-    sim.last_step, sim.progress, sim.next_step = 1, 2, 2
+    sim.last_step, sim.progress_tmp, sim.next_step = 1, 2, 2
     world.sims[4].next_step = 2
     world.sims[4].input_messages = InputMessages()
     world.sims[4].input_messages.set_connections(

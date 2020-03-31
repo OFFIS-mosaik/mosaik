@@ -345,6 +345,7 @@ class SimProxy:
         self.last_step = -1
         self.next_step = None
         self.next_self_step = 0
+        self.progress_tmp = 0
         self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.input_messages = None
