@@ -59,7 +59,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
                 # We've been woken up by a terminating successor.
                 # Check if we can also stop or need to keep running.
                 continue
-
             yield wait_for_dependencies(world, sim)
             input_data = get_input_data(world, sim)
             rt_check(rt_factor, rt_start, rt_strict, sim)
@@ -286,16 +285,22 @@ def step(world, sim, inputs):
     """
     sim.last_step = sim.next_step
     next_step = yield sim.proxy.step(sim.next_step, inputs)
-    if type(next_step) != int:
-        raise SimulationError('next_step must be of type int, but is "%s" for '
-                              'simulator "%s"' % (type(next_step), sim.sid))
-    if next_step <= sim.last_step:
-        raise SimulationError('next_step must be > last_step, but %s <= %s '
-                              'for simulator "%s"' %
-                              (next_step, sim.last_step, sim.sid))
+    if next_step is not None:
+        if type(next_step) != int:
+            raise SimulationError('next_step must be of type int, but is "%s" for '
+                                  'simulator "%s"' % (type(next_step), sim.sid))
+        if next_step <= sim.last_step:
+            raise SimulationError('next_step must be > last_step, but %s <= %s '
+                                  'for simulator "%s"' %
+                                  (next_step, sim.last_step, sim.sid))
+
+        sim.progress_tmp = next_step
+    else:
+        preds_progress = [world.sims[pre_sid].progress for pre_sid in world.df_graph.predecessors(sim.sid)]
+        sim.progress_tmp = min(preds_progress)
+
     sim.next_step = None
     sim.next_self_step = next_step
-    sim.progress_tmp = next_step
 
 
 def get_outputs(world, sim):
@@ -330,7 +335,6 @@ def get_outputs(world, sim):
 
                 if not world.sims[dest_sid].has_next_step.triggered:
                     world.sims[dest_sid].has_next_step.succeed()
-
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.progress_tmp):
         world._df_cache[i][sim.sid] = data

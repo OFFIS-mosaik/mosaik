@@ -46,9 +46,10 @@ class ExampleSim(mosaik_api.Simulator):
         self.simulators = []
         self.value = None  # May be set in example_method()
 
-    def init(self, sid, step_size=1):
+    def init(self, sid, step_size=1, self_steps=True):
         self.sid = sid
         self.step_size = step_size
+        self.self_steps = self_steps
         return self.meta
 
     def create(self, num, model, init_val):
@@ -59,6 +60,7 @@ class ExampleSim(mosaik_api.Simulator):
                 for eid, inst in enumerate(sim.instances)]
 
     def step(self, time, inputs):
+        self.inputs = inputs
         for sid, sim in enumerate(self.simulators):
             sim_inputs = [None for i in sim.instances]
             for i, _ in enumerate(sim_inputs):
@@ -69,7 +71,10 @@ class ExampleSim(mosaik_api.Simulator):
             for i in range(self.step_size):
                 sim.step(sim_inputs)
 
-        return time + self.step_size
+        if self.self_steps:
+            return time + self.step_size
+        else:
+            return None
 
     def get_data(self, outputs):
         data = {}
@@ -80,6 +85,11 @@ class ExampleSim(mosaik_api.Simulator):
             for attr in attrs:
                 if attr == 'val_out' or (attr == 'message_out' and value > 5):
                     data[eid][attr] = value
+                elif attr == 'message_in':
+                    print('get message_in', self.inputs)
+                    values = self.inputs[eid].get('message_in', {}).values()
+                    if values:
+                        data[eid][attr] = list(values)[0]
         return data
 
     def example_method(self, value):
