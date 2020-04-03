@@ -3,6 +3,7 @@ from mosaik.input_messages import InputMessages
 import pytest
 
 from tests.mocks.simulator_mock import SimulatorMock
+from tests.mocks.simulator_mock_nonextstep import SimulatorMockNonextstep
 
 
 @pytest.fixture(name='world')
@@ -10,11 +11,12 @@ def world_fixture():
     world = scenario.World({})
     world.sims = {
         i: simmanager.LocalProcess('', i, {'models': {}}, SimulatorMock(), world)
-        for i in range(6)
+        for i in range(7)
     }
-    world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
+    world.sims[7] = simmanager.LocalProcess('', 7, {'models': {}}, SimulatorMockNonextstep(), world)
+    world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5), (6, 7)],
                                   async_requests=False)
-    world.shifted_graph.add_nodes_from([0, 1, 2, 3, 4, 5])
+    world.shifted_graph.add_nodes_from([0, 1, 2, 3, 4, 5, 6, 7])
     world.shifted_graph.add_edges_from([(5, 4)])
     world.df_graph[0][2]['wait_event'] = world.env.event()
     yield world
@@ -85,6 +87,58 @@ def test_sim_process_error(monkeypatch):
                             scheduler.sim_process(None, Sim(), None, 1, False))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
+
+
+@pytest.mark.parametrize('progress,self_step,input_step,expected',
+                         [(0, 0, 1, 0),
+                          (2, 2, 1, 2),
+                          (1, None, None, None)])
+def test_get_next_step(world, progress, self_step, input_step, expected):
+    """
+    Test get_next_step.
+    """
+    sim = world.sims[7]
+    sim.progress = progress
+    sim.next_self_step = self_step
+    if input_step is not None:
+        sim.input_messages = InputMessages()
+        sim.input_messages.add_empty_time(input_step)
+    assert scheduler.get_next_step(sim) == expected
+
+
+def test_has_next_step_selfstep(world):
+    """
+    Test has_next_step when there's a self-step.
+    """
+    sim = world.sims[0]
+    sim.next_self_step = 1
+
+    gen = scheduler.has_next_step(world, sim)
+    evt = next(gen)
+    pytest.raises(StopIteration, gen.send, evt.value)
+    assert evt.triggered
+    assert sim.next_step == 1
+
+
+@pytest.mark.parametrize('progress', [0, 2])
+def test_has_next_step_noselfstep(world, progress):
+    """
+    Test has_next_step when there's no self-step.
+    """
+    sim = world.sims[0]
+    sim.progress = progress
+    sim.next_self_step = None
+    assert sim.next_step is None
+
+    gen = scheduler.has_next_step(world, sim)
+    evt = next(gen)
+    assert not evt.triggered
+
+    sim.input_messages = InputMessages()
+    sim.input_messages.add_empty_time(1)
+    with pytest.raises(StopIteration):
+        next(gen)
+    assert sim.next_step == max(1, progress)
 
 
 def test_step_required(world):
@@ -201,6 +255,20 @@ def test_step(world):
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (0, 1, 1, None)
+
+
+def test_step_nonextstep(world):
+    inputs = object()
+    sim = world.sims[7]
+    sim.next_step = 0
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
+    world.sims[6].progress = 2
+
+    gen = scheduler.step(world, sim, inputs)
+    evt = next(gen)
+    pytest.raises(StopIteration, gen.send, evt.value)
+    assert evt.triggered
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (0, 2, None, None)
 
 
 def test_get_outputs(world):
