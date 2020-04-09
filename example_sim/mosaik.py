@@ -21,7 +21,7 @@ example_sim_meta = {
             'public': True,
             'params': ['init_val'],
             'attrs': ['val_out', 'dummy_out'],
-            'messages': ['message_out'],
+            'messages': ['message_out', 'message_in'],
         },
         'B': {
             'public': True,
@@ -66,7 +66,8 @@ class ExampleSim(mosaik_api.Simulator):
             for i, _ in enumerate(sim_inputs):
                 eid = '%s.%s' % (sid, i)
                 if eid in inputs:
-                    sim_inputs[i] = sum(inputs[eid]['val_in'].values())
+                    if 'val_in' in inputs[eid]:
+                        sim_inputs[i] = sum(inputs[eid]['val_in'].values())
 
             for i in range(self.step_size):
                 sim.step(sim_inputs)
@@ -87,7 +88,7 @@ class ExampleSim(mosaik_api.Simulator):
                     data[eid][attr] = value
                 elif attr == 'message_in':
                     print('get message_in', self.inputs)
-                    values = self.inputs[eid].get('message_in', {}).values()
+                    values = self.inputs.get(eid, {}).get('message_in', {}).values()
                     if values:
                         data[eid][attr] = list(values)[0]
         return data

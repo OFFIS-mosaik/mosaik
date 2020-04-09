@@ -15,7 +15,7 @@ def world_fixture():
     }
     world.sims[7] = simmanager.LocalProcess('', 7, {'models': {}}, SimulatorMockNonextstep(), world)
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5), (6, 7)],
-                                  async_requests=False)
+                                  async_requests=False, weak=False)
     world.shifted_graph.add_nodes_from([0, 1, 2, 3, 4, 5, 6, 7])
     world.shifted_graph.add_edges_from([(5, 4)])
     world.df_graph[0][2]['wait_event'] = world.env.event()
@@ -169,19 +169,24 @@ def test_step_required_no_successors(world):
     assert evt.triggered
 
 
-def test_wait_for_dependencies(world):
+@pytest.mark.parametrize("weak,number_waiting",[
+    (True, 1),
+    (False, 2)
+])
+def test_wait_for_dependencies(world, weak, number_waiting):
     """
     Test waiting for dependencies and triggering them.
     """
     world.sims[2].next_step = 0
+    world.df_graph[1][2]['weak'] = weak
     for i in range(2):
         world.sims[i].step_required = world.env.event()
         if i == 0:
             world.sims[i].step_required.succeed()
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
-    assert len(evt._events) == 2
+    assert len(evt._events) == number_waiting
     assert not evt.triggered
-    for i in range(2):
+    for i in range(number_waiting):
         assert world.sims[i].step_required.triggered
 
 

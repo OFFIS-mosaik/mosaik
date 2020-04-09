@@ -191,7 +191,7 @@ def wait_for_dependencies(world, sim):
     # to provide the required input data for us:
     for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
-        if dep.progress <= t:
+        if dep.progress < t + int(not dfg[dep_sid][sim.sid]['weak']):
             # Wait for dep_sim if it hasn't progressed until actual time step
             evt = world.env.event()
             events.append(evt)
@@ -345,7 +345,7 @@ def get_outputs(world, sim):
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if 'wait_event' in edge and dest_sim.next_step < progress:
+        if 'wait_event' in edge and dest_sim.next_step < progress + world.df_graph[sid][suc_sid]['weak']:
             edge.pop('wait_event').succeed()
 
     # Notify simulators waiting for async. requests from us.

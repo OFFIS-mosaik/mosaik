@@ -50,13 +50,14 @@ def pre_step(world, sim, inputs):
     node_id = node % (sid, next_step)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
-    if sim.last_step >= 0:
+    if sim.last_step >= 0 and next_step == sim.next_self_step:
         eg.add_edge(node % (sid, sim.last_step), node_id)
 
     for pre in world.df_graph.predecessors(sid):
         pre_node = node % (pre, sims[pre].last_step)
         eg.add_edge(pre_node, node_id)
-        assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
+        if sim.last_step >= 0:
+            assert eg.nodes[pre_node]['t'] < eg.nodes[node_id]['t'] + int(not world.df_graph[pre][sid]['weak'])
 
     progress_list = []
     for suc in world.df_graph.successors(sid):

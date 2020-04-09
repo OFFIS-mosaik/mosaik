@@ -89,6 +89,7 @@ def test_world_connect(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'weak': False,
                 'dataflows': [
                     (a[0].eid, b[0].eid, (('val_out', 'val_in'),
                                           ('dummy_out', 'dummy_in'))),
@@ -142,8 +143,23 @@ def test_world_connect_cycle(world):
         world.connect(b, a, ('val_in', 'val_out'))
     assert str(err.value) == ('Connection from "ExampleSim-1" to '
                               '"ExampleSim-0" introduces cyclic dependencies.')
-    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1')]
+    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1'),
+                                            ('ExampleSim-1', 'ExampleSim-0')]
     assert len(world._df_outattr) == 1
+
+
+def test_world_connect_weak_cycle(world):
+    """
+    If connecting two entities results in a cycle in the dataflow graph,
+    an error must be raised.
+    """
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(b, a, ('val_in', 'val_out'), weak=True)
+    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1'),
+                                            ('ExampleSim-1', 'ExampleSim-0')]
+    assert len(world._df_outattr) == 2
 
 
 def test_world_connect_wrong_attr_names(world):
@@ -185,6 +201,7 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'weak': False,
                 'dataflows': [(a.eid, b.eid, ())],
                 'messageflows': [(a.eid, b.eid, ())],
             },
@@ -212,6 +229,7 @@ def test_world_connect_any_inputs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'weak': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
                 'messageflows': [(a.eid, b.eid, ())],
             },
@@ -236,6 +254,7 @@ def test_world_connect_async_requests(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
+                'weak': False,
                 'dataflows': [(a.eid, b.eid, ())],
                 'messageflows': [(a.eid, b.eid, ())],
             },

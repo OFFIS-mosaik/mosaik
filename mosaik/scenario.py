@@ -121,7 +121,7 @@ class World(object):
         return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs, async_requests=False,
-                time_shifted=False, initial_data=None):
+                time_shifted=False, initial_data=None, weak=False):
         """
         Connect the *src* entity to *dest* entity.
 
@@ -196,11 +196,14 @@ class World(object):
         else:
             # Add edge and check for cycles and the data-flow graph.
             self.df_graph.add_edge(src.sid, dest.sid,
-                                   async_requests=async_requests)
-            if not networkx.is_directed_acyclic_graph(self.df_graph):
-                self.df_graph.remove_edge(src.sid, dest.sid)
-                raise ScenarioError('Connection from "%s" to "%s" introduces '
-                                    'cyclic dependencies.' % (src.sid, dest.sid))
+                                   async_requests=async_requests, weak=weak)
+            try:
+                cycle = networkx.find_cycle(self.df_graph, dest.sid)
+                if not any([self.df_graph[src][dest]['weak'] for src, dest in cycle]):
+                    raise ScenarioError('Connection from "%s" to "%s" introduces '
+                                        'cyclic dependencies.' % (src.sid, dest.sid))
+            except networkx.NetworkXNoCycle:
+                pass
 
             for connection_list, edge_attribute in zip(connection_lists,
                                         ['dataflows', 'messageflows']):
