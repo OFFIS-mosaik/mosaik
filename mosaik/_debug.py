@@ -53,11 +53,21 @@ def pre_step(world, sim, inputs):
     if sim.last_step >= 0 and next_step == sim.next_self_step:
         eg.add_edge(node % (sid, sim.last_step), node_id)
 
-    for pre in world.df_graph.predecessors(sid):
-        pre_node = node % (pre, sims[pre].last_step)
-        eg.add_edge(pre_node, node_id)
-        if sim.last_step >= 0:
-            assert eg.nodes[pre_node]['t'] < eg.nodes[node_id]['t'] + int(not world.df_graph[pre][sid]['weak'])
+    for ig, graph in enumerate([world.df_graph, world.shifted_graph]):
+        for pre in graph.predecessors(sid):
+            if ig == 1 and next_step == 0:
+                break
+            for inode in world.execution_graph.nodes:
+                if inode.rsplit('-', 1)[0] == pre:
+                    istep = int(inode.rsplit('-', 1)[1])
+                    if istep <= next_step - ig:
+                        pre_step = istep
+                    else:
+                        break
+            pre_node = node % (pre, pre_step)
+            eg.add_edge(pre_node, node_id)
+
+            assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
     progress_list = []
     for suc in world.df_graph.successors(sid):
