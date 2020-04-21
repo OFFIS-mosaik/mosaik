@@ -50,12 +50,22 @@ def pre_step(world, sim, inputs):
     node_id = node % (sid, next_step)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
+    print('DEBUG', node_id, node % (sid, sim.last_step), sim.next_self_step)
     if sim.last_step >= 0 and next_step == sim.next_self_step:
         eg.add_edge(node % (sid, sim.last_step), node_id)
 
     for ig, graph in enumerate([world.df_graph, world.shifted_graph]):
         for pre in graph.predecessors(sid):
-            if ig == 1 and next_step == 0:
+            messageflows = world.df_graph[pre][sid].get('messageflows', [])
+            new_messages = False
+            for src_eid, dest_eid, messages in messageflows:
+                for src_msg, dest_msg in messages:
+                    new_messages = '.'.join(map(str, (pre, src_eid, src_msg))) in inputs.get(dest_eid, {}).get(dest_msg, {}).keys()
+                    if new_messages:
+                        break
+            if not (world.df_graph[pre][sid]['dataflows'] or world.df_graph[pre][sid]['async_requests'] or new_messages):
+                break
+            if next_step == 0 and (ig == 1 or world.df_graph[pre][sid]['weak']):
                 break
             for inode in world.execution_graph.nodes:
                 if inode.rsplit('-', 1)[0] == pre:

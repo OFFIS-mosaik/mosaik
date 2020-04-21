@@ -209,7 +209,8 @@ class World(object):
                                         ['dataflows', 'messageflows']):
                 dfs = self.df_graph[src.sid][dest.sid].setdefault(
                                                             edge_attribute, [])
-                dfs.append((src.eid, dest.eid, connection_list))
+                if connection_list:
+                    dfs.append((src.eid, dest.eid, connection_list))
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
