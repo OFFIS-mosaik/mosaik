@@ -296,8 +296,8 @@ def step(world, sim, inputs):
 
         sim.progress_tmp = next_step
     else:
-        preds_progress = [world.sims[pre_sid].progress for pre_sid in world.df_graph.predecessors(sim.sid)]
-        sim.progress_tmp = min(preds_progress)
+        preds_progress = min([world.sims[pre_sid].progress for pre_sid in world.df_graph.predecessors(sim.sid)])
+        sim.progress_tmp = max(preds_progress, sim.last_step + 1)
 
     sim.next_step = None
     sim.next_self_step = next_step
