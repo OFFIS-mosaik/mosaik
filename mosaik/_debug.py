@@ -79,19 +79,11 @@ def pre_step(world, sim, inputs):
 
             assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
-    progress_list = []
     for suc in world.df_graph.successors(sid):
         if world.df_graph[sid][suc]['async_requests'] and sim.last_step >= 0:
             suc_node = node % (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
             assert sims[suc].progress >= next_step
-        progress_list.append(sims[suc].progress)
-
-    # The progress of at least one successor must be >= our next_step (that
-    # we are going to execute).
-    if progress_list:
-        assert max(progress_list) >= next_step, (
-                '"next_step" of all successors of "%s" is < %s' % (sid, next_step))
 
 
 def post_step(world, sim):

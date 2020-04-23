@@ -141,35 +141,7 @@ def test_has_next_step_noselfstep(world, progress):
     assert sim.next_step == max(1, progress)
 
 
-def test_step_required(world):
-    """
-    Test *step_required is True*, because a simulator is waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[0])
-    assert evt.triggered
-
-
-def test_step_not_required(world):
-    """
-    Test *step_required is False*, because noone is waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[1])
-    assert not evt.triggered
-
-    evt = scheduler.step_required(world, world.sims[2])
-    assert not evt.triggered
-
-
-def test_step_required_no_successors(world):
-    """
-    Test *step_required is True*, because there is noone that could be
-    waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[3])
-    assert evt.triggered
-
-
-@pytest.mark.parametrize("weak,number_waiting",[
+@pytest.mark.parametrize("weak,number_waiting", [
     (True, 1),
     (False, 2)
 ])
@@ -179,15 +151,9 @@ def test_wait_for_dependencies(world, weak, number_waiting):
     """
     world.sims[2].next_step = 0
     world.df_graph[1][2]['weak'] = weak
-    for i in range(2):
-        world.sims[i].step_required = world.env.event()
-        if i == 0:
-            world.sims[i].step_required.succeed()
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == number_waiting
     assert not evt.triggered
-    for i in range(number_waiting):
-        assert world.sims[i].step_required.triggered
 
 
 def test_wait_for_dependencies_all_done(world):
