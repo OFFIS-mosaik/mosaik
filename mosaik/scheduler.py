@@ -10,7 +10,7 @@ from mosaik.simmanager import FULL_ID
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False):
+def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -36,14 +36,14 @@ def run(world, until, rt_factor=None, rt_strict=False):
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict))
+                                          rt_strict, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict):
+def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -58,7 +58,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
                 continue
-            yield wait_for_dependencies(world, sim)
+            yield wait_for_dependencies(world, sim, lazy_stepping)
             input_data = get_input_data(world, sim)
             rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from rt_sleep(rt_factor, rt_start, sim, world)
@@ -147,7 +147,7 @@ def has_next_step(world, sim):
     sim.next_step = next_step
 
 
-def wait_for_dependencies(world, sim):
+def wait_for_dependencies(world, sim, lazy_stepping):
     """
     Return an event (:class:`simpy.events.AllOf`) that is triggered when
     all dependencies can provide input data for *sim*.
@@ -170,15 +170,16 @@ def wait_for_dependencies(world, sim):
             events.append(evt)
             world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
-    # Check if a successor may request data from us.
-    # We cannot step any further until the successor may no longer require
-    # data for [last_step, next_step) from us:
+    # Check if we have to wait lazily or a successor may request data from us.
+    # We cannot step any further until the successor has progressed at least
+    # until next_step or may no longer require data for [last_step, next_step)
+    # from us:
     for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
-        if dfg[sim.sid][suc_sid]['async_requests'] and suc.progress < t:
+        if (lazy_stepping or dfg[sim.sid][suc_sid]['async_requests']) and suc.progress < t:
             evt = world.env.event()
             events.append(evt)
-            world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
+            world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt
 
     # Check if all predecessors with time-shifted input for us
     # have stepped for enough to provide the required input data:
@@ -326,8 +327,8 @@ def get_outputs(world, sim):
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_async' in edge and pre_sim.next_step <= progress:
-            edge.pop('wait_async').succeed()
+        if 'wait_lazy_or_async' in edge and pre_sim.next_step <= progress:
+            edge.pop('wait_lazy_or_async').succeed()
 
     # Notify simulators waiting for time-shifted input.
     for suc_sid in world.shifted_graph.successors(sid):

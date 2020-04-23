@@ -272,18 +272,23 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False):
+    def run(self, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
         """
         Start the simulation until the simulation time *until* is reached.
 
         In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. An rt-factor of 1 means that 1 simulation time unit
-        (usually a second) takes 1 second in real-time. An rt-factor 0f 0.5
+        a number > 0. A rt-factor of 1 means that 1 simulation time unit
+        (usually a second) takes 1 second in real-time. A rt-factor of 0.5
         will let the simulation run twice as fast as real-time.
 
         If the simulators are too slow for the rt-factor you chose, mosaik
         prints by default only a warning. In order to raise
         a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
+
+        You can also set the *lazy_stepping* flag (default: ``True``). If
+        ``True`` a simulator can only run ahead one step of it's successors. If
+        ``False`` a simulator always steps as long all input is provided. This
+        might decrease the simulation time but increase the memory consumption.
 
         Before this method returns, it stops all simulators and closes mosaik's
         server socket. So this method should only be called once.
@@ -309,7 +314,7 @@ class World(object):
             dbg.enable()
         try:
 
-            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),
+            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict, lazy_stepping),
                               self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:

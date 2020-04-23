@@ -27,7 +27,7 @@ def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
 
-    def dummy_proc(world, sim, until, rt_factor, rt_strict):
+    def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True
         yield world.env.event().succeed()
 
@@ -84,7 +84,7 @@ def test_sim_process_error(monkeypatch):
                         get_keep_running_func)
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
-                            scheduler.sim_process(None, Sim(), None, 1, False))
+                            scheduler.sim_process(None, Sim(), None, 1, False, True))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 
@@ -151,7 +151,7 @@ def test_wait_for_dependencies(world, weak, number_waiting):
     """
     world.sims[2].next_step = 0
     world.df_graph[1][2]['weak'] = weak
-    evt = scheduler.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
     assert len(evt._events) == number_waiting
     assert not evt.triggered
 
@@ -163,19 +163,39 @@ def test_wait_for_dependencies_all_done(world):
     world.sims[2].next_step = 0
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
-    evt = scheduler.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
     assert len(evt._events) == 0
     assert evt.triggered
 
 
-def test_wait_for_dependencies_shifted(world):
+@pytest.mark.parametrize("progress,number_waiting", [
+    (0, 1),
+    (1, 0)
+])
+def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     """
-    Shifted dependency is not yet stepped far enough. Waiting is required.
+    Shifted dependency has not/has stepped far enough. Waiting is/is not required.
     """
+    world.sims[5].progress = progress
+    print(world.sims[5].progress)
     world.sims[4].next_step = 1
-    evt = scheduler.wait_for_dependencies(world, world.sims[4])
-    assert len(evt._events) == 1
-    assert not evt.triggered
+    evt = scheduler.wait_for_dependencies(world, world.sims[4], False)
+    assert len(evt._events) == number_waiting
+    assert evt.triggered == (not bool(number_waiting))
+
+
+@pytest.mark.parametrize("lazy_stepping,number_waiting", [
+    (True, 1),
+    (False, 0)
+])
+def test_wait_for_dependencies_lazy(world, lazy_stepping, number_waiting):
+    """
+    Test waiting for dependencies and triggering them.
+    """
+    world.sims[1].next_step = 1
+    evt = scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping)
+    assert len(evt._events) == number_waiting
+    assert evt.triggered == (not bool(number_waiting))
 
 
 def test_get_input_data(world):
