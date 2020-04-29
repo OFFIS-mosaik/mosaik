@@ -8,7 +8,7 @@ if os.environ.get('CI_COMMIT_TAG'):
 
 
 setup(
-    name='my_mosaik',
+    name='mosaik',
     version=find_version,
     author='Stefan Scherfke',
     author_email='mosaik@offis.de',
