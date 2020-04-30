@@ -166,7 +166,7 @@ def test_get_input_data_shifted(world):
     """
     Getting input data transmitted via a shifted connection.
     """
-    world._shifted_cache = {0: {
+    world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
     world.shifted_graph[5][4]['dataflows'] = [('1', '0', [('z', 'in')])]
@@ -223,7 +223,7 @@ def test_get_outputs(world):
 
 
 def test_get_outputs_shifted(world):
-    world._shifted_cache[1] = {'spam': 'eggs'}
+    world._df_cache[1] = {'spam': 'eggs'}
     world._df_outattr[5][0] = ['x', 'y']
     wait_event = world.env.event()
     world.shifted_graph[5][4]['wait_shifted'] = wait_event
@@ -237,9 +237,8 @@ def test_get_outputs_shifted(world):
     assert evt.triggered
     assert wait_event.triggered
     assert 'wait_shifted' not in world.shifted_graph[5][4]
-    assert world._shifted_cache == {
+    assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
-        2: {5: {'0': {'x': 0, 'y': 1}}}
     }
 
 

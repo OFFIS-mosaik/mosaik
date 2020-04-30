@@ -1,7 +1,7 @@
 #PARSER PQL
 #METADATA TimeInterval
 #QUERY
-tuples = KEYVALUETOTUPLE({
+tuples = TOTUPLE({
         SCHEMA = [
                 ['odysseus_0.Vm.PyPower-0.0-tr_sec', 'Double'],
                 ['odysseus_0.Vm.PyPower-0.0-node_b1', 'Double'],

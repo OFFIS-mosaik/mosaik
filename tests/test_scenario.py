@@ -250,8 +250,8 @@ def test_world_connect_time_shifted(world):
         'ExampleSim-1': {},
     }
 
-    assert world._shifted_cache == {
-        0: {
+    assert world._df_cache == {
+        -1: {
             'ExampleSim-0': {
                 a.eid: {
                     'val_out': 1.0
