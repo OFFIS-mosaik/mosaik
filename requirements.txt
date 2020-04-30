@@ -4,7 +4,7 @@ Babel==2.8.0
 coverage==5.1
 decorator==4.3.0
 docopt==0.6.2
-docutils==0.12
+docutils==0.13.1
 flake8==3.7.9
 imagesize==0.7.1
 Jinja2==2.9
@@ -16,7 +16,7 @@ pep8==1.7.1
 pkginfo==1.5.0.1
 pluggy==0.13.1
 py==1.8.1
-pyflakes==2.2.0
+pyflakes==2.1.0
 Pygments==2.6.1
 pytest==5.4.1
 pytest-cov==2.8.1
