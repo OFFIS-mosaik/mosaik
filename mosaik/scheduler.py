@@ -7,7 +7,7 @@ from mosaik.exceptions import SimulationError
 from mosaik.simmanager import FULL_ID
 
 
-def run(world, until, rt_factor=None, rt_strict=False):
+def run(world, until, rt_factor=None, rt_strict=False, print_progress=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -33,14 +33,14 @@ def run(world, until, rt_factor=None, rt_strict=False):
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict))
+                                          rt_strict, print_progress))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict):
+def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -63,7 +63,8 @@ def sim_process(world, sim, until, rt_factor, rt_strict):
             rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim)
             world.sim_progress = get_progress(world.sims, until)
-            print('Progress: %.2f%%' % world.sim_progress, end='\r')
+            if print_progress:
+                print('Progress: %.2f%%' % world.sim_progress, end='\r')
 
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another

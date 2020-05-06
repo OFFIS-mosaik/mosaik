@@ -261,7 +261,7 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False):
+    def run(self, until, rt_factor=None, rt_strict=False, print_progress=True):
         """
         Start the simulation until the simulation time *until* is reached.
 
@@ -291,9 +291,8 @@ class World(object):
         if self._debug:
             dbg.enable()
         try:
-
-            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict),
-                              self)
+            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
+                                            print_progress), self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
