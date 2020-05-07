@@ -19,7 +19,6 @@ Legals
 
 | Prof. Dr.-Ing. Wolfgang H. Nebel (Chairman)
 | Prof. Dr. techn. Susanne Boll-Westermann
-| Prof. Dr. Werner Damm
 | Prof. Dr.-Ing. Axel Hahn
 | Prof. Dr.-Ing. Andreas Hein
 | Prof. Dr. Sebastian Lehnhoff

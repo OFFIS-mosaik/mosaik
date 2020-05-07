@@ -1,0 +1,243 @@
+image: python:3.7
+
+
+.cache:
+ paths:
+  - venv/
+  
+variables:
+  MyDocker_Container: "mycontainer"
+  TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  VERSION_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+
+
+stages:
+#- ver
+ - install_dependencies
+ - unit_tests
+ - build_docker
+ - run_docker
+ - release
+
+
+.only-default: &only-default
+  only:
+    - master
+    - merge_requests
+    - tags
+    - develop
+    - /^feature_\w+/
+    - /^release_\w+/
+    - /^hotfix_\w+/
+    
+
+Job_install_dependencies:  
+    <<: *only-default
+    stage: install_dependencies
+    before_script:
+      - python -V
+      - apt-get update -q -y 
+    script:
+     - pip install -U virtualenv
+     - virtualenv venv
+     - source venv/bin/activate
+     - pip install -r requirements.txt
+     - rm -rf dist
+     - rm -rf build
+     - python setup.py bdist_wheel sdist
+     - pip install .
+    artifacts:
+     paths:
+      - venv/
+      - venv/bin/
+      - venv/bin/bash/
+      - dist/
+      - build/
+     expire_in: 60 minutes
+     
+    except:
+        - tags
+
+Job_unit_tests:  
+    <<: *only-default
+    stage: unit_tests
+    script:
+     - source venv/bin/activate
+     - flake8 --version
+     #- flake8 --statistics --exclude=venv*,docs*
+     - pytest --version
+    # - py.test --version
+    # - py.test --ignore=venv/
+     #- python -m pytest --ignore=venv/
+     - pip install tox
+     - pip list
+     - tox
+    except:
+      - tags
+     
+build_docker_preproduction:
+   image: docker:latest
+   stage: build_docker
+   services:
+    - docker:dind
+   before_script:
+    - docker --version
+    - docker info
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+   script:
+    - docker build --pull -t $TEST_IMAGE .
+    - docker push $TEST_IMAGE
+   only:
+    refs:
+     - merge_requests
+     - develop
+     - /^release_\w+/
+     - /^hotfix_\w+/
+   except:
+     - master
+   
+  
+ 
+run_docker_preproduction:
+  #image: docker:git
+   image: docker:latest
+   stage: run_docker
+   services:
+    - docker:dind
+ 
+   before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+   script:
+    - docker pull $TEST_IMAGE
+    - docker tag $TEST_IMAGE myimage
+    - docker run --name 'mycontainer' myimage
+    - docker stop 'mycontainer'
+   after_script:
+    - docker info
+   only:
+    refs:
+     - merge_requests
+     - develop
+     - /^release_\w+/
+     - /^hotfix_\w+/
+   except:
+     - master
+     
+build_docker_production:
+   image: docker:latest
+   stage: build_docker
+   services:
+    - docker:dind
+   before_script:
+    - docker --version
+    - docker info
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+ 
+   script:
+    - docker build --pull -t $RELEASE_IMAGE .
+    - docker push $RELEASE_IMAGE
+   only:
+    refs:
+     - merge_requests
+     - master
+   except:
+     - develop
+   
+ 
+run_docker_production:
+   image: docker:latest
+   stage: run_docker
+   services:
+    - docker:dind
+   before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+   script:
+    - docker pull $RELEASE_IMAGE
+    - docker tag $RELEASE_IMAGE myimage
+    - docker run --name 'mycontainer' myimage
+    - docker stop 'mycontainer'
+   after_script:
+    - docker info
+   only:
+    refs:
+     - merge_requests
+     - master
+   except:
+     - develop
+   
+pypi:
+  stage: release
+  variables:
+    TWINE_USERNAME: $PYPI_USER
+    TWINE_PASSWORD: $PYPI_PASSWORDD
+  before_script:
+      - echo 'version name is = '
+      - echo ${CI_COMMIT_TAG}
+      - echo ${CI_COMMIT_REF_NAME}
+  script:
+      - pip install -U twine wheel setuptools
+      - rm -rf dist
+      - rm -rf build
+      - python setup.py check sdist bdist  # This will fail if your creds are bad.
+      - ls
+      - rm -rf dist
+      - rm -rf build
+      - ls
+      - python setup.py sdist bdist_wheel
+      - twine check dist/*
+      - echo $PYPI_USER
+      - twine upload --repository-url https://upload.pypi.org/legacy/ --username $PYPI_USER --password $PYPI_PASSWORDD dist/*
+  only:
+     - tags
+  except:
+    - develop
+    - /^feature_\w+/
+    - /^release_\w+/
+    - /^hotfix_\w+/
+  
+build_docker_tag:
+   image: docker:latest
+   stage: build_docker
+   services:
+    - docker:dind
+   before_script:
+    - docker --version
+    - docker info
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+   script:
+    - docker build --pull -t $VERSION_IMAGE .
+    - docker push $VERSION_IMAGE
+   only:
+    refs:
+     - tags
+   
+   
+ 
+run_docker_tag:
+   image: docker:latest
+   stage: run_docker
+   services:
+    - docker:dind
+   before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+   script:
+    - docker pull $VERSION_IMAGE
+    - docker tag $VERSION_IMAGE myimage
+    - docker run --name $MyDocker_Container myimage
+    - docker stop $MyDocker_Container
+   after_script:
+    - docker info
+   only:
+    refs:
+     - tags
+     
+     
+  
+
+
+    
+
+
+   
+

@@ -56,9 +56,11 @@ def test_start(world, monkeypatch):
         }
 
     start = lambda *args, **kwargs: Proxy  # flake8: noqa
-    monkeypatch.setattr(simmanager, 'start_inproc', start)
-    monkeypatch.setattr(simmanager, 'start_proc', start)
-    monkeypatch.setattr(simmanager, 'start_connect', start)
+
+    s = simmanager.StarterCollection()
+    monkeypatch.setitem(s, 'python', start)
+    monkeypatch.setitem(s, 'cmd', start)
+    monkeypatch.setitem(s, 'connect', start)
 
     ret = simmanager.start(world, 'ExampleSimA', '0', {})
     assert ret == Proxy

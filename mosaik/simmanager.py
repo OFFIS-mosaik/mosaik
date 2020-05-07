@@ -80,10 +80,12 @@ def start(world, sim_name, sim_id, sim_params):
                             'in sim_config' % sim_name)
 
     # Try available starters in that order and raise an error if none of them
-    # matches:
-    starters = collections.OrderedDict(python=start_inproc,
-                                       cmd=start_proc,
-                                       connect=start_connect)
+    # matches. Default starters are:
+    # - python: start_inproc
+    # - cmd: start_proc
+    # - connect: start_connect
+    starters = StarterCollection()
+
     for sim_type, start in starters.items():
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, sim_params)
@@ -633,3 +635,34 @@ class MosaikRemote:
                 '"%(src)s" to "%(dest)s". Add the argument '
                 '"async_requests=True" to the connection of entities from '
                 '"%(src)s" to "%(dest)s".' % data)
+
+
+class StarterCollection(object):
+    """
+    This class provides a singleton instance of a collection of simulation
+    starters. Default starters are:
+    - python: start_inproc
+    - cmd: start_proc
+    - connect: start_connect
+
+    External packages may add additional methods of starting simulations by
+    adding new elements:
+
+        from mosaik.simmanager import StarterCollection
+        s = StarterCollection()
+        s['my_starter'] = my_starter_func
+    """
+
+    # Singleton instance of the starter collection.
+    __instance = None
+
+    def __new__(cls):
+        if StarterCollection.__instance is None:
+            # Create collection with default starters (i.e., starters defined
+            # my mosaik core).
+            StarterCollection.__instance = collections.OrderedDict(
+                python=start_inproc,
+                cmd=start_proc,
+                connect=start_connect)
+
+        return StarterCollection.__instance

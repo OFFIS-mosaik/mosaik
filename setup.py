@@ -1,9 +1,15 @@
 from setuptools import setup, find_packages
+import os
+
+find_version='2.5.3'
+if os.environ.get('CI_COMMIT_TAG'):
+    find_version = os.environ['CI_COMMIT_TAG']
+
 
 
 setup(
     name='mosaik',
-    version='2.5.2',
+    version=find_version,
     author='Stefan Scherfke',
     author_email='mosaik@offis.de',
     description='Mosaik is a flexible Smart-Grid co-simulation framework.',
@@ -14,7 +20,7 @@ setup(
     install_requires=[
         'networkx>=2.0',
         'mosaik-api>=2.3',
-        'simpy>=3.0.10',
+        'simpy>=3.0.10,<4.0.0',
         'simpy.io>=0.2.3',
     ],
 
