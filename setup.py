@@ -22,6 +22,7 @@ setup(
         'mosaik-api>=2.3',
         'simpy>=3.0.10,<4.0.0',
         'simpy.io>=0.2.3',
+        'sortedcontainers>=2.1.0',
     ],
 
     packages=find_packages(exclude=['tests*']),
