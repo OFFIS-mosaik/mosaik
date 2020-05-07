@@ -33,15 +33,15 @@ we are `not alone with that`__).
 There are a lot of other resources, though:
 
 - All documentation is concentrated here, at Read the Docs.
-- `Source code`__ and `issues`__ are managed by Bitbucket.
+- `Source code`__ and `issues`__ are managed by GitLab.
 - Discussion takes place in our `mailing list`__.
 - News are spread through our `blog`__.
 
 There's not much that a wiki could add here.
 
 __ http://stevelosh.com/blog/2013/09/teach-dont-tell/
-__ https://bitbucket.org/mosaik/mosaik/src
-__ https://bitbucket.org/mosaik/mosaik/issues?status=new&status=open
+__ https://gitlab.com/mosaik/mosaik
+__ https://gitlab.com/mosaik/mosaik/-/issues
 __ http://mosaik.offis.de/mailinglist
 __ http://mosaik.offis.de/blog
 

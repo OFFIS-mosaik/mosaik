@@ -108,9 +108,9 @@ If you use the standard configurtion you can use the short version (feature "wra
    :lines: 1-3,17
 
 After setting up Odysseus we have to install the mosaik-zmq adapter in our mosaik virtualenv.
-It is available on `bitbucket <https://bitbucket.org/mosaik/mosaik-zmq>`_ and PyPI.
+It is available on `GitLab <https://gitlab.com/mosaik/mosaik-zmq>`_ and PyPI.
 To install it we have to activate our mosaik virtualenv and execute (if there are errors during installation have a look in the 
-`readme <https://bitbucket.org/mosaik/mosaik-zmq>`_):
+`readme <https://gitlab.com/mosaik/mosaik-zmq>`_):
 
 .. code-block:: python
 

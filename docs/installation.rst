@@ -16,7 +16,7 @@ Linux
 
 This guide is based on *(K)ubuntu 18.04 Bionic Beaver, 64bit*.
 
-Mosaik and the demo scenario require `Python`__ >= 3.3, which should be fine
+Mosaik and the demo scenario require `Python`__ >= 3.6, which should be fine
 for any recent linux distribution. Note that we test mosaik only for the most
 (typically three) recent python versions though.
 
@@ -82,7 +82,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
+      (mosaik)$ git clone https://gitlab.com/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -101,7 +101,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    You can cancel the simulation by pressing :kbd:`Ctrl-C`.
 
 __ https://github.com/rwl/PYPOWER
-__ https://bitbucket.org/mosaik/mosaik-demo
+__ https://gitlab.com/mosaik/mosaik-demo
 
 
 .. _os-x:
@@ -111,7 +111,7 @@ OS X
 
 This guide is based on *OS X 10.11 El Capitan*.
 
-1. Mosaik and the demo scenario require `Python`__ >= 3.3. OS X only ships with
+1. Mosaik and the demo scenario require `Python`__ >= 3.6. OS X only ships with
    some outdated versions of Python, so we need to install a recent Python 2
    and 3 first. The `recommended way`__ of doing this is with the packet manager `homebrew`__.
    To install homebrew, we need to open a *Terminal* and execute the following command:
@@ -214,7 +214,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    .. code-block:: bash
 
       (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://bitbucket.org/mosaik/mosaik-demo.git ~/Code/mosaik-demo
+      (mosaik)$ git clone https://gitlab.com/mosaik/mosaik-demo.git ~/Code/mosaik-demo
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
@@ -234,7 +234,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
 __ https://github.com/rwl/PYPOWER
 __ https://wheel.readthedocs.org/
-__ https://bitbucket.org/mosaik/mosaik-demo
+__ https://gitlab.com/mosaik/mosaik-demo
 
 
 .. _windows:
@@ -249,9 +249,9 @@ Windows
    website `here`__. The following instructions are for those who want to go 
    through installation process step-by-step.
 
-This guide is based on *Windows 7 or 8, 64bit*.
+This guide is based on *Windows 10, 64bit*.
 
-1. Mosaik and the demo scenario require `Python`__ >= 3.3. By default, it will
+1. Mosaik and the demo scenario require `Python`__ >= 3.6. By default, it will
    offer you a 32bit installer. You can find the *Windows x86-64 MSI installer*
    `here`__.
 
@@ -365,7 +365,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bat
 
-      (mosaik)C:\Users\yourname> git clone https://bitbucket.org/mosaik/mosaik-demo.git
+      (mosaik)C:\Users\yourname> git clone https://gitlab.com/mosaik/mosaik-demo.git
 
 3. Now we only need to install all requirements (mosaik and the simulators) and
    can finally run the demo:
