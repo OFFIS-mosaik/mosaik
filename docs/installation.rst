@@ -242,13 +242,6 @@ __ https://gitlab.com/mosaik/mosaik-demo
 Windows
 =======
 
-.. note::
-
-   Installer for mosaik including the demo are available for 32bit and 64bit 
-   Windows-systems and different Python-versions. You can find them on our 
-   website `here`__. The following instructions are for those who want to go 
-   through installation process step-by-step.
-
 This guide is based on *Windows 10, 64bit*.
 
 1. Mosaik and the demo scenario require `Python`__ >= 3.6. By default, it will
@@ -316,7 +309,7 @@ This guide is based on *Windows 10, 64bit*.
 
 __ https://mosaik.offis.de/install/#windows-installer
 __ https://www.python.org/
-__ https://www.python.org/downloads/release/python-342/
+__ https://www.python.org/downloads/release/python-382/
 __ https://pip.readthedocs.org/
 __ https://virtualenv.readthedocs.org/
 
@@ -328,31 +321,7 @@ Mosaik alone is not very useful (because it needs other simulators to perform
 a simulation), so we also provide a small demo scenario and some simple
 simulators as well as a mosaik binding for `PYPOWER`__.
 
-1. PYPOWER requires *NumPy* and *SciPy* and the database adapter requires
-   *h5py*. Christoph Gohlke `provides`__ installers for them (`NumPy`__,
-   `SciPy`__, `h5py`__). Select the appropriate files for your Python
-   installation (32bit or 64bit, Python version), e.g.,
-   *numpy-1.9.2+mkl-cp34-none-win_amd64.whl*,
-   *scipy-0.15.1-cp34-none-win_amd64.whl*, *h5py-2.5.0-cp34-none-win_amd64.whl*.
-
-   .. note::
-
-      Run ``python -c "import sys; print(sys.version)"`` from the command prompt
-      in order to get the system architecture and Python version.
-
-      If you have a 64bit Windows, but installed a 32bit Python, also use
-      the 32bit versions of NumPy etc.
-
-   Download them into your downloads folder and install them via the following
-   commands:
-
-   .. code-block:: bat
-
-      (mosaik) C:\Users\yourname> pip install Downloads\numpy-1.9.2+mkl-cp34-none-win_amd64.whl
-      (mosaik) C:\Users\yourname> pip install Downloads\scipy-0.15.1-cp34-none-win_amd64.whl
-      (mosaik) C:\Users\yourname> pip install Downloads\h5py-2.5.0-cp34-none-win_amd64.whl
-
-2. Download and install `git`__.
+1. Download and install `git`__.
 
    **Restart the command** prompt (as Admin if necessary and make sure you are
    in the right directory again) and activate the virtualenv again:
@@ -376,10 +345,6 @@ simulators as well as a mosaik binding for `PYPOWER`__.
       (mosaik)C:\Users\yourname\mosaik-demo> pip install -r requirements.txt
       (mosaik)C:\Users\yourname\mosaik-demo> python demo.py
 
-   An exception may be raised at the end of the installation, but as long as
-   before that exception there was the output *Successfully installed PYPOWER
-   mosaik-csv mosaik-householdsim ...*, everything is okay.
-
    The web visualisation shows the demo in your browser: http://localhost:8000. 
    You can click the nodes of the topology graph to show a timeline of their values.
    You can also drag them around to rearrange them.
@@ -388,8 +353,4 @@ simulators as well as a mosaik binding for `PYPOWER`__.
    may be raised. No problem. :-)
 
 __ https://github.com/rwl/PYPOWER
-__ http://www.lfd.uci.edu/~gohlke/pythonlibs/
-__ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
-__ http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
-__ http://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py
 __ https://git-scm.com/downloads
