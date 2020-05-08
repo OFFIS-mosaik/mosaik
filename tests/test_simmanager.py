@@ -82,6 +82,7 @@ def test_start_wrong_api_version(world, monkeypatch):
     An exception should be raised if the simulator uses an unsupported
     API version."""
     monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
+    monkeypatch.setattr(mosaik.simmanager, 'API_MINOR', 5)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
 
