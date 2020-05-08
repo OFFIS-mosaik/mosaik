@@ -56,9 +56,11 @@ def test_start(world, monkeypatch):
         }
 
     start = lambda *args, **kwargs: Proxy  # flake8: noqa
-    monkeypatch.setattr(simmanager, 'start_inproc', start)
-    monkeypatch.setattr(simmanager, 'start_proc', start)
-    monkeypatch.setattr(simmanager, 'start_connect', start)
+
+    s = simmanager.StarterCollection()
+    monkeypatch.setitem(s, 'python', start)
+    monkeypatch.setitem(s, 'cmd', start)
+    monkeypatch.setitem(s, 'connect', start)
 
     ret = simmanager.start(world, 'ExampleSimA', '0', {})
     assert ret == Proxy
@@ -80,6 +82,7 @@ def test_start_wrong_api_version(world, monkeypatch):
     An exception should be raised if the simulator uses an unsupported
     API version."""
     monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
+    monkeypatch.setattr(mosaik.simmanager, 'API_MINOR', 5)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
                              'ExampleSimA', '0', {})
 

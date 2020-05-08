@@ -10,11 +10,11 @@ Preparations
 ============
 
 #. Make a new release of `mosaik-api-python
-   <https://bitbucket.org/mosaik/mosaik-api-python>`_ if required. Use this
+   <https://gitlab.com/mosaik/mosaik-api-python>`_ if required. Use this
    guide as an orientation.
 
 #. Close all `tickets for the next version
-   <https://bitbucket.org/mosaik/mosaik/issues?status=new&status=open>`_.
+   <https://gitlab.com/mosaik/mosaik/-/issues>`_.
 
 #. Check all dependencies for new versions and update the *exact* version of
    all entries in :file:`requirements.txt`. Update the *minium* required
@@ -28,8 +28,8 @@ Preparations
     $ tox
     [...]
     ________ summary ________
-    py33: commands succeeded
-    py34: commands succeeded
+    py36: commands succeeded
+    py37: commands succeeded
     congratulations :)
 
 #. Build the docs (HTML is enough). Make sure there are no errors and undefined
@@ -169,7 +169,7 @@ Post release
 #. Activate the `documentation build
    <https://readthedocs.org/dashboard/mosaik>`_ for the new version.
 
-#. Make sure, the `demo <https://bitbucket.org/mosaik/mosaik-demo>`_ works with
+#. Make sure, the `demo <https://gitlab.com/mosaik/mosaik-demo>`_ works with
    the new release.
 
 #. Send the prepared email to the mailing list.
