@@ -7,6 +7,14 @@ commit`__ happened on that day. Since then, we've come a long way …
 
 __ https://bitbucket.org/mosaik/mosaik-legacy/commits/82aebc9a8d54fad3efd24ade4b28615873bee9ab
 
+2.6.0 - 2020-05-08
+==================
+
+- [NEW] The print of the simulation progress is now optional and can be disabled via a flag
+  world.run(END, print_progress=False).
+- [NEW] Additional starters can now be added via external packages (the standard ones are
+  'python', 'cmd', and 'connect').
+
 2.5.3 - 2020-04-30
 ==================
 
