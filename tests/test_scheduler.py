@@ -239,7 +239,7 @@ def test_step(world):
     inputs = object()
     sim = world.sims[0]
     sim.next_step = 0
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, None, 0)
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
@@ -252,7 +252,7 @@ def test_step_nonextstep(world):
     inputs = object()
     sim = world.sims[7]
     sim.next_step = 0
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, 0, 0)
+    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, None, 0)
     world.sims[6].progress = 2
 
     gen = scheduler.step(world, sim, inputs)

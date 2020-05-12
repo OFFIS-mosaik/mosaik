@@ -346,7 +346,10 @@ class SimProxy:
         # Simulation state
         self.last_step = -1
         self.next_step = None
-        self.next_self_step = 0
+        if any([bool(props.get('attrs', None)) or not bool(props.get('messages', None)) for props in meta['models'].values()]):
+            self.next_self_step = 0
+        else:
+            self.next_self_step = None
         self.progress_tmp = 0
         self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"

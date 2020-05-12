@@ -6,7 +6,7 @@ class SimulatorMock(mosaik_api.Simulator):
         raise NotImplementedError()
 
     def __init__(self):
-        super().__init__(meta={})
+        super().__init__(meta={'models': {'dummy': {'public': False}}})
         self.finalized = False
 
     def step(self, time, inputs):
