@@ -50,7 +50,8 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
     rt_start = perf_counter()
 
     try:
-        keep_running = get_keep_running_func(world, sim, until)
+        keep_running = get_keep_running_func(world, sim, until, rt_factor,
+                                             rt_start)
         while keep_running():
             try:
                 yield from has_next_step(world, sim)
@@ -80,7 +81,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
                               sim.sid, e)
 
 
-def get_keep_running_func(world, sim, until):
+def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     """
     Return a function that the :func:`sim_process()` uses to determine
     when to stop.
@@ -92,20 +93,36 @@ def get_keep_running_func(world, sim, until):
     def check_time():
         return sim.progress < until
 
-    if world.df_graph.out_degree(sim.sid) == 0:
-        # If a sim process has no successors (no one needs its data), we just
-        # need to check the time of its next step.
-        keep_running = check_time
-    else:
-        # If there are any successors, we also check if they are still alive.
+    check_functions = [check_time]
+
+    if world.df_graph.out_degree(sim.sid) != 0:
+        # If there are any successors, we check if they are still alive.
         # If all successors have finished, there's no need for us to continue
         # running.
-        processes = [world.sims[suc_sid].sim_proc
-                     for suc_sid in world.df_graph.successors(sim.sid)]
+        processes = [world.sims[suc_sid].sim_proc for suc_sid in
+                     world.df_graph.successors(sim.sid)]
 
-        def keep_running():
-            return check_time() and not all(process.triggered
-                                            for process in processes)
+        def check_successors():
+            return not all(process.triggered for process in processes)
+
+        check_functions.append(check_successors)
+
+    if world.df_graph.in_degree(sim.sid) == 0:
+        # If there are no predecessors, we can stop if there's no new self_step
+        # and we are not running in real-time mode or the total wall-clock time
+        # has passed.
+        if not rt_factor:
+            def check_selfstep():
+                return sim.next_self_step is not None
+        else:
+            def check_selfstep():
+                return sim.next_self_step is not None or \
+                    (perf_counter() - rt_start < rt_factor * until)
+
+        check_functions.append(check_selfstep)
+
+    def keep_running():
+        return all([f() for f in check_functions])
 
     return keep_running
 

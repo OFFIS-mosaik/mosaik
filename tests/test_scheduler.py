@@ -77,7 +77,7 @@ def test_sim_process_error(monkeypatch):
     class Sim:
         sid = 'spam'
 
-    def get_keep_running_func(world, sim, until):
+    def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         raise ConnectionError(1337, 'noob')
 
     monkeypatch.setattr(scheduler, 'get_keep_running_func',
