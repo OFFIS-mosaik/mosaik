@@ -221,6 +221,18 @@ class World(object):
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
+    def set_event(self, sid, time=0):
+        """
+        Set an initial step for simulator *sid* at time *time* (default=0).
+
+        Raise an :exc:`~mosaik.exceptions.ScenarioError` if there is already
+        one.
+        """
+        if self.sims[sid].next_self_step is not None:
+            raise ScenarioError('Simulator %s already has an initial time step.'
+                                % sid)
+        self.sims[sid].next_self_step = time
+
     def get_data(self, entity_set, *attributes):
         """
         Get and return the values of all *attributes* for each entity of an

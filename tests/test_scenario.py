@@ -8,6 +8,9 @@ sim_config = {
     'ExampleSim': {
         'python': 'example_sim.mosaik:ExampleSim',
     },
+    'SimulatorMockNoAttrs': {
+        'python': 'tests.mocks.simulator_mock_no_attrs:SimulatorMockNoAttrs',
+    },
 }
 
 
@@ -287,6 +290,21 @@ def test_world_connect_time_shifted(world):
             },
         },
     }
+
+
+def test_world_set_event(world):
+    world.start('SimulatorMockNoAttrs')
+    sim = world.sims['SimulatorMockNoAttrs-0']
+    assert sim.next_self_step is None
+
+    world.set_event(sim.sid)
+    assert sim.next_self_step == 0
+
+    with pytest.raises(ScenarioError) as err:
+        world.set_event(sim.sid)
+    assert str(err.value) == "Simulator SimulatorMockNoAttrs-0 already has " \
+                             "an initial time step."
+
 
 
 def test_world_get_data(world):
