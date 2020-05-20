@@ -105,6 +105,8 @@ class World(object):
         # Cache for simulation results
         self._df_cache = defaultdict(dict)
         self._df_cache_min_time = 0
+        # Simulator's ranks from topological sort of df_graph
+        self.sim_ranks = None
 
     def start(self, sim_name, **sim_params):
         """
@@ -308,6 +310,15 @@ class World(object):
         if self.srv_sock is None:
             raise RuntimeError('Simulation has already been run and can only '
                                'be run once for a World instance.')
+
+        # Deduce a (potentially non-unique) simulator ranking from a
+        # topological sort of the df_graph:
+        graph_tmp = self.df_graph.copy()
+        weak_edges = [(u,v) for (u, v, w) in graph_tmp.edges.data('weak') if w]
+        graph_tmp.remove_edges_from(weak_edges)
+        topo_sort = list(networkx.topological_sort(graph_tmp))
+        self.sim_ranks = dict(zip(topo_sort, range(len(topo_sort))))
+        del graph_tmp, weak_edges
 
         # Check if a simulator is not connected to anything:
         for sid, deg in sorted(list(networkx.degree(self.df_graph))):

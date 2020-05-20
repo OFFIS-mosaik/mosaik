@@ -356,6 +356,7 @@ class SimProxy:
         self.input_messages = None
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
+        self.wait_events = None  # SimPy event
 
     def stop(self):
         """

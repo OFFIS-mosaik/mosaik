@@ -157,6 +157,7 @@ def has_next_step(world, sim):
         sim.has_next_step.succeed()
         yield sim.has_next_step
     else:
+        check_resolve_deadlocks(world)
         yield sim.has_next_step
         next_input_message = sim.input_messages.peek_next_time()
         next_step = max(next_input_message, sim.progress)
@@ -208,7 +209,39 @@ def wait_for_dependencies(world, sim, lazy_stepping):
             events.append(evt)
             clg[dep_sid][sim.sid]['wait_shifted'] = evt
 
-    return world.env.all_of(events)
+    wait_events = world.env.all_of(events)
+    sim.wait_events = wait_events
+
+    check_resolve_deadlocks(world)
+
+    return wait_events
+
+
+def check_resolve_deadlocks(world):
+    sims_waiting = []
+    for isim in world.sims.values():
+        if isim.has_next_step:
+            no_next_step = not isim.has_next_step.triggered
+        else:
+            no_next_step = False
+        if isim.wait_events:
+            is_waiting = not isim.wait_events.triggered
+        else:
+            is_waiting = False
+        sims_waiting.append(no_next_step or is_waiting)
+
+    if all(sims_waiting):
+        min_next_step = min([isim.next_step for isim in world.sims.values() if
+                             isim.next_step is not None])
+
+        next_waiting_sims = [(world.sim_ranks[isid], isid) for isid, isim in world.sims.items() if
+                             isim.next_step == min_next_step]
+        next_sim = min(next_waiting_sims)[1]
+
+        for pre_sid in world.df_graph.predecessors(next_sim):
+            edge = world.df_graph[pre_sid][next_sim]
+            if 'wait_event' in edge:
+                edge.pop('wait_event').succeed()
 
 
 def get_input_data(world, sim):
