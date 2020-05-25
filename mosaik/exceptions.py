@@ -3,6 +3,13 @@ This module provides mosaik specific exception types.
 """
 
 
+class NoStepsException(Exception):
+    """
+    This exception is raised if none of the simulators has a next step
+    and the simulation is not in real-time mode.
+    """
+
+
 class ScenarioError(Exception):
     """
     This exception is raised if something fails during the creation of
@@ -25,3 +32,10 @@ class SimulationError(Exception):
             arg += '%s: ' % orig
         arg += msg
         super().__init__(arg)
+
+
+class WakeUpException(Exception):
+    """
+    This exception is raised if a simulator is woken up by a successor
+    which has terminated.
+    """

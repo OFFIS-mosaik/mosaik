@@ -3,7 +3,8 @@ This module is responsible for performing the simulation of a scenario.
 """
 from time import perf_counter
 
-from mosaik.exceptions import SimulationError
+from mosaik.exceptions import (SimulationError, NoStepsException,
+                               WakeUpException)
 from mosaik.simmanager import FULL_ID
 
 
@@ -55,10 +56,12 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         while keep_running():
             try:
                 yield from has_next_step(world, sim)
-            except StopIteration:
+            except WakeUpException:
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
                 continue
+            except NoStepsException:
+                break
             yield wait_for_dependencies(world, sim, lazy_stepping)
             input_data = get_input_data(world, sim)
             rt_check(rt_factor, rt_start, rt_strict, sim)
@@ -157,8 +160,14 @@ def has_next_step(world, sim):
         sim.has_next_step.succeed()
         yield sim.has_next_step
     else:
-        check_resolve_deadlocks(world)
-        yield sim.has_next_step
+        no_steps = check_resolve_deadlocks(world)
+        if no_steps:
+            raise NoStepsException
+        try:
+            yield sim.has_next_step
+        except StopIteration:
+            raise WakeUpException
+
         next_input_message = sim.input_messages.peek_next_time()
         next_step = max(next_input_message, sim.progress)
 
@@ -231,8 +240,12 @@ def check_resolve_deadlocks(world):
         sims_waiting.append(no_next_step or is_waiting)
 
     if all(sims_waiting):
-        min_next_step = min([isim.next_step for isim in world.sims.values() if
-                             isim.next_step is not None])
+        next_steps = [isim.next_step for isim in world.sims.values()
+                      if isim.next_step is not None]
+        if not next_steps:
+            return True
+
+        min_next_step = min(next_steps)
 
         next_waiting_sims = [(world.sim_ranks[isid], isid) for isid, isim in world.sims.items() if
                              isim.next_step == min_next_step]
@@ -242,6 +255,11 @@ def check_resolve_deadlocks(world):
             edge = world.df_graph[pre_sid][next_sim]
             if 'wait_event' in edge:
                 edge.pop('wait_event').succeed()
+
+        for suc_sid in world.df_graph.successors(next_sim):
+            edge = world.df_graph[next_sim][suc_sid]
+            if 'wait_lazy_or_async' in edge:
+                edge.pop('wait_lazy_or_async').succeed()
 
 
 def get_input_data(world, sim):
