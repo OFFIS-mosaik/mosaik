@@ -351,10 +351,10 @@ def get_outputs(world, sim):
             messageflows = graph[sid][dest_sid]['messageflows']
             if messageflows:
                 input_messages = world.sims[dest_sid].input_messages
+                step_added = False
                 for src_eid, dest_eid, messages in messageflows:
                     for src_msg, dest_msg in messages:
                         content = data.get(src_eid, {}).get(src_msg, SENTINEL)
-                        step_added = False
                         if content is not SENTINEL:
                             input_messages.add(message_time, sid, src_eid, src_msg, content)
                             step_added = True
@@ -363,8 +363,8 @@ def get_outputs(world, sim):
                                 input_messages.add_empty_time(message_time)
                                 step_added = True
 
-                        if step_added and not world.sims[dest_sid].has_next_step.triggered:
-                            world.sims[dest_sid].has_next_step.succeed()
+                if step_added and not world.sims[dest_sid].has_next_step.triggered:
+                    world.sims[dest_sid].has_next_step.succeed()
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.progress_tmp):
         world._df_cache[i][sim.sid] = data
