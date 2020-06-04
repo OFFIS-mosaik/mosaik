@@ -50,7 +50,7 @@ def pre_step(world, sim, inputs):
     node_id = node % (sid, next_step)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
-    print('DEBUG', node_id, node % (sid, sim.last_step), sim.next_self_step)
+
     if sim.last_step >= 0 and next_step == sim.next_self_step:
         eg.add_edge(node % (sid, sim.last_step), node_id)
 

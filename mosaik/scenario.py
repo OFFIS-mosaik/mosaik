@@ -167,7 +167,7 @@ class World(object):
 
         connection_lists, missing_attrs = \
             self._check_attributes(src, dest, attr_pairs)
-        print('connection_lists',connection_lists)
+
         if missing_attrs:
             raise ScenarioError('At least one attribute/message does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
