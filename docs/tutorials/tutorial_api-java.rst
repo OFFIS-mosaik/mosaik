@@ -13,8 +13,8 @@ i. e. we will try to replicate the first part of the :doc:`Python tutorial</tuto
 Getting the Java API
 ====================
 
-First you have to get the sources of the `mosaik-API for Java <https://bitbucket.org/mosaik/mosaik-api-java>`_ 
-which is provided on Bitbucket. Clone it and put it in the development environment of your choice.
+First you have to get the sources of the `mosaik-API for Java <https://gitlab.com/mosaik/mosaik-api-java>`_ 
+which is provided on Gitlab. Clone it and put it in the development environment of your choice.
 
 Creating the model
 ==================

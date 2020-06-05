@@ -11,7 +11,8 @@ from mosaik.simmanager import FULL_ID
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
+def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
+        lazy_stepping=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -37,14 +38,15 @@ def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, lazy_stepping))
+                                    rt_strict, print_progress, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
+def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
+                lazy_stepping):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -69,7 +71,8 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
             yield from step(world, sim, input_data)
             yield from get_outputs(world, sim)
             world.sim_progress = get_progress(world.sims, until)
-            print('Progress: %.2f%%' % world.sim_progress, end='\r')
+            if print_progress:
+                print('Progress: %.2f%%' % world.sim_progress, end='\r')
 
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another

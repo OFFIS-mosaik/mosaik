@@ -1,6 +1,14 @@
 Changelog
 =========
 
+2.6.0 - 2020-05-08
+------------------
+
+- [NEW] The print of the simulation progress is now optional and can be disabled via a flag
+  world.run(END, print_progress=False).
+- [NEW] Additional starters can now be added via external packages (the standard ones are
+  'python', 'cmd', and 'connect').
+
 2.5.3 - 2020-04-30
 ------------------
 

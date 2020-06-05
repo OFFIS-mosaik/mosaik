@@ -46,7 +46,7 @@ all development dependencies. Finally, install mosaik in `editable mode
 .. code-block:: bash
 
    $ cd ~/Code
-   $ git clone ssh://git@bitbucket.org/mosaik/mosaik.git
+   $ git clone https://gitlab.com/mosaik/mosaik.git
    $ cd mosaik
    $ mkvirtualenv -p /usr/bin/python3 mosaik
    (mosaik)$ pip install -r requirements.txt
@@ -93,7 +93,7 @@ Before making a release (and in between) you should make sure that the tests
 are passing on all supported Python versions. You do this with `tox
 <http://tox.readthedocs.org/en/latest/>`_. Tox' config file :file:`tox.ini`
 will show you which versions we support. Every interpreter listed here (e.g.,
-Python 3.3 or PyPy) should be installed on your system. Running tox is than
+Python 3.6 or PyPy) should be installed on your system. Running tox is than
 very easy:
 
 .. code-block:: bash
@@ -101,8 +101,8 @@ very easy:
    $ tox
    ...
    _______ summary ________
-   py33: commands succeeded
-   py34: commands succeeded
+   py36: commands succeeded
+   py37: commands succeeded
    congratulations :)
 
 

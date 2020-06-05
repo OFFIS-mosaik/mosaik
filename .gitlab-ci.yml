@@ -19,6 +19,7 @@ stages:
  - build_docker
  - run_docker
  - release
+ - Trigger-cross-projects
 
 
 .only-default: &only-default
@@ -233,6 +234,15 @@ run_docker_tag:
      - tags
      
      
+mosaik-demo:
+   stage: Trigger-cross-projects
+   trigger: 
+    project: mosaik/mosaik-demo
+    branch: master  
+   only:
+    refs:
+     - tags
+
   
 
 
