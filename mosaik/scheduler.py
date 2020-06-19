@@ -230,39 +230,46 @@ def wait_for_dependencies(world, sim, lazy_stepping):
 
 
 def check_resolve_deadlocks(world):
-    sims_waiting = []
     for isim in world.sims.values():
-        if isim.has_next_step:
-            no_next_step = not isim.has_next_step.triggered
-        else:
-            no_next_step = False
-        if isim.wait_events:
-            is_waiting = not isim.wait_events.triggered
-        else:
-            is_waiting = False
-        sims_waiting.append(no_next_step or is_waiting)
+        if not isim.has_next_step:
+            # isim hasn't executed `has_next_step` yet and will perform
+            # a deadlock check again if necessary.
+            return
+        elif not isim.has_next_step.triggered:
+            continue
+        if not isim.wait_events or isim.wait_events.triggered:
+            # isim hasn't executed `wait_for_dependencies` yet and will perform
+            # a deadlock check again if necessary or is not waiting.
+            return
 
-    if all(sims_waiting):
-        next_steps = [isim.next_step for isim in world.sims.values()
-                      if isim.next_step is not None]
-        if not next_steps:
-            return True
+    # This part will only be reached if all simulators either have no next step
+    # or are waiting for dependencies.
+    next_steps = [isim.next_step for isim in world.sims.values()
+                  if isim.next_step is not None]
+    if not next_steps:
+        return True
 
-        min_next_step = min(next_steps)
+    min_next_step = min(next_steps)
 
-        next_waiting_sims = [(world.sim_ranks[isid], isid) for isid, isim in world.sims.items() if
-                             isim.next_step == min_next_step]
-        next_sim = min(next_waiting_sims)[1]
+    next_waiting_sims = [(world.sim_ranks[isid], isid)
+                         for isid, isim in world.sims.items()
+                         if isim.next_step == min_next_step]
+    next_sim = min(next_waiting_sims)[1]
 
-        for pre_sid in world.df_graph.predecessors(next_sim):
-            edge = world.df_graph[pre_sid][next_sim]
-            if 'wait_event' in edge:
-                edge.pop('wait_event').succeed()
+    for pre_sid in world.df_graph.predecessors(next_sim):
+        edge = world.df_graph[pre_sid][next_sim]
+        if 'wait_event' in edge:
+            edge.pop('wait_event').succeed()
 
-        for suc_sid in world.df_graph.successors(next_sim):
-            edge = world.df_graph[next_sim][suc_sid]
-            if 'wait_lazy_or_async' in edge:
-                edge.pop('wait_lazy_or_async').succeed()
+    for pre_sid in world.shifted_graph.predecessors(next_sim):
+        edge = world.shifted_graph[pre_sid][next_sim]
+        if 'wait_shifted' in edge:
+            edge.pop('wait_shifted').succeed()
+
+    for suc_sid in world.df_graph.successors(next_sim):
+        edge = world.df_graph[next_sim][suc_sid]
+        if 'wait_lazy_or_async' in edge:
+            edge.pop('wait_lazy_or_async').succeed()
 
 
 def get_input_data(world, sim):
