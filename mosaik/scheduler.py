@@ -386,10 +386,6 @@ def get_outputs(world, sim):
                         if content is not SENTINEL:
                             input_messages.add(message_time, sid, src_eid, src_msg, content)
                             step_added = True
-                        else:
-                            if message_time >= world.sims[dest_sid].progress:
-                                input_messages.add_empty_time(message_time)
-                                step_added = True
 
                 if step_added and not world.sims[dest_sid].has_next_step.triggered:
                     world.sims[dest_sid].has_next_step.succeed()
