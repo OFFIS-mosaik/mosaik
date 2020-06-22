@@ -64,9 +64,9 @@ def pre_step(world, sim, inputs):
                     if new_messages:
                         break
             if not (world.df_graph[pre][sid]['dataflows'] or world.df_graph[pre][sid]['async_requests'] or new_messages):
-                break
+                continue
             if next_step == 0 and (ig == 1 or world.df_graph[pre][sid]['weak']):
-                break
+                continue
             for inode in world.execution_graph.nodes:
                 if inode.rsplit('-', 1)[0] == pre:
                     istep = int(inode.rsplit('-', 1)[1])
