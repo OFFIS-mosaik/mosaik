@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 """
 from time import perf_counter
+from simpy.exceptions import Interrupt
 
 from mosaik.exceptions import (SimulationError, NoStepsException,
                                WakeUpException)
@@ -64,7 +65,14 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                 continue
             except NoStepsException:
                 break
-            yield wait_for_dependencies(world, sim, lazy_stepping)
+            while True:
+                try:
+                    yield wait_for_dependencies(world, sim, lazy_stepping)
+                    break
+                except Interrupt as i:
+                    sim.next_step = get_next_step(sim)
+                    clear_wait_events(world, sim.sid)
+                    continue
             input_data = get_input_data(world, sim)
             rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from rt_sleep(rt_factor, rt_start, sim, world)
@@ -256,20 +264,7 @@ def check_resolve_deadlocks(world):
                          if isim.next_step == min_next_step]
     next_sim = min(next_waiting_sims)[1]
 
-    for pre_sid in world.df_graph.predecessors(next_sim):
-        edge = world.df_graph[pre_sid][next_sim]
-        if 'wait_event' in edge:
-            edge.pop('wait_event').succeed()
-
-    for pre_sid in world.shifted_graph.predecessors(next_sim):
-        edge = world.shifted_graph[pre_sid][next_sim]
-        if 'wait_shifted' in edge:
-            edge.pop('wait_shifted').succeed()
-
-    for suc_sid in world.df_graph.successors(next_sim):
-        edge = world.df_graph[next_sim][suc_sid]
-        if 'wait_lazy_or_async' in edge:
-            edge.pop('wait_lazy_or_async').succeed()
+    clear_wait_events(world, next_sim)
 
 
 def get_input_data(world, sim):
@@ -384,11 +379,18 @@ def get_outputs(world, sim):
                     for src_msg, dest_msg in messages:
                         content = data.get(src_eid, {}).get(src_msg, SENTINEL)
                         if content is not SENTINEL:
-                            input_messages.add(message_time, sid, src_eid, src_msg, content)
+                            input_messages.add(message_time, sid, src_eid,
+                                               src_msg, content)
                             step_added = True
 
                 if step_added and not world.sims[dest_sid].has_next_step.triggered:
                     world.sims[dest_sid].has_next_step.succeed()
+                if step_added and world.sims[dest_sid].wait_events\
+                        and not world.sims[dest_sid].wait_events.triggered\
+                        and message_time < world.sims[dest_sid].next_step\
+                        and message_time >= world.sims[dest_sid].progress:
+                    world.sims[dest_sid].sim_proc.interrupt('Earlier step')
+
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.progress_tmp):
         world._df_cache[i][sim.sid] = data
@@ -460,3 +462,20 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
             else:
                 print('Simulation too slow for real-time factor %s - %ss '
                       'behind time.' % (rt_factor, delta))
+
+
+def clear_wait_events(world, sid):
+    for pre_sid in world.df_graph.predecessors(sid):
+        edge = world.df_graph[pre_sid][sid]
+        if 'wait_event' in edge:
+            edge.pop('wait_event').succeed()
+
+    for pre_sid in world.shifted_graph.predecessors(sid):
+        edge = world.shifted_graph[pre_sid][sid]
+        if 'wait_shifted' in edge:
+            edge.pop('wait_shifted').succeed()
+
+    for suc_sid in world.df_graph.successors(sid):
+        edge = world.df_graph[sid][suc_sid]
+        if 'wait_lazy_or_async' in edge:
+            edge.pop('wait_lazy_or_async').succeed()

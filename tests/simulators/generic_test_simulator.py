@@ -61,7 +61,10 @@ class TestSimulator(mosaik_api.Simulator):
         self.wallclock_duration = wallclock_duration
 
         if not continuous:
-            del self.meta['models']['TestModel']['attrs']
+            from copy import deepcopy
+            meta_return = deepcopy(self.meta)
+            meta_return['models']['TestModel']['attrs'] = []
+            return meta_return
         return self.meta
 
     def create(self, num, model):

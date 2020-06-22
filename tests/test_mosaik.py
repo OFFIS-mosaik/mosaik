@@ -28,7 +28,7 @@ sim_config_test = {
 test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
 test_cases.append(('scenario_5', sim_config_remote))
 test_cases.append(('scenario_6', sim_config_remote))
-test_cases.extend([('scenario_%s' % (i + 1), sim_config_test) for i in range(6, 11)])
+test_cases.extend([('scenario_%s' % (i + 1), sim_config_test) for i in range(6, 12)])
 
 
 # Test all combinations of both sim configs and the 5 test scenarios.
@@ -38,7 +38,8 @@ def test_mosaik(fixture, sim_config):
     world = scenario.World(sim_config, debug=True)
     try:
         fixture.create_scenario(world)
-        world.run(until=fixture.UNTIL)
+        lazy_stepping = getattr(fixture, 'LAZY_STEPPING', True)
+        world.run(until=fixture.UNTIL, lazy_stepping=lazy_stepping)
 
         expected_graph = nx.parse_edgelist(fixture.EXECUTION_GRAPH.split('\n'),
                                            create_using=nx.DiGraph(), data=())
