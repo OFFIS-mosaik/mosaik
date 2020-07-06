@@ -217,7 +217,6 @@ def test_get_input_data(world):
     world.sims[2].input_messages = InputMessages()
     world.sims[2].input_messages.set_connections(
         [world.df_graph, world.shifted_graph], 2)
-    print(world.sims[2].input_messages.predecessors)
     world.sims[2].input_messages.add(0, 0, '0', 'y', 3)
     data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {'in': {'0.0.y': [3], '0.1': 0, '1.2': 4, '3': 5},
@@ -303,10 +302,8 @@ def test_get_outputs(world):
         1: {'foo': 'bar'},
         2: {0: {'0': {'x': 0, 'y': 1}}},
     }
-    assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'y')][
-                    'input_queue']) == {0: 1, 2: 1}
-    assert dict(world.sims[2].input_messages.predecessors[(0, '0', 'z')][
-                    'input_queue']) == {}
+    assert world.sims[2].input_messages.input_queue == [(0, '0.0.y', 1),
+                                                        (2, '0.0.y', 1)]
     assert sim.progress == 3
 
 
@@ -333,8 +330,7 @@ def test_get_outputs_shifted(world):
     assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
     }
-    assert dict(world.sims[4].input_messages.predecessors[(5, '0', 'y')][
-                    'input_queue']) == {2: 1}
+    assert world.sims[4].input_messages.input_queue == [(2, '5.0.y', 1)]
 
 
 def test_get_progress():

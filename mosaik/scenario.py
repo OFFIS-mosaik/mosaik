@@ -329,7 +329,7 @@ class World(object):
         for sid, sim in self.sims.items():
             input_messages = InputMessages()
             input_messages.set_connections([self.df_graph, self.shifted_graph], sid)
-            if input_messages.predecessors:
+            if input_messages.output_map:
                 sim.input_messages = input_messages
 
         print('Starting simulation.')
