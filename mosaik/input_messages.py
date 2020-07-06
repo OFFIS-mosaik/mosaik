@@ -12,10 +12,8 @@ class InputMessages:
                 connections = graph[src_sid][sid]['messageflows']
                 for src_eid, dest_eid, messages in connections:
                     for src_msg, dest_msg in messages:
-                        src_msg_full_id =\
-                            '.'.join(map(str, (src_sid, src_eid, src_msg)))
-                        self.output_map.setdefault(src_msg_full_id, set()).add(
-                                                        (dest_eid, dest_msg))
+                        src_msg_full_id = '.'.join(map(str, (src_sid, src_eid, src_msg)))
+                        self.output_map.setdefault(src_msg_full_id, set()).add((dest_eid, dest_msg))
 
     def add(self, message_time, src_sid, src_eid, src_msg, value):
         src_msg_full_id = '.'.join(map(str, (src_sid, src_eid, src_msg)))
@@ -26,13 +24,16 @@ class InputMessages:
 
     def get_messages(self, step):
         messages = {}
+        for src_msg_full_id, dest_tuples in self.output_map.items():
+            for eid, attr in dest_tuples:
+                messages.setdefault(eid, {}).setdefault(attr, {})[
+                                                          src_msg_full_id] = []
 
         while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
             _, src_msg_full_id, value = hq.heappop(self.input_queue)
 
             for eid, attr in self.output_map[src_msg_full_id]:
-                messages.setdefault(eid, {}).setdefault(attr, {})\
-                    .setdefault(src_msg_full_id, []).append(value)
+                messages[eid][attr][src_msg_full_id].append(value)
 
         return messages
 

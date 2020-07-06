@@ -60,7 +60,8 @@ def pre_step(world, sim, inputs):
             new_messages = False
             for src_eid, dest_eid, messages in messageflows:
                 for src_msg, dest_msg in messages:
-                    new_messages = '.'.join(map(str, (pre, src_eid, src_msg))) in inputs.get(dest_eid, {}).get(dest_msg, {}).keys()
+                    new_messages = inputs.get(dest_eid, {}).get(dest_msg, {})\
+                        .get('.'.join(map(str, (pre, src_eid, src_msg))), None)
                     if new_messages:
                         break
             if not (world.df_graph[pre][sid]['dataflows'] or world.df_graph[pre][sid]['async_requests'] or new_messages):

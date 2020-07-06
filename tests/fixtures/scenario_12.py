@@ -33,8 +33,8 @@ INPUTS = {
     'B-0-0': {'0': {'inputs': {'A-0.0': 0}}},
     'B-0-1': {'0': {'inputs': {'A-0.0': 0}}},
     'B-0-2': {'0': {'inputs': {'A-0.0': 2}}},
-    'C-0-1': {'0': {'message_in': {'B-0.0.last_step_message': [1]}}},
-    'C-0-2': {'0': {'message_in': {'A-0.0.last_step_message': [2]}}},
+    'C-0-1': {'0': {'message_in': {'A-0.0.last_step_message': [], 'B-0.0.last_step_message': [1]}}},
+    'C-0-2': {'0': {'message_in': {'A-0.0.last_step_message': [2], 'B-0.0.last_step_message': []}}},
 }
 
 UNTIL = 3
