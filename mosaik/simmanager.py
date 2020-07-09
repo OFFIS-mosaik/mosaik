@@ -25,6 +25,7 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
+from mosaik.event_buffer import EventBuffer
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -346,17 +347,18 @@ class SimProxy:
         # Simulation state
         self.last_step = -1
         self.next_step = None
-        if any([bool(props.get('attrs', None)) or not bool(props.get('messages', None)) for props in meta['models'].values()]):
-            self.next_self_step = 0
-        else:
-            self.next_self_step = None
         self.progress_tmp = 0
         self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
-        self.input_messages = None
+        self.event_buffer = EventBuffer()
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event
+        if any([bool(props.get('attrs', None)) or not bool(props.get('messages', None)) for props in meta['models'].values()]):
+            self.next_self_step = 0
+            self.event_buffer.add_self_step(0)
+        else:
+            self.next_self_step = None
 
     def stop(self):
         """

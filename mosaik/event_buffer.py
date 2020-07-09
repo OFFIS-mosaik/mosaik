@@ -1,10 +1,10 @@
 import heapq as hq
 
 
-class InputMessages:
+class EventBuffer:
     def __init__(self):
         self.output_map = {}
-        self.input_queue = []
+        self.event_queue = []
 
     def set_connections(self, connection_graphs, sid):
         for graph in connection_graphs:
@@ -17,10 +17,10 @@ class InputMessages:
 
     def add(self, message_time, src_sid, src_eid, src_msg, value):
         src_msg_full_id = '.'.join(map(str, (src_sid, src_eid, src_msg)))
-        hq.heappush(self.input_queue, (message_time, src_msg_full_id, value))
+        hq.heappush(self.event_queue, (message_time, src_msg_full_id, value))
 
-    def add_empty_time(self, message_time):
-        hq.heappush(self.input_queue, (message_time, '', None))
+    def add_self_step(self, message_time):
+        hq.heappush(self.event_queue, (message_time, 'self_step', None))
 
     def get_messages(self, step):
         messages = {}
@@ -29,8 +29,10 @@ class InputMessages:
                 messages.setdefault(eid, {}).setdefault(attr, {})[
                                                           src_msg_full_id] = []
 
-        while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
-            _, src_msg_full_id, value = hq.heappop(self.input_queue)
+        while len(self.event_queue) > 0 and self.event_queue[0][0] <= step:
+            _, src_msg_full_id, value = hq.heappop(self.event_queue)
+            if src_msg_full_id == 'self_step':
+                continue
 
             for eid, attr in self.output_map[src_msg_full_id]:
                 messages[eid][attr][src_msg_full_id].append(value)
@@ -38,12 +40,12 @@ class InputMessages:
         return messages
 
     def peek_next_time(self):
-        if len(self.input_queue):
-            next_time = self.input_queue[0][0]
+        if len(self.event_queue):
+            next_time = self.event_queue[0][0]
         else:
             next_time = None
 
         return next_time
 
     def __bool__(self):
-        return bool(len(self.input_queue))
+        return bool(len(self.event_queue))

@@ -20,6 +20,8 @@ A-0-2 B-0-2
 """
 
 INPUTS = {
+    'B-0-0': {'0': {'message_in': {'A-0.0.last_step_message': []}}},
+    'B-0-1': {'0': {'message_in': {'A-0.0.last_step_message': []}}},
     'B-0-2': {'0': {'message_in': {'A-0.0.last_step_message': [2]}}},
 }
 

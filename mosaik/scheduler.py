@@ -142,17 +142,9 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
 
 def get_next_step(sim):
-    if sim.input_messages:
-        next_input_message = sim.input_messages.peek_next_time()
-        next_input_step = max(next_input_message, sim.progress)
-    else:
-        next_input_step = None
-
-    next_steps = [istep for istep in [next_input_step, sim.next_self_step] if istep is not None]
-    if next_steps:
-        next_step = min(next_steps)
-    else:
-        next_step = None
+    next_step = sim.event_buffer.peek_next_time()
+    if next_step:
+        next_step = max(next_step, sim.progress)
 
     return next_step
 
@@ -179,7 +171,7 @@ def has_next_step(world, sim):
         except StopIteration:
             raise WakeUpException
 
-        next_input_message = sim.input_messages.peek_next_time()
+        next_input_message = sim.event_buffer.peek_next_time()
         next_step = max(next_input_message, sim.progress)
 
     sim.next_step = next_step
@@ -303,9 +295,8 @@ def get_input_data(world, sim):
                         .setdefault(dest_attr, {})
                     vals[FULL_ID % (src_sid, src_eid)] = v
 
-    if sim.input_messages:
-        input_messages = sim.input_messages.get_messages(sim.next_step)
-        recursive_update(input_data, input_messages)
+    input_messages = sim.event_buffer.get_messages(sim.next_step)
+    recursive_update(input_data, input_messages)
 
     return input_data
 
@@ -350,6 +341,8 @@ def step(world, sim, inputs):
 
     sim.next_step = None
     sim.next_self_step = next_step
+    if next_step is not None:
+        sim.event_buffer.add_self_step(next_step)
 
 
 def get_outputs(world, sim):
@@ -373,13 +366,13 @@ def get_outputs(world, sim):
         for dest_sid in graph.successors(sid):
             messageflows = graph[sid][dest_sid]['messageflows']
             if messageflows:
-                input_messages = world.sims[dest_sid].input_messages
+                event_buffer = world.sims[dest_sid].event_buffer
                 step_added = False
                 for src_eid, dest_eid, messages in messageflows:
                     for src_msg, dest_msg in messages:
                         content = data.get(src_eid, {}).get(src_msg, SENTINEL)
                         if content is not SENTINEL:
-                            input_messages.add(message_time, sid, src_eid,
+                            event_buffer.add(message_time, sid, src_eid,
                                                src_msg, content)
                             step_added = True
 

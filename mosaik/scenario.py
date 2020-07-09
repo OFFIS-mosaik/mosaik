@@ -16,7 +16,6 @@ from mosaik import simmanager
 from mosaik import scheduler
 from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.input_messages import InputMessages
 
 
 backend = simmanager.backend
@@ -234,6 +233,7 @@ class World(object):
             raise ScenarioError('Simulator %s already has an initial time step.'
                                 % sid)
         self.sims[sid].next_self_step = time
+        self.sims[sid].event_buffer.add_self_step(time)
 
     def get_data(self, entity_set, *attributes):
         """
@@ -327,10 +327,7 @@ class World(object):
                 print('WARNING: %s has no connections.' % sid)
 
         for sid, sim in self.sims.items():
-            input_messages = InputMessages()
-            input_messages.set_connections([self.df_graph, self.shifted_graph], sid)
-            if input_messages.output_map:
-                sim.input_messages = input_messages
+            sim.event_buffer.set_connections([self.df_graph, self.shifted_graph], sid)
 
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested

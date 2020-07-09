@@ -1,5 +1,5 @@
 from mosaik import exceptions, scenario, scheduler, simmanager
-from mosaik.input_messages import InputMessages
+from mosaik.event_buffer import EventBuffer
 import pytest
 
 from tests.mocks.simulator_mock import SimulatorMock
@@ -48,9 +48,10 @@ def test_run(monkeypatch):
 
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
-    for sim_id in world.sims:
+    for sim_id, sim in world.sims.items():
         world.df_graph.add_node(sim_id)
         world.shifted_graph.add_node(sim_id)
+        sim.event_buffer = EventBuffer()
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
@@ -91,53 +92,38 @@ def test_sim_process_error(monkeypatch):
                                   'its connection.')
 
 
-@pytest.mark.parametrize('progress,self_step,input_step,expected',
-                         [(0, 0, 1, 0),
-                          (2, 2, 1, 2),
-                          (1, None, None, None)])
-def test_get_next_step(world, progress, self_step, input_step, expected):
+@pytest.mark.parametrize('progress,event,expected',
+                         [(0, 0, 0),
+                          (2, 1, 2),
+                          (1, None, None)])
+def test_get_next_step(world, progress, event, expected):
     """
     Test get_next_step.
     """
     sim = world.sims[7]
     sim.progress = progress
-    sim.next_self_step = self_step
-    if input_step is not None:
-        sim.input_messages = InputMessages()
-        sim.input_messages.add_empty_time(input_step)
+    if event is not None:
+        sim.event_buffer = EventBuffer()
+        sim.event_buffer.add_self_step(event)
     assert scheduler.get_next_step(sim) == expected
 
 
-def test_has_next_step_selfstep(world):
-    """
-    Test has_next_step when there's a self-step.
-    """
-    sim = world.sims[0]
-    sim.next_self_step = 1
-
-    gen = scheduler.has_next_step(world, sim)
-    evt = next(gen)
-    pytest.raises(StopIteration, gen.send, evt.value)
-    assert evt.triggered
-    assert sim.next_step == 1
-
-
 @pytest.mark.parametrize('progress', [0, 2])
-def test_has_next_step_noselfstep(world, progress):
+def test_has_next_step_nostep(world, progress):
     """
-    Test has_next_step when there's no self-step.
+    Test has_next_step when there's no next step.
     """
     sim = world.sims[0]
     sim.progress = progress
-    sim.next_self_step = None
     assert sim.next_step is None
+    assert not sim.event_buffer
 
     gen = scheduler.has_next_step(world, sim)
     evt = next(gen)
     assert not evt.triggered
 
-    sim.input_messages = InputMessages()
-    sim.input_messages.add_empty_time(1)
+    sim.event_buffer = EventBuffer()
+    sim.event_buffer.add_self_step(1)
     with pytest.raises(StopIteration):
         next(gen)
     assert sim.next_step == max(1, progress)
@@ -214,10 +200,10 @@ def test_get_input_data(world):
     world.df_graph[1][2]['dataflows'] = [('2', '0', [('z', 'in')])]
     world.df_graph[0][2]['messageflows'] = [('0', '0', [('y', 'in')])]
     world.df_graph[1][2]['messageflows'] = []
-    world.sims[2].input_messages = InputMessages()
-    world.sims[2].input_messages.set_connections(
+    world.sims[2].event_buffer = EventBuffer()
+    world.sims[2].event_buffer.set_connections(
         [world.df_graph, world.shifted_graph], 2)
-    world.sims[2].input_messages.add(0, 0, '0', 'y', 3)
+    world.sims[2].event_buffer.add(0, 0, '0', 'y', 3)
     data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {'in': {'0.0.y': [3], '0.1': 0, '1.2': 4, '3': 5},
                           'spam': {'3': 'eggs'}}}
@@ -272,8 +258,8 @@ def test_get_outputs(world):
     world.df_graph[0][2]['messageflows'] = [('0', '0', [('y', 'in'), ('z', 'in')])]
     world.df_graph[1][2]['messageflows'] = []
     world.sims[2].next_step = 2
-    world.sims[2].input_messages = InputMessages()
-    world.sims[2].input_messages.set_connections([world.df_graph, world.shifted_graph], 2)
+    world.sims[2].event_buffer = EventBuffer()
+    world.sims[2].event_buffer.set_connections([world.df_graph, world.shifted_graph], 2)
     world.sims[2].has_next_step = world.env.event()
     sim = world.sims[0]
     sim.last_step, sim.progress_tmp, sim.next_step = 0, 1, 1
@@ -302,8 +288,8 @@ def test_get_outputs(world):
         1: {'foo': 'bar'},
         2: {0: {'0': {'x': 0, 'y': 1}}},
     }
-    assert world.sims[2].input_messages.input_queue == [(0, '0.0.y', 1),
-                                                        (2, '0.0.y', 1)]
+    assert world.sims[2].event_buffer.event_queue == [(0, '0.0.y', 1),
+                                                      (2, '0.0.y', 1)]
     assert sim.progress == 3
 
 
@@ -316,8 +302,8 @@ def test_get_outputs_shifted(world):
     sim = world.sims[5]
     sim.last_step, sim.progress_tmp, sim.next_step = 1, 2, 2
     world.sims[4].next_step = 2
-    world.sims[4].input_messages = InputMessages()
-    world.sims[4].input_messages.set_connections(
+    world.sims[4].event_buffer = EventBuffer()
+    world.sims[4].event_buffer.set_connections(
         [world.df_graph, world.shifted_graph], 4)
     world.sims[4].has_next_step = world.env.event()
 
@@ -330,7 +316,7 @@ def test_get_outputs_shifted(world):
     assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
     }
-    assert world.sims[4].input_messages.input_queue == [(2, '5.0.y', 1)]
+    assert world.sims[4].event_buffer.event_queue == [(2, '5.0.y', 1)]
 
 
 def test_get_progress():
