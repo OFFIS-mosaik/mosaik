@@ -171,8 +171,7 @@ def has_next_step(world, sim):
         except StopIteration:
             raise WakeUpException
 
-        next_input_message = sim.event_buffer.peek_next_time()
-        next_step = max(next_input_message, sim.progress)
+        next_step = get_next_step(sim)
 
     sim.next_step = next_step
 
