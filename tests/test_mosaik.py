@@ -28,7 +28,7 @@ sim_config_test = {
 test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
 test_cases.append(('scenario_5', sim_config_remote))
 test_cases.append(('scenario_6', sim_config_remote))
-test_cases.extend([('scenario_%s' % (i + 1), sim_config_test) for i in range(6, 13)])
+test_cases.extend([('scenario_%s' % (i + 1), sim_config_test) for i in range(6, 14)])
 
 
 # Test all combinations of both sim configs and the 5 test scenarios.
