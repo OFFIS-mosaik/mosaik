@@ -318,7 +318,14 @@ def step(world, sim, inputs):
     map attribute names to lists of values (see :func:`get_input_data()`).
     """
     sim.last_step = sim.next_step
-    next_step = yield sim.proxy.step(sim.next_step, inputs)
+    step_return = yield sim.proxy.step(sim.next_step, inputs)
+
+    if isinstance(step_return, dict):
+        next_step = step_return.get('next_step', None)
+        busy_until = step_return.get('busy_until', None)
+    elif isinstance(step_return, int) or step_return is None:
+        next_step = busy_until = step_return
+
     if next_step is not None:
         if type(next_step) != int:
             raise SimulationError('next_step must be of type int, but is "%s" for '
@@ -328,7 +335,8 @@ def step(world, sim, inputs):
                                   'for simulator "%s"' %
                                   (next_step, sim.last_step, sim.sid))
 
-        sim.progress_tmp = next_step
+    if busy_until is not None:
+        sim.progress_tmp = max(busy_until, sim.progress)
     else:
         preds_progresses = [world.sims[pre_sid].progress for pre_sid in
                               world.df_graph.predecessors(sim.sid)]
