@@ -382,7 +382,7 @@ def test_local_process():
     assert sp.last_step == -1
     assert sp.progress == 0
     assert sp.next_step is None
-    assert sp.next_self_step == 0
+    assert sp.debug_self_step == (-1, 0)
 
 
 def test_local_process_finalized(world):

@@ -355,10 +355,10 @@ class SimProxy:
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event
         if any([bool(props.get('attrs', None)) or not bool(props.get('messages', None)) for props in meta['models'].values()]):
-            self.next_self_step = 0
+            self.debug_self_step = (-1, 0)
             self.event_buffer.add_self_step(0)
         else:
-            self.next_self_step = None
+            self.debug_self_step = (None, None)
 
     def stop(self):
         """

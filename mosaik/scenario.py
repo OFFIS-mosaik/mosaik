@@ -225,14 +225,8 @@ class World(object):
     def set_event(self, sid, time=0):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
-
-        Raise an :exc:`~mosaik.exceptions.ScenarioError` if there is already
-        one.
         """
-        if self.sims[sid].next_self_step is not None:
-            raise ScenarioError('Simulator %s already has an initial time step.'
-                                % sid)
-        self.sims[sid].next_self_step = time
+        self.sims[sid].debug_self_step = (-1, time)
         self.sims[sid].event_buffer.add_self_step(time)
 
     def get_data(self, entity_set, *attributes):

@@ -226,27 +226,29 @@ def test_step(world):
     inputs = object()
     sim = world.sims[0]
     sim.next_step = 0
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, None, 0)
+    assert (sim.last_step, sim.progress_tmp, sim.next_step) == (-1, 0, 0)
+    assert sim.event_buffer.peek_next_time() is None
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (0, 1, 1, None)
+    assert (sim.last_step, sim.progress_tmp, sim.next_step) == (0, 1, None)
+    assert sim.event_buffer.peek_next_time() == 1
 
 
 def test_step_nonextstep(world):
     inputs = object()
     sim = world.sims[7]
     sim.next_step = 0
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (-1, 0, None, 0)
+    assert (sim.last_step, sim.progress_tmp, sim.next_step) == (-1, 0, 0)
     world.sims[6].progress = 2
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress_tmp, sim.next_self_step, sim.next_step) == (0, 2, None, None)
+    assert (sim.last_step, sim.progress_tmp, sim.next_step) == (0, 2, None)
 
 
 def test_get_outputs(world):

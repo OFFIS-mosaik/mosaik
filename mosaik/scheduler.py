@@ -127,10 +127,10 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         # has passed.
         if not rt_factor:
             def check_selfstep():
-                return sim.next_self_step is not None
+                return sim.event_buffer.peek_next_time() is not None
         else:
             def check_selfstep():
-                return sim.next_self_step is not None or \
+                return sim.event_buffer.peek_next_time() is not None or \
                     (perf_counter() - rt_start < rt_factor * until)
 
         check_functions.append(check_selfstep)
@@ -347,9 +347,9 @@ def step(world, sim, inputs):
             sim.progress_tmp = sim.last_step + 1
 
     sim.next_step = None
-    sim.next_self_step = next_step
     if next_step is not None:
         sim.event_buffer.add_self_step(next_step)
+        sim.debug_self_step = (sim.last_step, next_step)
 
 
 def get_outputs(world, sim):

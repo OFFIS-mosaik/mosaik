@@ -51,8 +51,9 @@ def pre_step(world, sim, inputs):
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
 
-    if sim.last_step >= 0 and next_step == sim.next_self_step:
-        eg.add_edge(node % (sid, sim.last_step), node_id)
+    if sim.last_step >= 0 and next_step == sim.debug_self_step[1]:
+        eg.add_edge(node % (sid, sim.debug_self_step[0]), node_id)
+        sim.debug_self_step = (None, None)
 
     for ig, graph in enumerate([world.df_graph, world.shifted_graph]):
         for pre in graph.predecessors(sid):
