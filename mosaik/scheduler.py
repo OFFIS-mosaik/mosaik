@@ -365,7 +365,8 @@ def get_outputs(world, sim):
         for dest_sid in graph.successors(sid):
             messageflows = graph[sid][dest_sid]['messageflows']
             if messageflows:
-                event_buffer = world.sims[dest_sid].event_buffer
+                dest_sim = world.sims[dest_sid]
+                event_buffer = dest_sim.event_buffer
                 step_added = False
                 for src_eid, dest_eid, messages in messageflows:
                     for src_msg, dest_msg in messages:
@@ -375,13 +376,13 @@ def get_outputs(world, sim):
                                                src_msg, content)
                             step_added = True
 
-                if step_added and not world.sims[dest_sid].has_next_step.triggered:
-                    world.sims[dest_sid].has_next_step.succeed()
-                if step_added and world.sims[dest_sid].wait_events\
-                        and not world.sims[dest_sid].wait_events.triggered\
-                        and message_time < world.sims[dest_sid].next_step\
-                        and message_time >= world.sims[dest_sid].progress:
-                    world.sims[dest_sid].sim_proc.interrupt('Earlier step')
+                if step_added and not dest_sim.has_next_step.triggered:
+                    dest_sim.has_next_step.succeed()
+                if step_added and dest_sim.wait_events\
+                        and not dest_sim.wait_events.triggered\
+                        and message_time < dest_sim.next_step\
+                        and message_time >= dest_sim.progress:
+                    dest_sim.sim_proc.interrupt('Earlier step')
 
     # Create a cache entry for every point in time the data is valid for.
     for i in range(sim.last_step, sim.progress_tmp):
