@@ -96,6 +96,16 @@ Job_unit_tests_python38:
       -   tox -e py38
     except:
       - tags 
+    
+Linting_flake8:
+    <<: *only-default
+    allow_failure: true
+    stage: unit_tests
+    before_script:
+       - python -m pip install --quiet --upgrade flake8
+    script:
+       - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
+    when: manual 
      
 build_docker_preproduction:
    image: docker:latest
