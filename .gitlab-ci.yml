@@ -60,7 +60,7 @@ Job_install_dependencies:
     except:
         - tags
 
-Job_unit_tests:  
+Job_unit_tests_python37:  
     <<: *only-default
     stage: unit_tests
     script:
@@ -76,6 +76,26 @@ Job_unit_tests:
      - tox
     except:
       - tags
+
+Job_unit_tests_python36:  
+    <<: *only-default
+    image: python:3.6.10-slim
+    stage: unit_tests
+    script:  
+      -   python -m pip install --quiet --upgrade tox
+      -   tox -e py36
+    except:
+      - tags     
+
+Job_unit_tests_python38:  
+    <<: *only-default
+    image: python:3.8.2-slim
+    stage: unit_tests
+    script:  
+      -   python -m pip install --quiet --upgrade tox
+      -   tox -e py38
+    except:
+      - tags 
      
 build_docker_preproduction:
    image: docker:latest
