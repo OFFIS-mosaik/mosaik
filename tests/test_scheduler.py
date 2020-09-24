@@ -83,47 +83,13 @@ def test_sim_process_error(monkeypatch):
                                   'its connection.')
 
 
-def test_step_required(world):
-    """
-    Test *step_required is True*, because a simulator is waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[0])
-    assert evt.triggered
-
-
-def test_step_not_required(world):
-    """
-    Test *step_required is False*, because noone is waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[1])
-    assert not evt.triggered
-
-    evt = scheduler.step_required(world, world.sims[2])
-    assert not evt.triggered
-
-
-def test_step_required_no_successors(world):
-    """
-    Test *step_required is True*, because there is noone that could be
-    waiting for us.
-    """
-    evt = scheduler.step_required(world, world.sims[3])
-    assert evt.triggered
-
-
 def test_wait_for_dependencies(world):
     """
     Test waiting for dependencies and triggering them.
     """
-    for i in range(2):
-        world.sims[i].step_required = world.env.event()
-        if i == 0:
-            world.sims[i].step_required.succeed()
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 2
     assert not evt.triggered
-    for i in range(2):
-        assert world.sims[i].step_required.triggered
 
 
 def test_wait_for_dependencies_all_done(world):
@@ -144,7 +110,7 @@ def test_wait_for_dependencies_shifted(world):
     world.sims[4].next_step = 1
     world.sims[5].step_required = world.env.event()
     evt = scheduler.wait_for_dependencies(world, world.sims[4])
-    assert len(evt._events) == 1
+    assert len(evt._events) == 2
     assert not evt.triggered
 
 

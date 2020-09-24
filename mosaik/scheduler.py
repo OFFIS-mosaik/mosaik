@@ -49,12 +49,12 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
     try:
         keep_running = get_keep_running_func(world, sim, until)
         while keep_running():
-            try:
-                yield step_required(world, sim)
-            except StopIteration:
-                # We've been woken up by a terminating successor.
-                # Check if we can also stop or need to keep running.
-                continue
+            #try:
+            #    yield step_required(world, sim)
+            #except StopIteration:
+            #    # We've been woken up by a terminating successor.
+            #    # Check if we can also stop or need to keep running.
+            #    continue
 
             yield wait_for_dependencies(world, sim)
             input_data = get_input_data(world, sim)
@@ -71,8 +71,8 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
         # process left for which they need to provide data.
         for pre_sid in world.df_graph.predecessors(sim.sid):
             evt = world.sims[pre_sid].step_required
-            if not evt.triggered:
-                evt.fail(StopIteration())
+            #if not evt.triggered:
+            #    evt.fail(StopIteration())
 
     except ConnectionError as e:
         raise SimulationError('Simulator "%s" closed its connection.' %
@@ -109,32 +109,6 @@ def get_keep_running_func(world, sim, until):
     return keep_running
 
 
-def step_required(world, sim):
-    """
-    Return an :class:`~simpy.events.Event` that is triggered when *sim*
-    needs to perform its next step.
-
-    The event will already be triggered if the simulator is a "sink" (no other
-    simulator depends on its outputs) or if another simulator is already
-    waiting for it.
-
-    *world* is a mosaik :class:`~mosaik.scenario.World`.
-    """
-    sim.step_required = world.env.event()
-    dfg = world.df_graph
-    sid = sim.sid
-
-    if dfg.out_degree(sid) == 0 or any(('wait_event' in dfg[sid][s])
-                                       for s in dfg.successors(sid)):
-        # A step is required if there are no outgoing edges or if one of the
-        sim.step_required.succeed()
-    # else:
-    #   "wait_for_dependencies()" triggers the event when it creates a new
-    #   wait event for "sim".
-
-    return sim.step_required
-
-
 def wait_for_dependencies(world, sim):
     """
     Return an event (:class:`simpy.events.AllOf`) that is triggered when
@@ -158,15 +132,12 @@ def wait_for_dependencies(world, sim):
             events.append(evt)
             world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
-            if not dep.step_required.triggered:
-                dep.step_required.succeed()
-
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
     for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
-        if dfg[sim.sid][suc_sid]['async_requests'] and suc.next_step < t:
+        if suc.next_step < t:
             evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
