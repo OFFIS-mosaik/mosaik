@@ -40,7 +40,7 @@ def test_run(monkeypatch):
         }
 
         def stop(self):
-            yield self.env.event().succeed()
+            yield world.env.event().succeed()
 
     Sim.env = world.env
     world.sims = {i: Sim() for i in range(2)}
