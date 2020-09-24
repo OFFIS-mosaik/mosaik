@@ -87,6 +87,7 @@ def test_wait_for_dependencies(world):
     """
     Test waiting for dependencies and triggering them.
     """
+    world.sims[2].next_step = 0
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 2
     assert not evt.triggered
@@ -96,8 +97,10 @@ def test_wait_for_dependencies_all_done(world):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    for i in range(2):
-        world.sims[i].next_step = 1
+    world.sims[2].next_step = 0
+    for dep_sid in [0, 1]:
+        world.sims[dep_sid].progress = 1
+
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 0
     assert evt.triggered
@@ -105,8 +108,9 @@ def test_wait_for_dependencies_all_done(world):
 
 def test_wait_for_dependencies_shifted(world):
     """
-    Shifted dependency is not yet stepped far enough. Waiting is required.
+    Shifted dependency has not yet stepped far enough. Waiting is required.
     """
+    world.sims[5].progress = -1
     world.sims[4].next_step = 1
     world.sims[5].step_required = world.env.event()
     evt = scheduler.wait_for_dependencies(world, world.sims[4])
@@ -118,6 +122,7 @@ def test_get_input_data(world):
     """
     Simple test for get_input_data().
     """
+    world.sims[2].next_step = 0
     world._df_cache = {0: {
         0: {'1': {'x': 0, 'y': 1}},
         1: {'2': {'x': 2, 'z': 4}},
@@ -134,6 +139,7 @@ def test_get_input_data_shifted(world):
     """
     Getting input data transmitted via a shifted connection.
     """
+    world.sims[4].next_step = 0
     world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
@@ -145,13 +151,14 @@ def test_get_input_data_shifted(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
+    sim.next_step = 0
     assert (sim.last_step, sim.next_step) == (-1, 0)
 
     gen = scheduler.step(world, sim, inputs)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.next_step) == (0, 1)
+    assert (sim.last_step, sim.progress_tmp) == (0, 0)
 
 
 def test_get_outputs(world):
@@ -162,11 +169,13 @@ def test_get_outputs(world):
     world.df_graph[0][2]['wait_event'] = wait_event
     world.sims[2].next_step = 2
     sim = world.sims[0]
-    sim.last_step, sim.next_step = 0, 1
+    sim.progress = -1
+    sim.last_step, sim.progress_tmp = 0, 0
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
+    assert sim.progress == 0
     assert evt.triggered
     assert not wait_event.triggered
     assert 'wait_event' in world.df_graph[0][2]
@@ -177,7 +186,7 @@ def test_get_outputs(world):
 
     for s in world.sims.values():
         s.last_step, s.next_step = 1, 2
-    sim.last_step, sim.next_step = 2, 3
+    sim.last_step, sim.progress_tmp = 2, 2
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
@@ -196,7 +205,7 @@ def test_get_outputs_shifted(world):
     wait_event = world.env.event()
     world.df_graph[5][4]['wait_event'] = wait_event
     sim = world.sims[5]
-    sim.last_step, sim.next_step = 1, 2
+    sim.last_step, sim.progress_tmp = 1, 1
     world.sims[4].next_step = 2
 
     gen = scheduler.get_outputs(world, sim)
@@ -213,21 +222,21 @@ def test_get_outputs_shifted(world):
 def test_get_progress():
     class Sim:
         def __init__(self, time):
-            self.next_step = time
+            self.progress = time
 
-    sims = {i: Sim(0) for i in range(2)}
+    sims = {i: Sim(-1) for i in range(2)}
     assert scheduler.get_progress(sims, 4) == 0
 
-    sims[0].next_step = 1
+    sims[0].progress = 0
     assert scheduler.get_progress(sims, 4) == 12.5
 
-    sims[0].next_step = 2
+    sims[0].progress = 1
     assert scheduler.get_progress(sims, 4) == 25
 
-    sims[1].next_step = 3
-    sims[0].next_step = 3
+    sims[1].progress = 2
+    sims[0].progress = 2
     assert scheduler.get_progress(sims, 4) == 75
 
-    sims[0].next_step = 4
-    sims[1].next_step = 6
+    sims[0].progress = 3
+    sims[1].progress = 5
     assert scheduler.get_progress(sims, 4) == 100

@@ -345,7 +345,9 @@ class SimProxy:
 
         # Simulation state
         self.last_step = -1
-        self.next_step = 0
+        self.next_step = None
+        self.next_steps = [0]
+        self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.sim_proc = None  # SimPy process
         self.step_required = None  # SimPy event
@@ -582,7 +584,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.next_step > sim.last_step >= dep.last_step)
+            assert (dep.progress >= sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need

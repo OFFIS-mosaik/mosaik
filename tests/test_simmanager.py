@@ -380,8 +380,8 @@ def test_local_process():
     assert sp._inst is es
     assert sp.meta is es.meta
     assert sp.last_step == -1
-    assert sp.next_step == 0
-    assert sp.step_required is None
+    assert sp.next_step is None
+    assert sp.next_steps == [0]
 
 
 def test_local_process_finalized(world):
