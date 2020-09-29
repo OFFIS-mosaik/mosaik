@@ -165,7 +165,7 @@ class World(object):
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
 
-        missing_attrs = self._check_attributes(src, dest, attr_pairs)
+        trigger, missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
@@ -188,7 +188,7 @@ class World(object):
         # Add edge and check for cycles and the data-flow graph.
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
-                               time_shifted=time_shifted)
+                               time_shifted=time_shifted, trigger=trigger)
 
         cycles = networkx.simple_cycles(self.df_graph)
         for cycle in cycles:
@@ -324,12 +324,15 @@ class World(object):
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
         any_inputs = [False, emeta[1]['any_inputs']]
+        trigger = False
         attr_errors = []
         for attr_pair in attr_pairs:
+            if attr_pair[1] in emeta[1]['trigger']:
+                trigger = True
             for i, attr in enumerate(attr_pair):
                 if not (any_inputs[i] or attr in emeta[i]['attrs']):
                     attr_errors.append((entities[i], attr))
-        return attr_errors
+        return trigger, attr_errors
 
 
 class ModelFactory():

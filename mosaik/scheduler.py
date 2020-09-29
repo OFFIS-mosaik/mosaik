@@ -3,8 +3,9 @@ This module is responsible for performing the simulation of a scenario.
 """
 from heapq import heappush, heappop
 from time import perf_counter
+from simpy.exceptions import Interrupt
 
-from mosaik.exceptions import SimulationError
+from mosaik.exceptions import (SimulationError, WakeUpException)
 from mosaik.simmanager import FULL_ID
 
 
@@ -50,31 +51,46 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
     try:
         keep_running = get_keep_running_func(world, sim, until)
         while keep_running():
-            #try:
-            #    yield step_required(world, sim)
-            #except StopIteration:
-            #    # We've been woken up by a terminating successor.
-            #    # Check if we can also stop or need to keep running.
-            #    continue
-            sim.next_step = heappop(sim.next_steps)
-
-            yield wait_for_dependencies(world, sim)
+            try:
+                yield from has_next_step(world, sim)
+            except WakeUpException:
+                # We've been woken up by a terminating predecessor.
+                # Check if we can also stop or need to keep running.
+                continue
+            print(f"{sim.sid} HAS NEXT STEP {sim.next_step}")
+            sim.interruptable = True
+            while True:
+                try:
+                    yield wait_for_dependencies(world, sim)
+                    yield from rt_sleep(rt_factor, rt_start, sim, world)
+                    print(sim.sid, 'WAITING DONE')
+                    break
+                except Interrupt as i:
+                    print(sim.sid, 'INTERRUPTED')
+                    assert i.cause == 'Earlier step'
+                    sim.next_step = get_next_step(sim)
+                    clear_wait_events(world, sim.sid)
+                    continue
+            sim.interruptable = False
             input_data = get_input_data(world, sim)
-            yield from rt_sleep(rt_factor, rt_start, sim, world)
             yield from step(world, sim, input_data)
             rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
+            print(sim.sid, 'END OF STEP', sim.last_step)
 
+        print(sim.sid, 'DONE <<<<<<<<<<<<<<<<<')
+        clear_wait_events_dependencies(world, sim.sid)
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
-        # process left for which they need to provide data.
-        for pre_sid in world.df_graph.predecessors(sim.sid):
-            evt = world.sims[pre_sid].step_required
-            #if not evt.triggered:
-            #    evt.fail(StopIteration())
+        # process left which might provide data.
+        for suc_sid in world.df_graph.successors(sim.sid):
+            if not world.sims[suc_sid].sim_proc.triggered:
+                evt = world.sims[suc_sid].has_next_step
+                if not evt.triggered:
+                    world.sims[suc_sid].sim_proc.interrupt('Stopped simulator')
 
     except ConnectionError as e:
         raise SimulationError('Simulator "%s" closed its connection.' %
@@ -111,6 +127,42 @@ def get_keep_running_func(world, sim, until):
     return keep_running
 
 
+def get_next_step(sim):
+
+    next_step = heappop(sim.next_steps) if sim.next_steps else None
+    if next_step:
+        next_step = max(next_step, sim.progress)
+
+    return next_step
+
+
+def has_next_step(world, sim):
+    """
+    Return an :class:`~simpy.events.Event` that is triggered when *sim*
+    has a next step.
+
+    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    """
+    sim.has_next_step = world.env.event()
+    next_step = get_next_step(sim)
+
+    if next_step is not None:
+        sim.has_next_step.succeed()
+        yield sim.has_next_step
+    else:
+        sim.idle = True
+        try:
+            yield sim.has_next_step
+        except Interrupt:
+            sim.idle = False
+            raise WakeUpException
+
+        next_step = get_next_step(sim)
+        sim.idle = False
+
+    sim.next_step = next_step
+
+
 def wait_for_dependencies(world, sim):
     """
     Return an event (:class:`simpy.events.AllOf`) that is triggered when
@@ -139,12 +191,15 @@ def wait_for_dependencies(world, sim):
     # data for [last_step, next_step) from us:
     for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
-        if suc.progress + 1 < t:
+        if not suc.idle and suc.progress + 1 < t:
             evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
 
-    return world.env.all_of(events)
+    wait_events = world.env.all_of(events)
+    sim.wait_events = wait_events
+
+    return wait_events
 
 
 def get_input_data(world, sim):
@@ -195,16 +250,29 @@ def step(world, sim, inputs):
     map attribute names to lists of values (see :func:`get_input_data()`).
     """
     sim.last_step = sim.next_step
-    next_step = yield sim.proxy.step(sim.next_step, inputs)
-    if type(next_step) != int:
-        raise SimulationError('next_step must be of type int, but is "%s" for '
-                              'simulator "%s"' % (type(next_step), sim.sid))
-    if next_step <= sim.last_step:
-        raise SimulationError('next_step must be > last_step, but %s <= %s '
-                              'for simulator "%s"' %
-                              (next_step, sim.last_step, sim.sid))
-    sim.progress_tmp = next_step - 1
-    heappush(sim.next_steps, next_step)
+    step_return = yield sim.proxy.step(sim.next_step, inputs)
+    if isinstance(step_return, dict):
+        next_step = step_return.get('next_step', None)
+    elif isinstance(step_return, int) or step_return is None:
+        next_step = step_return
+
+    if next_step is not None:
+        if type(next_step) != int:
+            raise SimulationError('next_step must be of type int, but is "%s" '
+                                  'for simulator "%s"' % (
+                                                    type(next_step), sim.sid))
+        if next_step <= sim.last_step:
+            raise SimulationError('next_step must be > last_step, but %s <= %s'
+                                  ' for simulator "%s"' %
+                                  (next_step, sim.last_step, sim.sid))
+
+        if next_step not in sim.next_steps:
+            heappush(sim.next_steps, next_step)
+        sim.progress_tmp = next_step - 1
+    else:
+        sim.progress_tmp = sim.last_step
+
+    sim.next_step = None
 
 
 def get_outputs(world, sim):
@@ -216,13 +284,14 @@ def get_outputs(world, sim):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     sid = sim.sid
+    last_step = sim.last_step
     outattr = world._df_outattr[sid]
     if outattr:
         data = yield sim.proxy.get_data(outattr)
     else:
         data = {}  # Just to indicate that the step/get is completely done.
     # Create a cache entry for every point in time the data is valid for.
-    for i in range(sim.last_step, sim.progress_tmp + 1):
+    for i in range(last_step, sim.progress_tmp + 1):
         world._df_cache[i][sim.sid] = data
 
     progress = sim.progress = sim.progress_tmp
@@ -235,11 +304,21 @@ def get_outputs(world, sim):
                 dest_sim.next_step <= progress + edge['time_shifted']:
             edge.pop('wait_event').succeed()
 
+        if edge['trigger'] and \
+                sim.last_step not in dest_sim.next_steps + [dest_sim.next_step]:
+            heappush(dest_sim.next_steps, sim.last_step)
+            if not dest_sim.has_next_step.triggered:
+                dest_sim.has_next_step.succeed()
+            elif dest_sim.interruptable and \
+                    dest_sim.progress <= last_step < dest_sim.next_step:
+                dest_sim.sim_proc.interrupt('Earlier step')
+
     # Notify simulators waiting for async. requests from us.
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_async' in edge and pre_sim.next_step <= progress + 1:
+        if 'wait_async' in edge and (
+                not sim.next_steps or pre_sim.next_step <= progress + 1):
             edge.pop('wait_async').succeed()
 
     # Prune dataflow cache
@@ -278,7 +357,7 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
     """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
-        delta = rt_passed - (rt_factor * sim.next_step)
+        delta = rt_passed - (rt_factor * sim.last_step)
         if delta > 0:
             if rt_strict:
                 raise RuntimeError('Simulation too slow for real-time factor '
@@ -286,3 +365,27 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
             else:
                 print('Simulation too slow for real-time factor %s - %ss '
                       'behind time.' % (rt_factor, delta))
+
+
+def clear_wait_events(world, sid):
+    for pre_sid in world.df_graph.predecessors(sid):
+        edge = world.df_graph[pre_sid][sid]
+        if 'wait_event' in edge:
+            edge.pop('wait_event').succeed()
+
+    for suc_sid in world.df_graph.successors(sid):
+        edge = world.df_graph[sid][suc_sid]
+        if 'wait_lazy_or_async' in edge:
+            edge.pop('wait_lazy_or_async').succeed()
+
+
+def clear_wait_events_dependencies(world, sid):
+    for suc_sid in world.df_graph.successors(sid):
+        edge = world.df_graph[sid][suc_sid]
+        if 'wait_event' in edge:
+            edge.pop('wait_event').succeed()
+
+    for pre_sid in world.df_graph.predecessors(sid):
+        edge = world.df_graph[pre_sid][sid]
+        if 'wait_lazy_or_async' in edge:
+            edge.pop('wait_lazy_or_async').succeed()

@@ -89,6 +89,7 @@ def test_world_connect(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
+                'trigger': False,
                 'dataflows': [
                     (a[0].eid, b[0].eid, (('val_out', 'val_in'),
                                           ('dummy_out', 'dummy_in'))),
@@ -179,7 +180,9 @@ def test_world_connect_no_attrs(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': False, 'time_shifted': False,
+                'async_requests': False,
+                'time_shifted': False,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
         },
@@ -205,7 +208,9 @@ def test_world_connect_any_inputs(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': False, 'time_shifted': False,
+                'async_requests': False,
+                'time_shifted': False,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },
         },
@@ -228,7 +233,9 @@ def test_world_connect_async_requests(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': True, 'time_shifted': False,
+                'async_requests': True,
+                'time_shifted': False,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
         },
@@ -244,7 +251,9 @@ def test_world_connect_time_shifted(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': False, 'time_shifted': True,
+                'async_requests': False,
+                'time_shifted': True,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },
         },

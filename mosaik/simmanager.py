@@ -93,6 +93,7 @@ def start(world, sim_name, sim_id, sim_params):
             try:
                 proxy.meta['api_version'] = validate_api_version(
                     proxy.meta['api_version'])
+                proxy.meta = expand_meta(proxy.meta, sim_name)
                 return proxy
             except ScenarioError as se:
                 raise ScenarioError('Simulator "%s" could not be started:'
@@ -308,6 +309,47 @@ def validate_api_version(version):
     return v_tuple
 
 
+def expand_meta(meta, sim_name):
+    """
+        Checks if (non-)triggering attributes ("(non-)trigger") are given and
+        adds them to each model's meta data if necessary.
+
+        Raise a :exc: `ScenarioError` if the given values are not consistent.
+        """
+    sim_type = meta.setdefault('type', 'discrete-time')
+
+    for model, model_meta in meta['models'].items():
+        print('EXPAND', model, model_meta)
+        #attrs = set(model_meta['attrs'])
+        attrs = set(model_meta.get('attrs', []))
+        trigger = set(model_meta.setdefault('trigger', []))
+        non_trigger = set(model_meta.get('non-trigger', []))
+        if any(i in trigger for i in non_trigger):
+            raise ScenarioError('Triggering and non-triggering attributes must'
+                                ' not overlap, but actually do for model '
+                                f'{model} of simulator {sim_name}.')  # TODO: Add overlapping attrs
+        if trigger and non_trigger:
+            if trigger.union(non_trigger) != attrs:
+                raise ScenarioError('Triggering and non-triggering attributes '
+                                    'have to be a disjoint split of attrs, '
+                                    f'but are not for {model} of simulator '
+                                    f'{sim_name}.')
+        elif trigger:
+            if not trigger.issubset(attrs):
+                raise ScenarioError('Triggering attributes must be a subset of'
+                                    f' attrs, but are not for {model} of '
+                                    f'simulator {sim_name}.')
+        elif non_trigger:
+            trigger = attrs - non_trigger
+        else:
+            if sim_type == 'discrete-event':
+                trigger = attrs
+
+        model_meta['trigger'] = trigger
+
+    return meta
+
+
 class SimProxy:
     """
     Handler for an external simulator.
@@ -347,10 +389,14 @@ class SimProxy:
         self.last_step = -1
         self.next_step = None
         self.next_steps = [0]
+        self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.sim_proc = None  # SimPy process
-        self.step_required = None  # SimPy event
+        self.has_next_step = None  # SimPy event
+        self.wait_events = None  # SimPy event
+        self.interruptable = False
+        self.idle = False
 
     def stop(self):
         """

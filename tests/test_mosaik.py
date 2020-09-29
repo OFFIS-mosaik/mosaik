@@ -18,12 +18,18 @@ sim_config_remote = {
     char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
 }
 sim_config_remote['MAS'] = {'cmd': 'pyexamplemas %(addr)s'}
+sim_config_des = {
+    'A': {'python': 'example_sim.mosaik:ExampleSim'},
+    'B': {'python': 'tests.simulators.example_sim_des.mosaik:ExampleSim'}
+
+}
 
 # We test all scenarios with local simulators and only the most complex one
 # with remote simulators to save some time (starting procs is quite expensive).
 test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
 test_cases.append(('scenario_5', sim_config_remote))
 test_cases.append(('scenario_6', sim_config_remote))
+test_cases.extend([('scenario_%s' % (i), sim_config_des) for i in range(7, 9)])
 
 
 # Test all combinations of both sim configs and the 5 test scenarios.

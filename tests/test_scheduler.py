@@ -12,9 +12,9 @@ def world_fixture():
         for i in range(6)
     }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
-                                  async_requests=False, time_shifted=False)
+                    async_requests=False, time_shifted=False, trigger=False)
     world.df_graph.add_edges_from([(5, 4)],
-                                  async_requests=False, time_shifted=True)
+                    async_requests=False, time_shifted=True, trigger=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
     yield world
     world.shutdown()

@@ -53,6 +53,7 @@ def test_start(world, monkeypatch):
     class Proxy(object):
         meta = {
             'api_version': api_version,
+            'models': {}
         }
 
     start = lambda *args, **kwargs: Proxy  # flake8: noqa
