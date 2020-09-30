@@ -152,16 +152,14 @@ def wait_for_dependencies(world, sim):
     # to provide the required input data for us:
     for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
-        if t in world._df_cache and dep_sid in world._df_cache[t]:
-            continue
+        if dep.next_step + dfg[dep_sid][sim.sid]['time_shifted'] <= t:
+            # Wait for dep_sim if there's not data for it yet.
+            evt = world.env.event()
+            events.append(evt)
+            world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
 
-        # Wait for dep_sim if there's not data for it yet.
-        evt = world.env.event()
-        events.append(evt)
-        world.df_graph[dep_sid][sim.sid]['wait_event'] = evt
-
-        if not dep.step_required.triggered:
-            dep.step_required.succeed()
+            if not dep.step_required.triggered:
+                dep.step_required.succeed()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
@@ -172,16 +170,6 @@ def wait_for_dependencies(world, sim):
             evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
-
-    # Check if all predecessors with time-shifted input for us
-    # have stepped for enough to provide the required input data:
-    clg = world.shifted_graph
-    for dep_sid in clg.predecessors(sim.sid):
-        dep = world.sims[dep_sid]
-        if dep.next_step < t:
-            evt = world.env.event()
-            events.append(evt)
-            clg[dep_sid][sim.sid]['wait_shifted'] = evt
 
     return world.env.all_of(events)
 
@@ -210,17 +198,17 @@ def get_input_data(world, sim):
     """
     input_data = sim.input_buffer
     sim.input_buffer = {}
-    graphs = [world.df_graph, world.shifted_graph]
-    for i, graph in enumerate(graphs):
-        t = sim.next_step - i  # -1 for shifted connections
-        for src_sid in graph.predecessors(sim.sid):
-            dataflows = graph[src_sid][sim.sid]['dataflows']
-            for src_eid, dest_eid, attrs in dataflows:
-                for src_attr, dest_attr in attrs:
-                    v = world._df_cache[t][src_sid][src_eid][src_attr]
-                    vals = input_data.setdefault(dest_eid, {}) \
-                        .setdefault(dest_attr, {})
-                    vals[FULL_ID % (src_sid, src_eid)] = v
+    df_graph = world.df_graph
+
+    for src_sid in df_graph.predecessors(sim.sid):
+        t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']  # -1 for shifted connections
+        dataflows = df_graph[src_sid][sim.sid]['dataflows']
+        for src_eid, dest_eid, attrs in dataflows:
+            for src_attr, dest_attr in attrs:
+                v = world._df_cache[t][src_sid][src_eid][src_attr]
+                vals = input_data.setdefault(dest_eid, {}) \
+                    .setdefault(dest_attr, {})
+                vals[FULL_ID % (src_sid, src_eid)] = v
 
     return input_data
 
@@ -269,7 +257,8 @@ def get_outputs(world, sim):
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if 'wait_event' in edge and dest_sim.next_step < next_step:
+        if 'wait_event' in edge and \
+                dest_sim.next_step < next_step + edge['time_shifted']:
             edge.pop('wait_event').succeed()
 
     # Notify simulators waiting for async. requests from us.
@@ -278,13 +267,6 @@ def get_outputs(world, sim):
         pre_sim = world.sims[pre_sid]
         if 'wait_async' in edge and pre_sim.next_step <= next_step:
             edge.pop('wait_async').succeed()
-
-    # Notify simulators waiting for time-shifted input.
-    for suc_sid in world.shifted_graph.successors(sid):
-        edge = world.shifted_graph[sid][suc_sid]
-        dest_sim = world.sims[suc_sid]
-        if 'wait_shifted' in edge and dest_sim.next_step <= next_step:
-            edge.pop('wait_shifted').succeed()
 
     # Prune dataflow cache
     min_cache_time = min(s.last_step for s in world.sims.values())

@@ -88,6 +88,7 @@ def test_world_connect(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'time_shifted': False,
                 'dataflows': [
                     (a[0].eid, b[0].eid, (('val_out', 'val_in'),
                                           ('dummy_out', 'dummy_in'))),
@@ -137,7 +138,6 @@ def test_world_connect_cycle(world):
         world.connect(b, a, ('val_in', 'val_out'))
     assert str(err.value) == ('Connection from "ExampleSim-1" to '
                               '"ExampleSim-0" introduces cyclic dependencies.')
-    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1')]
     assert len(world._df_outattr) == 1
 
 
@@ -179,7 +179,7 @@ def test_world_connect_no_attrs(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': False,
+                'async_requests': False, 'time_shifted': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
         },
@@ -205,7 +205,7 @@ def test_world_connect_any_inputs(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': False,
+                'async_requests': False, 'time_shifted': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },
         },
@@ -228,7 +228,7 @@ def test_world_connect_async_requests(world):
     assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'async_requests': True,
+                'async_requests': True, 'time_shifted': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
         },
@@ -241,9 +241,10 @@ def test_world_connect_time_shifted(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    assert world.shifted_graph.adj == {
+    assert world.df_graph.adj == {
         'ExampleSim-0': {
             'ExampleSim-1': {
+                'async_requests': False, 'time_shifted': True,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },
         },
@@ -259,6 +260,18 @@ def test_world_connect_time_shifted(world):
             },
         },
     }
+
+
+@pytest.mark.parametrize('ctype', ['time_shifted', 'async_requests'])
+def test_world_connect_different_types(world, ctype):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a, b)
+    err = pytest.raises(ScenarioError, world.connect, a, b, **{ctype: True})
+    assert str(err.value) == (f'{ctype.capitalize()} and standard connections '
+                              'are mutually exclusive, but you have set both '
+                              'between simulators ExampleSim-0 and '
+                              'ExampleSim-1')
 
 
 def test_world_get_data(world):

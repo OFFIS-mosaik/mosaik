@@ -12,9 +12,9 @@ def world_fixture():
         for i in range(6)
     }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
-                                  async_requests=False)
-    world.shifted_graph.add_nodes_from([0, 1, 2, 3, 4, 5])
-    world.shifted_graph.add_edges_from([(5, 4)])
+                                  async_requests=False, time_shifted=False)
+    world.df_graph.add_edges_from([(5, 4)],
+                                  async_requests=False, time_shifted=True)
     world.df_graph[0][2]['wait_event'] = world.env.event()
     yield world
     world.shutdown()
@@ -130,7 +130,8 @@ def test_wait_for_dependencies_all_done(world):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    world._df_cache = {0: {0: [], 1: []}}
+    for i in range(2):
+        world.sims[i].next_step = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 0
     assert evt.triggered
@@ -141,6 +142,7 @@ def test_wait_for_dependencies_shifted(world):
     Shifted dependency is not yet stepped far enough. Waiting is required.
     """
     world.sims[4].next_step = 1
+    world.sims[5].step_required = world.env.event()
     evt = scheduler.wait_for_dependencies(world, world.sims[4])
     assert len(evt._events) == 1
     assert not evt.triggered
@@ -169,7 +171,7 @@ def test_get_input_data_shifted(world):
     world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
-    world.shifted_graph[5][4]['dataflows'] = [('1', '0', [('z', 'in')])]
+    world.df_graph[5][4]['dataflows'] = [('1', '0', [('z', 'in')])]
     data = scheduler.get_input_data(world, world.sims[4])
     assert data == {'0': {'in': {'5.1': 7}}}
 
@@ -226,7 +228,7 @@ def test_get_outputs_shifted(world):
     world._df_cache[1] = {'spam': 'eggs'}
     world._df_outattr[5][0] = ['x', 'y']
     wait_event = world.env.event()
-    world.shifted_graph[5][4]['wait_shifted'] = wait_event
+    world.df_graph[5][4]['wait_event'] = wait_event
     sim = world.sims[5]
     sim.last_step, sim.next_step = 1, 2
     world.sims[4].next_step = 2
@@ -236,7 +238,7 @@ def test_get_outputs_shifted(world):
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert wait_event.triggered
-    assert 'wait_shifted' not in world.shifted_graph[5][4]
+    assert 'wait_event' not in world.df_graph[5][4]
     assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
     }

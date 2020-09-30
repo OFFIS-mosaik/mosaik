@@ -79,10 +79,6 @@ class World(object):
         """The directed data-flow :func:`graph <networkx.DiGraph>` for this
         scenario."""
 
-        self.shifted_graph = networkx.DiGraph()
-        """A second directed data-flow graph for flows that are shifted in 
-        time to enable cyclic data dependencies."""
-
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
         ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
@@ -116,7 +112,6 @@ class World(object):
         sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
-        self.shifted_graph.add_node(sim_id)
         return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs, async_requests=False,
@@ -159,6 +154,14 @@ class World(object):
                                 'are incongruous methods for handling of cyclic '
                                 'data-flow. Choose one!')
 
+        if self.df_graph.has_edge(src.sid, dest.sid):
+            for ctype in ['time_shifted', 'async_requests']:
+                if eval(ctype) != self.df_graph[src.sid][dest.sid][ctype]:
+                    raise ScenarioError(f'{ctype.capitalize()} and standard '
+                                        'connections are mutually exclusive, '
+                                        'but you have set both between '
+                                        f'simulators {src.sid} and {dest.sid}')
+
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
 
@@ -167,14 +170,7 @@ class World(object):
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        # Time-shifted connections for closing data-flow cycles:
         if time_shifted:
-            self.shifted_graph.add_edge(src.sid, dest.sid)
-
-            dfs = self.shifted_graph[src.sid][dest.sid].setdefault('dataflows',
-                                                                   [])
-            dfs.append((src.eid, dest.eid, attr_pairs))
-
             if type(initial_data) is not dict or initial_data == {}:
                 raise ScenarioError('Time shifted connections have to be '
                                     'set with default inputs for the first step.')
@@ -188,18 +184,23 @@ class World(object):
                 self._df_cache[-1].setdefault(src.sid, {})
                 self._df_cache[-1][src.sid].setdefault(src.eid, {})
                 self._df_cache[-1][src.sid][src.eid][attr] = val
-        # Standard connections:
-        else:
-            # Add edge and check for cycles and the data-flow graph.
-            self.df_graph.add_edge(src.sid, dest.sid,
-                                   async_requests=async_requests)
-            if not networkx.is_directed_acyclic_graph(self.df_graph):
-                self.df_graph.remove_edge(src.sid, dest.sid)
-                raise ScenarioError('Connection from "%s" to "%s" introduces '
-                                    'cyclic dependencies.' % (src.sid, dest.sid))
 
-            dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-            dfs.append((src.eid, dest.eid, attr_pairs))
+        # Add edge and check for cycles and the data-flow graph.
+        self.df_graph.add_edge(src.sid, dest.sid,
+                               async_requests=async_requests,
+                               time_shifted=time_shifted)
+
+        cycles = networkx.simple_cycles(self.df_graph)
+        for cycle in cycles:
+            cycle = zip(cycle + [cycle[0]], [cycle[-1]] + cycle)
+            if not any([self.df_graph[src][dest]['time_shifted']
+                        for src, dest in cycle]):
+                raise ScenarioError('Connection from "%s" to "%s" '
+                                    'introduces cyclic dependencies.' % (
+                                     src.sid, dest.sid))
+
+        dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
+        dfs.append((src.eid, dest.eid, attr_pairs))
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
