@@ -319,8 +319,6 @@ def expand_meta(meta, sim_name):
     sim_type = meta.setdefault('type', 'discrete-time')
 
     for model, model_meta in meta['models'].items():
-        print('EXPAND', model, model_meta)
-        #attrs = set(model_meta['attrs'])
         attrs = set(model_meta.get('attrs', []))
         trigger = set(model_meta.setdefault('trigger', []))
         non_trigger = set(model_meta.get('non-trigger', []))
@@ -388,7 +386,12 @@ class SimProxy:
         # Simulation state
         self.last_step = -1
         self.next_step = None
-        self.next_steps = [0]
+        if self.meta.get('type', 'discrete-time') != 'discrete-event':
+            self.next_steps = [0]
+            self.next_self_step = (0, -1)
+        else:
+            self.next_steps = []
+            self.next_self_step = (None, -1)
         self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"

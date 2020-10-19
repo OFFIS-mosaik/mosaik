@@ -151,10 +151,11 @@ def test_get_input_data_shifted(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
+    sim.meta['type'] = 'discrete-time'
     sim.next_step = 0
     assert (sim.last_step, sim.next_step) == (-1, 0)
 
-    gen = scheduler.step(world, sim, inputs)
+    gen = scheduler.step(world, sim, inputs, 0)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -169,10 +170,11 @@ def test_get_outputs(world):
     world.df_graph[0][2]['wait_event'] = wait_event
     world.sims[2].next_step = 2
     sim = world.sims[0]
+    sim.meta['type'] = 'discrete-time'
     sim.progress = -1
     sim.last_step, sim.progress_tmp = 0, 0
 
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, empty_step=False)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert sim.progress == 0
@@ -186,8 +188,9 @@ def test_get_outputs(world):
 
     for s in world.sims.values():
         s.last_step, s.next_step = 1, 2
+    sim.progress = 1
     sim.last_step, sim.progress_tmp = 2, 2
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, empty_step=False)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -205,10 +208,12 @@ def test_get_outputs_shifted(world):
     wait_event = world.env.event()
     world.df_graph[5][4]['wait_event'] = wait_event
     sim = world.sims[5]
+    sim.meta['type'] = 'discrete-time'
+    sim.progress = 0
     sim.last_step, sim.progress_tmp = 1, 1
     world.sims[4].next_step = 2
 
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, empty_step=False)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered

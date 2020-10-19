@@ -9,6 +9,9 @@ from mosaik.exceptions import (SimulationError, WakeUpException)
 from mosaik.simmanager import FULL_ID
 
 
+SENTINEL = object()
+
+
 def run(world, until, rt_factor=None, rt_strict=False, print_progress=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
@@ -51,6 +54,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
     try:
         keep_running = get_keep_running_func(world, sim, until)
         while keep_running():
+            print(sim.sid, 'START LOOP')
             try:
                 yield from has_next_step(world, sim)
             except WakeUpException:
@@ -73,9 +77,23 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                     continue
             sim.interruptable = False
             input_data = get_input_data(world, sim)
-            yield from step(world, sim, input_data)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
-            yield from get_outputs(world, sim)
+
+            if world.df_graph.in_degree(sim.sid) == 0:
+                preds_progress = []
+            else:
+                preds_progresses = [world.sims[pre_sid].progress for pre_sid in
+                                    world.df_graph.predecessors(sim.sid)]
+                preds_progress = min(preds_progresses)
+            if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
+                    and sim.next_step != sim.next_self_step[0]):
+                empty_step = True
+                sim.progress_tmp = preds_progress
+                print(sim.sid, sim.next_step, 'SHOULD NOT BE HERE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            else:
+                empty_step = False
+                yield from step(world, sim, input_data, preds_progress)
+                rt_check(rt_factor, rt_start, rt_strict, sim)
+            yield from get_outputs(world, sim, empty_step)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
@@ -229,19 +247,21 @@ def get_input_data(world, sim):
     df_graph = world.df_graph
 
     for src_sid in df_graph.predecessors(sim.sid):
-        t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']  # -1 for shifted connections
+        t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
         dataflows = df_graph[src_sid][sim.sid]['dataflows']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
-                v = world._df_cache[t][src_sid][src_eid][src_attr]
-                vals = input_data.setdefault(dest_eid, {}) \
-                    .setdefault(dest_attr, {})
-                vals[FULL_ID % (src_sid, src_eid)] = v
+                v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\
+                    .get(src_attr, SENTINEL)
+                if v is not SENTINEL:
+                    vals = input_data.setdefault(dest_eid, {}) \
+                        .setdefault(dest_attr, {})
+                    vals[FULL_ID % (src_sid, src_eid)] = v
 
     return input_data
 
 
-def step(world, sim, inputs):
+def step(world, sim, inputs, preds_progress):
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -268,14 +288,23 @@ def step(world, sim, inputs):
 
         if next_step not in sim.next_steps:
             heappush(sim.next_steps, next_step)
-        sim.progress_tmp = next_step - 1
+
+        if sim.meta['type'] == 'discrete-time':
+            sim.progress_tmp = next_step - 1
+        else:
+            assert preds_progress >= sim.last_step
+            sim.progress_tmp = min(next_step, preds_progress)
     else:
-        sim.progress_tmp = sim.last_step
+        assert preds_progress >= sim.last_step
+        sim.progress_tmp = preds_progress
 
     sim.next_step = None
+    if next_step is not None:
+        sim.next_self_step = (next_step, sim.last_step)
+    print(sim.sid, sim.next_self_step, next_step, '++++++++++++')
 
 
-def get_outputs(world, sim):
+def get_outputs(world, sim, empty_step):
     """
     Get all required output data from a simulator *sim*, notify all
     simulators that are waiting for that data and prune the data flow cache.
@@ -285,14 +314,27 @@ def get_outputs(world, sim):
     """
     sid = sim.sid
     last_step = sim.last_step
+    old_progress = sim.progress
     outattr = world._df_outattr[sid]
     if outattr:
-        data = yield sim.proxy.get_data(outattr)
-    else:
-        data = {}  # Just to indicate that the step/get is completely done.
-    # Create a cache entry for every point in time the data is valid for.
-    for i in range(last_step, sim.progress_tmp + 1):
-        world._df_cache[i][sim.sid] = data
+        if not empty_step:
+            data = yield sim.proxy.get_data(outattr)
+
+        if sim.meta['type'] == 'discrete-time':
+            # Create a cache entry for every point in time the data is valid
+            # for.
+            for i in range(sim.last_step, sim.progress_tmp + 1):
+                world._df_cache[i][sim.sid] = data
+        else:
+            if sim.persistent_attrs:
+                if empty_step:
+                    data = world._df_cache[old_progress][sim.sid]
+                pers_data = {attr: data[attr] for attr in sim.persistent_attrs}
+                for i in range(sim.old_progress + 1, sim.progress_tmp + 1):
+                    world._df_cache[i][sim.sid] = pers_data
+
+            if not empty_step:
+                world._df_cache[sim.last_step][sim.sid] = data
 
     progress = sim.progress = sim.progress_tmp
 

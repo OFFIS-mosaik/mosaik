@@ -17,9 +17,9 @@ def enable():
     scheduler execution.
     """
 
-    def wrapped_step(world, sim, inputs):
+    def wrapped_step(world, sim, inputs, preds_progress):
         pre_step(world, sim, inputs)
-        ret = yield from _originals['step'](world, sim, inputs)
+        ret = yield from _originals['step'](world, sim, inputs, preds_progress)
         post_step(world, sim)
         return ret
 
@@ -50,8 +50,8 @@ def pre_step(world, sim, inputs):
     node_id = node % (sid, next_step)
 
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
-    if sim.last_step >= 0:
-        eg.add_edge(node % (sid, sim.last_step), node_id)
+    if next_step == sim.next_self_step[0] and sim.last_step >= 0:
+        eg.add_edge(node % (sid, sim.next_self_step[1]), node_id)
 
     for pre in world.df_graph.predecessors(sid):
         pre_node = node % (pre, sims[pre].last_step)
