@@ -96,14 +96,15 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                     max_advance = min(sim.next_steps[0], max_advance)
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
-                empty_step = True
                 sim.progress_tmp = max_advance
+                update_cache(world, sim)
                 print(sim.sid, sim.next_step, 'SHOULD NOT BE HERE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
             else:
-                empty_step = False
                 yield from step(world, sim, input_data, max_advance)
                 rt_check(rt_factor, rt_start, rt_strict, sim)
-            yield from get_outputs(world, sim, empty_step)
+                yield from get_outputs(world, sim)
+            notify_dependencies(world, sim)
+            prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
@@ -322,21 +323,17 @@ def step(world, sim, inputs, max_advance):
     print(sim.sid, sim.next_self_step, next_step, '++++++++++++')
 
 
-def get_outputs(world, sim, empty_step):
+def get_outputs(world, sim):
     """
-    Get all required output data from a simulator *sim*, notify all
-    simulators that are waiting for that data and prune the data flow cache.
-    Return an event that is triggered when all output data is received.
+    Get all required output data from a simulator *sim*.
+    Yield an event that is triggered when all output data is received.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     sid = sim.sid
-    last_step = sim.last_step
-    old_progress = sim.progress
     outattr = world._df_outattr[sid]
     if outattr:
-        if not empty_step:
-            data = yield sim.proxy.get_data(outattr)
+        data = yield sim.proxy.get_data(outattr)
 
         if sim.meta['type'] == 'discrete-time':
             # Create a cache entry for every point in time the data is valid
@@ -345,15 +342,29 @@ def get_outputs(world, sim, empty_step):
                 world._df_cache[i][sim.sid] = data
         else:
             if sim.persistent_attrs:
-                if empty_step:
-                    data = world._df_cache[old_progress][sim.sid]
                 pers_data = {attr: data[attr] for attr in sim.persistent_attrs}
                 for i in range(sim.old_progress + 1, sim.progress_tmp + 1):
                     world._df_cache[i][sim.sid] = pers_data
 
-            if not empty_step:
-                world._df_cache[sim.last_step][sim.sid] = data
+            world._df_cache[sim.last_step][sim.sid] = data
 
+
+def update_cache(world, sim):
+    """
+
+    """
+    if sim.persistent_attrs:
+        data = world._df_cache[sim.old_progress][sim.sid]
+        pers_data = {attr: data[attr] for attr in sim.persistent_attrs}
+        for i in range(sim.old_progress + 1, sim.progress_tmp + 1):
+            world._df_cache[i][sim.sid] = pers_data
+
+
+def notify_dependencies(world, sim):
+    """
+    Notify all simulators waiting for us
+    """
+    sid = sim.sid
     progress = sim.progress = sim.progress_tmp
 
     # Notify simulators waiting for inputs from us.
@@ -371,7 +382,7 @@ def get_outputs(world, sim, empty_step):
             if not dest_sim.has_next_step.triggered:
                 dest_sim.has_next_step.succeed()
             elif dest_sim.interruptable and \
-                    dest_sim.progress <= last_step < dest_sim.next_step:
+                    dest_sim.progress <= sim.last_step < dest_sim.next_step:
                 dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.
@@ -382,7 +393,11 @@ def get_outputs(world, sim, empty_step):
                 not sim.next_steps or pre_sim.next_step <= progress + 1):
             edge.pop('wait_async').succeed()
 
-    # Prune dataflow cache
+
+def prune_dataflow_cache(world):
+    """
+    Prunes the dataflow cache.
+    """
     min_cache_time = min(s.last_step for s in world.sims.values())
     for i in range(world._df_cache_min_time, min_cache_time):
         try:

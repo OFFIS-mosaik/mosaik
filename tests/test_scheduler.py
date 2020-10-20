@@ -175,9 +175,11 @@ def test_get_outputs(world):
     sim.last_step, sim.progress_tmp = 0, 0
     sim.idle_tmp = False
 
-    gen = scheduler.get_outputs(world, sim, empty_step=False)
+    gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
+    scheduler.notify_dependencies(world, sim)
+    scheduler.prune_dataflow_cache(world)
     assert sim.progress == 0
     assert evt.triggered
     assert not wait_event.triggered
@@ -191,12 +193,15 @@ def test_get_outputs(world):
         s.last_step, s.next_step = 1, 2
     sim.progress = 1
     sim.last_step, sim.progress_tmp = 2, 2
-    gen = scheduler.get_outputs(world, sim, empty_step=False)
+    gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
+    scheduler.notify_dependencies(world, sim)
+    scheduler.prune_dataflow_cache(world)
     assert evt.triggered
     assert wait_event.triggered
     assert 'wait_event' not in world.df_graph[0][2]
+
     assert world._df_cache == {
         1: {'foo': 'bar'},
         2: {0: {'0': {'x': 0, 'y': 1}}},
@@ -214,9 +219,11 @@ def test_get_outputs_shifted(world):
     sim.last_step, sim.progress_tmp = 1, 1
     world.sims[4].next_step = 2
 
-    gen = scheduler.get_outputs(world, sim, empty_step=False)
+    gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
+    scheduler.notify_dependencies(world, sim)
+    scheduler.prune_dataflow_cache(world)
     assert evt.triggered
     assert wait_event.triggered
     assert 'wait_event' not in world.df_graph[5][4]
