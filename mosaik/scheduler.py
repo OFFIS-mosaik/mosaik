@@ -79,19 +79,29 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             input_data = get_input_data(world, sim)
 
             if world.df_graph.in_degree(sim.sid) == 0:
-                preds_progress = []
+                max_advance = until
+                sim.all_preds_idle = False
             else:
                 preds_progresses = [world.sims[pre_sid].progress for pre_sid in
-                                    world.df_graph.predecessors(sim.sid)]
-                preds_progress = min(preds_progresses)
+                                    world.df_graph.predecessors(sim.sid)
+                                    if not world.sims[pre_sid].idle]
+                if preds_progresses:
+                    max_advance = min(preds_progresses)
+                    sim.all_preds_idle = False
+                else:
+                    max_advance = until
+                    sim.all_preds_idle = True
+
+                if sim.next_steps:
+                    max_advance = min(sim.next_steps[0], max_advance)
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
                 empty_step = True
-                sim.progress_tmp = preds_progress
+                sim.progress_tmp = max_advance
                 print(sim.sid, sim.next_step, 'SHOULD NOT BE HERE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
             else:
                 empty_step = False
-                yield from step(world, sim, input_data, preds_progress)
+                yield from step(world, sim, input_data, max_advance)
                 rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim, empty_step)
             world.sim_progress = get_progress(world.sims, until)
@@ -169,6 +179,10 @@ def has_next_step(world, sim):
         yield sim.has_next_step
     else:
         sim.idle = True
+        for pre_sid in world.df_graph.predecessors(sim.sid):
+            if not world.sims[pre_sid].idle:
+                sim.idle = False
+                break
         try:
             yield sim.has_next_step
         except Interrupt:
@@ -176,7 +190,9 @@ def has_next_step(world, sim):
             raise WakeUpException
 
         next_step = get_next_step(sim)
-        sim.idle = False
+
+    sim.idle = False
+    sim.idle_tmp = False
 
     sim.next_step = next_step
 
@@ -261,7 +277,7 @@ def get_input_data(world, sim):
     return input_data
 
 
-def step(world, sim, inputs, preds_progress):
+def step(world, sim, inputs, max_advance):
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -289,14 +305,16 @@ def step(world, sim, inputs, preds_progress):
         if next_step not in sim.next_steps:
             heappush(sim.next_steps, next_step)
 
-        if sim.meta['type'] == 'discrete-time':
-            sim.progress_tmp = next_step - 1
-        else:
-            assert preds_progress >= sim.last_step
-            sim.progress_tmp = min(next_step, preds_progress)
+    if sim.meta['type'] == 'discrete-time':
+        sim.progress_tmp = next_step - 1
     else:
-        assert preds_progress >= sim.last_step
-        sim.progress_tmp = preds_progress
+        assert max_advance >= sim.last_step
+        if sim.next_steps:
+            sim.progress_tmp = min(sim.next_steps[0], max_advance)
+        else:
+            sim.progress_tmp = max_advance
+            if sim.all_preds_idle:
+                sim.idle_tmp = True
 
     sim.next_step = None
     if next_step is not None:
@@ -343,7 +361,8 @@ def get_outputs(world, sim, empty_step):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
         if 'wait_event' in edge and \
-                dest_sim.next_step <= progress + edge['time_shifted']:
+                (dest_sim.next_step <= progress + edge['time_shifted']
+                 or sim.idle_tmp):
             edge.pop('wait_event').succeed()
 
         if edge['trigger'] and \

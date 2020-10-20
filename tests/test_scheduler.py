@@ -173,6 +173,7 @@ def test_get_outputs(world):
     sim.meta['type'] = 'discrete-time'
     sim.progress = -1
     sim.last_step, sim.progress_tmp = 0, 0
+    sim.idle_tmp = False
 
     gen = scheduler.get_outputs(world, sim, empty_step=False)
     evt = next(gen)
