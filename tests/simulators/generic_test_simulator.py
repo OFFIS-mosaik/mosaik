@@ -28,12 +28,14 @@ class TestSim(mosaik_api.Simulator):
         self.step_size = None
         self.value = None
 
-    def init(self, sid, step_type='discrete-time', step_size=1, self_steps={}):
+    def init(self, sid, step_type='discrete-time', step_size=1, self_steps={},
+             output_timing=None):
         self.sid = sid
         self.step_type = step_type
         self.meta['type'] = step_type
         self.step_size = step_size
         self.self_steps = self_steps
+        self.output_timing = output_timing
 
         return self.meta
 
@@ -55,7 +57,14 @@ class TestSim(mosaik_api.Simulator):
                 return {}
 
     def get_data(self, outputs):
-        data = {self.eid: {'val_out': self.time}}
+        if self.output_timing is None:
+            data = {self.eid: {'val_out': self.time}}
+        else:
+            output_time = self.output_timing.get(self.time, None)
+            if output_time is not None:
+                data = {'time': output_time, self.eid: {'val_out': self.time}}
+            else:
+                data = {}
         return data
 
 

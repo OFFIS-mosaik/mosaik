@@ -211,6 +211,13 @@ class World(object):
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
+    def set_event(self, sid, time=0):
+        """
+        Set an initial step for simulator *sid* at time *time* (default=0).
+        """
+        self.sims[sid].next_steps = [time]
+        self.sims[sid].next_self_step = (time, -1)
+
     def get_data(self, entity_set, *attributes):
         """
         Get and return the values of all *attributes* for each entity of an

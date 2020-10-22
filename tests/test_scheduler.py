@@ -16,6 +16,7 @@ def world_fixture():
     world.df_graph.add_edges_from([(5, 4)],
                     async_requests=False, time_shifted=True, trigger=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
+    world.until = 4
     yield world
     world.shutdown()
 
@@ -57,7 +58,9 @@ def test_run(monkeypatch):
 
 
 def test_run_illegal_rt_factor():
-    pytest.raises(ValueError, next, scheduler.run(None, 10, -1))
+    class DummyWorld:
+        until = None
+    pytest.raises(ValueError, next, scheduler.run(DummyWorld(), 10, -1))
 
 
 def test_sim_process():
@@ -71,7 +74,7 @@ def test_sim_process_error(monkeypatch):
     class Sim:
         sid = 'spam'
 
-    def get_keep_running_func(world, sim, until):
+    def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         raise ConnectionError(1337, 'noob')
 
     monkeypatch.setattr(scheduler, 'get_keep_running_func',
