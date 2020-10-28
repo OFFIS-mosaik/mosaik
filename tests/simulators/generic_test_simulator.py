@@ -36,6 +36,8 @@ class TestSim(mosaik_api.Simulator):
         self.step_size = step_size
         self.self_steps = self_steps
         self.output_timing = output_timing
+        if step_type == 'hybrid':
+            self.meta['models']['A']['persistent'] = ['val_out']
 
         return self.meta
 

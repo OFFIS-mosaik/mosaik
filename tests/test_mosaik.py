@@ -28,7 +28,7 @@ sim_config_generic = {
 test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
 test_cases.append(('scenario_5', sim_config_remote))
 test_cases.append(('scenario_6', sim_config_remote))
-test_cases.extend([('scenario_%s' % (i), sim_config_generic) for i in range(7, 11)])
+test_cases.extend([('scenario_%s' % (i), sim_config_generic) for i in range(7, 15)])
 
 
 # Test all combinations of both sim configs and the 5 test scenarios.
@@ -54,6 +54,7 @@ def test_mosaik(fixture, sim_config):
 
         for sim in world.sims.values():
             assert sim.last_step < fixture.UNTIL
+            assert sim.progress >= fixture.UNTIL - 1
     finally:
         world.shutdown()
 

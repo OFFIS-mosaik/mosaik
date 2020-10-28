@@ -97,6 +97,7 @@ class World(object):
         # List of outputs for each simulator and model:
         # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
         self._df_outattr = defaultdict(lambda: defaultdict(list))
+        self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
         # Cache for simulation results
         self._df_cache = defaultdict(dict)
         self._df_cache_min_time = 0
@@ -210,6 +211,10 @@ class World(object):
         outattr = [a[0] for a in attr_pairs]
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
+            if (src.sim.meta['type'] == 'hybrid'
+                    and [iattr for iattr in outattr if
+                         iattr in src.sim.meta['models'][src.type]['persistent']]):
+                self.persistent_outattrs[src.sid][src.eid].extend(outattr)
 
     def set_event(self, sid, time=0):
         """

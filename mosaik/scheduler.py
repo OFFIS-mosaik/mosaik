@@ -98,7 +98,9 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                     max_advance = min(sim.next_steps[0], max_advance)
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
-                update_cache_and_times(world, sim, max_advance)
+                sim.output_time = sim.last_step = sim.next_step
+                sim.progress_tmp = max_advance
+                update_cache(world, sim)
             else:
                 yield from step(world, sim, input_data, max_advance)
                 rt_check(rt_factor, rt_start, rt_strict, sim)
@@ -111,6 +113,9 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             print(sim.sid, 'END OF STEP', sim.last_step)
 
         print(sim.sid, 'DONE <<<<<<<<<<<<<<<<<')
+        sim.progress_tmp = until
+        update_cache(world, sim)
+        sim.progress = until
         clear_wait_events_dependencies(world, sim.sid)
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
@@ -379,34 +384,40 @@ def get_outputs(world, sim):
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
-            if sim.meta.get('persistent', None):
-                pers_data = {attr: data[attr] for attr in sim.meta['persistent']}
-                for i in range(sim.old_progress + 1, sim.progress_tmp + 1):
+            persistent_attrs = world.persistent_outattrs[sid]
+            if persistent_attrs:
+                pers_data = {eid: {attr: data[eid][attr]}
+                             for eid, attrs in persistent_attrs.items()
+                             for attr in attrs}
+                i_start = (sim.progress + 1 if sim.last_step > sim.progress
+                           else sim.last_step)
+                for i in range(i_start, sim.progress_tmp + 1):
                     world._df_cache[i][sim.sid] = pers_data
 
             output_time = sim.output_time = data.get('time', sim.last_step)
-
-            if sim.last_step > output_time > sim.progress_tmp:
+            # For the moment we limit the output_time to <= sim.progress_tmp
+            # as it might be overwritten otherwise.
+            if sim.last_step > output_time or output_time > sim.progress_tmp:
                 raise SimulationError(
                     'Output time (%s) is not >= time (%s) and '
-                    '<= max_advance/progress/next_step (%s) for simulator "%s"'
+                    '<= max_advance/(next_step-1) (%s) for simulator "%s"'
                     % (output_time, sim.last_step, sim.progress_tmp, sim.sid))
 
             world._df_cache[output_time][sim.sid] = data
 
 
-def update_cache_and_times(world, sim, max_advance):
+def update_cache(world, sim):
     """
 
     """
-    if sim.meta.get('persistent', None):
-        data = world._df_cache[sim.old_progress][sim.sid]
-        pers_data = {attr: data[attr] for attr in sim.persistent_attrs}
-        for i in range(sim.old_progress + 1, sim.progress_tmp + 1):
+    persistent_attrs = world.persistent_outattrs[sim.sid]
+    if persistent_attrs:
+        data = world._df_cache[sim.progress][sim.sid]
+        pers_data = {eid: {attr: data[eid][attr]}
+                     for eid, attrs in persistent_attrs.items()
+                     for attr in attrs}
+        for i in range(sim.progress + 1, sim.progress_tmp + 1):
             world._df_cache[i][sim.sid] = pers_data
-
-    sim.output_time = sim.last_step = sim.next_step
-    sim.progress_tmp = max_advance
 
 
 def notify_dependencies(world, sim):
@@ -424,7 +435,6 @@ def notify_dependencies(world, sim):
                 (dest_sim.next_step <= progress + edge['time_shifted']
                  or sim.idle_tmp):
             edge.pop('wait_event').succeed()
-
         if (edge['trigger']
                 and sim.output_time not in dest_sim.next_steps
                 + [dest_sim.next_step]
