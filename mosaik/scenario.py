@@ -186,7 +186,6 @@ class World(object):
                 self._df_cache[-1][src.sid].setdefault(src.eid, {})
                 self._df_cache[-1][src.sid][src.eid][attr] = val
 
-        # Add edge and check for cycles and the data-flow graph.
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
                                time_shifted=time_shifted, trigger=trigger)
@@ -211,10 +210,21 @@ class World(object):
         outattr = [a[0] for a in attr_pairs]
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
-            if (src.sim.meta['type'] == 'hybrid'
-                    and [iattr for iattr in outattr if
-                         iattr in src.sim.meta['models'][src.type]['persistent']]):
-                self.persistent_outattrs[src.sid][src.eid].extend(outattr)
+            if src.sim.meta['type'] == 'hybrid':
+                persistent_attrs = [iattr for iattr in outattr if
+                                    iattr in src.sim.meta['models'][src.type][
+                                        'persistent']]
+                if persistent_attrs:
+                    self.persistent_outattrs[src.sid][src.eid].extend(
+                                                              persistent_attrs)
+
+        if (src.sim.meta['type'] != 'discrete-time'
+                and dest.sim.meta['type'] == 'discrete-time'):
+            for src_attr, dest_attr in attr_pairs:
+                if src_attr not in src.sim.meta['models'][src.type].get(
+                        'persistent', []):
+                    src.sim.buffered_output[(src.eid, src_attr)] = (
+                        dest.sid, dest.eid, dest_attr)
 
     def set_event(self, sid, time=0):
         """

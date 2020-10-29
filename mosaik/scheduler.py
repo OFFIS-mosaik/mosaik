@@ -405,6 +405,13 @@ def get_outputs(world, sim):
 
             world._df_cache[output_time][sim.sid] = data
 
+            for (src_eid, src_attr), (dest_sid, dest_eid, dest_attr) in sim.buffered_output.items():
+                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
+                if val is not SENTINEL:
+                    world.sims[dest_sid].input_buffer.setdefault(dest_eid,
+                                                                 {}).setdefault(
+                        dest_attr, {})[FULL_ID % (sim.sid, src_eid)] = val
+
 
 def update_cache(world, sim):
     """
