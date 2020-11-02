@@ -89,6 +89,7 @@ def test_world_connect(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
+                'weak': False,
                 'trigger': False,
                 'dataflows': [
                     (a[0].eid, b[0].eid, (('val_out', 'val_in'),
@@ -182,6 +183,7 @@ def test_world_connect_no_attrs(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
+                'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
@@ -210,6 +212,7 @@ def test_world_connect_any_inputs(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
+                'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },
@@ -235,6 +238,7 @@ def test_world_connect_async_requests(world):
             'ExampleSim-1': {
                 'async_requests': True,
                 'time_shifted': False,
+                'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
             },
@@ -253,6 +257,7 @@ def test_world_connect_time_shifted(world):
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': True,
+                'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
             },

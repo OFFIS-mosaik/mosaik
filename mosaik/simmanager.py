@@ -404,7 +404,7 @@ class SimProxy:
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event
         self.interruptable = False
-        self.idle = False
+        self.trigger_cycles = []
 
     def stop(self):
         """

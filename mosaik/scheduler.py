@@ -1,7 +1,8 @@
 """
 This module is responsible for performing the simulation of a scenario.
 """
-from heapq import heappush, heappop
+from heapq import heappush, heappop, heapreplace
+import networkx as nx
 from time import perf_counter
 from simpy.exceptions import Interrupt
 
@@ -74,28 +75,14 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                 except Interrupt as i:
                     print(sim.sid, 'INTERRUPTED')
                     assert i.cause == 'Earlier step'
-                    sim.next_step = get_next_step(sim)
+                    sim.next_step = heapreplace(sim.next_steps, sim.next_step)
                     clear_wait_events(world, sim.sid)
                     continue
             sim.interruptable = False
             input_data = get_input_data(world, sim)
 
-            if world.df_graph.in_degree(sim.sid) == 0:
-                max_advance = until
-                sim.all_preds_idle = False
-            else:
-                preds_progresses = [world.sims[pre_sid].progress for pre_sid in
-                                    world.df_graph.predecessors(sim.sid)
-                                    if not world.sims[pre_sid].idle]
-                if preds_progresses:
-                    max_advance = min(preds_progresses)
-                    sim.all_preds_idle = False
-                else:
-                    max_advance = until
-                    sim.all_preds_idle = True
-
-                if sim.next_steps:
-                    max_advance = min(sim.next_steps[0], max_advance)
+            max_advance = get_max_advance(world, sim, until)
+            print('MAX ADV', max_advance)
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
                 sim.output_time = sim.last_step = sim.next_step
@@ -110,7 +97,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
-            print(sim.sid, 'END OF STEP', sim.last_step)
+            print(sim.sid, 'END OF STEP', sim.last_step, sim.progress)
 
         print(sim.sid, 'DONE <<<<<<<<<<<<<<<<<')
         sim.progress_tmp = until
@@ -120,7 +107,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
-        for suc_sid in world.df_graph.successors(sim.sid):
+        for suc_sid in world.trigger_graph.successors(sim.sid):
             if not world.sims[suc_sid].sim_proc.triggered:
                 evt = world.sims[suc_sid].has_next_step
                 if not evt.triggered:
@@ -131,6 +118,26 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                               sim.sid, e)
 
 
+def get_max_advance(world, sim, until):
+    ancs_next_steps = []
+    for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
+        anc_sim = world.sims[anc_sid]
+        if anc_sim.next_step:
+            ancs_next_steps.append(anc_sim.next_step - 1)
+        elif anc_sim.next_steps:
+            ancs_next_steps.append(anc_sim.next_steps[0] - 1)
+
+    if ancs_next_steps:
+        max_advance = min(ancs_next_steps)
+    else:
+        max_advance = until
+
+    if sim.next_steps:
+        max_advance = min(sim.next_steps[0], max_advance)
+
+    return max_advance
+
+
 def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     """
     Return a function that the :func:`sim_process()` uses to determine
@@ -139,9 +146,12 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     Depending on whether the process has any successors in the dataflow graph,
     the condition for when to stop differs.
     """
-
-    def check_time():
-        return sim.progress + 1 < until
+    if world.trigger_graph.in_degree(sim.sid) == 0:
+        def check_time():
+            return sim.progress + 1 < until
+    else:
+        def check_time():
+            return sim.progress < until
 
     check_functions = [check_time]
 
@@ -164,7 +174,7 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         # the total wall-clock time has passed.
         if not rt_factor:
             pre_procs = [world.sims[pre_sid].sim_proc for pre_sid in
-                         world.df_graph.predecessors(sim.sid)]
+                         world.trigger_graph.predecessors(sim.sid)]
 
             def check_trigger():
                 return sim.next_steps or not all(process.triggered
@@ -183,7 +193,6 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
 
 def get_next_step(sim):
-
     next_step = heappop(sim.next_steps) if sim.next_steps else None
     if next_step:
         next_step = max(next_step, sim.progress)
@@ -205,21 +214,12 @@ def has_next_step(world, sim):
         sim.has_next_step.succeed()
         yield sim.has_next_step
     else:
-        sim.idle = True
-        for pre_sid in world.df_graph.predecessors(sim.sid):
-            if not world.sims[pre_sid].idle:
-                sim.idle = False
-                break
         try:
             yield sim.has_next_step
         except Interrupt:
-            sim.idle = False
             raise WakeUpException
 
         next_step = get_next_step(sim)
-
-    sim.idle = False
-    sim.idle_tmp = False
 
     sim.next_step = next_step
 
@@ -242,8 +242,9 @@ def wait_for_dependencies(world, sim):
     for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
         edge = dfg[dep_sid][sim.sid]
-        if dep.progress + edge['time_shifted'] < t:
-            # Wait for dep_sim if there's not data for it yet.
+        # Wait for dep_sim if it hasn't progressed until actual time step:
+        weak_or_shifted = edge['time_shifted'] or edge['weak']
+        if dep.progress + weak_or_shifted < t:
             evt = world.env.event()
             events.append(evt)
             edge['wait_event'] = evt
@@ -257,7 +258,7 @@ def wait_for_dependencies(world, sim):
     # data for [last_step, next_step) from us:
     for suc_sid in dfg.successors(sim.sid):
         suc = world.sims[suc_sid]
-        if not suc.idle and suc.progress + 1 < t:
+        if suc.progress + 1 < t:
             evt = world.env.event()
             events.append(evt)
             world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
@@ -356,13 +357,9 @@ def step(world, sim, inputs, max_advance):
         else:
             sim.progress_tmp = max_advance
 
-        if not sim.next_steps and sim.all_preds_idle:
-            sim.idle_tmp = True
-
     sim.next_step = None
     if next_step is not None:
         sim.next_self_step = (next_step, sim.last_step)
-    print(sim.sid, sim.next_self_step, next_step, '++++++++++++')
 
 
 def get_outputs(world, sim):
@@ -384,6 +381,18 @@ def get_outputs(world, sim):
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
+            output_time = sim.output_time = data.get('time', sim.last_step)
+            if sim.last_step > output_time:
+                raise SimulationError(
+                    'Output time (%s) is not >= time (%s) for simulator "%s"'
+                    % (output_time, sim.last_step, sim.sid))
+
+            for cycle in sim.trigger_cycles:
+                for src_eid, src_attr in cycle['activators']:
+                    if src_attr in data.get(src_eid, {}):
+                        if output_time < sim.progress_tmp:
+                            sim.progress_tmp = output_time
+
             persistent_attrs = world.persistent_outattrs[sid]
             if persistent_attrs:
                 pers_data = {eid: {attr: data[eid][attr]}
@@ -392,16 +401,10 @@ def get_outputs(world, sim):
                 i_start = (sim.progress + 1 if sim.last_step > sim.progress
                            else sim.last_step)
                 for i in range(i_start, sim.progress_tmp + 1):
-                    world._df_cache[i][sim.sid] = pers_data
-
-            output_time = sim.output_time = data.get('time', sim.last_step)
-            # For the moment we limit the output_time to <= sim.progress_tmp
-            # as it might be overwritten otherwise.
-            if sim.last_step > output_time or output_time > sim.progress_tmp:
-                raise SimulationError(
-                    'Output time (%s) is not >= time (%s) and '
-                    '<= max_advance/(next_step-1) (%s) for simulator "%s"'
-                    % (output_time, sim.last_step, sim.progress_tmp, sim.sid))
+                    if sim.sid not in world._df_cache.setdefault(i, {}):
+                        world._df_cache[i][sim.sid] = pers_data
+                    else:
+                        world._df_cache[i][sim.sid].update(pers_data)
 
             world._df_cache[output_time][sim.sid] = data
 
@@ -438,9 +441,9 @@ def notify_dependencies(world, sim):
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if 'wait_event' in edge and \
-                (dest_sim.next_step <= progress + edge['time_shifted']
-                 or sim.idle_tmp):
+        if ('wait_event' in edge
+                and (dest_sim.next_step <= progress + (edge['time_shifted']
+                                                       or edge['weak']))):
             edge.pop('wait_event').succeed()
         if (edge['trigger']
                 and sim.output_time not in dest_sim.next_steps

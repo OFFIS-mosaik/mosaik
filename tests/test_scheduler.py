@@ -12,9 +12,11 @@ def world_fixture():
         for i in range(6)
     }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
-                    async_requests=False, time_shifted=False, trigger=False)
+                                  async_requests=False, time_shifted=False,
+                                  weak=False, trigger=False)
     world.df_graph.add_edges_from([(5, 4)],
-                    async_requests=False, time_shifted=True, trigger=False)
+                                  async_requests=False, time_shifted=True,
+                                  weak=False, trigger=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
     world.until = 4
     yield world
@@ -81,18 +83,43 @@ def test_sim_process_error(monkeypatch):
                         get_keep_running_func)
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
-                            scheduler.sim_process(None, Sim(), None, 1, False, True))
+                            scheduler.sim_process(None, Sim(), None, 1, False,
+                                                  True))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 
 
-def test_wait_for_dependencies(world):
+@pytest.mark.parametrize('progress', [0, 2])
+def test_has_next_step(world, progress):
+    """
+    Test has_next_step whithout and with next_steps.
+    """
+    sim = world.sims[0]
+    sim.progress = progress
+    sim.next_steps = []
+
+    gen = scheduler.has_next_step(world, sim)
+    evt = next(gen)
+    assert not evt.triggered
+
+    sim.next_steps.append(1)
+    with pytest.raises(StopIteration):
+        next(gen)
+    assert sim.next_step == max(1, progress)
+
+
+@pytest.mark.parametrize("weak,number_waiting", [
+    (True, 1),
+    (False, 2)
+])
+def test_wait_for_dependencies(world, weak, number_waiting):
     """
     Test waiting for dependencies and triggering them.
     """
     world.sims[2].next_step = 0
+    world.df_graph[1][2]['weak'] = weak
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
-    assert len(evt._events) == 2
+    assert len(evt._events) == number_waiting
     assert not evt.triggered
 
 
@@ -103,7 +130,6 @@ def test_wait_for_dependencies_all_done(world):
     world.sims[2].next_step = 0
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
-
     evt = scheduler.wait_for_dependencies(world, world.sims[2])
     assert len(evt._events) == 0
     assert evt.triggered

@@ -42,6 +42,7 @@ def pre_step(world, sim, inputs):
     Also perform some checks and annotate the graph with the dataflows.
     """
     eg = world.execution_graph
+    dfg = world.df_graph
     sims = world.sims
 
     sid = sim.sid
@@ -53,13 +54,15 @@ def pre_step(world, sim, inputs):
     if next_step == sim.next_self_step[0] and sim.last_step >= 0:
         eg.add_edge(node % (sid, sim.next_self_step[1]), node_id)
 
-    for pre in world.df_graph.predecessors(sid):
-        pre_node = node % (pre, sims[pre].last_step)
-        eg.add_edge(pre_node, node_id)
-        assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
+    for pre in dfg.predecessors(sid):
+        if (not (dfg[pre][sid]['time_shifted'] or dfg[pre][sid]['weak'])
+                or sim.last_step >= 0):
+            pre_node = node % (pre, sims[pre].last_step)
+            eg.add_edge(pre_node, node_id)
+            assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
-    for suc in world.df_graph.successors(sid):
-        if world.df_graph[sid][suc]['async_requests'] and sim.last_step >= 0:
+    for suc in dfg.successors(sid):
+        if dfg[sid][suc]['async_requests'] and sim.last_step >= 0:
             suc_node = node % (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
             assert sims[suc].progress + 1 >= next_step

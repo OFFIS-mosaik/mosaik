@@ -79,6 +79,10 @@ class World(object):
         """The directed data-flow :func:`graph <networkx.DiGraph>` for this
         scenario."""
 
+        self.trigger_graph = networkx.DiGraph()
+        """The directed :func:`graph <networkx.DiGraph>` from all triggering
+        connections for this scenario."""
+
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
         ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
@@ -113,10 +117,11 @@ class World(object):
         sim = simmanager.start(self, sim_name, sim_id, sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
+        self.trigger_graph.add_node(sim_id)
         return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs, async_requests=False,
-                time_shifted=False, initial_data=None):
+                time_shifted=False, initial_data=None, weak=False):
         """
         Connect the *src* entity to *dest* entity.
 
@@ -156,7 +161,7 @@ class World(object):
                                 'data-flow. Choose one!')
 
         if self.df_graph.has_edge(src.sid, dest.sid):
-            for ctype in ['time_shifted', 'async_requests']:
+            for ctype in ['time_shifted', 'async_requests', 'weak']:
                 if eval(ctype) != self.df_graph[src.sid][dest.sid][ctype]:
                     raise ScenarioError(f'{ctype.capitalize()} and standard '
                                         'connections are mutually exclusive, '
@@ -188,13 +193,17 @@ class World(object):
 
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
-                               time_shifted=time_shifted, trigger=trigger)
+                               time_shifted=time_shifted,
+                               weak=weak,
+                               trigger=trigger)
 
         cycles = networkx.simple_cycles(self.df_graph)
         for cycle in cycles:
             cycle = zip(cycle + [cycle[0]], [cycle[-1]] + cycle)
-            if not any([self.df_graph[src][dest]['time_shifted']
-                        for src, dest in cycle]):
+            loop_breaker = [self.df_graph[src_id][dest_id]['weak']
+                            or self.df_graph[src_id][dest_id]['time_shifted']
+                            for src_id, dest_id in cycle]
+            if not any(loop_breaker):
                 raise ScenarioError('Connection from "%s" to "%s" '
                                     'introduces cyclic dependencies.' % (
                                      src.sid, dest.sid))
@@ -309,6 +318,36 @@ class World(object):
             if deg == 0:
                 print('WARNING: %s has no connections.' % sid)
 
+        trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
+                         if w['trigger']]
+        self.trigger_graph.add_edges_from(trigger_edges)
+
+        cycles = list(networkx.simple_cycles(self.trigger_graph))
+        for sim in self.sims.values():
+            for cycle in cycles:
+                if sim.sid in cycle:
+                    edge_ids = list(zip(cycle + [cycle[0]], [cycle[-1]] + cycle))
+                    cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
+                                   for src_id, dest_id in edge_ids]
+                    trigger_cycle = {}
+                    min_cycle_length = sum([edge['time_shifted']
+                                            for edge in cycle_edges])
+                    trigger_cycle['min_length'] = min_cycle_length
+                    ind_sim = cycle.index(sim.sid)
+                    out_edge = cycle_edges[ind_sim]
+                    suc_sid = edge_ids[ind_sim][1]
+                    activators = []
+                    for src_eid, dest_eid, attrs in out_edge['dataflows']:
+                        dest_model = \
+                            networkx.get_node_attributes(self.entity_graph,
+                                        'type')[FULL_ID % (suc_sid, dest_eid)]
+                        dest_trigger = self.sims[suc_sid].meta['models'][
+                            dest_model]['trigger']
+                        for src_attr, dest_attr in attrs:
+                            if dest_attr in dest_trigger:
+                                activators.append((src_eid, src_attr))
+                    trigger_cycle['activators'] = activators
+                    sim.trigger_cycles.append(trigger_cycle)
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
