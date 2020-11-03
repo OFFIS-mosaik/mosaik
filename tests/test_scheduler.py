@@ -92,7 +92,7 @@ def test_sim_process_error(monkeypatch):
 @pytest.mark.parametrize('progress', [0, 2])
 def test_has_next_step(world, progress):
     """
-    Test has_next_step whithout and with next_steps.
+    Test has_next_step without and with next_steps.
     """
     sim = world.sims[0]
     sim.progress = progress

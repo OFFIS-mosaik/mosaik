@@ -250,8 +250,8 @@ def wait_for_dependencies(world, sim):
             edge['wait_event'] = evt
             print(sim.sid, 'WAITS FOR', dep_sid)
             # To avoid deadlocks:
-            if 'wait_async' in edge and dep.next_step <= t:
-                edge.pop('wait_async').succeed()
+            if 'wait_lazy_or_async' in edge and dep.next_step <= t:
+                edge.pop('wait_lazy_or_async').succeed()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
@@ -261,7 +261,7 @@ def wait_for_dependencies(world, sim):
         if suc.progress + 1 < t:
             evt = world.env.event()
             events.append(evt)
-            world.df_graph[sim.sid][suc_sid]['wait_async'] = evt
+            world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt
 
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
@@ -460,9 +460,9 @@ def notify_dependencies(world, sim):
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_async' in edge and (
+        if 'wait_lazy_or_async' in edge and (
                 not sim.next_steps or pre_sim.next_step <= progress + 1):
-            edge.pop('wait_async').succeed()
+            edge.pop('wait_lazy_or_async').succeed()
 
 
 def prune_dataflow_cache(world):
