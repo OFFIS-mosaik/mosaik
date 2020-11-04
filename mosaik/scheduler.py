@@ -57,23 +57,19 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
         keep_running = get_keep_running_func(world, sim, until, rt_factor,
                                              rt_start)
         while keep_running():
-            print(sim.sid, 'START LOOP')
             try:
                 yield from has_next_step(world, sim)
             except WakeUpException:
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
                 continue
-            print(f"{sim.sid} HAS NEXT STEP {sim.next_step}")
             sim.interruptable = True
             while True:
                 try:
                     yield wait_for_dependencies(world, sim)
                     yield from rt_sleep(rt_factor, rt_start, sim, world)
-                    print(sim.sid, 'WAITING DONE')
                     break
                 except Interrupt as i:
-                    print(sim.sid, 'INTERRUPTED')
                     assert i.cause == 'Earlier step'
                     sim.next_step = heapreplace(sim.next_steps, sim.next_step)
                     clear_wait_events(world, sim.sid)
@@ -82,7 +78,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             input_data = get_input_data(world, sim)
 
             max_advance = get_max_advance(world, sim, until)
-            print('MAX ADV', max_advance)
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
                 sim.output_time = sim.last_step = sim.next_step
@@ -97,9 +92,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
-            print(sim.sid, 'END OF STEP', sim.last_step, sim.progress)
 
-        print(sim.sid, 'DONE <<<<<<<<<<<<<<<<<')
         sim.progress_tmp = until
         update_cache(world, sim)
         sim.progress = until
@@ -248,7 +241,6 @@ def wait_for_dependencies(world, sim):
             evt = world.env.event()
             events.append(evt)
             edge['wait_event'] = evt
-            print(sim.sid, 'WAITS FOR', dep_sid)
             # To avoid deadlocks:
             if 'wait_lazy_or_async' in edge and dep.next_step <= t:
                 edge.pop('wait_lazy_or_async').succeed()
