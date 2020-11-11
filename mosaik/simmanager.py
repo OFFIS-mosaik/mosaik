@@ -11,6 +11,7 @@ from ast import literal_eval
 
 import collections
 import copy
+import heapq
 import importlib
 import os
 import shlex
@@ -25,6 +26,7 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
+from mosaik.timed_input_buffer import InputBuffer
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -399,6 +401,7 @@ class SimProxy:
         self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
+        self.timed_input_buffer = InputBuffer()
         self.buffered_output = {}
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
@@ -666,6 +669,35 @@ class MosaikRemote:
                 inputs = sims[sid].input_buffer.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
+
+    @rpc
+    def set_event(self, event_time):
+        sim = self.world.sims[self.sim_id]
+        """
+        if not sim.set_events:
+            # TODO: The error is not raised at simulation level and just causes the
+            # function not being executed
+            print("Error: Simulator '%s' tried to set an event, but "
+                  "hasn't set set_events to True." % self.sim_sid)
+            #raise SimulationError("Simulator '%s' tried to set an event, but "
+            #                     "hasn't set set_events to True." % self.sim_sid)
+        """
+        if not self.world.rt_factor:
+            raise SimulationError('Simulator "%s" tried to set an event in '
+                                  'non-real-time mode.' % self.sim_sid)
+        if event_time < self.world.until:
+            sim.progress = min(event_time - 1, sim.progress)
+            heapq.heappush(sim.next_steps, event_time)
+
+            if sim.has_next_step and not sim.has_next_step.triggered:
+                sim.has_next_step.succeed()
+            # We interrupt the simulator if the new step is smaller than
+            # next_step, unless it is already executing a step:
+            elif sim.interruptable and event_time < sim.next_step:
+                sim.sim_proc.interrupt('Earlier step')
+        else:
+            print(f"Warning: Event set at {event_time} by {sim.sid} is after "
+                  f"simulation end {self.world.until} and will be ignored.")
 
     def _assert_async_requests(self, dfg, src_sid, dest_sid):
         """

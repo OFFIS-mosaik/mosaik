@@ -234,6 +234,8 @@ class World(object):
                         'persistent', []):
                     src.sim.buffered_output[(src.eid, src_attr)] = (
                         dest.sid, dest.eid, dest_attr)
+                    self.sims[dest.sid].timed_input_buffer.set_connection(
+                        src.sid, src.eid, src_attr, dest.eid, dest_attr)
 
     def set_event(self, sid, time=0):
         """
@@ -348,6 +350,7 @@ class World(object):
                                 activators.append((src_eid, src_attr))
                     trigger_cycle['activators'] = activators
                     sim.trigger_cycles.append(trigger_cycle)
+
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:

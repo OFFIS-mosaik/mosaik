@@ -19,6 +19,7 @@ def world_fixture():
                                   weak=False, trigger=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
     world.until = 4
+    world.rt_factor = None
     yield world
     world.shutdown()
 
@@ -26,6 +27,7 @@ def world_fixture():
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
+    world.trigger_graph.add_node('dummy')
 
     def dummy_proc(world, sim, until, rt_factor, rt_strict, print_progress):
         sim.proc_started = True
@@ -41,6 +43,8 @@ def test_run(monkeypatch):
         meta = {
             'api_version': (2, 2),
         }
+        sid = 'dummy'
+        next_steps = []
 
         def stop(self):
             yield world.env.event().succeed()

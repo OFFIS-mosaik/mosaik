@@ -57,6 +57,7 @@ def pre_step(world, sim, inputs):
     for pre in dfg.predecessors(sid):
         if (not (dfg[pre][sid]['time_shifted'] or dfg[pre][sid]['weak'])
                 or sim.last_step >= 0):
+
             pre_node = node % (pre, sims[pre].last_step)
             eg.add_edge(pre_node, node_id)
             assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']

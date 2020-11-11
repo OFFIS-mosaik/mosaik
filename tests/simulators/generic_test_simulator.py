@@ -4,7 +4,13 @@ A generic test simulator for mosaik.
 """
 import logging
 
-import mosaik_api
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    import mosaik_api_set_events as mosaik_api
+
+else:
+    # uses current package visibility
+    from tests.simulators import mosaik_api_set_events as mosaik_api
 
 
 logger = logging.getLogger('test_simulator')
@@ -27,17 +33,26 @@ class TestSim(mosaik_api.Simulator):
         self.eid = None
         self.step_size = None
         self.value = None
+        self.event_setter_wait = None
 
     def init(self, sid, step_type='discrete-time', step_size=1, self_steps={},
-             output_timing=None):
+             output_timing=None, events={}):
         self.sid = sid
         self.step_type = step_type
         self.meta['type'] = step_type
         self.step_size = step_size
         self.self_steps = self_steps
+        if output_timing:
+            output_timing = {float(key): val
+                             for key, val in output_timing.items()}
         self.output_timing = output_timing
+
         if step_type == 'hybrid':
             self.meta['models']['A']['persistent'] = ['val_out']
+
+        self.events = {float(key): val for key, val in events.items()}
+        if events:
+            self.meta['set_events'] = True
 
         return self.meta
 
@@ -69,6 +84,20 @@ class TestSim(mosaik_api.Simulator):
                 data = {}
         return data
 
+    def setup_done(self):
+        if self.event_setter_wait:
+            self.event_setter_wait.succeed()
 
-def main():
-    return mosaik_api.start_simulation(TestSim())
+    def event_setter(self, env, message):
+        last_time = 0
+        wait_event = env.event()
+        self.event_setter_wait = wait_event
+        yield wait_event
+        for real_time, event_time in self.events.items():
+            yield env.timeout(real_time - last_time)
+            yield message.send(["set_event", [event_time], {}])
+            last_time = real_time
+
+
+if __name__ == '__main__':
+    mosaik_api.start_simulation(TestSim())

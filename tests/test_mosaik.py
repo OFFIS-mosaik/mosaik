@@ -22,13 +22,17 @@ sim_config_remote['MAS'] = {'cmd': 'pyexamplemas %(addr)s'}
 sim_config_generic = {
     char: {'python': 'tests.simulators.generic_test_simulator:TestSim'} for char in 'ABCDE'
 }
+sim_config_generic_remote = {
+    char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'} for char in 'ABCDE'
+}
 
 # We test all scenarios with local simulators and only the most complex one
 # with remote simulators to save some time (starting procs is quite expensive).
 test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
 test_cases.append(('scenario_5', sim_config_remote))
 test_cases.append(('scenario_6', sim_config_remote))
-test_cases.extend([('scenario_%s' % (i), sim_config_generic) for i in range(7, 16)])
+test_cases.extend([('scenario_%s' % (i), sim_config_generic) for i in range(7, 17)])
+test_cases.extend([('scenario_%s' % (i), sim_config_generic_remote) for i in range(17, 18)])
 
 
 # Test all combinations of both sim configs and the 5 test scenarios.
@@ -38,7 +42,10 @@ def test_mosaik(fixture, sim_config):
     world = scenario.World(sim_config, debug=True)
     try:
         fixture.create_scenario(world)
-        world.run(until=fixture.UNTIL)
+        if not hasattr(fixture, 'RT_FACTOR'):
+            world.run(until=fixture.UNTIL)
+        else:
+            world.run(until=fixture.UNTIL, rt_factor=fixture.RT_FACTOR)
 
         expected_graph = nx.parse_edgelist(fixture.EXECUTION_GRAPH.split('\n'),
                                            create_using=nx.DiGraph(), data=())

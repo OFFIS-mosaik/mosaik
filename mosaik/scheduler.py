@@ -9,6 +9,9 @@ from simpy.exceptions import Interrupt
 from mosaik.exceptions import (SimulationError, WakeUpException)
 from mosaik.simmanager import FULL_ID
 
+from time import time as mtime
+def get_time():
+    return mtime() - 1605791.
 
 SENTINEL = object()
 
@@ -24,6 +27,7 @@ def run(world, until, rt_factor=None, rt_strict=False, print_progress=True):
     *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
+    world.rt_factor = rt_factor
     if rt_factor is not None and rt_factor <= 0:
         raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
 
@@ -51,7 +55,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
-    rt_start = perf_counter()
+    sim.rt_start = rt_start = perf_counter()
 
     try:
         keep_running = get_keep_running_func(world, sim, until, rt_factor,
@@ -66,8 +70,8 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             sim.interruptable = True
             while True:
                 try:
-                    yield wait_for_dependencies(world, sim)
                     yield from rt_sleep(rt_factor, rt_start, sim, world)
+                    yield wait_for_dependencies(world, sim)
                     break
                 except Interrupt as i:
                     assert i.cause == 'Earlier step'
@@ -112,21 +116,27 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
 
 
 def get_max_advance(world, sim, until):
-    ancs_next_steps = []
-    for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
-        anc_sim = world.sims[anc_sid]
-        if anc_sim.next_step:
-            ancs_next_steps.append(anc_sim.next_step - 1)
-        elif anc_sim.next_steps:
-            ancs_next_steps.append(anc_sim.next_steps[0] - 1)
 
-    if ancs_next_steps:
-        max_advance = min(ancs_next_steps)
+    if False:#rt_factor and (sim.meta.get('set_events', False) or any([world.sims[anc_sid].meta.get('set_events', False) for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)])):
+        max_advance = sim.next_step
+        # from math import floor
+        #max_advance = floor((perf_counter()-rt_start) / rt_factor)
     else:
-        max_advance = until
+        ancs_next_steps = []
+        for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
+            anc_sim = world.sims[anc_sid]
+            if anc_sim.next_step:
+                ancs_next_steps.append(anc_sim.next_step - 1)
+            elif anc_sim.next_steps:
+                ancs_next_steps.append(anc_sim.next_steps[0] - 1)
+
+        if ancs_next_steps:
+            max_advance = min(ancs_next_steps)
+        else:
+            max_advance = until
 
     if sim.next_steps:
-        max_advance = min(sim.next_steps[0], max_advance)
+        max_advance = min(sim.next_steps[0] - 1, max_advance)
 
     return max_advance
 
@@ -139,14 +149,20 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     Depending on whether the process has any successors in the dataflow graph,
     the condition for when to stop differs.
     """
-    if world.trigger_graph.in_degree(sim.sid) == 0:
-        def check_time():
-            return sim.progress + 1 < until
-    else:
-        def check_time():
-            return sim.progress < until
+    check_functions = []
+    no_set_events = not (rt_factor
+        and (sim.meta.get('set_events', False)
+             or any([world.sims[anc_sid].meta.get('set_events', False)
+                     for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)])))
+    if no_set_events:
+        if world.trigger_graph.in_degree(sim.sid) == 0:
+            def check_time():
+                return sim.progress + 1 < until
+        else:
+            def check_time():
+                return sim.progress < until
 
-    check_functions = [check_time]
+        check_functions.append(check_time)
 
     if world.df_graph.out_degree(sim.sid) != 0:
         # If there are any successors, we check if they are still alive.
@@ -171,11 +187,15 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
             def check_trigger():
                 return sim.next_steps or not all(process.triggered
-                                                for process in pre_procs)
+                                                 for process in pre_procs)
         else:
-            def check_trigger():
-                return sim.next_steps or \
-                    (perf_counter() - rt_start < rt_factor * until)
+            pre_sims = [world.sims[pre_sid] for pre_sid in
+                         nx.ancestors(world.trigger_graph, sim.sid)]
+
+            def check_trigger():                return (sim.next_steps
+                        or any(pre_sim.next_step or pre_sim.next_steps
+                               for pre_sim in pre_sims)
+                        or (perf_counter() - rt_start < rt_factor * until))
 
         check_functions.append(check_trigger)
 
@@ -208,7 +228,15 @@ def has_next_step(world, sim):
         yield sim.has_next_step
     else:
         try:
-            yield sim.has_next_step
+            if world.rt_factor:
+                rt_passed = perf_counter() - sim.rt_start
+                timeout = world.env.timeout(max((world.rt_factor * world.until)
+                                                - rt_passed, 0.1*world.rt_factor))
+                results = yield sim.has_next_step | timeout
+                if timeout in results:
+                    raise WakeUpException
+            else:
+                yield sim.has_next_step
         except Interrupt:
             raise WakeUpException
 
@@ -248,12 +276,13 @@ def wait_for_dependencies(world, sim):
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
-    for suc_sid in dfg.successors(sim.sid):
-        suc = world.sims[suc_sid]
-        if suc.progress + 1 < t:
-            evt = world.env.event()
-            events.append(evt)
-            world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt
+    if not world.rt_factor:
+        for suc_sid in dfg.successors(sim.sid):
+            suc = world.sims[suc_sid]
+            if suc.progress + 1 < t:
+                evt = world.env.event()
+                events.append(evt)
+                world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt
 
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
@@ -283,7 +312,7 @@ def get_input_data(world, sim):
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_data = sim.input_buffer
+    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step)}
     sim.input_buffer = {}
     df_graph = world.df_graph
 
@@ -378,7 +407,6 @@ def get_outputs(world, sim):
                 raise SimulationError(
                     'Output time (%s) is not >= time (%s) for simulator "%s"'
                     % (output_time, sim.last_step, sim.sid))
-
             for cycle in sim.trigger_cycles:
                 for src_eid, src_attr in cycle['activators']:
                     if src_attr in data.get(src_eid, {}):
@@ -403,9 +431,7 @@ def get_outputs(world, sim):
             for (src_eid, src_attr), (dest_sid, dest_eid, dest_attr) in sim.buffered_output.items():
                 val = data.get(src_eid, {}).get(src_attr, SENTINEL)
                 if val is not SENTINEL:
-                    world.sims[dest_sid].input_buffer.setdefault(dest_eid,
-                                                                 {}).setdefault(
-                        dest_attr, {})[FULL_ID % (sim.sid, src_eid)] = val
+                    world.sims[dest_sid].timed_input_buffer.add(output_time, sim.sid, src_eid, src_attr, val)
 
 
 def update_cache(world, sim):
