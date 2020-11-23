@@ -9,9 +9,6 @@ from simpy.exceptions import Interrupt
 from mosaik.exceptions import (SimulationError, WakeUpException)
 from mosaik.simmanager import FULL_ID
 
-from time import time as mtime
-def get_time():
-    return mtime() - 1605791.
 
 SENTINEL = object()
 
@@ -116,24 +113,18 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
 
 
 def get_max_advance(world, sim, until):
+    ancs_next_steps = []
+    for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
+        anc_sim = world.sims[anc_sid]
+        if anc_sim.next_step:
+            ancs_next_steps.append(anc_sim.next_step - 1)
+        elif anc_sim.next_steps:
+            ancs_next_steps.append(anc_sim.next_steps[0] - 1)
 
-    if False:#rt_factor and (sim.meta.get('set_events', False) or any([world.sims[anc_sid].meta.get('set_events', False) for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)])):
-        max_advance = sim.next_step
-        # from math import floor
-        #max_advance = floor((perf_counter()-rt_start) / rt_factor)
+    if ancs_next_steps:
+        max_advance = min(ancs_next_steps)
     else:
-        ancs_next_steps = []
-        for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
-            anc_sim = world.sims[anc_sid]
-            if anc_sim.next_step:
-                ancs_next_steps.append(anc_sim.next_step - 1)
-            elif anc_sim.next_steps:
-                ancs_next_steps.append(anc_sim.next_steps[0] - 1)
-
-        if ancs_next_steps:
-            max_advance = min(ancs_next_steps)
-        else:
-            max_advance = until
+        max_advance = until
 
     if sim.next_steps:
         max_advance = min(sim.next_steps[0] - 1, max_advance)
@@ -431,7 +422,8 @@ def get_outputs(world, sim):
             for (src_eid, src_attr), (dest_sid, dest_eid, dest_attr) in sim.buffered_output.items():
                 val = data.get(src_eid, {}).get(src_attr, SENTINEL)
                 if val is not SENTINEL:
-                    world.sims[dest_sid].timed_input_buffer.add(output_time, sim.sid, src_eid, src_attr, val)
+                    world.sims[dest_sid].timed_input_buffer.add(
+                        output_time, sid, src_eid, dest_eid, dest_attr, val)
 
 
 def update_cache(world, sim):

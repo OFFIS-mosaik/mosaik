@@ -26,7 +26,7 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
-from mosaik.timed_input_buffer import InputBuffer
+from mosaik.timed_input_buffer import TimedInputBuffer
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -401,7 +401,7 @@ class SimProxy:
         self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
-        self.timed_input_buffer = InputBuffer()
+        self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
