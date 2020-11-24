@@ -1,4 +1,5 @@
 from unittest import mock
+from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
 from mosaik.exceptions import ScenarioError
@@ -84,24 +85,25 @@ def test_world_connect(world):
     for i, j in zip(a, b):
         world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
-    assert world.df_graph.adj == {
+    connections = [
+        (str(a[0].eid), str(b[0].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
+        (str(a[1].eid), str(b[1].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
+     ]
+
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
-                'dataflows': [
-                    (a[0].eid, b[0].eid, (('val_out', 'val_in'),
-                                          ('dummy_out', 'dummy_in'))),
-                    (a[1].eid, b[1].eid, (('val_out', 'val_in'),
-                                          ('dummy_out', 'dummy_in'))),
-                ],
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
     }
-    assert world.entity_graph.adj == {
+    assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a[0].eid: {'ExampleSim-1.' + b[0].eid: {}},
         'ExampleSim-1.' + b[0].eid: {'ExampleSim-0.' + a[0].eid: {}},
         'ExampleSim-0.' + a[1].eid: {'ExampleSim-1.' + b[1].eid: {}},
@@ -186,6 +188,7 @@ def test_world_connect_no_attrs(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
+                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -207,19 +210,21 @@ def test_world_connect_any_inputs(world):
     b.sim.meta['models']['B']['any_inputs'] = True
     world.connect(a, b, 'val_out')
 
-    assert world.df_graph.adj == {
+    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
-                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
     }
-    assert world.entity_graph.adj == {
+    assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
@@ -233,7 +238,7 @@ def test_world_connect_async_requests(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, async_requests=True)
 
-    assert world.df_graph.adj == {
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
@@ -241,6 +246,7 @@ def test_world_connect_async_requests(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
+                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -252,14 +258,16 @@ def test_world_connect_time_shifted(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    assert world.df_graph.adj == {
+    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
                 'time_shifted': True,
                 'weak': False,
                 'trigger': False,
-                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},

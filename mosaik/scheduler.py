@@ -309,7 +309,7 @@ def get_input_data(world, sim):
 
     for src_sid in df_graph.predecessors(sim.sid):
         t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
-        dataflows = df_graph[src_sid][sim.sid]['dataflows']
+        dataflows = df_graph[src_sid][sim.sid]['cached_connections']
         for src_eid, dest_eid, attrs in dataflows:
             for src_attr, dest_attr in attrs:
                 v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\

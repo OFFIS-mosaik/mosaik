@@ -171,10 +171,13 @@ class World(object):
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
 
-        trigger, missing_attrs = self._check_attributes(src, dest, attr_pairs)
+        missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
+
+        trigger, cached, time_buffered = self._classify_connections(src, dest,
+                                                                    attr_pairs)
 
         if time_shifted:
             if type(initial_data) is not dict or initial_data == {}:
@@ -211,6 +214,11 @@ class World(object):
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, attr_pairs))
 
+        cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
+            'cached_connections', [])
+        if cached:
+            cached_connections.append((src.eid, dest.eid, cached))
+
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
@@ -227,13 +235,9 @@ class World(object):
                     self.persistent_outattrs[src.sid][src.eid].extend(
                                                               persistent_attrs)
 
-        if (src.sim.meta['type'] != 'discrete-time'
-                and dest.sim.meta['type'] == 'discrete-time'):
-            for src_attr, dest_attr in attr_pairs:
-                if src_attr not in src.sim.meta['models'][src.type].get(
-                        'persistent', []):
-                    src.sim.buffered_output[(src.eid, src_attr)] = (
-                        dest.sid, dest.eid, dest_attr)
+        for src_attr, dest_attr in time_buffered:
+            src.sim.buffered_output[(src.eid, src_attr)] = (dest.sid, dest.eid,
+                                                            dest_attr)
 
     def set_event(self, sid, time=0):
         """
@@ -386,15 +390,34 @@ class World(object):
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
         any_inputs = [False, emeta[1]['any_inputs']]
-        trigger = False
         attr_errors = []
         for attr_pair in attr_pairs:
-            if attr_pair[1] in emeta[1]['trigger']:
-                trigger = True
             for i, attr in enumerate(attr_pair):
                 if not (any_inputs[i] or attr in emeta[i]['attrs']):
                     attr_errors.append((entities[i], attr))
-        return trigger, attr_errors
+        return attr_errors
+
+    def _classify_connections(self, src, dest, attr_pairs):
+        """
+        TODO: Add doc string
+        """
+        entities = [src, dest]
+        emeta = [e.sim.meta['models'][e.type] for e in entities]
+        any_inputs = [False, emeta[1]['any_inputs']]
+        trigger = False
+        cached = []
+        time_buffered = []
+        for attr_pair in attr_pairs:
+            if attr_pair[1] in emeta[1]['trigger']:
+                trigger = True
+            if (attr_pair[0] not in emeta[0]['persistent']
+                    and (attr_pair[1] not in emeta[1]['trigger']
+                         or (any_inputs[1]
+                             and dest.sim.meta['type'] != 'discrete-event'))):
+                time_buffered.append(attr_pair)
+            else:
+                cached.append(attr_pair)
+        return trigger, tuple(cached), tuple(time_buffered)
 
 
 class ModelFactory():

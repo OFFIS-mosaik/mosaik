@@ -161,8 +161,8 @@ def test_get_input_data(world):
         1: {'2': {'x': 2, 'z': 4}},
     }}
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
-    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
-    world.df_graph[1][2]['dataflows'] = [('2', '0', [('z', 'in')])]
+    world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
+    world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
     data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {'in': {'0.1': 0, '1.2': 4, '3': 5},
                           'spam': {'3': 'eggs'}}}
@@ -176,7 +176,7 @@ def test_get_input_data_shifted(world):
     world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
-    world.df_graph[5][4]['dataflows'] = [('1', '0', [('z', 'in')])]
+    world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
     data = scheduler.get_input_data(world, world.sims[4])
     assert data == {'0': {'in': {'5.1': 7}}}
 

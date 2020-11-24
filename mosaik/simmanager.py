@@ -347,9 +347,13 @@ def expand_meta(meta, sim_name):
 
         model_meta['trigger'] = trigger
 
-        if sim_type == 'hybrid':
+        if sim_type == 'discrete-time':
+            model_meta['persistent'] = attrs
+        elif sim_type == 'hybrid':
             non_persistent = set(model_meta.get('non-persistent', []))
             model_meta['persistent'] = attrs - non_persistent
+        else:
+            model_meta['persistent'] = []
 
     return meta
 
