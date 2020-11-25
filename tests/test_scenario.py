@@ -180,7 +180,7 @@ def test_world_connect_no_attrs(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b)
 
-    assert world.df_graph.adj == {
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,

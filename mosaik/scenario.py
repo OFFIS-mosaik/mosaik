@@ -57,7 +57,7 @@ class World(object):
     that this increases the memory consumption and simulation time.
     """
 
-    def __init__(self, sim_config, mosaik_config=None, debug=False):
+    def __init__(self, sim_config, mosaik_config=None, debug=False, cache=True):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -101,10 +101,14 @@ class World(object):
         # List of outputs for each simulator and model:
         # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
         self._df_outattr = defaultdict(lambda: defaultdict(list))
-        self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
-        # Cache for simulation results
-        self._df_cache = defaultdict(dict)
-        self._df_cache_min_time = 0
+        if cache:
+            self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
+            # Cache for simulation results
+            self._df_cache = defaultdict(dict)
+            self._df_cache_min_time = 0
+        else:
+            self.persistent_outattrs = {}
+            self._df_cache = None
 
     def start(self, sim_name, **sim_params):
         """
@@ -121,7 +125,7 @@ class World(object):
         return ModelFactory(self, sim)
 
     def connect(self, src, dest, *attr_pairs, async_requests=False,
-                time_shifted=False, initial_data=None, weak=False):
+                time_shifted=False, initial_data={}, weak=False):
         """
         Connect the *src* entity to *dest* entity.
 
@@ -176,8 +180,14 @@ class World(object):
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        trigger, cached, time_buffered = self._classify_connections(src, dest,
-                                                                    attr_pairs)
+        if self._df_cache is not None:
+            trigger, cached, time_buffered = \
+                self._classify_connections_with_cache(src, dest, attr_pairs)
+            persistently_buffered = []
+        else:
+            trigger, persistently_buffered, time_buffered = \
+                self._classify_connections_with_cache(src, dest, attr_pairs)
+            cached = []
 
         if time_shifted:
             if type(initial_data) is not dict or initial_data == {}:
@@ -190,9 +200,11 @@ class World(object):
                 if attr not in check_attrs:
                     raise ScenarioError('Incorrect attr "%s" in "initial_data".'
                                         % attr)
-                self._df_cache[-1].setdefault(src.sid, {})
-                self._df_cache[-1][src.sid].setdefault(src.eid, {})
-                self._df_cache[-1][src.sid][src.eid][attr] = val
+
+                if self._df_cache is not None:
+                    self._df_cache[-1].setdefault(src.sid, {})
+                    self._df_cache[-1][src.sid].setdefault(src.eid, {})
+                    self._df_cache[-1][src.sid][src.eid][attr] = val
 
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
@@ -227,7 +239,7 @@ class World(object):
         outattr = [a[0] for a in attr_pairs]
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
-            if src.sim.meta['type'] == 'hybrid':
+            if self._df_cache is not None and src.sim.meta['type'] == 'hybrid':
                 persistent_attrs = [iattr for iattr in outattr if
                                     iattr in src.sim.meta['models'][src.type][
                                         'persistent']]
@@ -236,8 +248,14 @@ class World(object):
                                                               persistent_attrs)
 
         for src_attr, dest_attr in time_buffered:
-            src.sim.buffered_output[(src.eid, src_attr)] = (dest.sid, dest.eid,
-                                                            dest_attr)
+            src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
+                (dest.sid, dest.eid, dest_attr))
+
+        dest.sim.persistent_input_buffer.set_connections(src.sid, src.eid,
+            dest.eid, persistently_buffered, initial_data)
+        for src_attr, dest_attr in persistently_buffered:
+            src.sim.persistently_buffered_output.setdefault((src.eid, src_attr), []).append(
+                (dest.sid, dest.eid, dest_attr))
 
     def set_event(self, sid, time=0):
         """
@@ -397,7 +415,7 @@ class World(object):
                     attr_errors.append((entities[i], attr))
         return attr_errors
 
-    def _classify_connections(self, src, dest, attr_pairs):
+    def _classify_connections_with_cache(self, src, dest, attr_pairs):
         """
         TODO: Add doc string
         """
@@ -418,6 +436,28 @@ class World(object):
             else:
                 cached.append(attr_pair)
         return trigger, tuple(cached), tuple(time_buffered)
+
+    def _classify_connections_without_cache(self, src, dest, attr_pairs):
+        """
+        TODO: Add doc string
+        """
+        entities = [src, dest]
+        emeta = [e.sim.meta['models'][e.type] for e in entities]
+        any_inputs = [False, emeta[1]['any_inputs']]
+        trigger = False
+        persistently_buffered = []
+        time_buffered = []
+        for attr_pair in attr_pairs:
+            if attr_pair[1] in emeta[1]['trigger']:
+                trigger = True
+            if (attr_pair[0] in emeta[0]['persistent']
+                    and (attr_pair[1] not in emeta[1]['trigger']
+                         or (any_inputs[1]
+                             and dest.sim.meta['type'] != 'discrete-event'))):
+                persistently_buffered.append(attr_pair)
+            else:
+                time_buffered.append(attr_pair)
+        return trigger, tuple(persistently_buffered), tuple(time_buffered)
 
 
 class ModelFactory():

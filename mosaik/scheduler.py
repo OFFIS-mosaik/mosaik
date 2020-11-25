@@ -83,13 +83,15 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                     and sim.next_step != sim.next_self_step[0]):
                 sim.output_time = sim.last_step = sim.next_step
                 sim.progress_tmp = max_advance
-                update_cache(world, sim)
+                if world._df_cache:
+                    update_cache(world, sim)
             else:
                 yield from step(world, sim, input_data, max_advance)
                 rt_check(rt_factor, rt_start, rt_strict, sim)
                 yield from get_outputs(world, sim)
             notify_dependencies(world, sim)
-            prune_dataflow_cache(world)
+            if world._df_cache:
+                prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
@@ -303,21 +305,23 @@ def get_input_data(world, sim):
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step)}
+    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step),
+                  **sim.persistent_input_buffer.get_input(sim.next_step)}
     sim.input_buffer = {}
     df_graph = world.df_graph
 
-    for src_sid in df_graph.predecessors(sim.sid):
-        t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
-        dataflows = df_graph[src_sid][sim.sid]['cached_connections']
-        for src_eid, dest_eid, attrs in dataflows:
-            for src_attr, dest_attr in attrs:
-                v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\
-                    .get(src_attr, SENTINEL)
-                if v is not SENTINEL:
-                    vals = input_data.setdefault(dest_eid, {}) \
-                        .setdefault(dest_attr, {})
-                    vals[FULL_ID % (src_sid, src_eid)] = v
+    if world._df_cache is not None:
+        for src_sid in df_graph.predecessors(sim.sid):
+            t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
+            dataflows = df_graph[src_sid][sim.sid]['cached_connections']
+            for src_eid, dest_eid, attrs in dataflows:
+                for src_attr, dest_attr in attrs:
+                    v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\
+                        .get(src_attr, SENTINEL)
+                    if v is not SENTINEL:
+                        vals = input_data.setdefault(dest_eid, {}) \
+                            .setdefault(dest_attr, {})
+                        vals[FULL_ID % (src_sid, src_eid)] = v
 
     return input_data
 
@@ -386,7 +390,7 @@ def get_outputs(world, sim):
     if outattr:
         data = yield sim.proxy.get_data(outattr)
 
-        if sim.meta['type'] == 'discrete-time':
+        if sim.meta['type'] == 'discrete-time' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid
             # for.
             for i in range(sim.last_step, sim.progress_tmp + 1):
@@ -404,26 +408,34 @@ def get_outputs(world, sim):
                         if output_time < sim.progress_tmp:
                             sim.progress_tmp = output_time
 
-            persistent_attrs = world.persistent_outattrs[sid]
-            if persistent_attrs:
-                pers_data = {eid: {attr: data[eid][attr]}
-                             for eid, attrs in persistent_attrs.items()
-                             for attr in attrs}
-                i_start = (sim.progress + 1 if sim.last_step > sim.progress
-                           else sim.last_step)
-                for i in range(i_start, sim.progress_tmp + 1):
-                    if sim.sid not in world._df_cache.setdefault(i, {}):
-                        world._df_cache[i][sim.sid] = pers_data
-                    else:
-                        world._df_cache[i][sim.sid].update(pers_data)
+            if world._df_cache is not None:
+                persistent_attrs = world.persistent_outattrs[sid]
+                if persistent_attrs:
+                    pers_data = {eid: {attr: data[eid][attr]}
+                                 for eid, attrs in persistent_attrs.items()
+                                 for attr in attrs}
+                    i_start = (sim.progress + 1 if sim.last_step > sim.progress
+                               else sim.last_step)
+                    for i in range(i_start, sim.progress_tmp + 1):
+                        if sim.sid not in world._df_cache.setdefault(i, {}):
+                            world._df_cache[i][sim.sid] = pers_data
+                        else:
+                            world._df_cache[i][sim.sid].update(pers_data)
 
-            world._df_cache[output_time][sim.sid] = data
+                world._df_cache[output_time][sim.sid] = data
 
-            for (src_eid, src_attr), (dest_sid, dest_eid, dest_attr) in sim.buffered_output.items():
-                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                if val is not SENTINEL:
-                    world.sims[dest_sid].timed_input_buffer.add(
-                        output_time, sid, src_eid, dest_eid, dest_attr, val)
+            for (src_eid, src_attr), destinations in sim.buffered_output.items():
+                for dest_sid, dest_eid, dest_attr in destinations:
+                    val = data.get(src_eid, {}).get(src_attr, SENTINEL)
+                    if val is not SENTINEL:
+                        world.sims[dest_sid].timed_input_buffer.add(
+                            output_time, sid, src_eid, dest_eid, dest_attr, val)
+            for (src_eid, src_attr),  destinations in sim.persistently_buffered_output.items():
+                for dest_sid, dest_eid, dest_attr in destinations:
+                    val = data.get(src_eid, {}).get(src_attr, SENTINEL)
+                    if val is not SENTINEL:
+                        world.sims[dest_sid].persistent_input_buffer.add(
+                            output_time, sid, src_eid, dest_eid, dest_attr, val)
 
 
 def update_cache(world, sim):
