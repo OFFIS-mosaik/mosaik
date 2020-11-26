@@ -13,7 +13,8 @@ from mosaik.simmanager import FULL_ID
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False, print_progress=True):
+def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
+        lazy_stepping=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -41,14 +42,16 @@ def run(world, until, rt_factor=None, rt_strict=False, print_progress=True):
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, print_progress))
+                                          rt_strict, print_progress,
+                                          lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
+def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
+                lazy_stepping):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -68,7 +71,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
             while True:
                 try:
                     yield from rt_sleep(rt_factor, rt_start, sim, world)
-                    yield wait_for_dependencies(world, sim)
+                    yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
                 except Interrupt as i:
                     assert i.cause == 'Earlier step'
@@ -182,7 +185,8 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
             pre_sims = [world.sims[pre_sid] for pre_sid in
                          nx.ancestors(world.trigger_graph, sim.sid)]
 
-            def check_trigger():                return (sim.next_steps
+            def check_trigger():
+                return (sim.next_steps
                         or any(pre_sim.next_step or pre_sim.next_steps
                                for pre_sim in pre_sims)
                         or (perf_counter() - rt_start < rt_factor * until))
@@ -235,7 +239,7 @@ def has_next_step(world, sim):
     sim.next_step = next_step
 
 
-def wait_for_dependencies(world, sim):
+def wait_for_dependencies(world, sim, lazy_stepping):
     """
     Return an event (:class:`simpy.events.AllOf`) that is triggered when
     all dependencies can provide input data for *sim*.
@@ -269,7 +273,7 @@ def wait_for_dependencies(world, sim):
     if not world.rt_factor:
         for suc_sid in dfg.successors(sim.sid):
             suc = world.sims[suc_sid]
-            if suc.progress + 1 < t:
+            if (lazy_stepping or dfg[sim.sid][suc_sid]['pred_waiting']) and suc.progress + 1 < t:
                 evt = world.env.event()
                 events.append(evt)
                 world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt

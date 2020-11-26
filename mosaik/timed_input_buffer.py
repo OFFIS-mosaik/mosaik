@@ -14,7 +14,7 @@ class TimedInputBuffer:
         while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
             _, src_full_id, eid, attr, value = hq.heappop(self.input_queue)
             input.setdefault(eid, {}).setdefault(attr, {})[src_full_id] = value
-        print('TB input', input)
+        #print('TB input', input)
 
         return input
 

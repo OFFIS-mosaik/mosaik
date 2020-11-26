@@ -206,11 +206,14 @@ class World(object):
                     self._df_cache[-1][src.sid].setdefault(src.eid, {})
                     self._df_cache[-1][src.sid][src.eid][attr] = val
 
+        pred_waiting =  timeless_cached or async_requests
+
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
                                time_shifted=time_shifted,
                                weak=weak,
-                               trigger=trigger)
+                               trigger=trigger,
+                               pred_waiting=pred_waiting)
 
         cycles = networkx.simple_cycles(self.df_graph)
         for cycle in cycles:
@@ -306,7 +309,8 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False, print_progress=True):
+    def run(self, until, rt_factor=None, rt_strict=False, print_progress=True,
+            lazy_stepping=True):
         """
         Start the simulation until the simulation time *until* is reached.
 
@@ -318,6 +322,11 @@ class World(object):
         If the simulators are too slow for the rt-factor you chose, mosaik
         prints by default only a warning. In order to raise
         a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
+
+        You can also set the *lazy_stepping* flag (default: ``True``). If
+        ``True`` a simulator can only run ahead one step of it's successors. If
+        ``False`` a simulator always steps as long all input is provided. This
+        might decrease the simulation time but increase the memory consumption.
 
         Before this method returns, it stops all simulators and closes mosaik's
         server socket. So this method should only be called once.
@@ -368,7 +377,8 @@ class World(object):
             dbg.enable()
         try:
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
-                                            print_progress), self)
+                                            print_progress, lazy_stepping),
+                              self)
             print('Simulation finished successfully.')
         except KeyboardInterrupt:
             print('Simulation canceled. Terminating ...')
