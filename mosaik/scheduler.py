@@ -83,8 +83,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                     and sim.next_step != sim.next_self_step[0]):
                 sim.output_time = sim.last_step = sim.next_step
                 sim.progress_tmp = max_advance
-                if world._df_cache:
-                    update_cache(world, sim)
             else:
                 yield from step(world, sim, input_data, max_advance)
                 rt_check(rt_factor, rt_start, rt_strict, sim)
@@ -97,7 +95,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress):
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
 
         sim.progress_tmp = until
-        update_cache(world, sim)
         sim.progress = until
         clear_wait_events_dependencies(world, sim.sid)
         # Before we stop, we wake up all dependencies who may be waiting for
@@ -305,9 +302,16 @@ def get_input_data(world, sim):
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step),
-                  **sim.persistent_input_buffer.get_input(sim.next_step)}
+    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step)}
     sim.input_buffer = {}
+
+    timeless_cache = world._timeless_cache
+    for (dest_eid, dest_attr), sources in sim.timeless_cached_input.items():
+        for (src_sid, src_eid, src_attr) in sources:
+            v = timeless_cache[src_sid][src_eid][src_attr]
+            vals = input_data.setdefault(dest_eid, {}).setdefault(dest_attr, {})
+            vals[FULL_ID % (src_sid, src_eid)] = v
+
     df_graph = world.df_graph
 
     if world._df_cache is not None:
@@ -322,7 +326,6 @@ def get_input_data(world, sim):
                         vals = input_data.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
                         vals[FULL_ID % (src_sid, src_eid)] = v
-
     return input_data
 
 
@@ -408,20 +411,10 @@ def get_outputs(world, sim):
                         if output_time < sim.progress_tmp:
                             sim.progress_tmp = output_time
 
+            world._timeless_cache[sim.sid] = data
             if world._df_cache is not None:
-                persistent_attrs = world.persistent_outattrs[sid]
-                if persistent_attrs:
-                    pers_data = {eid: {attr: data[eid][attr]}
-                                 for eid, attrs in persistent_attrs.items()
-                                 for attr in attrs}
-                    i_start = (sim.progress + 1 if sim.last_step > sim.progress
-                               else sim.last_step)
-                    for i in range(i_start, sim.progress_tmp + 1):
-                        if sim.sid not in world._df_cache.setdefault(i, {}):
-                            world._df_cache[i][sim.sid] = pers_data
-                        else:
-                            world._df_cache[i][sim.sid].update(pers_data)
-
+                world._df_cache[sim.last_step][sim.sid] = data
+                # TODO: Is it a problem if persistent data are also written?
                 world._df_cache[output_time][sim.sid] = data
 
             for (src_eid, src_attr), destinations in sim.buffered_output.items():
@@ -430,26 +423,6 @@ def get_outputs(world, sim):
                     if val is not SENTINEL:
                         world.sims[dest_sid].timed_input_buffer.add(
                             output_time, sid, src_eid, dest_eid, dest_attr, val)
-            for (src_eid, src_attr),  destinations in sim.persistently_buffered_output.items():
-                for dest_sid, dest_eid, dest_attr in destinations:
-                    val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                    if val is not SENTINEL:
-                        world.sims[dest_sid].persistent_input_buffer.add(
-                            output_time, sid, src_eid, dest_eid, dest_attr, val)
-
-
-def update_cache(world, sim):
-    """
-
-    """
-    persistent_attrs = world.persistent_outattrs[sim.sid]
-    if persistent_attrs:
-        data = world._df_cache[sim.progress][sim.sid]
-        pers_data = {eid: {attr: data[eid][attr]}
-                     for eid, attrs in persistent_attrs.items()
-                     for attr in attrs}
-        for i in range(sim.progress + 1, sim.progress_tmp + 1):
-            world._df_cache[i][sim.sid] = pers_data
 
 
 def notify_dependencies(world, sim):
