@@ -12,11 +12,12 @@ def world_fixture():
         for i in range(6)
     }
     world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
-                                  async_requests=False, time_shifted=False,
-                                  weak=False, trigger=False)
+                                  async_requests=False, pred_waiting=False,
+                                  time_shifted=False, weak=False,
+                                  trigger=False)
     world.df_graph.add_edges_from([(5, 4)],
-                                  async_requests=False, time_shifted=True,
-                                  weak=False, trigger=False)
+                                  async_requests=False, pred_waiting=False,
+                                  time_shifted=True, weak=False, trigger=False)
     world.df_graph[0][2]['wait_event'] = world.env.event()
     world.until = 4
     world.rt_factor = None
@@ -29,7 +30,8 @@ def test_run(monkeypatch):
     world = scenario.World({})
     world.trigger_graph.add_node('dummy')
 
-    def dummy_proc(world, sim, until, rt_factor, rt_strict, print_progress):
+    def dummy_proc(world, sim, until, rt_factor, rt_strict, print_progress,
+                   lazy_stepping):
         sim.proc_started = True
         yield world.env.event().succeed()
 
@@ -88,7 +90,7 @@ def test_sim_process_error(monkeypatch):
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
                             scheduler.sim_process(None, Sim(), None, 1, False,
-                                                  True))
+                                                  True, False))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 
@@ -122,7 +124,7 @@ def test_wait_for_dependencies(world, weak, number_waiting):
     """
     world.sims[2].next_step = 0
     world.df_graph[1][2]['weak'] = weak
-    evt = scheduler.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
     assert len(evt._events) == number_waiting
     assert not evt.triggered
 
@@ -134,21 +136,38 @@ def test_wait_for_dependencies_all_done(world):
     world.sims[2].next_step = 0
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
-    evt = scheduler.wait_for_dependencies(world, world.sims[2])
+    evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
     assert len(evt._events) == 0
     assert evt.triggered
 
 
-def test_wait_for_dependencies_shifted(world):
+@pytest.mark.parametrize("progress,number_waiting", [
+    (-1, 1),
+    (0, 0)
+])
+def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     """
-    Shifted dependency has not yet stepped far enough. Waiting is required.
+    Shifted dependency has not/has stepped far enough. Waiting is/is not required.
     """
-    world.sims[5].progress = -1
+    world.sims[5].progress = progress
     world.sims[4].next_step = 1
-    world.sims[5].step_required = world.env.event()
-    evt = scheduler.wait_for_dependencies(world, world.sims[4])
-    assert len(evt._events) == 2
-    assert not evt.triggered
+    evt = scheduler.wait_for_dependencies(world, world.sims[4], False)
+    assert len(evt._events) == number_waiting
+    assert evt.triggered == (not bool(number_waiting))
+
+
+@pytest.mark.parametrize("lazy_stepping,number_waiting", [
+    (True, 1),
+    (False, 0)
+])
+def test_wait_for_dependencies_lazy(world, lazy_stepping, number_waiting):
+    """
+    Test waiting for dependencies and triggering them.
+    """
+    world.sims[1].next_step = 1
+    evt = scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping)
+    assert len(evt._events) == number_waiting
+    assert evt.triggered == (not bool(number_waiting))
 
 
 def test_get_input_data(world):

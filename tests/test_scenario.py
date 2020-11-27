@@ -94,6 +94,7 @@ def test_world_connect(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
@@ -184,6 +185,7 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
@@ -215,6 +217,7 @@ def test_world_connect_any_inputs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
@@ -242,6 +245,7 @@ def test_world_connect_async_requests(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
+                'pred_waiting': True,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': False,
@@ -263,6 +267,7 @@ def test_world_connect_time_shifted(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'pred_waiting': False,
                 'time_shifted': True,
                 'weak': False,
                 'trigger': False,
