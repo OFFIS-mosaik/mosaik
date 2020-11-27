@@ -116,7 +116,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
 
 def get_max_advance(world, sim, until):
     ancs_next_steps = []
-    for anc_sid in nx.ancestors(world.trigger_graph, sim.sid):
+    for anc_sid in sim.triggering_ancestors:
         anc_sim = world.sims[anc_sid]
         if anc_sim.next_step:
             ancs_next_steps.append(anc_sim.next_step - 1)

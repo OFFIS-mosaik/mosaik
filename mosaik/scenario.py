@@ -371,6 +371,9 @@ class World(object):
                     trigger_cycle['activators'] = activators
                     sim.trigger_cycles.append(trigger_cycle)
 
+        for sim in self.sims.values():
+            sim.triggering_ancestors = networkx.ancestors(self.trigger_graph,
+                                                          sim.sid)
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
