@@ -215,17 +215,6 @@ class World(object):
                                trigger=trigger,
                                pred_waiting=pred_waiting)
 
-        cycles = networkx.simple_cycles(self.df_graph)
-        for cycle in cycles:
-            cycle = zip(cycle + [cycle[0]], [cycle[-1]] + cycle)
-            loop_breaker = [self.df_graph[src_id][dest_id]['weak']
-                            or self.df_graph[src_id][dest_id]['time_shifted']
-                            for src_id, dest_id in cycle]
-            if not any(loop_breaker):
-                raise ScenarioError('Connection from "%s" to "%s" '
-                                    'introduces cyclic dependencies.' % (
-                                     src.sid, dest.sid))
-
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, attr_pairs))
 
@@ -339,6 +328,17 @@ class World(object):
         for sid, deg in sorted(list(networkx.degree(self.df_graph))):
             if deg == 0:
                 print('WARNING: %s has no connections.' % sid)
+
+        cycles = networkx.simple_cycles(self.df_graph)
+        for cycle in cycles:
+            sim_pairs = zip(cycle + [cycle[0]], [cycle[-1]] + cycle)
+            loop_breaker = [self.df_graph[src_id][dest_id]['weak'] or
+                            self.df_graph[src_id][dest_id]['time_shifted'] for
+                            src_id, dest_id in sim_pairs]
+            if not any(loop_breaker):
+                raise ScenarioError('Scenario has unresolved cyclic '
+                                    f'dependencies: {sorted(cycle)}. Use options '
+                                    '"time-shifted" or "weak" for resolution.')
 
         trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
                          if w['trigger']]

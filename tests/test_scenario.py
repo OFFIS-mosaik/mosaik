@@ -139,11 +139,13 @@ def test_world_connect_cycle(world):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(b, a, ('val_in', 'val_out'))
     with pytest.raises(ScenarioError) as err:
-        world.connect(b, a, ('val_in', 'val_out'))
-    assert str(err.value) == ('Connection from "ExampleSim-1" to '
-                              '"ExampleSim-0" introduces cyclic dependencies.')
-    assert len(world._df_outattr) == 1
+        world.run(1)
+    assert str(err.value) == ('Scenario has unresolved cyclic dependencies: '
+                              '[\'ExampleSim-0\', \'ExampleSim-1\']. Use '
+                              'options "time-shifted" or "weak" for '
+                              'resolution.')
 
 
 def test_world_connect_wrong_attr_names(world):
