@@ -206,7 +206,7 @@ class World(object):
                     self._df_cache[-1][src.sid].setdefault(src.eid, {})
                     self._df_cache[-1][src.sid][src.eid][attr] = val
 
-        pred_waiting =  timeless_cached or async_requests
+        pred_waiting = timeless_cached or async_requests
 
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
@@ -329,47 +329,13 @@ class World(object):
             if deg == 0:
                 print('WARNING: %s has no connections.' % sid)
 
-        cycles = networkx.simple_cycles(self.df_graph)
-        for cycle in cycles:
-            sim_pairs = zip(cycle + [cycle[0]], [cycle[-1]] + cycle)
-            loop_breaker = [self.df_graph[src_id][dest_id]['weak'] or
-                            self.df_graph[src_id][dest_id]['time_shifted'] for
-                            src_id, dest_id in sim_pairs]
-            if not any(loop_breaker):
-                raise ScenarioError('Scenario has unresolved cyclic '
-                                    f'dependencies: {sorted(cycle)}. Use options '
-                                    '"time-shifted" or "weak" for resolution.')
+        self.detect_unresolved_cycles()
 
         trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
                          if w['trigger']]
         self.trigger_graph.add_edges_from(trigger_edges)
 
-        cycles = list(networkx.simple_cycles(self.trigger_graph))
-        for sim in self.sims.values():
-            for cycle in cycles:
-                if sim.sid in cycle:
-                    edge_ids = list(zip(cycle + [cycle[0]], [cycle[-1]] + cycle))
-                    cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
-                                   for src_id, dest_id in edge_ids]
-                    trigger_cycle = {}
-                    min_cycle_length = sum([edge['time_shifted']
-                                            for edge in cycle_edges])
-                    trigger_cycle['min_length'] = min_cycle_length
-                    ind_sim = cycle.index(sim.sid)
-                    out_edge = cycle_edges[ind_sim]
-                    suc_sid = edge_ids[ind_sim][1]
-                    activators = []
-                    for src_eid, dest_eid, attrs in out_edge['dataflows']:
-                        dest_model = \
-                            networkx.get_node_attributes(self.entity_graph,
-                                        'type')[FULL_ID % (suc_sid, dest_eid)]
-                        dest_trigger = self.sims[suc_sid].meta['models'][
-                            dest_model]['trigger']
-                        for src_attr, dest_attr in attrs:
-                            if dest_attr in dest_trigger:
-                                activators.append((src_eid, src_attr))
-                    trigger_cycle['activators'] = activators
-                    sim.trigger_cycles.append(trigger_cycle)
+        self.cache_trigger_cycles()
 
         for sim in self.sims.values():
             sim.triggering_ancestors = networkx.ancestors(self.trigger_graph,
@@ -389,6 +355,48 @@ class World(object):
             self.shutdown()
             if self._debug:
                 dbg.disable()
+
+    def detect_unresolved_cycles(self):
+        cycles = list(networkx.simple_cycles(self.df_graph))
+        for cycle in cycles:
+            sim_pairs = list(zip(cycle, cycle[1:] + [cycle[0]]))
+            loop_breaker = [self.df_graph[src_id][dest_id]['weak'] or
+                            self.df_graph[src_id][dest_id]['time_shifted'] for
+                            src_id, dest_id in sim_pairs]
+            if not any(loop_breaker):
+                raise ScenarioError('Scenario has unresolved cyclic '
+                                    f'dependencies: {sorted(cycle)}. Use options '
+                                    '"time-shifted" or "weak" for resolution.')
+
+    def cache_trigger_cycles(self):
+        cycles = list(networkx.simple_cycles(self.trigger_graph))
+        for sim in self.sims.values():
+            for cycle in cycles:
+                if sim.sid in cycle:
+                    edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
+                    cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
+                                   for src_id, dest_id in edge_ids]
+                    trigger_cycle = {}
+                    min_cycle_length = sum(
+                        [edge['time_shifted'] for edge in cycle_edges])
+                    trigger_cycle['min_length'] = min_cycle_length
+                    ind_sim = cycle.index(sim.sid)
+                    out_edge = cycle_edges[ind_sim]
+                    suc_sid = edge_ids[ind_sim][1]
+                    activators = []
+                    for src_eid, dest_eid, attrs in out_edge['dataflows']:
+                        dest_model = \
+                            networkx.get_node_attributes(self.entity_graph,
+                                                         'type')[
+                                FULL_ID % (suc_sid, dest_eid)]
+                        dest_trigger = \
+                        self.sims[suc_sid].meta['models'][dest_model][
+                            'trigger']
+                        for src_attr, dest_attr in attrs:
+                            if dest_attr in dest_trigger:
+                                activators.append((src_eid, src_attr))
+                    trigger_cycle['activators'] = activators
+                    sim.trigger_cycles.append(trigger_cycle)
 
     def shutdown(self):
         """
