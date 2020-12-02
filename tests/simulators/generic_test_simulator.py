@@ -3,6 +3,7 @@ A generic test simulator for mosaik.
 
 """
 import logging
+from time import sleep
 
 if __package__ is None or __package__ == '':
     # uses current directory visibility
@@ -36,12 +37,13 @@ class TestSim(mosaik_api.Simulator):
         self.event_setter_wait = None
 
     def init(self, sid, step_type='discrete-time', step_size=1, self_steps={},
-             output_timing=None, events={}):
+             wallclock_duration=0., output_timing=None, events={}):
         self.sid = sid
         self.step_type = step_type
         self.meta['type'] = step_type
         self.step_size = step_size
         self.self_steps = self_steps
+        self.wallclock_duration = wallclock_duration
         if output_timing:
             output_timing = {float(key): val
                              for key, val in output_timing.items()}
@@ -64,6 +66,8 @@ class TestSim(mosaik_api.Simulator):
 
     def step(self, time, inputs):
         self.time = time
+        if self.wallclock_duration:
+            sleep(self.wallclock_duration)
 
         if self.step_type == 'discrete-time':
             return time + self.step_size
