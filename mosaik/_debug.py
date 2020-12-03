@@ -54,10 +54,10 @@ def pre_step(world, sim, inputs):
     if next_step == sim.next_self_step[0] and sim.last_step >= 0:
         eg.add_edge(node % (sid, sim.next_self_step[1]), node_id)
 
+    input_pres = {kk.split('.')[0] for ii in inputs.values()
+                  for jj in ii.values() for kk in jj.keys()}
     for pre in dfg.predecessors(sid):
-        if (not (dfg[pre][sid]['time_shifted'] or dfg[pre][sid]['weak'])
-                or sim.last_step >= 0):
-
+        if pre in input_pres or dfg[pre][sid]['async_requests']:
             pre_node = node % (pre, sims[pre].last_step)
             eg.add_edge(pre_node, node_id)
             assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']

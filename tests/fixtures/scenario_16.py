@@ -12,8 +12,6 @@ def create_scenario(world):
 
 
 EXECUTION_GRAPH = """
-A-0-0 B-0-0
-A-0-0 B-0-1
 A-0-0 B-0-2
 B-0-0 B-0-1
 B-0-1 B-0-2
