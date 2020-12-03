@@ -13,10 +13,10 @@ def create_scenario(world):
     mas_c = world.start('MAS', step_size=2)
     mas_d = world.start('MAS', step_size=3)
     model_a = simulator_a.B(init_val=0)
-    model_b = mas_b.Agent()
+    agent_b = mas_b.Agent()
     agent_c = mas_c.Agent()
     agent_d = mas_d.Agent()
-    world.connect(model_a, model_b, async_requests=True)
+    world.connect(model_a, agent_b, async_requests=True)
     world.connect(model_a, agent_c, async_requests=True)
     world.connect(model_a, agent_d, async_requests=True)
 
