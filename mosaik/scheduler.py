@@ -85,6 +85,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
             if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
                     and sim.next_step != sim.next_self_step[0]):
                 sim.output_time = sim.last_step = sim.next_step
+                sim.next_step = None
                 sim.progress_tmp = max_advance
             else:
                 yield from step(world, sim, input_data, max_advance)
@@ -257,15 +258,20 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     for dep_sid in dfg.predecessors(sim.sid):
         dep = world.sims[dep_sid]
         edge = dfg[dep_sid][sim.sid]
-        # Wait for dep_sim if it hasn't progressed until actual time step:
-        weak_or_shifted = edge['time_shifted'] or edge['weak']
-        if dep.progress + weak_or_shifted < t:
-            evt = world.env.event()
-            events.append(evt)
-            edge['wait_event'] = evt
-            # To avoid deadlocks:
-            if 'wait_lazy_or_async' in edge and dep.next_step <= t:
-                edge.pop('wait_lazy_or_async').succeed()
+        if 'loop_closing' not in edge:
+            # Wait for dep_sim if it hasn't progressed until actual time step:
+            weak_or_shifted = edge['time_shifted'] or edge['weak']
+            if dep.progress + weak_or_shifted < t:
+                evt = world.env.event()
+                events.append(evt)
+                edge['wait_event'] = evt
+                # To avoid deadlocks:
+                if 'wait_lazy_or_async' in edge and dep.next_step <= t:
+                    edge.pop('wait_lazy_or_async').succeed()
+        else:
+            # Wait for dep_sim if loop has been activated in last step:
+            if 'wait_event' in edge:
+                events.append(edge['wait_event'])
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
@@ -412,8 +418,23 @@ def get_outputs(world, sim):
             for cycle in sim.trigger_cycles:
                 for src_eid, src_attr in cycle['activators']:
                     if src_attr in data.get(src_eid, {}):
+                        evt = world.env.event()
+                        cycle['in_edge']['wait_event'] = evt
+                        if sim.last_step == cycle['time']:
+                            cycle['count'] += 1
+                            max_iterations = 5
+                            if cycle['count'] > max_iterations:
+                                raise SimulationError(f"Loop reached "
+                                                      f"maximal "
+                                                      f"iteration count "
+                                                      f"of "
+                                                      f"{max_iterations}.")
+                        else:
+                            cycle['time'] = output_time  # TODO: or sim.last_step?
+                            cycle['count'] = 1
                         if output_time < sim.progress_tmp:
                             sim.progress_tmp = output_time
+                        break
 
             world._timeless_cache[sim.sid] = data
             if world._df_cache is not None:
@@ -440,10 +461,14 @@ def notify_dependencies(world, sim):
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
         dest_sim = world.sims[suc_sid]
-        if ('wait_event' in edge
-                and (dest_sim.next_step <= progress + (edge['time_shifted']
-                                                       or edge['weak']))):
-            edge.pop('wait_event').succeed()
+        if 'wait_event' in edge:
+            if 'loop_closing' not in edge:
+                weak_or_shifted = edge['time_shifted'] or edge['weak']
+                necessary_progress = dest_sim.next_step - weak_or_shifted
+            else:
+                necessary_progress = dest_sim.last_step
+            if necessary_progress <= progress:
+                edge.pop('wait_event').succeed()
         if (edge['trigger']
                 and sim.output_time not in dest_sim.next_steps
                 + [dest_sim.next_step]

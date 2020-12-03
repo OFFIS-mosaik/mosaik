@@ -396,6 +396,12 @@ class World(object):
                             if dest_attr in dest_trigger:
                                 activators.append((src_eid, src_attr))
                     trigger_cycle['activators'] = activators
+                    in_edge = (cycle_edges[ind_sim - 1] if ind_sim != 0
+                               else cycle_edges[-1])
+                    trigger_cycle['in_edge'] = in_edge
+                    in_edge['loop_closing'] = True
+                    trigger_cycle['time'] = -1
+                    trigger_cycle['count'] = 0
                     sim.trigger_cycles.append(trigger_cycle)
 
     def shutdown(self):
