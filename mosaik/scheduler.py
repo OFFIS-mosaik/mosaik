@@ -459,8 +459,7 @@ def notify_dependencies(world, sim):
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_lazy_or_async' in edge and (
-                not sim.next_steps or pre_sim.next_step <= progress + 1):
+        if 'wait_lazy_or_async' in edge and pre_sim.next_step <= progress + 1:
             edge.pop('wait_lazy_or_async').succeed()
 
 
