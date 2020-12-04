@@ -447,13 +447,13 @@ class World(object):
 
         for attr_pair in attr_pairs:
             trigger = (attr_pair[1] in emeta[1]['trigger'] or (
-                any_inputs[1] and dest.sim.meta['type'] == 'discrete-event'))
+                any_inputs[1] and dest.sim.meta['type'] == 'event-based'))
             if trigger:
                 any_trigger = True
             persistent = attr_pair[0] in emeta[0]['persistent']
             if not persistent and not trigger:
                 time_buffered.append(attr_pair)
-            elif src.sim.meta['type'] != 'discrete-time' and persistent:
+            elif src.sim.meta['type'] != 'time-based' and persistent:
                 timeless_cached.append(attr_pair)
             else:
                 cached.append(attr_pair)
@@ -476,7 +476,7 @@ class World(object):
             if (attr_pair[0] in emeta[0]['persistent']
                     and (attr_pair[1] not in emeta[1]['trigger']
                          or (any_inputs[1]
-                             and dest.sim.meta['type'] != 'discrete-event'))):
+                             and dest.sim.meta['type'] != 'event-based'))):
                 timeless_cached.append(attr_pair)
             else:
                 time_buffered.append(attr_pair)

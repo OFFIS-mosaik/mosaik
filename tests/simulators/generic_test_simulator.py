@@ -36,7 +36,7 @@ class TestSim(mosaik_api.Simulator):
         self.value = None
         self.event_setter_wait = None
 
-    def init(self, sid, step_type='discrete-time', step_size=1, self_steps={},
+    def init(self, sid, step_type='time-based', step_size=1, self_steps={},
              wallclock_duration=0., output_timing=None, events={}):
         self.sid = sid
         self.step_type = step_type
@@ -69,7 +69,7 @@ class TestSim(mosaik_api.Simulator):
         if self.wallclock_duration:
             sleep(self.wallclock_duration)
 
-        if self.step_type == 'discrete-time':
+        if self.step_type == 'time-based':
             return time + self.step_size
         else:
             if time in self.self_steps:

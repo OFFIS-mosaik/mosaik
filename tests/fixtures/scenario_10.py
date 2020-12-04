@@ -6,11 +6,11 @@ Scenario 10::
 
 
 def create_scenario(world):
-    model_a = world.start('A', step_type='discrete-event', self_steps={0: 3},
+    model_a = world.start('A', step_type='event-based', self_steps={0: 3},
                           output_timing={0: 2}).A()
-    model_b = world.start('B', step_type='discrete-event',
+    model_b = world.start('B', step_type='event-based',
                           output_timing={2: 2}).A()
-    model_c = world.start('C', step_type='discrete-event').A()
+    model_c = world.start('C', step_type='event-based').A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))
     world.connect(model_a, model_c, ('val_out', 'val_in'))
     world.connect(model_b, model_c, ('val_out', 'val_in'))

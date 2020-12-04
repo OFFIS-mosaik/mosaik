@@ -6,7 +6,7 @@ Scenario 9::
 
 def create_scenario(world):
     model_a = world.start('A').A()
-    model_b = world.start('B', step_type='discrete-event').A()
+    model_b = world.start('B', step_type='event-based').A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))
 
 

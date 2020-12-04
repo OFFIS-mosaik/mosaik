@@ -170,7 +170,7 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
         check_functions.append(check_successors)
 
-    if sim.meta['type'] != 'discrete-time':
+    if sim.meta['type'] != 'time-based':
         # If we are not self-stepped we can stop if all predecessors have
         # stopped and there's no step left.
         # Unless we are running in real-time mode, then we have to wait until
@@ -367,7 +367,7 @@ def step(world, sim, inputs, max_advance):
         if next_step not in sim.next_steps and next_step < world.until:
             heappush(sim.next_steps, next_step)
 
-    if sim.meta['type'] == 'discrete-time':
+    if sim.meta['type'] == 'time-based':
         sim.progress_tmp = next_step - 1
     else:
         assert max_advance >= sim.last_step
@@ -403,7 +403,7 @@ def get_outputs(world, sim):
     if outattr:
         data = yield sim.proxy.get_data(outattr)
 
-        if sim.meta['type'] == 'discrete-time' and world._df_cache is not None:
+        if sim.meta['type'] == 'time-based' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid
             # for.
             for i in range(sim.last_step, sim.progress_tmp + 1):

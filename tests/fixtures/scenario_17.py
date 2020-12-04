@@ -5,8 +5,8 @@ Scenario 17::
 
 
 def create_scenario(world):
-    model_a = world.start('A', step_type='discrete-event', events={0.05: 1, 0.1: 2}).A()
-    model_b = world.start('B', step_type='discrete-event').A()
+    model_a = world.start('A', step_type='event-based', events={0.05: 1, 0.1: 2}).A()
+    model_b = world.start('B', step_type='event-based').A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))
     #world.set_event(model_a.sid)
 

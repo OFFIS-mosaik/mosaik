@@ -5,7 +5,7 @@ Scenario 11::
 
 
 def create_scenario(world):
-    model_a = world.start('A', step_type='discrete-event',
+    model_a = world.start('A', step_type='event-based',
                           self_steps={0: 1, 1: 3}).A()
     model_b = world.start('B', step_size=2).A()
     world.set_event(model_a.sid)

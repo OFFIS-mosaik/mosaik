@@ -318,7 +318,7 @@ def expand_meta(meta, sim_name):
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    sim_type = meta.setdefault('type', 'discrete-time')
+    sim_type = meta.setdefault('type', 'time-based')
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
@@ -342,12 +342,12 @@ def expand_meta(meta, sim_name):
         elif non_trigger:
             trigger = attrs - non_trigger
         else:
-            if sim_type == 'discrete-event':
+            if sim_type == 'event-based':
                 trigger = attrs
 
         model_meta['trigger'] = trigger
 
-        if sim_type == 'discrete-time':
+        if sim_type == 'time-based':
             model_meta['persistent'] = attrs
         elif sim_type == 'hybrid':
             non_persistent = set(model_meta.get('non-persistent', []))
@@ -396,7 +396,7 @@ class SimProxy:
         # Simulation state
         self.last_step = -1
         self.next_step = None
-        if self.meta.get('type', 'discrete-time') != 'discrete-event':
+        if self.meta.get('type', 'time-based') != 'event-based':
             self.next_steps = [0]
             self.next_self_step = (0, -1)
         else:

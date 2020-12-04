@@ -203,7 +203,7 @@ def test_get_input_data_shifted(world):
 def test_step(world):
     inputs = object()
     sim = world.sims[0]
-    sim.meta['type'] = 'discrete-time'
+    sim.meta['type'] = 'time-based'
     sim.next_step = 0
     assert (sim.last_step, sim.next_step) == (-1, 0)
 
@@ -222,7 +222,7 @@ def test_get_outputs(world):
     world.df_graph[0][2]['wait_event'] = wait_event
     world.sims[2].next_step = 2
     sim = world.sims[0]
-    sim.meta['type'] = 'discrete-time'
+    sim.meta['type'] = 'time-based'
     sim.progress = -1
     sim.last_step, sim.progress_tmp = 0, 0
     sim.idle_tmp = False
@@ -266,7 +266,7 @@ def test_get_outputs_shifted(world):
     wait_event = world.env.event()
     world.df_graph[5][4]['wait_event'] = wait_event
     sim = world.sims[5]
-    sim.meta['type'] = 'discrete-time'
+    sim.meta['type'] = 'time-based'
     sim.progress = 0
     sim.last_step, sim.progress_tmp = 1, 1
     world.sims[4].next_step = 2
