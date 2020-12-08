@@ -279,11 +279,17 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     if not world.rt_factor:
         for suc_sid in dfg.successors(sim.sid):
             suc = world.sims[suc_sid]
-            if (lazy_stepping or dfg[sim.sid][suc_sid]['pred_waiting']) and suc.progress + 1 < t:
+            edge = dfg[sim.sid][suc_sid]
+            if edge['pred_waiting'] and suc.progress + 1 < t:
                 evt = world.env.event()
                 events.append(evt)
-                world.df_graph[sim.sid][suc_sid]['wait_lazy_or_async'] = evt
-
+                edge['wait_async'] = evt
+            elif lazy_stepping:
+                if 'wait_lazy' in edge:
+                    events.append(edge['wait_lazy'])
+                elif suc.progress + 1 < t:
+                    evt = world.env.event()
+                    edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
 
@@ -482,8 +488,11 @@ def notify_dependencies(world, sim):
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
         pre_sim = world.sims[pre_sid]
-        if 'wait_lazy_or_async' in edge and pre_sim.next_step <= progress + 1:
-            edge.pop('wait_lazy_or_async').succeed()
+        if 'wait_async' in edge and pre_sim.next_step <= progress + 1:
+            edge.pop('wait_async').succeed()
+        elif 'wait_lazy' in edge:
+            if pre_sim.next_step is None or pre_sim.next_step <= progress + 1:
+                edge.pop('wait_lazy').succeed()
 
 
 def prune_dataflow_cache(world):
@@ -543,8 +552,9 @@ def clear_wait_events(world, sid):
 
     for suc_sid in world.df_graph.successors(sid):
         edge = world.df_graph[sid][suc_sid]
-        if 'wait_lazy_or_async' in edge:
-            edge.pop('wait_lazy_or_async').succeed()
+        for wait_type in ['wait_lazy', 'wait_async']:
+            if wait_type in edge:
+                edge.pop(wait_type).succeed()
 
 
 def clear_wait_events_dependencies(world, sid):
@@ -555,5 +565,6 @@ def clear_wait_events_dependencies(world, sid):
 
     for pre_sid in world.df_graph.predecessors(sid):
         edge = world.df_graph[pre_sid][sid]
-        if 'wait_lazy_or_async' in edge:
-            edge.pop('wait_lazy_or_async').succeed()
+        for wait_type in ['wait_lazy', 'wait_async']:
+            if wait_type in edge:
+                edge.pop(wait_type).succeed()

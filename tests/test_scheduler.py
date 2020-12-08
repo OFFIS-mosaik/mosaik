@@ -156,19 +156,23 @@ def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     assert evt.triggered == (not bool(number_waiting))
 
 
-@pytest.mark.parametrize("lazy_stepping,number_waiting", [
-    (True, 1),
-    (False, 0)
+@pytest.mark.parametrize("lazy_stepping", [
+    True,
+    False
 ])
-def test_wait_for_dependencies_lazy(world, lazy_stepping, number_waiting):
+def test_wait_for_dependencies_lazy(world, lazy_stepping):
     """
     Test waiting for dependencies and triggering them.
     """
     world.sims[1].next_step = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping)
-    assert len(evt._events) == number_waiting
-    assert evt.triggered == (not bool(number_waiting))
-
+    assert len(evt._events) == 0
+    assert evt.triggered == 1
+    if lazy_stepping:
+        assert 'wait_lazy' in world.df_graph[1][2]
+        evt = scheduler.wait_for_dependencies(world, world.sims[1], True)
+        assert len(evt._events) == 1
+        assert evt.triggered == False
 
 def test_get_input_data(world):
     """
