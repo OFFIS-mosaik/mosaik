@@ -182,10 +182,10 @@ class World(object):
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         if self._df_cache is not None:
-            trigger, cached, time_buffered, timeless_cached = \
+            trigger, cached, time_buffered, memorized = \
                 self._classify_connections_with_cache(src, dest, attr_pairs)
         else:
-            trigger, timeless_cached, time_buffered = \
+            trigger, time_buffered, memorized = \
                 self._classify_connections_without_cache(src, dest, attr_pairs)
             cached = []
 
@@ -206,7 +206,7 @@ class World(object):
                     self._df_cache[-1][src.sid].setdefault(src.eid, {})
                     self._df_cache[-1][src.sid][src.eid][attr] = val
 
-        pred_waiting = timeless_cached or async_requests
+        pred_waiting = async_requests
 
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
@@ -236,9 +236,9 @@ class World(object):
             src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (dest.sid, dest.eid, dest_attr))
 
-        for src_attr, dest_attr in timeless_cached:
-            dest.sim.timeless_cached_input.setdefault(
-                (dest.eid, dest_attr), []).append((src.sid, src.eid, src_attr))
+        for src_attr, dest_attr in memorized:
+            dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
+                dest_attr, {})[FULL_ID % (src.sid, src.eid)] = None
 
     def set_event(self, sid, time=0):
         """
@@ -443,22 +443,27 @@ class World(object):
         any_trigger = False
         cached = []
         time_buffered = []
-        timeless_cached = []
+        memorized = []
 
         for attr_pair in attr_pairs:
             trigger = (attr_pair[1] in emeta[1]['trigger'] or (
                 any_inputs[1] and dest.sim.meta['type'] == 'event-based'))
             if trigger:
                 any_trigger = True
+
             persistent = attr_pair[0] in emeta[0]['persistent']
-            if not persistent and not trigger:
-                time_buffered.append(attr_pair)
-            elif src.sim.meta['type'] != 'time-based' and persistent:
-                timeless_cached.append(attr_pair)
+            if src.sim.meta['type'] != 'time-based':
+                if not trigger:
+                    time_buffered.append(attr_pair)
+                else: # TODO: Refactor
+                    cached.append(attr_pair)
+                if persistent:
+                    memorized.append(attr_pair)
+
             else:
                 cached.append(attr_pair)
         return (any_trigger, tuple(cached), tuple(time_buffered),
-                tuple(timeless_cached))
+                tuple(memorized))
 
     def _classify_connections_without_cache(self, src, dest, attr_pairs):
         """
@@ -466,21 +471,16 @@ class World(object):
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1]['any_inputs']]
         trigger = False
-        timeless_cached = []
-        time_buffered = []
+        memorized = []
         for attr_pair in attr_pairs:
             if attr_pair[1] in emeta[1]['trigger']:
                 trigger = True
-            if (attr_pair[0] in emeta[0]['persistent']
-                    and (attr_pair[1] not in emeta[1]['trigger']
-                         or (any_inputs[1]
-                             and dest.sim.meta['type'] != 'event-based'))):
-                timeless_cached.append(attr_pair)
-            else:
-                time_buffered.append(attr_pair)
-        return trigger, tuple(timeless_cached), tuple(time_buffered)
+            persistent = attr_pair[0] in emeta[0]['persistent']
+            if persistent:
+                memorized.append(attr_pair)
+
+        return trigger, tuple(attr_pairs), tuple(memorized)
 
 
 class ModelFactory():

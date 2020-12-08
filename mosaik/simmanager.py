@@ -405,9 +405,9 @@ class SimProxy:
         self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
+        self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
-        self.timeless_cached_input = {}
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event

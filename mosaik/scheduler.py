@@ -312,15 +312,14 @@ def get_input_data(world, sim):
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_data = {**sim.input_buffer, **sim.timed_input_buffer.get_input(sim.next_step)}
+    input_memory = sim.input_memory
+    input_data = {**sim.input_buffer, **input_memory,
+                  **sim.timed_input_buffer.get_input(sim.next_step)}
     sim.input_buffer = {}
-
-    timeless_cache = world._timeless_cache
-    for (dest_eid, dest_attr), sources in sim.timeless_cached_input.items():
-        for (src_sid, src_eid, src_attr) in sources:
-            v = timeless_cache[src_sid][src_eid][src_attr]
-            vals = input_data.setdefault(dest_eid, {}).setdefault(dest_attr, {})
-            vals[FULL_ID % (src_sid, src_eid)] = v
+    for eid, attrs in input_memory.items():
+        for attr, srcs in attrs.items():
+            for src in srcs.keys():
+                srcs[src] = input_data[eid][attr][src]
 
     df_graph = world.df_graph
 
@@ -436,7 +435,6 @@ def get_outputs(world, sim):
                             sim.progress_tmp = output_time
                         break
 
-            world._timeless_cache[sim.sid] = data
             if world._df_cache is not None:
                 world._df_cache[sim.last_step][sim.sid] = data
                 # TODO: Is it a problem if persistent data are also written?
