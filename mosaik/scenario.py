@@ -182,10 +182,10 @@ class World(object):
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         if self._df_cache is not None:
-            trigger, cached, time_buffered, memorized = \
+            trigger, cached, time_buffered, memorized, persistent = \
                 self._classify_connections_with_cache(src, dest, attr_pairs)
         else:
-            trigger, time_buffered, memorized = \
+            trigger, time_buffered, memorized, persistent = \
                 self._classify_connections_without_cache(src, dest, attr_pairs)
             cached = []
 
@@ -236,9 +236,27 @@ class World(object):
             src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (dest.sid, dest.eid, dest_attr))
 
+        if weak:
+            for src_attr, dest_attr in persistent:
+                try:
+                    dest.sim.input_buffer.setdefault(dest.eid, {}).setdefault(
+                        dest_attr, {})[
+                        FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
+                except KeyError:
+                    raise ScenarioError('Weak connections of persistent '
+                                        'attributes have to be set with '
+                                        'default inputs for the first step. '
+                                        f'{src_attr} is missing for connection'
+                                        f' from {FULL_ID % (src.sid, src.eid)} '
+                                        f'to {FULL_ID % (dest.sid, dest.eid)}.')
+
         for src_attr, dest_attr in memorized:
+            if weak:
+                init_val = initial_data[src_attr]
+            else:
+                init_val = None
             dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
-                dest_attr, {})[FULL_ID % (src.sid, src.eid)] = None
+                dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
     def set_event(self, sid, time=0):
         """
@@ -444,6 +462,7 @@ class World(object):
         cached = []
         time_buffered = []
         memorized = []
+        persistent = []
 
         for attr_pair in attr_pairs:
             trigger = (attr_pair[1] in emeta[1]['trigger'] or (
@@ -451,19 +470,21 @@ class World(object):
             if trigger:
                 any_trigger = True
 
-            persistent = attr_pair[0] in emeta[0]['persistent']
+            is_persistent = attr_pair[0] in emeta[0]['persistent']
+            if is_persistent:
+                persistent.append(attr_pair)
             if src.sim.meta['type'] != 'time-based':
                 if not trigger:
                     time_buffered.append(attr_pair)
                 else: # TODO: Refactor
                     cached.append(attr_pair)
-                if persistent:
+                if is_persistent:
                     memorized.append(attr_pair)
 
             else:
                 cached.append(attr_pair)
         return (any_trigger, tuple(cached), tuple(time_buffered),
-                tuple(memorized))
+                tuple(memorized), tuple(persistent))
 
     def _classify_connections_without_cache(self, src, dest, attr_pairs):
         """
@@ -472,15 +493,16 @@ class World(object):
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
         trigger = False
-        memorized = []
+        persistent = []
         for attr_pair in attr_pairs:
             if attr_pair[1] in emeta[1]['trigger']:
                 trigger = True
-            persistent = attr_pair[0] in emeta[0]['persistent']
-            if persistent:
-                memorized.append(attr_pair)
+            is_persistent = attr_pair[0] in emeta[0]['persistent']
+            if is_persistent:
+                persistent.append(attr_pair)
+        memorized = persistent
 
-        return trigger, tuple(attr_pairs), tuple(memorized)
+        return trigger, tuple(attr_pairs), tuple(memorized), tuple(persistent)
 
 
 class ModelFactory():

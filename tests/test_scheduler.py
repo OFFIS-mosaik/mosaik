@@ -174,6 +174,7 @@ def test_wait_for_dependencies_lazy(world, lazy_stepping):
         assert len(evt._events) == 1
         assert evt.triggered == False
 
+
 def test_get_input_data(world):
     """
     Simple test for get_input_data().

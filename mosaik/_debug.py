@@ -58,6 +58,7 @@ def pre_step(world, sim, inputs):
                   for jj in ii.values() for kk in jj.keys()}
     for pre in dfg.predecessors(sid):
         if pre in input_pres or dfg[pre][sid]['async_requests']:
+            pre_step = None
             for inode in eg.nodes:
                 node_sid, istep = inode.rsplit('-', 1)
                 if node_sid == pre:
@@ -65,9 +66,10 @@ def pre_step(world, sim, inputs):
                         pre_step = istep
                     else:
                         break
-            pre_node = node % (pre, pre_step)
-            eg.add_edge(pre_node, node_id)
-            assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
+            if pre_step is not None:
+                pre_node = node % (pre, pre_step)
+                eg.add_edge(pre_node, node_id)
+                assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
     for suc in dfg.successors(sid):
         if dfg[sid][suc]['async_requests'] and sim.last_step >= 0:

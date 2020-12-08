@@ -319,16 +319,14 @@ def get_input_data(world, sim):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     input_memory = sim.input_memory
-    input_data = {**sim.input_buffer, **input_memory,
-                  **sim.timed_input_buffer.get_input(sim.next_step)}
+    input_data = sim.input_buffer
     sim.input_buffer = {}
-    for eid, attrs in input_memory.items():
-        for attr, srcs in attrs.items():
-            for src in srcs.keys():
-                srcs[src] = input_data[eid][attr][src]
+    recursive_union(input_data, input_memory)
+    timed_input = sim.timed_input_buffer.get_input(sim.next_step)
+    recursive_union(input_data, timed_input)
 
     df_graph = world.df_graph
-
+    cached_input = {}
     if world._df_cache is not None:
         for src_sid in df_graph.predecessors(sim.sid):
             t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
@@ -338,10 +336,33 @@ def get_input_data(world, sim):
                     v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\
                         .get(src_attr, SENTINEL)
                     if v is not SENTINEL:
-                        vals = input_data.setdefault(dest_eid, {}) \
+                        vals = cached_input.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
                         vals[FULL_ID % (src_sid, src_eid)] = v
+    recursive_union(input_data, cached_input)
+
+    recursive_update(input_memory, input_data)
+
     return input_data
+
+
+def recursive_union(d, u):
+    for k, v in u.items():
+        if isinstance(v, dict):
+            d[k] = recursive_union(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
+def recursive_update(d, u):
+    for k, v in u.items():
+        if k in d:
+            if isinstance(v, dict):
+                d[k] = recursive_update(d.get(k, {}), v)
+            else:
+                d[k] = v
+    return d
 
 
 def step(world, sim, inputs, max_advance):
