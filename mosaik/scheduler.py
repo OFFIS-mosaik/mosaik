@@ -80,17 +80,10 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                     continue
             sim.interruptable = False
             input_data = get_input_data(world, sim)
-
             max_advance = get_max_advance(world, sim, until)
-            if (world.df_graph.in_degree(sim.sid) != 0 and input_data == {}
-                    and sim.next_step != sim.next_self_step[0]):
-                sim.output_time = sim.last_step = sim.next_step
-                sim.next_step = None
-                sim.progress_tmp = max_advance
-            else:
-                yield from step(world, sim, input_data, max_advance)
-                rt_check(rt_factor, rt_start, rt_strict, sim)
-                yield from get_outputs(world, sim)
+            yield from step(world, sim, input_data, max_advance)
+            rt_check(rt_factor, rt_start, rt_strict, sim)
+            yield from get_outputs(world, sim)
             notify_dependencies(world, sim)
             if world._df_cache:
                 prune_dataflow_cache(world)
@@ -473,6 +466,7 @@ def get_outputs(world, sim):
                     if val is not SENTINEL:
                         world.sims[dest_sid].timed_input_buffer.add(
                             output_time, sid, src_eid, dest_eid, dest_attr, val)
+        sim.data = data
 
 
 def notify_dependencies(world, sim):
@@ -494,16 +488,21 @@ def notify_dependencies(world, sim):
                 necessary_progress = dest_sim.last_step
             if necessary_progress <= progress:
                 edge.pop('wait_event').succeed()
-        if (edge['trigger']
-                and sim.output_time not in dest_sim.next_steps
-                + [dest_sim.next_step]
-                and sim.output_time < world.until):
-            heappush(dest_sim.next_steps, sim.output_time)
-            if not dest_sim.has_next_step.triggered:
-                dest_sim.has_next_step.succeed()
-            elif dest_sim.interruptable and \
-                    dest_sim.progress <= sim.output_time < dest_sim.next_step:
-                dest_sim.sim_proc.interrupt('Earlier step')
+        if edge['trigger']:
+            dataflows = edge['dataflows']
+            for eid, _, attrs in dataflows:
+                data_eid = sim.data.get(eid, {})
+                for attr, _ in attrs:
+                    if (attr in data_eid
+                            and sim.output_time not in dest_sim.next_steps
+                        + [dest_sim.next_step]
+                        and sim.output_time < world.until):
+                        heappush(dest_sim.next_steps, sim.output_time)
+                        if not dest_sim.has_next_step.triggered:
+                            dest_sim.has_next_step.succeed()
+                        elif dest_sim.interruptable and \
+                                dest_sim.progress <= sim.output_time < dest_sim.next_step:
+                            dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.
     for pre_sid in world.df_graph.predecessors(sid):
