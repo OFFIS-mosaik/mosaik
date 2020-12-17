@@ -42,7 +42,7 @@ class TestSim(mosaik_api.Simulator):
         self.step_type = step_type
         self.meta['type'] = step_type
         self.step_size = step_size
-        self.self_steps = self_steps
+        self.self_steps = {float(key): val for key, val in self_steps.items()}
         self.wallclock_duration = wallclock_duration
         if output_timing:
             output_timing = {float(key): val

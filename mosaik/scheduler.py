@@ -117,12 +117,12 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
 
 def get_max_advance(world, sim, until):
     ancs_next_steps = []
-    for anc_sid in sim.triggering_ancestors:
+    for anc_sid, not_shifted_or_weak in sim.triggering_ancestors:
         anc_sim = world.sims[anc_sid]
-        if anc_sim.next_step:
-            ancs_next_steps.append(anc_sim.next_step - 1)
+        if anc_sim.next_step is not None:
+            ancs_next_steps.append(anc_sim.next_step - not_shifted_or_weak)
         elif anc_sim.next_steps:
-            ancs_next_steps.append(anc_sim.next_steps[0] - 1)
+            ancs_next_steps.append(anc_sim.next_steps[0] - not_shifted_or_weak)
 
     if ancs_next_steps:
         max_advance = min(ancs_next_steps)

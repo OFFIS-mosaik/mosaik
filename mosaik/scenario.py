@@ -356,8 +356,19 @@ class World(object):
         self.cache_trigger_cycles()
 
         for sim in self.sims.values():
-            sim.triggering_ancestors = networkx.ancestors(self.trigger_graph,
-                                                          sim.sid)
+            triggering_ancestors = sim.triggering_ancestors = []
+            ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
+            for anc_sid in ancestors:
+                paths = networkx.all_simple_edge_paths(self.trigger_graph, anc_sid, sim.sid)
+                distances = []
+                for edges in paths:
+                    distance = 0
+                    for edge in edges:
+                        edge = self.df_graph[edge[0]][edge[1]]
+                        distance += edge['time_shifted'] or edge['weak']
+                    distances.append(distance)
+                distance = min(distances)
+                triggering_ancestors.append((anc_sid, not distance))
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
