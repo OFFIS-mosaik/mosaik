@@ -413,6 +413,7 @@ class SimProxy:
         self.wait_events = None  # SimPy event
         self.interruptable = False
         self.trigger_cycles = []
+        self.deadlock_checker = []
 
     def stop(self):
         """

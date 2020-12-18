@@ -216,6 +216,7 @@ def has_next_step(world, sim):
         yield sim.has_next_step
     else:
         try:
+            check_and_resolve_deadlocks(world, sim.deadlock_checker)
             if world.rt_factor:
                 rt_passed = perf_counter() - sim.rt_start
                 timeout = world.env.timeout(max((world.rt_factor * world.until)
@@ -285,6 +286,9 @@ def wait_for_dependencies(world, sim, lazy_stepping):
                     edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
+
+    if events:
+        check_and_resolve_deadlocks(world, sim.deadlock_checker)
 
     return wait_events
 
@@ -513,6 +517,37 @@ def notify_dependencies(world, sim):
         elif 'wait_lazy' in edge:
             if pre_sim.next_step is None or pre_sim.next_step <= progress + 1:
                 edge.pop('wait_lazy').succeed()
+
+
+def check_and_resolve_deadlocks(world, cycles):
+    for cycle in cycles:
+        waiting_sims = []
+        for isid in cycle:
+            isim = world.sims[isid]
+            if isim.sim_proc.triggered:
+                continue
+            if not isim.has_next_step:
+                # isim hasn't executed `has_next_step` yet and will perform
+                # a deadlock check again if necessary.
+                break
+            elif not isim.has_next_step.triggered:
+                continue
+            if not isim.wait_events or isim.wait_events.triggered:
+                # isim hasn't executed `wait_for_dependencies` yet and will
+                # perform a deadlock check again if necessary or is not waiting.
+                break
+            else:
+                waiting_sims.append(isim)
+        else:
+            # This part will only be reached if all simulators are waiting for
+            # dependencies.
+            sim_queue = []
+            for isim in waiting_sims:
+                heappush(sim_queue, (isim.next_step, world.sim_ranks[isim.sid], isim.sid))
+            for isid in cycle:
+                isim = world.sims[isid]
+                isim.progress = max(isim.progress, sim_queue[0][0])
+            clear_wait_events(world, sim_queue[0][2])
 
 
 def prune_dataflow_cache(world):

@@ -369,6 +369,18 @@ class World(object):
                     distances.append(distance)
                 distance = min(distances)
                 triggering_ancestors.append((anc_sid, not distance))
+
+        # Deduce a (potentially non-unique) simulator ranking from a
+        # topological sort of the df_graph:
+        graph_tmp = self.df_graph.copy()
+        loop_edges = [(u,v) for (u, v, w) in graph_tmp.edges.data(True) if
+                      w['time_shifted'] or w['weak']]
+
+        graph_tmp.remove_edges_from(loop_edges)
+        topo_sort = list(networkx.topological_sort(graph_tmp))
+        self.sim_ranks = dict(zip(topo_sort, range(len(topo_sort))))
+        del graph_tmp, loop_edges
+
         print('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
@@ -396,6 +408,12 @@ class World(object):
                 raise ScenarioError('Scenario has unresolved cyclic '
                                     f'dependencies: {sorted(cycle)}. Use options '
                                     '"time-shifted" or "weak" for resolution.')
+
+            for src_id, dest_id in sim_pairs:
+                edge = self.df_graph[src_id][dest_id]
+                if edge['trigger']:
+                    self.sims[src_id].deadlock_checker.append(cycle)
+
 
     def cache_trigger_cycles(self):
         cycles = list(networkx.simple_cycles(self.trigger_graph))
