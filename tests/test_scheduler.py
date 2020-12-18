@@ -18,6 +18,7 @@ def world_fixture():
     world.df_graph.add_edges_from([(5, 4)],
                                   async_requests=False, pred_waiting=False,
                                   time_shifted=True, weak=False, trigger=False)
+    world.cache_dependencies()
     world.df_graph[0][2]['wait_event'] = world.env.event()
     world.until = 4
     world.rt_factor = None
@@ -28,6 +29,7 @@ def world_fixture():
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
+    world.df_graph.add_nodes_from([0, 1])
     world.trigger_graph.add_node('dummy')
 
     def dummy_proc(world, sim, until, rt_factor, rt_strict, print_progress,

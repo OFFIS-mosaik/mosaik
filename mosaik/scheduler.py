@@ -76,7 +76,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                 except Interrupt as i:
                     assert i.cause == 'Earlier step'
                     sim.next_step = heapreplace(sim.next_steps, sim.next_step)
-                    clear_wait_events(world, sim.sid)
+                    clear_wait_events(sim)
                     continue
             sim.interruptable = False
             input_data = get_input_data(world, sim)
@@ -93,7 +93,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
 
         sim.progress_tmp = until
         sim.progress = until
-        clear_wait_events_dependencies(world, sim.sid)
+        clear_wait_events_dependencies(sim)
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
@@ -245,22 +245,19 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     """
     events = []
     t = sim.next_step
-    dfg = world.df_graph
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
-    for dep_sid in dfg.predecessors(sim.sid):
-        dep = world.sims[dep_sid]
-        edge = dfg[dep_sid][sim.sid]
+    for pre_sim, edge in sim.predecessors.values():
         if 'loop_closing' not in edge:
             # Wait for dep_sim if it hasn't progressed until actual time step:
             weak_or_shifted = edge['time_shifted'] or edge['weak']
-            if dep.progress + weak_or_shifted < t:
+            if pre_sim.progress + weak_or_shifted < t:
                 evt = world.env.event()
                 events.append(evt)
                 edge['wait_event'] = evt
                 # To avoid deadlocks:
-                if 'wait_lazy_or_async' in edge and dep.next_step <= t:
+                if 'wait_lazy_or_async' in edge and pre_sim.next_step <= t:
                     edge.pop('wait_lazy_or_async').succeed()
         else:
             # Wait for dep_sim if loop has been activated in last step:
@@ -271,17 +268,15 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
-        for suc_sid in dfg.successors(sim.sid):
-            suc = world.sims[suc_sid]
-            edge = dfg[sim.sid][suc_sid]
-            if edge['pred_waiting'] and suc.progress + 1 < t:
+        for suc_sim, edge in sim.successors.values():
+            if edge['pred_waiting'] and suc_sim.progress + 1 < t:
                 evt = world.env.event()
                 events.append(evt)
                 edge['wait_async'] = evt
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc.progress + 1 < t:
+                elif suc_sim.progress + 1 < t:
                     evt = world.env.event()
                     edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
@@ -322,15 +317,15 @@ def get_input_data(world, sim):
     timed_input = sim.timed_input_buffer.get_input(sim.next_step)
     recursive_union(input_data, timed_input)
 
-    df_graph = world.df_graph
     cached_input = {}
     if world._df_cache is not None:
-        for src_sid in df_graph.predecessors(sim.sid):
-            t = sim.next_step - df_graph[src_sid][sim.sid]['time_shifted']
-            dataflows = df_graph[src_sid][sim.sid]['cached_connections']
+        for src_sid, (_, edge) in sim.predecessors.items():
+            t = sim.next_step - edge['time_shifted']
+            cache_slice = world._df_cache[t]
+            dataflows = edge['cached_connections']
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
-                    v = world._df_cache[t].get(src_sid, {}).get(src_eid, {})\
+                    v = cache_slice.get(src_sid, {}).get(src_eid, {})\
                         .get(src_attr, SENTINEL)
                     if v is not SENTINEL:
                         vals = cached_input.setdefault(dest_eid, {}) \
@@ -477,13 +472,10 @@ def notify_dependencies(world, sim):
     """
     Notify all simulators waiting for us
     """
-    sid = sim.sid
     progress = sim.progress = sim.progress_tmp
 
     # Notify simulators waiting for inputs from us.
-    for suc_sid in world.df_graph.successors(sid):
-        edge = world.df_graph[sid][suc_sid]
-        dest_sim = world.sims[suc_sid]
+    for dest_sim, edge in sim.successors.values():
         if 'wait_event' in edge:
             if 'loop_closing' not in edge:
                 weak_or_shifted = edge['time_shifted'] or edge['weak']
@@ -498,9 +490,9 @@ def notify_dependencies(world, sim):
                 data_eid = sim.data.get(eid, {})
                 for attr, _ in attrs:
                     if (attr in data_eid
-                            and sim.output_time not in dest_sim.next_steps
-                        + [dest_sim.next_step]
-                        and sim.output_time < world.until):
+                        and sim.output_time not in dest_sim.next_steps
+                            + [dest_sim.next_step]
+                            and sim.output_time < world.until):
                         heappush(dest_sim.next_steps, sim.output_time)
                         if not dest_sim.has_next_step.triggered:
                             dest_sim.has_next_step.succeed()
@@ -509,9 +501,7 @@ def notify_dependencies(world, sim):
                             dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.
-    for pre_sid in world.df_graph.predecessors(sid):
-        edge = world.df_graph[pre_sid][sid]
-        pre_sim = world.sims[pre_sid]
+    for pre_sim, edge in sim.predecessors.values():
         if 'wait_async' in edge and pre_sim.next_step <= progress + 1:
             edge.pop('wait_async').succeed()
         elif 'wait_lazy' in edge:
@@ -547,7 +537,7 @@ def check_and_resolve_deadlocks(world, cycles):
             for isid in cycle:
                 isim = world.sims[isid]
                 isim.progress = max(isim.progress, sim_queue[0][0])
-            clear_wait_events(world, sim_queue[0][2])
+            clear_wait_events(world.sims[sim_queue[0][2]])
 
 
 def prune_dataflow_cache(world):
@@ -599,27 +589,23 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
                       'behind time.' % (rt_factor, delta))
 
 
-def clear_wait_events(world, sid):
-    for pre_sid in world.df_graph.predecessors(sid):
-        edge = world.df_graph[pre_sid][sid]
+def clear_wait_events(sim):
+    for _, edge in sim.predecessors.values():
         if 'wait_event' in edge:
             edge.pop('wait_event').succeed()
 
-    for suc_sid in world.df_graph.successors(sid):
-        edge = world.df_graph[sid][suc_sid]
+    for _, edge in sim.successors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
             if wait_type in edge:
                 edge.pop(wait_type).succeed()
 
 
-def clear_wait_events_dependencies(world, sid):
-    for suc_sid in world.df_graph.successors(sid):
-        edge = world.df_graph[sid][suc_sid]
+def clear_wait_events_dependencies(sim):
+    for _, edge in sim.successors.values():
         if 'wait_event' in edge:
             edge.pop('wait_event').succeed()
 
-    for pre_sid in world.df_graph.predecessors(sid):
-        edge = world.df_graph[pre_sid][sid]
+    for _, edge in sim.predecessors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
             if wait_type in edge:
                 edge.pop(wait_type).succeed()

@@ -355,6 +355,8 @@ class World(object):
 
         self.cache_trigger_cycles()
 
+        self.cache_dependencies()
+
         for sim in self.sims.values():
             triggering_ancestors = sim.triggering_ancestors = []
             ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
@@ -450,6 +452,20 @@ class World(object):
                     trigger_cycle['time'] = -1
                     trigger_cycle['count'] = 0
                     sim.trigger_cycles.append(trigger_cycle)
+
+    def cache_dependencies(self):
+        for sid, sim in self.sims.items():
+            sim.predecessors = {}
+            for pre_sid in self.df_graph.predecessors(sid):
+                pre_sim = self.sims[pre_sid]
+                edge = self.df_graph[pre_sid][sid]
+                sim.predecessors[pre_sid] = (pre_sim, edge)
+
+            sim.successors = {}
+            for suc_sid in self.df_graph.successors(sid):
+                suc_sim = self.sims[suc_sid]
+                edge = self.df_graph[sid][suc_sid]
+                sim.successors[suc_sid] = (suc_sim, edge)
 
     def shutdown(self):
         """
