@@ -398,10 +398,9 @@ class SimProxy:
         self.next_step = None
         if self.meta.get('type', 'time-based') != 'event-based':
             self.next_steps = [0]
-            self.next_self_step = (0, -1)
         else:
             self.next_steps = []
-            self.next_self_step = (None, -1)
+        self.next_self_step = (None, -1)
         self.progress_tmp = -1
         self.progress = -1
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"

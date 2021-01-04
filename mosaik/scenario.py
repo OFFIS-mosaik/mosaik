@@ -263,7 +263,6 @@ class World(object):
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
         self.sims[sid].next_steps = [time]
-        self.sims[sid].next_self_step = (time, -1)
 
     def get_data(self, entity_set, *attributes):
         """

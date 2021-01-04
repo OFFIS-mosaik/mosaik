@@ -28,6 +28,14 @@ sim_config = {
     'generic_remote': {
         char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}
         for char in 'ABCDE'
+    },
+    'loop': {
+        'LoopSim': {
+            'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
+        },
+        'EchoSim': {
+            'python': 'tests.simulators.loop_simulators.echo_simulator:EchoSim',
+        },
     }
 }
 
