@@ -16,6 +16,8 @@ def create_scenario(world):
     world.set_event(model_a.sid)
 
 
+CONFIG = 'generic'
+
 EXECUTION_GRAPH = """
 A-0-0 A-0-2
 C-0-0 C-0-3

@@ -11,6 +11,8 @@ def create_scenario(world):
     #world.set_event(model_a.sid)
 
 
+CONFIG = 'generic_remote'
+
 EXECUTION_GRAPH = """
 A-0-1 B-0-1
 """

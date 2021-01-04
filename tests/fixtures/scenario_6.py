@@ -25,6 +25,10 @@ def create_scenario(world):
 # B 0--1--2--3--4 [1, 2)
 # C 0-----2-----4 [0, 2)
 # D 0--------3--- [0, 3)
+
+
+CONFIG = 'remote'
+
 EXECUTION_GRAPH = """
 A-0-0 A-0-2
 A-0-0 MAS-0-0

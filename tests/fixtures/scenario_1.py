@@ -9,6 +9,8 @@ def create_scenario(world):
     example_simulator.A(init_val=0)
 
 
+CONFIG = 'local'
+
 EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-1 A-0-2
