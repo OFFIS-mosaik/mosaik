@@ -35,7 +35,7 @@ Legals
 DE 811582102
 
 
-**Responsible in the sense of § 55 RStV**
+**Responsible in the sense of press law**
 
 | Dr. Christoph Mayer (Director)
 | OFFIS e.V.

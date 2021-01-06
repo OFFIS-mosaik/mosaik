@@ -34,7 +34,7 @@ Impressum
 DE 811582102
 
 
-**Inhaltlich Verantwortlicher gemäß § 55 RStV**
+**Verantwortlich im Sinne der Presse**
 
 | Dr. Christoph Mayer (Bereichsleiter)
 | OFFIS e.V.
