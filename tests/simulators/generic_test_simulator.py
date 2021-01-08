@@ -1,7 +1,27 @@
 """
 A generic test simulator for mosaik.
 
+It can be configured in various ways via simulator parameters,
+e.g. simulator_a = world.start('A', sim_param1='param1', ..):
+
+step_type : string, {'time-based', 'event-based', 'hybrid'}, default 'time-based')
+step_size : int, default=1, only used by time-based simulators
+self_steps (dict of {int: int}, default {}), only used by event-based and hybrid simulators
+    {step_time: next_step, ..}
+    A next step will only be requested (at next_step) for time steps which are
+    in self_steps.
+wallclock_duration : float, default 0.
+    If set, the simulator will sleep for this time (in seconds) during step.
+output_timing : dict of {int: int}, optional
+    {step_time: output_time, ..}
+    If set, output will only be returned at time steps which are in
+    output_timing.
+events : dict of {float: int}, default {}
+    {real_time: event_time, ..}
+    An event will be requested for simulation time event_time after real_time
+    seconds.
 """
+
 import logging
 from time import sleep
 
