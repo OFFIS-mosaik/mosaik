@@ -314,10 +314,8 @@ def get_input_data(world, sim):
     input_data = sim.input_buffer
     sim.input_buffer = {}
     recursive_union(input_data, input_memory)
-    timed_input = sim.timed_input_buffer.get_input(sim.next_step)
-    recursive_union(input_data, timed_input)
+    input_data = sim.timed_input_buffer.get_input(input_data, sim.next_step)
 
-    cached_input = {}
     if world._df_cache is not None:
         for src_sid, (_, edge) in sim.predecessors.items():
             t = sim.next_step - edge['time_shifted']
@@ -328,10 +326,9 @@ def get_input_data(world, sim):
                     v = cache_slice.get(src_sid, {}).get(src_eid, {})\
                         .get(src_attr, SENTINEL)
                     if v is not SENTINEL:
-                        vals = cached_input.setdefault(dest_eid, {}) \
+                        vals = input_data.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
                         vals[FULL_ID % (src_sid, src_eid)] = v
-    recursive_union(input_data, cached_input)
 
     recursive_update(input_memory, input_data)
 
@@ -348,12 +345,11 @@ def recursive_union(d, u):
 
 
 def recursive_update(d, u):
-    for k, v in u.items():
-        if k in d:
-            if isinstance(v, dict):
-                d[k] = recursive_update(d.get(k, {}), v)
-            else:
-                d[k] = v
+    for k, v in d.items():
+        if isinstance(v, dict):
+            d[k] = recursive_update(v, u[k])
+        else:
+            d[k] = u[k]
     return d
 
 
