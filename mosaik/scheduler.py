@@ -209,14 +209,14 @@ def has_next_step(world, sim):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     sim.has_next_step = world.env.event()
-    next_step = get_next_step(sim)
+    sim.next_step = next_step = get_next_step(sim)
 
     if next_step is not None:
         sim.has_next_step.succeed()
         yield sim.has_next_step
     else:
         try:
-            check_and_resolve_deadlocks(world, sim.deadlock_checker)
+            check_and_resolve_deadlocks(world, sim, sim.deadlock_checker)
             if world.rt_factor:
                 rt_passed = perf_counter() - sim.rt_start
                 timeout = world.env.timeout(max((world.rt_factor * world.until)
@@ -229,9 +229,7 @@ def has_next_step(world, sim):
         except Interrupt:
             raise WakeUpException
 
-        next_step = get_next_step(sim)
-
-    sim.next_step = next_step
+        sim.next_step = get_next_step(sim)
 
 
 def wait_for_dependencies(world, sim, lazy_stepping):
@@ -257,8 +255,8 @@ def wait_for_dependencies(world, sim, lazy_stepping):
                 events.append(evt)
                 edge['wait_event'] = evt
                 # To avoid deadlocks:
-                if 'wait_lazy_or_async' in edge and pre_sim.next_step <= t:
-                    edge.pop('wait_lazy_or_async').succeed()
+                if 'wait_lazy' in edge:
+                    edge.pop('wait_lazy').succeed()
         else:
             # Wait for dep_sim if loop has been activated in last step:
             if 'wait_event' in edge:
@@ -276,14 +274,14 @@ def wait_for_dependencies(world, sim, lazy_stepping):
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc_sim.progress + 1 < t:
+                elif suc_sim.next_steps and suc_sim.progress + 1 < t:
                     evt = world.env.event()
                     edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
 
     if events:
-        check_and_resolve_deadlocks(world, sim.deadlock_checker)
+        check_and_resolve_deadlocks(world, sim, sim.deadlock_checker)
 
     return wait_events
 
@@ -505,7 +503,7 @@ def notify_dependencies(world, sim):
                 edge.pop('wait_lazy').succeed()
 
 
-def check_and_resolve_deadlocks(world, cycles):
+def check_and_resolve_deadlocks(world, sim, cycles):
     for cycle in cycles:
         waiting_sims = []
         for isid in cycle:
@@ -534,6 +532,15 @@ def check_and_resolve_deadlocks(world, cycles):
                 isim = world.sims[isid]
                 isim.progress = max(isim.progress, sim_queue[0][0])
             clear_wait_events(world.sims[sim_queue[0][2]])
+
+    # If we have no next step, we have to check if a predecessor is waiting for
+    # us for async. requests or lazily:
+    if sim.next_step is None:
+        for pre_sim, edge in sim.predecessors.values():
+            if 'wait_async' in edge:
+                edge.pop('wait_async').succeed()
+            if 'wait_lazy' in edge:
+                edge.pop('wait_lazy').succeed()
 
 
 def prune_dataflow_cache(world):
