@@ -18,7 +18,7 @@ setup(
                       open('AUTHORS.txt', encoding='utf-8').read()),
     url='https://mosaik.offis.de',
     install_requires=[
-        'networkx>=2.0',
+        'networkx>=2.5',
         'mosaik-api>=2.3,<3',
         'simpy>=3.0.10,<4.0.0',
         'simpy.io>=0.2.3',
