@@ -10,7 +10,7 @@ run_args['until'] *= args.N
 # Sim config. and other parameters
 SIM_CONFIG = {
     'ExampleSim': {
-        'python': 'simulator_mosaik:ExampleSim',
+        'python': 'tests.simulators.generic_test_simulator:TestSim'
     },
 }
 
@@ -18,11 +18,11 @@ SIM_CONFIG = {
 world = mosaik.World(SIM_CONFIG, **world_args)
 
 # Start simulators und instantiate models:
-a = world.start('ExampleSim', step_size=args.N).ExampleModel(init_val=0)
-b = world.start('ExampleSim', step_size=args.N).ExampleModel(init_val=0)
+a = world.start('ExampleSim', step_size=args.N).A()
+b = world.start('ExampleSim', step_size=args.N).A()
 
 # Connect entities
-world.connect(a, b, 'val')
+world.connect(a, b, ('val_out', 'val_in'))
 
 # Run simulation
 world.run(**run_args)
