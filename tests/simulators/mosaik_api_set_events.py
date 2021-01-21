@@ -176,7 +176,7 @@ class Simulator(object):
 
         """
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance):
         """Perform the next simulation step from time *time* using input values
         from *inputs* and return the new simulation time (the time at which
         ``step()`` should be called again).

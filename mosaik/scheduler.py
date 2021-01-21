@@ -360,7 +360,12 @@ def step(world, sim, inputs, max_advance):
     map attribute names to lists of values (see :func:`get_input_data()`).
     """
     sim.last_step = sim.next_step
-    step_return = yield sim.proxy.step(sim.next_step, inputs)
+
+    if sim.meta['type'] == 'time-based':
+        step_return = yield sim.proxy.step(sim.next_step, inputs)
+    else:
+        step_return = yield sim.proxy.step(sim.next_step, inputs, max_advance)
+
     if isinstance(step_return, dict):
         next_step = step_return.get('next_step', None)
     elif isinstance(step_return, int) or step_return is None:

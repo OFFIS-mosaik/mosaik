@@ -43,7 +43,7 @@ class LoopSim(mosaik_api.Simulator):
         self.eid = 'Loop'
         return [{'eid': self.eid, 'type': model}]
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance):
         self.time = time
 
         self.loop_count += 1

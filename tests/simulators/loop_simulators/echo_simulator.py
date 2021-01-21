@@ -36,7 +36,7 @@ class EchoSim(mosaik_api.Simulator):
         self.eid = 'Echo'
         return [{'eid': self.eid, 'type': model}]
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance):
         print('ECHO SIM', inputs)
         self.loop_count = list(inputs[self.eid]['loop_in'].values())[0]
         return {}

@@ -84,7 +84,7 @@ class TestSim(mosaik_api.Simulator):
         self.eid = self.sid.lower()
         return [{'eid': self.eid, 'type': model}]
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance=None):
         self.time = time
         if self.wallclock_duration:
             sleep(self.wallclock_duration)
