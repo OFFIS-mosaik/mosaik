@@ -23,15 +23,8 @@ events : dict of {float: int}, default {}
 """
 
 import logging
+import mosaik_api
 from time import sleep
-
-if __package__ is None or __package__ == '':
-    # uses current directory visibility
-    import mosaik_api_set_events as mosaik_api
-
-else:
-    # uses current package visibility
-    from tests.simulators import mosaik_api_set_events as mosaik_api
 
 
 logger = logging.getLogger('test_simulator')
