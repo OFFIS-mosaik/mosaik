@@ -23,3 +23,4 @@ six==1.14.0
 tox==3.20.1
 twine==3.1.1
 virtualenv==20.0.18
+-e .
