@@ -318,7 +318,10 @@ def expand_meta(meta, sim_name):
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    sim_type = meta.setdefault('type', 'time-based')
+    sim_type = meta.get('type', None)
+    if sim_type is None:
+        sim_type = meta['type'] = 'time-based'
+        meta['old-api'] = True  #TODO: Adjust/remove for new API version number
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))

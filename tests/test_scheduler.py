@@ -4,6 +4,7 @@ import pytest
 from tests.mocks.simulator_mock import SimulatorMock
 
 
+# TODO: Create SimulatorMock for new API and paramterize world_fixture
 @pytest.fixture(name='world')
 def world_fixture():
     world = scenario.World({})
@@ -211,6 +212,7 @@ def test_step(world):
     inputs = object()
     sim = world.sims[0]
     sim.meta['type'] = 'time-based'
+    sim.meta['old-api'] = True
     sim.next_step = 0
     assert (sim.last_step, sim.next_step) == (-1, 0)
 

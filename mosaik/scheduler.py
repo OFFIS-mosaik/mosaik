@@ -361,7 +361,7 @@ def step(world, sim, inputs, max_advance):
     """
     sim.last_step = sim.next_step
 
-    if sim.meta['type'] == 'time-based':
+    if 'old-api' in sim.meta:
         step_return = yield sim.proxy.step(sim.next_step, inputs)
     else:
         step_return = yield sim.proxy.step(sim.next_step, inputs, max_advance)
