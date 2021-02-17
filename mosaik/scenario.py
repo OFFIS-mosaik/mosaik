@@ -57,7 +57,8 @@ class World(object):
     that this increases the memory consumption and simulation time.
     """
 
-    def __init__(self, sim_config, mosaik_config=None, debug=False, cache=True):
+    def __init__(self, sim_config, mosaik_config=None, debug=False, cache=True,
+                 max_loop_iterations=100):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -65,6 +66,8 @@ class World(object):
         """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
+
+        self.max_loop_iterations = max_loop_iterations
 
         self.sims = {}
         """A dictionary of already started simulators instances."""

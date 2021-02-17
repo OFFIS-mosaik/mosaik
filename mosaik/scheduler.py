@@ -433,13 +433,13 @@ def get_outputs(world, sim):
                     'Output time (%s) is not >= time (%s) for simulator "%s"'
                     % (output_time, sim.last_step, sim.sid))
             for cycle in sim.trigger_cycles:
+                max_iterations = world.max_loop_iterations
                 for src_eid, src_attr in cycle['activators']:
                     if src_attr in data.get(src_eid, {}):
                         evt = world.env.event()
                         cycle['in_edge']['wait_event'] = evt
                         if sim.last_step == cycle['time']:
                             cycle['count'] += 1
-                            max_iterations = 5
                             if cycle['count'] > max_iterations:
                                 raise SimulationError(f"Loop reached "
                                                       f"maximal "
