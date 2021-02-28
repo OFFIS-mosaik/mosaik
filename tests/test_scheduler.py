@@ -99,13 +99,18 @@ def test_sim_process_error(monkeypatch):
 
 
 @pytest.mark.parametrize('progress', [0, 2])
-def test_has_next_step(world, progress):
+def test_has_next_step(world, progress, monkeypatch):
     """
     Test has_next_step without and with next_steps.
     """
     sim = world.sims[0]
     sim.progress = progress
     sim.next_steps = []
+
+    def dummy_check(*args):
+        pass
+
+    monkeypatch.setattr(scheduler, 'check_and_resolve_deadlocks', dummy_check)
 
     gen = scheduler.has_next_step(world, sim)
     evt = next(gen)
@@ -118,7 +123,7 @@ def test_has_next_step(world, progress):
 
 
 @pytest.mark.parametrize("weak,number_waiting", [
-    (True, 1),
+    (True, 2),
     (False, 2)
 ])
 def test_wait_for_dependencies(world, weak, number_waiting):

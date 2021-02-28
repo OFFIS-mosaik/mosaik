@@ -32,3 +32,8 @@ class WakeUpException(Exception):
     This exception is raised if a simulator is woken up by a successor
     which has terminated.
     """
+
+class NoStepException(Exception):
+    """
+    This exception is raised if none of the simulators has a next step.
+    """

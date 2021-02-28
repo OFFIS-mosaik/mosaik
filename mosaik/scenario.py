@@ -388,11 +388,6 @@ class World(object):
                                     f'dependencies: {sorted(cycle)}. Use options '
                                     '"time-shifted" or "weak" for resolution.')
 
-            for src_id, dest_id in sim_pairs:
-                edge = self.df_graph[src_id][dest_id]
-                if edge['trigger']:
-                    self.sims[src_id].deadlock_checker.append(cycle)
-
     def cache_trigger_cycles(self):
         cycles = list(networkx.simple_cycles(self.trigger_graph))
         for sim in self.sims.values():
