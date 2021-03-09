@@ -537,10 +537,12 @@ class World(object):
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
+        any_inputs = [False, emeta[1]['any_inputs']]
         trigger = False
         persistent = []
         for attr_pair in attr_pairs:
-            if attr_pair[1] in emeta[1]['trigger']:
+            if (attr_pair[1] in emeta[1]['trigger'] or (
+                    any_inputs[1] and dest.sim.meta['type'] == 'event-based')):
                 trigger = True
             is_persistent = attr_pair[0] in emeta[0]['persistent']
             if is_persistent:
