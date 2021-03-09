@@ -396,7 +396,7 @@ class World(object):
                     edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
                     cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
                                    for src_id, dest_id in edge_ids]
-                    trigger_cycle = {}
+                    trigger_cycle = {'sids': sorted(cycle)}
                     min_cycle_length = sum(
                         [edge['time_shifted'] for edge in cycle_edges])
                     trigger_cycle['min_length'] = min_cycle_length

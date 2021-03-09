@@ -438,16 +438,19 @@ def get_outputs(world, sim):
                         if sim.last_step == cycle['time']:
                             cycle['count'] += 1
                             if cycle['count'] > max_iterations:
-                                raise SimulationError(f"Loop reached "
-                                                      f"maximal "
-                                                      f"iteration count "
-                                                      f"of "
-                                                      f"{max_iterations}.")
+                                raise SimulationError(
+                                    f"Loop {cycle['sids']} reached maximal "
+                                    f"iteration count of {max_iterations}."
+                                    " Adjust `max_loop_iterations` in the "
+                                    "scenario if needed.")
                         else:
                             cycle['time'] = output_time  # TODO: or sim.last_step?
                             cycle['count'] = 1
-                        if output_time < sim.progress_tmp:
-                            sim.progress_tmp = output_time
+                        # Check if output time could cause an earlier next step
+                        # compared to what was deduced in get_max_advance:
+                        cycle_progress = output_time - 1 + cycle['min_length']
+                        if cycle_progress < sim.progress_tmp:
+                            sim.progress_tmp = cycle_progress
                         break
 
             if world._df_cache is not None:
@@ -473,7 +476,8 @@ def notify_dependencies(world, sim):
     # Notify simulators waiting for inputs from us.
     for dest_sim, edge in sim.successors.values():
         if 'wait_event' in edge:
-            if dest_sim.next_step - edge['time_shifted'] <= progress:
+            weak_or_shifted = edge['time_shifted'] or edge['weak']
+            if dest_sim.next_step - weak_or_shifted <= progress:
                 edge.pop('wait_event').succeed()
         if edge['trigger']:
             dataflows = edge['dataflows']
