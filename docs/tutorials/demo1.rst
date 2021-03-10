@@ -70,7 +70,7 @@ Before we can instantiate any simulation models, we first need to start the
 respective simulators. This can be done by calling :meth:`World.start()`. It
 takes the name of the simulator to start and, optionally, some simulator
 parameters which will be passed to the simulators ``init()`` method. So lets
-start the example simulator and the HDF5 database adapter:
+start the example simulator and the data collector:
 
 .. literalinclude:: code/demo_1.py
    :lines: 21-23

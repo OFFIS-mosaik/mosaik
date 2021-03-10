@@ -130,9 +130,9 @@ but that all data flows through mosaik were it can be cached and managed.
 Cyclic data-flows
 =================
 
-Cyclic data-flows are necessary to model situations in which a control
-mechanism *(C)* controls another entity *(E)* based on its state, e.g. by
-sending commands or a schedule.
+Sometimes the simulated system requires cyclic data-flows between components, e.g. a control
+mechanism *(C)* that controls another entity *(E)* based on its state, e.g. by sending commands
+or a schedule.
 
 It is not possible to perform both data-flows (the state from *E* to *C* and
 the commands/schedule from *C* to *E*) at the same time because they depend on
@@ -159,14 +159,23 @@ amount of time Δ\ *t* which would be send to the controlled unit at *t* + Δ\
 *t*.
 
 However, mosaik is not able to automatically resolve that cycle. That's why you
-are not allowed to ``connect(E, C)`` and ``connect(C, E)`` in a scenario.
-Instead you have to ``connect(E, C, async_requests=True)`` and use the
+are not allowed to ``connect(E, C)`` and ``connect(C, E)`` in a scenario. This can be done
+via the time-shifted connection
+``connect(C, E, (‘c_out’, ‘a_in’), time_shifted=True, initial_data={‘c_out’: 0})``,
+which tells mosaik that the output of *C* is to be used for E's next time step(s) afterwards.
+As for the first step (at time 0) this data cannot be provided yet, you have to set it via the
+initial_data argument. In this case, the initial data for *‘a_in’* is 0.
+
+
+Another way to resolve this cycle is to allow async. requests via the async_requests flag
+``connect(E, C, async_requests=True)`` and use the
 :ref:`asynchronous callback <async_requests_overview>` ``set_data()`` in *C*\
 ’s *step()* implementation in order to send the commands or schedule from *C*
-to *E*.
+to *E*. The advantage of this approach is that the call of set_data is optional, i.e. the commands
+or schedules don't need to be sent on every step.
 
 You can take a look at our :ref:`discussion of design decisions
-<circular-data-flows>` to learn why cyclic data-flows are handled this way.
+<circular-data-flows>` for details.
 
 
 Stepping and simulation duration
