@@ -344,16 +344,16 @@ def test_sim_proxy():
 
 def test_sim_proxy_illegal_model_names(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'step': {}}}, SimulatorMock(), world)
+                  {'models': {'step': {}}}, SimulatorMock('time-based'), world)
 
 
 def test_sim_proxy_illegal_extra_methods(world):
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['step']}, SimulatorMock(),
-                  world)
+                  {'models': {'A': {}}, 'extra_methods': ['step']},
+                  SimulatorMock('time-based'), world)
     pytest.raises(ScenarioError, simmanager.LocalProcess, '', 0,
-                  {'models': {'A': {}}, 'extra_methods': ['A']}, SimulatorMock(),
-                  world)
+                  {'models': {'A': {}}, 'extra_methods': ['A']},
+                  SimulatorMock('time-based'), world)
 
 
 def test_sim_proxy_stop_impl():

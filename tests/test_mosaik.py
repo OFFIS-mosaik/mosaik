@@ -48,9 +48,10 @@ test_cases = [os.path.basename(file).strip('.py')
 
 
 @pytest.mark.parametrize('fixture', test_cases)
-def test_mosaik(fixture):
+@pytest.mark.parametrize('cache', [True, False])
+def test_mosaik(fixture, cache):
     fixture = importlib.import_module('tests.fixtures.%s' % fixture)
-    world = scenario.World(sim_config[fixture.CONFIG], debug=True)
+    world = scenario.World(sim_config[fixture.CONFIG], debug=True, cache=cache)
     try:
         fixture.create_scenario(world)
         if not hasattr(fixture, 'RT_FACTOR'):
