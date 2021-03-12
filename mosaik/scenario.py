@@ -112,7 +112,6 @@ class World(object):
         else:
             self.persistent_outattrs = {}
             self._df_cache = None
-        self._timeless_cache = {}
 
     def start(self, sim_name, **sim_params):
         """
