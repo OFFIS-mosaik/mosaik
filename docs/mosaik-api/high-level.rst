@@ -68,7 +68,7 @@ API calls
       :annotation:
 
 The *mosaik-api* package provides an `example simulator
-<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_sim/mosaik.py>`_
+<https://gitlab.com/mosaik/mosaik-api-python/-/blob/master/example_sim/mosaik.py>`_
 that demonstrates how the API can be implemented.
 
 
@@ -103,7 +103,7 @@ the event, e.g.:
    :noindex:
 
 The *mosaik-api* package provides an `example "multi-agent system"
-<https://bitbucket.org/mosaik/mosaik-api-python/src/tip/example_mas/mosaik.py>`_
+<https://gitlab.com/mosaik/mosaik-api-python/-/blob/master/example_mas/mosaik.py>`_
 that demonstrates how to perform asynchronous requests can be implemented.
 
 

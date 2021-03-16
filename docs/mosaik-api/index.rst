@@ -15,8 +15,8 @@ programming language. It encapsulates all parts related to networking (socket
 handling, an event loop, message (de)serialization) and provides an abstract
 base class with a few methods that have to be implemented in a subclass.
 A high-level API implementation is currently available for `Python
-<https://bitbucket.org/mosaik/mosaik-api-python>`_ and `Java
-<https://bitbucket.org/mosaik/mosaik-api-java>`_. Implementations for other
+<https://gitlab.com/mosaik/mosaik-api-python>`_ and `Java
+<https://gitlab.com/mosaik/mosaik-api-java>`_. Implementations for other
 languages will be added when needed.
 
 The figure below depicts the differences between the two API levels.

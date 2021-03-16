@@ -97,7 +97,7 @@ display reactive power.
 What are the power grid’s parameters? How are the cables’/lines’ parameters formatted?
 --------------------------------------------------------------------------------------
 
-Check https://bitbucket.org/mosaik/mosaik-pypower under "input file format".
+Check https://gitlab.com/mosaik/mosaik-pypower under "input file format".
 Typically, line values are given in *R per km* and *X per km*.
 
 Port 8000 on my local machine is already in use. How can I see the visualisation with WebVis?
