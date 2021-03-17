@@ -361,14 +361,9 @@ def step(world, sim, inputs, max_advance):
     sim.last_step = sim.next_step
 
     if 'old-api' in sim.meta:
-        step_return = yield sim.proxy.step(sim.next_step, inputs)
+        next_step = yield sim.proxy.step(sim.next_step, inputs)
     else:
-        step_return = yield sim.proxy.step(sim.next_step, inputs, max_advance)
-
-    if isinstance(step_return, dict):
-        next_step = step_return.get('next_step', None)
-    elif isinstance(step_return, int) or step_return is None:
-        next_step = step_return
+        next_step = yield sim.proxy.step(sim.next_step, inputs, max_advance)
 
     if next_step is not None:
         if type(next_step) != int:
@@ -387,17 +382,7 @@ def step(world, sim, inputs, max_advance):
         sim.progress_tmp = next_step - 1
     else:
         assert max_advance >= sim.last_step
-        requested_progress = step_return.get('progress', None)
-        if requested_progress:
-            sim.progress_tmp = requested_progress
-
-            if sim.last_step > requested_progress > max_advance:
-                raise SimulationError('progress (%s) is not >= time (%s) and '
-                                      '<= max_advance (%s) for simulator "%s"'
-                                      % (requested_progress, sim.last_step,
-                                         max_advance, sim.sid))
-
-        elif sim.next_steps:
+        if sim.next_steps:
             sim.progress_tmp = min(sim.next_steps[0] - 1, max_advance)
         else:
             sim.progress_tmp = max_advance

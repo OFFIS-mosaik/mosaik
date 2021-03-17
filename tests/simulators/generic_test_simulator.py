@@ -86,9 +86,9 @@ class TestSim(mosaik_api.Simulator):
             return time + self.step_size
         else:
             if time in self.self_steps:
-                return {'next_step': self.self_steps[time]}
+                return self.self_steps[time]
             else:
-                return {}
+                None
 
     def get_data(self, outputs):
         if self.output_timing is None:

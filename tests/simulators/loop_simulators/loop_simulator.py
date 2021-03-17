@@ -49,12 +49,12 @@ class LoopSim(mosaik_api.Simulator):
         self.loop_count += 1
 
         if self.loop_count == self.loop_length + 1:
-            return_dict = {'next_step': time + self.step_size}
+            next_step = time + self.step_size
             self.loop_count = 0
         else:
-            return_dict = {}
-        print('LOOP STEP', time, return_dict )
-        return return_dict
+            next_step = None
+        print('LOOP STEP', time, next_step )
+        return next_step
 
     def get_data(self, outputs):
         if self.loop_count == 0:

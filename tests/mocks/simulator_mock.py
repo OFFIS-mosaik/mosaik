@@ -16,7 +16,7 @@ class SimulatorMock(mosaik_api.Simulator):
         if self.type == 'time-based':
             return 1
         else:
-            return {}
+            return None
 
     def get_data(self, attrs):
         return {'0': {'x': 0, 'y': 1}}
