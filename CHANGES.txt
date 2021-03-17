@@ -88,12 +88,12 @@ Changelog
 - [NEW] Mosaik can now perform real-time simulations. Before, this
   functionality needed to be implemented by simulators. Now it’s just
   ``World.run(until=x, rt_factor=y)``, where ``rt_factor`` defines the
-  simulation speed relative to the wall-clock time (`issue #24`).
+  simulation speed relative to the wall-clock time (issue #24).
 
 - [NEW] Simulators can now expose extra methods via their API that can be
   called from a mosaik scenario. This allows you to, e.g., store static data in
   a data base. These extra API methods need to be specified in the simulator’s
-  meta data (`issue #26`_).
+  meta data (issue #26).
 
 - [NEW] ``util.connect_many_to_one()`` helper function.
 
@@ -130,21 +130,15 @@ Changelog
   The execution graph now also stores the time after a simulation step (in
   addition to the time before the step).
 
-- [FIX] `issue #22`_: The asynchronous requests *get_data()* and *set_data()*
+- [FIX] issue #22: The asynchronous requests *get_data()* and *set_data()*
   now check if the ``async_requests`` flag was set in ``World.connect()``.
 
-- [FIX] `issue #23`_: *finalize()* is now called for in-process Python
+- [FIX] issue #23: *finalize()* is now called for in-process Python
   simulators.
 
-- [FIX] `issue #27`_: Dramatically improved simulation performance (30 times as
+- [FIX] issue #27: Dramatically improved simulation performance (30 times as
   fast in some cases) if simulators use different step sizes (e.g. 1 minute and
   1 hour) by improving some internal data structures.
-
-.. _`issue #22`: https://bitbucket.org/mosaik/mosaik/issue/22/
-.. _`issue #23`: https://bitbucket.org/mosaik/mosaik/issue/23/
-.. _`issue #24`: https://bitbucket.org/mosaik/mosaik/issue/24/
-.. _`issue #26`: https://bitbucket.org/mosaik/mosaik/issue/26/
-.. _`issue #27`: https://bitbucket.org/mosaik/mosaik/issue/27/
 
 
 2.0 – 2014-09-22
@@ -217,24 +211,24 @@ Changelog
     Python__ and Java__.
 
   - *mosaik-web* is a simple visualization for mosaik simulations. See
-    https://bitbucket.org/mosaik/mosaik-web.
+    https://gitlab.com/mosaik/mosaik-web.
 
   - *mosaik-pypower* is an adapter for the *PYPOWER* load flow analysis
-    library. See https://bitbucket.org/mosaik/mosaik-pypower and
+    library. See https://gitlab.com/mosaik/mosaik-pypower and
     https://github.com/rwl/PYPOWER.
 
   - *mosaik-csv* and *mosaik-householdsim* are simple demo simulators that you
     can use to "simulate" CSV data sets and load-profile based households. See
-    https://bitbucket.org/mosaik/mosaik-csv and
-    https://bitbucket.org/mosaik/mosaik-householdsim.
+    https://gitlab.com/mosaik/mosaik-csv and
+    https://gitlab.com/mosaik/mosaik-householdsim.
 
   - There is a repository containing a simple demo scenario for mosaik. See
-    https://bitbucket.org/mosaik/mosaik-demo.
+    https://gitlab.com/mosaik/mosaik-demo.
 
 
  You can find information about older versions on the `history page`__
 
-__ https://bitbucket.org/mosaik/mosaik-hdf5
-__ https://bitbucket.org/mosaik/mosaik-api-python
-__ https://bitbucket.org/mosaik/mosaik-api-java
+__ https://gitlab.com/mosaik/mosaik-hdf5
+__ https://gitlab.com/mosaik/mosaik-api-python
+__ https://gitlab.com/mosaik/mosaik-api-java
 __ https://mosaik.readthedocs.org/en/latest/about/history.html
