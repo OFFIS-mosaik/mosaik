@@ -2,18 +2,27 @@ import mosaik
 
 from argparser import argparser
 
-args, world_args, run_args = argparser(N=10000, until=10)
+args, world_args, run_args = argparser(N=10000, until=10, sim_type='e')
 
 SIM_CONFIG = {
-    'ExampleSim': {
-        'python': 'example_sim.mosaik:ExampleSim',
+    'TestSim': {
+        'python': 'tests.simulators.generic_test_simulator:TestSim',
     },
 }
 
 world = mosaik.World(SIM_CONFIG, **world_args)
 
-a = world.start('ExampleSim', step_size=1).A.create(args.N, init_val=0)
-b = world.start('ExampleSim', step_size=1).B.create(1, init_val=0)
+if args.sim_type == 'time':
+    step_type = 'time-based'
+    stepping = {'step_size': 1}
+else:
+    step_type = 'event-based'
+    stepping = {'self_steps': {i: i+1 for i in range(args.until)}}
+
+a = world.start('TestSim', step_type=step_type, **stepping).A.create(args.N)
+if args.sim_type == 'event':
+    world.set_event(a[0].sid)
+b = world.start('TestSim', step_type=step_type, **stepping).A.create(1)
 
 mosaik.util.connect_many_to_one(world, a, b[0], ('val_out', 'val_in'))
 
