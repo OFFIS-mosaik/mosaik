@@ -44,7 +44,8 @@ sim_meta = {
 class TestSim(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(sim_meta)
-        self.eid = None
+        self.sid = None
+        self.entities = []
         self.step_size = None
         self.value = None
         self.event_setter_wait = None
@@ -72,10 +73,10 @@ class TestSim(mosaik_api.Simulator):
         return self.meta
 
     def create(self, num, model):
-        if num > 1 or self.eid:
-            raise Exception("Only one entity allowed for TestSim.")
-        self.eid = self.sid.lower()
-        return [{'eid': self.eid, 'type': model}]
+        n_entities = len(self.entities)
+        new_entities = [str(eid) for eid in range(n_entities, n_entities + num)]
+        self.entities.extend(new_entities)
+        return [{'eid': eid, 'type': model} for eid in new_entities]
 
     def step(self, time, inputs, max_advance=None):
         self.time = time
@@ -92,11 +93,12 @@ class TestSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         if self.output_timing is None:
-            data = {self.eid: {'val_out': self.time}}
+            data = {eid: {'val_out': self.time} for eid in self.entities}
         else:
             output_time = self.output_timing.get(self.time, None)
             if output_time is not None:
-                data = {'time': output_time, self.eid: {'val_out': self.time}}
+                data = {'time': output_time,
+                        **{eid: {'val_out': self.time} for eid in self.entities}}
             else:
                 data = {}
         return data
