@@ -525,13 +525,9 @@ class World(object):
             if is_persistent:
                 persistent.append(attr_pair)
             if src.sim.meta['type'] != 'time-based':
-                if not trigger:
-                    time_buffered.append(attr_pair)
-                else: # TODO: Refactor
-                    cached.append(attr_pair)
+                time_buffered.append(attr_pair)
                 if is_persistent:
                     memorized.append(attr_pair)
-
             else:
                 cached.append(attr_pair)
         return (any_trigger, tuple(cached), tuple(time_buffered),
