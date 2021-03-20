@@ -386,6 +386,13 @@ class World(object):
                 raise ScenarioError('Scenario has unresolved cyclic '
                                     f'dependencies: {sorted(cycle)}. Use options '
                                     '"time-shifted" or "weak" for resolution.')
+            is_weak = [self.df_graph[src_id][dest_id]['weak']
+                       for src_id, dest_id in sim_pairs]
+            if sum(is_weak) > 1:
+                raise ScenarioError('Maximum one weak connection is allowed in'
+                                    ' an elementary cycle, but there are '
+                                    f'actually {sum(is_weak)} in '
+                                    f'{sorted(cycle)}.')
 
     def cache_trigger_cycles(self):
         cycles = list(networkx.simple_cycles(self.trigger_graph))
