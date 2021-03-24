@@ -198,5 +198,5 @@ our Python-example.
 
 .. note::
     You can find the source code used in this tutorial in the 
-    `mosaik-source-files <https://bitbucket.org/mosaik/mosaik>`_ in the folder 
+    `mosaik-source-files <https://gitlab.com/mosaik/mosaik>`_ in the folder
     ``docs/tutorial/code``.

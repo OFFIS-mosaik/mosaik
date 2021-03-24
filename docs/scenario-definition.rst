@@ -31,7 +31,7 @@ In this tutorial, we'll create a very simple scenario using the example
 simulation that is provided with the `Python implementation of the simulator
 API`__.
 
-__ https://bitbucket.org/mosaik/mosaik-api-python/src
+__ https://gitlab.com/mosaik/mosaik-api-python/
 
 We start by importing the :mod:`mosaik` package and creating
 a :class:`World` instance:

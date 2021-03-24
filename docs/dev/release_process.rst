@@ -158,7 +158,7 @@ Post release
    .. code-block:: bash
 
     $ git tag a.b.c
-    $ git push ssh://git@bitbucket.org/mosaik/mosaik.git
+    $ git push ssh://git@gitlab.com/mosaik/mosaik.git
 
 #. Remove the :file:`build/` directory:
 
