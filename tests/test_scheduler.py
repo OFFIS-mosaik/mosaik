@@ -27,6 +27,7 @@ def world_fixture(request):
                                   time_shifted=time_shifted, weak=weak,
                                   trigger=trigger)
     world.cache_dependencies()
+    world.cache_related_sims()
     world.df_graph[0][2]['wait_event'] = world.env.event()
     world.until = 4
     world.rt_factor = None

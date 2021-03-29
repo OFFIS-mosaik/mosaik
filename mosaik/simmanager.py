@@ -415,6 +415,7 @@ class SimProxy:
         self.wait_events = None  # SimPy event
         self.interruptable = False
         self.trigger_cycles = []
+        self.rank = None  # topological rank
 
     def stop(self):
         """

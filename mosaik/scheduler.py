@@ -96,7 +96,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
-        check_and_resolve_deadlocks(world, sim, end=True)
+        check_and_resolve_deadlocks(sim, end=True)
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
@@ -227,7 +227,7 @@ def has_next_step(world, sim):
                 if timeout in results:
                     raise NoStepException
             else:
-                check_and_resolve_deadlocks(world, sim)
+                check_and_resolve_deadlocks(sim)
                 yield sim.has_next_step
         except Interrupt:
             raise WakeUpException
@@ -280,7 +280,7 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     sim.wait_events = wait_events
 
     if events:
-        check_and_resolve_deadlocks(world, sim, waiting=True)
+        check_and_resolve_deadlocks(sim, waiting=True)
 
     return wait_events
 
@@ -498,10 +498,9 @@ def notify_dependencies(world, sim):
                 edge.pop('wait_lazy').succeed()
 
 
-def check_and_resolve_deadlocks(world, sim, waiting=False, end=False):
+def check_and_resolve_deadlocks(sim, waiting=False, end=False):
     waiting_sims = [] if not waiting else [sim]
-    related_sims = [isim for isim in world.sims.values() if isim != sim]
-    for isim in related_sims:
+    for isim in sim.related_sims:
         if not isim.has_next_step:
             # isim hasn't executed `has_next_step` yet and will perform
             # a deadlock check again if necessary.
@@ -521,8 +520,8 @@ def check_and_resolve_deadlocks(world, sim, waiting=False, end=False):
         if waiting_sims:
             sim_queue = []
             for isim in waiting_sims:
-                heappush(sim_queue, (isim.next_step, world.sim_ranks[isim.sid], isim.sid))
-            clear_wait_events(world.sims[sim_queue[0][2]])
+                heappush(sim_queue, (isim.next_step, isim.rank, isim))
+            clear_wait_events(sim_queue[0][2])
         else:
             if not end:
                 # None of interdependent sims has a next step, isim can stop.

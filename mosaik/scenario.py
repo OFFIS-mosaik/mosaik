@@ -356,6 +356,7 @@ class World(object):
 
         self.cache_trigger_cycles()
         self.cache_dependencies()
+        self.cache_related_sims()
         self.cache_triggering_ancestors()
         self.create_simulator_ranking()
 
@@ -444,6 +445,11 @@ class World(object):
                 edge = self.df_graph[sid][suc_sid]
                 sim.successors[suc_sid] = (suc_sim, edge)
 
+    def cache_related_sims(self):
+        all_sims = self.sims.values()
+        for sim in all_sims:
+            sim.related_sims = [isim for isim in all_sims if isim != sim]
+
     def cache_triggering_ancestors(self):
         for sim in self.sims.values():
             triggering_ancestors = sim.triggering_ancestors = []
@@ -463,15 +469,15 @@ class World(object):
 
     def create_simulator_ranking(self):
         """
-        Deduce a (potentially non-unique) simulator ranking from a topological
-        sort of the df_graph.
+        Deduce a simulator ranking from a topological sort of the df_graph.
         """
         graph_tmp = self.df_graph.copy()
         loop_edges = [(u, v) for (u, v, w) in graph_tmp.edges.data(True) if
                       w['time_shifted'] or w['weak']]
         graph_tmp.remove_edges_from(loop_edges)
         topo_sort = list(networkx.topological_sort(graph_tmp))
-        self.sim_ranks = dict(zip(topo_sort, range(len(topo_sort))))
+        for rank, sid in enumerate(topo_sort):
+            self.sims[sid].rank = rank
 
     def shutdown(self):
         """
