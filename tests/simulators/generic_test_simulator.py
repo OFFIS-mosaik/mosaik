@@ -95,7 +95,7 @@ class TestSim(mosaik_api.Simulator):
         if self.output_timing is None:
             data = {eid: {'val_out': self.time} for eid in self.entities}
         else:
-            output_time = self.output_timing.get(self.time, None)
+            output_time = self.output_timing.pop(self.time, None)
             if output_time is not None:
                 data = {'time': output_time,
                         **{eid: {'val_out': self.time} for eid in self.entities}}

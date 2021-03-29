@@ -50,24 +50,37 @@ def pre_step(world, sim, inputs):
     node = '%s-%s'
     node_id = node % (sid, next_step)
 
+    if hasattr(sim, 'last_node'):
+        last_node = sim.last_node
+        time_last_node = int(last_node.split('~')[0].split('-')[-1])
+    else:
+        time_last_node = -1
+
+    if next_step == time_last_node:
+        n_rep = int(last_node.split('~')[-1]) if '~' in last_node else 0
+        node_id = f'{node_id}~{n_rep + 1}'
+
+    sim.last_node = node_id
+
     eg.add_node(node_id, t=perf_counter(), inputs=inputs)
-    if next_step == sim.next_self_step[0] and sim.last_step >= 0:
-        eg.add_edge(node % (sid, sim.next_self_step[1]), node_id)
 
     input_pres = {kk.split('.')[0] for ii in inputs.values()
                   for jj in ii.values() for kk in jj.keys()}
     for pre in dfg.predecessors(sid):
         if pre in input_pres or dfg[pre][sid]['async_requests']:
-            pre_step = None
+            pre_node = None
             for inode in eg.nodes:
                 node_sid, istep = inode.rsplit('-', 1)
                 if node_sid == pre:
-                    if int(istep) <= next_step - dfg[pre][sid]['time_shifted']:
-                        pre_step = istep
+                    try:
+                        istep = int(istep)
+                    except ValueError:
+                        istep = int(istep.split('~')[0])
+                    if istep <= next_step - dfg[pre][sid]['time_shifted']:
+                        pre_node = inode
                     else:
                         break
-            if pre_step is not None:
-                pre_node = node % (pre, pre_step)
+            if pre_node is not None:
                 eg.add_edge(pre_node, node_id)
                 assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
@@ -80,11 +93,14 @@ def pre_step(world, sim, inputs):
 
 def post_step(world, sim):
     """
-    Record time after a step.
+    Record time after a step and add self-step edge.
     """
     eg = world.execution_graph
-    sid = sim.sid
-    last_step = sim.last_step
-    node = '%s-%s'
-    node_id = node % (sid, last_step)
-    eg.nodes[node_id]['t_end'] = perf_counter()
+    last_node = sim.last_node
+    eg.nodes[last_node]['t_end'] = perf_counter()
+    next_self_step = sim.next_self_step
+    if next_self_step is not None and next_self_step < world.until:
+        node = '%s-%s'
+        node_id = node % (sim.sid, next_self_step)
+        eg.add_edge(sim.last_node, node_id)
+        sim.next_self_step = None

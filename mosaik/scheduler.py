@@ -378,6 +378,8 @@ def step(world, sim, inputs, max_advance):
         if next_step not in sim.next_steps and next_step < world.until:
             heappush(sim.next_steps, next_step)
 
+        sim.next_self_step = next_step
+
     if sim.meta['type'] == 'time-based':
         sim.progress_tmp = next_step - 1
     else:
@@ -388,8 +390,6 @@ def step(world, sim, inputs, max_advance):
             sim.progress_tmp = max_advance
 
     sim.next_step = None
-    if next_step is not None:
-        sim.next_self_step = (next_step, sim.last_step)
 
 
 def get_outputs(world, sim):

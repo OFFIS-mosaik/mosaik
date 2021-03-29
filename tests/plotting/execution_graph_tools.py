@@ -28,10 +28,16 @@ def plot_execution_graph(world):
 
 def split_node(node):
     isid, t = node.rsplit('-', 1)
+    try:
+        t = int(t)
+        n_rep = 0
+    except ValueError:
+        t, n_rep = map(int, t.split('~'))
+
     if isid.endswith('-'):
         isid = isid.strip('-')
         t = -1
-    return isid, t
+    return isid, t, n_rep
 
 
 def plot_execution_graph_st(world, title=''):
@@ -42,8 +48,9 @@ def plot_execution_graph_st(world, title=''):
         steps_st[isid] = []
 
     for node in all_nodes:
-        isid, t = split_node(node[0])
-        steps_st[isid].append(int(t))
+        print(node[0])
+        isid, t, n_rep = split_node(node[0])
+        steps_st[isid].append(t + n_rep*0.1)
 
     fig, ax = plt.subplots()
     if title:
@@ -58,20 +65,21 @@ def plot_execution_graph_st(world, title=''):
     ax.set_yticklabels(list(world.sims.keys()))
 
     all_edges = list(world.execution_graph.edges())
+    print(all_edges)
 
     y_pos = {}
     for ii, isid in enumerate(world.sims.keys()):
         y_pos[isid] = ii
 
     for edge in all_edges:
-        isid_0, t0 = split_node(edge[0])
-        isid_1, t1 = split_node(edge[1])
-        t0 = int(t0)
+        isid_0, t0, n_rep0 = split_node(edge[0])
+        isid_1, t1, n_rep1 = split_node(edge[1])
+        x_pos0 = t0 + n_rep0 * 0.1
+        x_pos1 = t1 + n_rep1 * 0.1
         y_pos0 = y_pos[isid_0]
-        t1 = int(t1)
         y_pos1 = y_pos[isid_1]
 
-        ax.annotate('', (t1, y_pos1), xytext=(t0, y_pos0),
+        ax.annotate('', (x_pos1, y_pos1), xytext=(x_pos0, y_pos0),
                     arrowprops=dict(facecolor='black', arrowstyle="->"))
 
     plt.show()

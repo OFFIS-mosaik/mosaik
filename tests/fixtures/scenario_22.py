@@ -5,7 +5,7 @@ Scenario 22:
 
 
 def create_scenario(world):
-    a = world.start('LoopSim', loop_length=3).A()
+    a = world.start('LoopSim', loop_length=2).A()
     b = world.start('EchoSim').A()
 
     world.set_event(a.sid)
@@ -18,17 +18,25 @@ CONFIG = 'loop'
 
 EXECUTION_GRAPH = """
 LoopSim-0-0 EchoSim-0-0
-EchoSim-0-0 LoopSim-0-0
-LoopSim-0-0 LoopSim-0-1
+EchoSim-0-0 LoopSim-0-0~1
+LoopSim-0-0~1 EchoSim-0-0~1
+EchoSim-0-0~1 LoopSim-0-0~2
+LoopSim-0-0~2 LoopSim-0-1
 LoopSim-0-1 EchoSim-0-1
-EchoSim-0-1 LoopSim-0-1
+EchoSim-0-1 LoopSim-0-1~1
+LoopSim-0-1~1 EchoSim-0-1~1
+EchoSim-0-1~1 LoopSim-0-1~2
 """
 
 INPUTS = {
-    'LoopSim-0-0': {'Loop': {'loop_in': {'EchoSim-0.Echo': 3}}},
-    'EchoSim-0-0': {'Echo': {'loop_in': {'LoopSim-0.Loop': 3}}},
-    'LoopSim-0-1': {'Loop': {'loop_in': {'EchoSim-0.Echo': 3}}},
-    'EchoSim-0-1': {'Echo': {'loop_in': {'LoopSim-0.Loop': 3}}},
+    'EchoSim-0-0': {'Echo': {'loop_in': {'LoopSim-0.Loop': 1}}},
+    'LoopSim-0-0~1': {'Loop': {'loop_in': {'EchoSim-0.Echo': 1}}},
+    'EchoSim-0-0~1': {'Echo': {'loop_in': {'LoopSim-0.Loop': 2}}},
+    'LoopSim-0-0~2': {'Loop': {'loop_in': {'EchoSim-0.Echo': 2}}},
+    'EchoSim-0-1': {'Echo': {'loop_in': {'LoopSim-0.Loop': 1}}},
+    'LoopSim-0-1~1': {'Loop': {'loop_in': {'EchoSim-0.Echo': 1}}},
+    'EchoSim-0-1~1': {'Echo': {'loop_in': {'LoopSim-0.Loop': 2}}},
+    'LoopSim-0-1~2': {'Loop': {'loop_in': {'EchoSim-0.Echo': 2}}},
 }
 
 UNTIL = 2
