@@ -93,10 +93,10 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
-
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
+        check_and_resolve_deadlocks(world, sim, end=True)
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
@@ -280,7 +280,7 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     sim.wait_events = wait_events
 
     if events:
-        check_and_resolve_deadlocks(world, sim)
+        check_and_resolve_deadlocks(world, sim, waiting=True)
 
     return wait_events
 
@@ -498,9 +498,10 @@ def notify_dependencies(world, sim):
                 edge.pop('wait_lazy').succeed()
 
 
-def check_and_resolve_deadlocks(world, sim):
-    waiting_sims = []
-    for isim in world.sims.values():
+def check_and_resolve_deadlocks(world, sim, waiting=False, end=False):
+    waiting_sims = [] if not waiting else [sim]
+    related_sims = [isim for isim in world.sims.values() if isim != sim]
+    for isim in related_sims:
         if not isim.has_next_step:
             # isim hasn't executed `has_next_step` yet and will perform
             # a deadlock check again if necessary.
@@ -523,8 +524,10 @@ def check_and_resolve_deadlocks(world, sim):
                 heappush(sim_queue, (isim.next_step, world.sim_ranks[isim.sid], isim.sid))
             clear_wait_events(world.sims[sim_queue[0][2]])
         else:
-            # None of interdependent sims has a next step, isim can stop.
-            raise NoStepException
+            if not end:
+                # None of interdependent sims has a next step, isim can stop.
+                raise NoStepException
+
 
     # If we have no next step, we have to check if a predecessor is waiting for
     # us for async. requests or lazily:
