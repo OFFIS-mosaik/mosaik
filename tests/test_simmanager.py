@@ -309,9 +309,8 @@ def test_start_init_error(capsys):
 
 
 @pytest.mark.parametrize(['version', 'result'], [
-    ('2.0', (2, 0)),
-    (2.1, (2, 1)),
-    ('2.2', (2, 2)),
+    ('3.0', (3, 0)),
+    (3.0, (3, 0)),
 ])
 def test_validate_api_version(version, result):
     assert simmanager.validate_api_version(version) == result
@@ -324,9 +323,9 @@ def test_validate_api_version(version, result):
     '2,1',
     2,
     2.11,
-    '2.11',
-    '3.1',
-    '2a',
+    '3.99',
+    '4.1',
+    '3a',
 ])
 def test_validate_api_version_wrong_version(version):
     with pytest.raises(ScenarioError) as se:
