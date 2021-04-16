@@ -35,11 +35,11 @@ FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
 
-def start(world, sim_name, sim_id, sim_params):
+def start(world, sim_name, sim_id, time_resolution, sim_params):
     """
     Start the simulator *sim_name* based on the configuration im
-    *world.sim_config*, give it the ID *sim_id* and pass the parameters of the
-    dict *sim_params* to it.
+    *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
+    and the parameters of the dict *sim_params* to it.
 
     The sim config is a dictionary with one entry for every simulator. The
     entry itself tells mosaik how to start the simulator::
@@ -68,6 +68,11 @@ def start(world, sim_name, sim_id, sim_params):
     *ExampleSimC* can not be started by mosaik, so mosaik tries to connect to
     it.
 
+    *time_resolution* (in seconds) is a global scenario parameter, which tells
+    the simulators what the integer time step means in seconds. Its default
+    value is 1., meaning one integer step corresponds to one second simulated
+    time.
+
     The function returns a :class:`mosaik_api.Simulator` instance.
 
     It raises a :exc:`~mosaik.exceptions.SimulationError` if the simulator
@@ -90,7 +95,8 @@ def start(world, sim_name, sim_id, sim_params):
 
     for sim_type, start in starters.items():
         if sim_type in sim_config:
-            proxy = start(world, sim_name, sim_config, sim_id, sim_params)
+            proxy = start(world, sim_name, sim_config, sim_id, time_resolution,
+                          sim_params)
 
             try:
                 proxy.meta['api_version'] = validate_api_version(
@@ -106,7 +112,7 @@ def start(world, sim_name, sim_id, sim_params):
                             'Invalid configuration' % sim_name)
 
 
-def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
+def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
     """
     Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
@@ -138,7 +144,21 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
         raise ScenarioError('Simulator "%s" could not be started: %s --> %s' %
                             (sim_name, details, origerr)) from None
     sim = cls()
-    meta = sim.init(sim_id, **sim_params)
+
+    if int(mosaik_api.__version__.split('.')[0]) < 3:
+        raise ScenarioError("Mosaik 3 requires mosaik_api's version also "
+                            "to be >=3.")
+
+    # Check if the simulator's api implementation complies with api 3, and
+    # raise a deprecation warning otherwise. Compliance should be enforced
+    # after a reasonable time after the release of mosaik 3.
+    api_compliant = mosaik_api.check_api_compliance(sim)
+    if api_compliant:
+        time_resolution_dict = {'time_resolution': time_resolution}
+    else:
+        time_resolution_dict = {}
+
+    meta = sim.init(sim_id, **time_resolution_dict, **sim_params)
     # "meta" is module global and thus shared between all "LocalProcess"
     # instances. This may lead to problems if a user modifies it, so make
     # a deep copy of it for each instance:
@@ -146,7 +166,7 @@ def start_inproc(world, sim_name, sim_config, sim_id, sim_params):
     return LocalProcess(sim_name, sim_id, meta, sim, world)
 
 
-def start_proc(world, sim_name, sim_config, sim_id, sim_params):
+def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
     """
     Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
@@ -192,12 +212,12 @@ def start_proc(world, sim_name, sim_config, sim_id, sim_params):
         raise ScenarioError('Simulator "%s" could not be started: %s'
                             % (sim_name, eout)) from None
 
-    proxy = make_proxy(world, sim_name, sim_config, sim_id, sim_params,
-                       proc=proc)
+    proxy = make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
+                       sim_params, proc=proc)
     return proxy
 
 
-def start_connect(world, sim_name, sim_config, sim_id, sim_params):
+def start_connect(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
     """
     Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
@@ -216,13 +236,13 @@ def start_connect(world, sim_name, sim_config, sim_id, sim_params):
                             'parse address "%s"' %
                             (sim_name, sim_config['connect'])) from None
 
-    proxy = make_proxy(world, sim_name, sim_config, sim_id, sim_params,
-                       addr=addr)
+    proxy = make_proxy(world, sim_name, sim_config, sim_id,
+                       time_resolution, sim_params, addr=addr)
     return proxy
 
 
-def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
-               proc=None, addr=None):
+def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
+               sim_params, proc=None, addr=None):
     """
     Try to establish a connection with *sim_name* and perform the ``init()``
     API call.
@@ -258,7 +278,8 @@ def make_proxy(world, sim_name, sim_config, sim_id, sim_params,
         rpc_con = JSON_RPC(Packet(sock, max_packet_size=10 * 1024 * 1024))
 
         # Make init() API call and wait for sim_name's meta data.
-        init = rpc_con.remote.init(sim_id, **sim_params)
+        init = rpc_con.remote.init(sim_id, time_resolution=time_resolution,
+                                   **sim_params)
         try:
             results = yield init | start_timeout
         except ConnectionError as e:

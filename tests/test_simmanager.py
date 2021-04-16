@@ -63,18 +63,18 @@ def test_start(world, monkeypatch):
     monkeypatch.setitem(s, 'cmd', start)
     monkeypatch.setitem(s, 'connect', start)
 
-    ret = simmanager.start(world, 'ExampleSimA', '0', {})
+    ret = simmanager.start(world, 'ExampleSimA', '0', 1., {})
     assert ret == Proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
     Proxy.meta['api_version'] = api_version
-    ret = simmanager.start(world, 'ExampleSimB', '0', {})
+    ret = simmanager.start(world, 'ExampleSimB', '0', 1., {})
     assert ret == Proxy
 
     # The api_version has to re-initialized
     Proxy.meta['api_version'] = api_version
-    ret = simmanager.start(world, 'ExampleSimC', '0', {})
+    ret = simmanager.start(world, 'ExampleSimC', '0', 1., {})
     assert ret == Proxy
 
 
@@ -85,7 +85,7 @@ def test_start_wrong_api_version(world, monkeypatch):
     monkeypatch.setattr(mosaik.simmanager, 'API_MAJOR', 1000)
     monkeypatch.setattr(mosaik.simmanager, 'API_MINOR', 5)
     exc_info = pytest.raises(ScenarioError, simmanager.start, world,
-                             'ExampleSimA', '0', {})
+                             'ExampleSimA', '0', 1., {})
 
     assert str(exc_info.value) in ('Simulator "ExampleSimA" could not be '
                                    'started: Invalid version "%(API_VERSION)s":'
@@ -96,7 +96,7 @@ def test_start_wrong_api_version(world, monkeypatch):
 def test_start_in_process(world):
     """
     Test starting an in-proc simulator."""
-    sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0',
+    sp = simmanager.start(world, 'ExampleSimA', 'ExampleSim-0', 1.,
                           {'step_size': 2})
     assert sp.sid == 'ExampleSim-0'
     assert sp.meta
@@ -107,7 +107,7 @@ def test_start_in_process(world):
 def test_start_external_process(world):
     """
     Test starting a simulator as external process."""
-    sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', {})
+    sp = simmanager.start(world, 'ExampleSimB', 'ExampleSim-0', 1., {})
     assert sp.sid == 'ExampleSim-0'
     assert 'api_version' in sp.meta and 'models' in sp.meta
     sp.stop()
@@ -115,7 +115,7 @@ def test_start_external_process(world):
 
 def test_start_proc_timeout_accept(world, capsys):
     world.config['start_timeout'] = 0.1
-    pytest.raises(SystemExit, simmanager.start, world, 'Fail', '', {})
+    pytest.raises(SystemExit, simmanager.start, world, 'Fail', '', 1., {})
     out, err = capsys.readouterr()
     assert out == ('ERROR: Simulator "Fail" did not connect to mosaik in '
                    'time.\nMosaik terminating\n')
@@ -167,7 +167,7 @@ def test_start_connect(world):
         channel.close()
 
     def starter():
-        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})
+        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', 1., {})
         assert sp.sid == 'ExampleSim-0'
         assert sp._proc is None
         assert 'api_version' in sp.meta and 'models' in sp.meta
@@ -198,7 +198,7 @@ def test_start_connect_timeout_init(world, capsys):
 
     def starter():
         pytest.raises(SystemExit, simmanager.start, world, 'ExampleSimC',
-                      '', {})
+                      '', 1., {})
         out, err = capsys.readouterr()
         assert out == ('ERROR: Simulator "ExampleSimC" did not reply to the '
                        'init() call in time.\nMosaik terminating\n')
@@ -229,7 +229,7 @@ def test_start_connect_stop_timeout(world):
         yield channel.recv()  # Wait for stop message
 
     def starter():
-        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', {})
+        sp = simmanager.start(world, 'ExampleSimC', 'ExampleSim-0', 1., {})
         sp._stop_timeout = 0.01
         assert sp.sid == 'ExampleSim-0'
         assert sp._proc is None
@@ -264,7 +264,7 @@ def test_start_user_error(sim_config, err_msg):
     world = scenario.World(sim_config)
     try:
         with pytest.raises(ScenarioError) as exc_info:
-            simmanager.start(world, 'spam', '', {})
+            simmanager.start(world, 'spam', '', 1., {})
         if sys.platform != 'win32':  # pragma: no cover
             # Windows has strange error messages which do not want to check :(
             assert str(exc_info.value) == ('Simulator "spam" could not be '
@@ -279,7 +279,7 @@ def test_start_sim_error(capsys):
     """
     world = scenario.World({'spam': {'connect': 'foo:1234'}})
     try:
-        pytest.raises(SystemExit, simmanager.start, world, 'spam', '',
+        pytest.raises(SystemExit, simmanager.start, world, 'spam', '', 1.,
                       {'foo': 'bar'})
 
         out, err = capsys.readouterr()
@@ -297,7 +297,7 @@ def test_start_init_error(capsys):
     world = scenario.World({'spam': {'cmd': 'pyexamplesim %(addr)s'}})
     try:
         pytest.raises(SystemExit, simmanager.start, world,
-                      'spam', '', {'foo': 3})
+                      'spam', '', 1., {'foo': 3})
 
         out, err = capsys.readouterr()
         assert out.startswith('ERROR: ')

@@ -50,8 +50,9 @@ class TestSim(mosaik_api.Simulator):
         self.value = None
         self.event_setter_wait = None
 
-    def init(self, sid, step_type='time-based', step_size=1, self_steps={},
-             wallclock_duration=0., output_timing=None, events={}):
+    def init(self, sid, time_resolution, step_type='time-based', step_size=1,
+             self_steps={}, wallclock_duration=0., output_timing=None,
+             events={}):
         self.sid = sid
         self.step_type = step_type
         self.meta['type'] = step_type
@@ -78,7 +79,7 @@ class TestSim(mosaik_api.Simulator):
         self.entities.extend(new_entities)
         return [{'eid': eid, 'type': model} for eid in new_entities]
 
-    def step(self, time, inputs, max_advance=None):
+    def step(self, time, inputs, max_advance):
         self.time = time
         if self.wallclock_duration:
             sleep(self.wallclock_duration)

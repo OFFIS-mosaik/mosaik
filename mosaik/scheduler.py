@@ -25,9 +25,13 @@ def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
     *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
-    world.rt_factor = rt_factor
+
     if rt_factor is not None and rt_factor <= 0:
         raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
+    if rt_factor is not None:
+        # Adjust rt_factor to the time_resolution:
+        rt_factor *= world.time_resolution
+    world.rt_factor = rt_factor
 
     env = world.env
 

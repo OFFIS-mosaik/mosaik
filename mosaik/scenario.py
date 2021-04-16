@@ -57,8 +57,8 @@ class World(object):
     that this increases the memory consumption and simulation time.
     """
 
-    def __init__(self, sim_config, mosaik_config=None, debug=False, cache=True,
-                 max_loop_iterations=100):
+    def __init__(self, sim_config, mosaik_config=None, time_resolution=1.,
+                 debug=False, cache=True, max_loop_iterations=100):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -66,6 +66,12 @@ class World(object):
         """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
+
+        self.time_resolution = time_resolution
+        """An optional global *time_resolution* (in seconds) for the scenario, 
+        which tells the simulators what the integer time step means in seconds.
+         Its default value is 1., meaning one integer step corresponds to one 
+        second simulated time."""
 
         self.max_loop_iterations = max_loop_iterations
 
@@ -121,7 +127,8 @@ class World(object):
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
         print('Starting "%s" as "%s" ...' % (sim_name, sim_id))
-        sim = simmanager.start(self, sim_name, sim_id, sim_params)
+        sim = simmanager.start(self, sim_name, sim_id, self.time_resolution,
+                               sim_params)
         self.sims[sim_id] = sim
         self.df_graph.add_node(sim_id)
         self.trigger_graph.add_node(sim_id)
@@ -323,9 +330,11 @@ class World(object):
         Start the simulation until the simulation time *until* is reached.
 
         In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. An rt-factor of 1 means that 1 simulation time unit
-        (usually a second) takes 1 second in real-time. An rt-factor 0f 0.5
-        will let the simulation run twice as fast as real-time.
+        a number > 0. A rt-factor of 1. means that 1 second in simulated time
+        takes 1 second in real-time. An rt-factor 0f 0.5 will let the
+        simulation run twice as fast as real-time. For correct behavior of the
+        rt_factor the time_resolution of the scenario has to be set adequately,
+        which is 1. [second] by default.
 
         If the simulators are too slow for the rt-factor you chose, mosaik
         prints by default only a warning. In order to raise

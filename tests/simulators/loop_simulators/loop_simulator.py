@@ -33,7 +33,8 @@ class LoopSim(mosaik_api.Simulator):
         self.loop_count = 0
         self.loop_length = None
 
-    def init(self, sid, step_size=1, self_steps=None, loop_length=0):
+    def init(self, sid, time_resolution, step_size=1, self_steps=None,
+             loop_length=0):
         self.sid = sid
         self.step_size = step_size
         self.loop_length = loop_length

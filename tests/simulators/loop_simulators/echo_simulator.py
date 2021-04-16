@@ -28,7 +28,7 @@ class EchoSim(mosaik_api.Simulator):
         self.eid = None
         self.loop_count = None
 
-    def init(self, sid):
+    def init(self, sid, time_resolution):
         self.sid = sid
         return self.meta
 
