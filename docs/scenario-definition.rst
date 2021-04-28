@@ -161,11 +161,11 @@ you can alternatively just pass a single string (e.g., ``connect(a, b,
 You can only connect entities that belong to different simulators with each
 other (that's why we created two instances of the *ExampleSim*).
 
-You are also not allowed to created circular dependencies (e.g., connect *a* to
-*b* and then connect *b* to *a*). To allow a bidirectional exchange of data,
-which is required for things like control strategies, there is another
-mechanism that is explained in one of the next sections
-(:ref:`integrate-control-strategies`).
+You are also not allowed to create circular dependencies via standard
+connections only (e.g., connect *a* to *b* and then connect *b* to *a*).
+There are several ways to allow a bidirectional or cyclic exchange of data,
+which is required for things like control strategies, e.g. via time-shifted
+connections. See section :ref:`cyclic_data-flows` for details.
 
 
 .. _running-the-simulation:
@@ -215,12 +215,12 @@ To wrap it all up, this is how our small example scenario finally looks like:
    world.run(until=10)
 
 
-.. _integrate-control-strategies:
+.. _cyclic_data-flows:
 
-How to achieve bi-directional data-flows
+How to achieve cyclic data-flows
 ========================================
 
-Bi-directional data-flows are important when you want to integrate, for
+Cyclic data-flows are important when you want to integrate, for
 example, control strategies. However, this trivial approach is not allowed
 in mosaik:
 
@@ -234,9 +234,26 @@ in mosaik:
 The problem with this is that mosaik cannot know whether to compute *battery.P*
 or *controller.schedule* first.
 
-To solve this problem, you only connect the battery's *P* to the controller and
-let the control strategy set the new schedule via the asynchronous request
-:ref:`rpc.set_data`. To indicate this in your scenario, you set the
+There are different ways to solve this problem: The easiest way is to indicate
+explicitly that the output of at least one simulator (e.g. the schedule of the
+controller) is to be used for time steps afterwards (here by the battery) via
+the *time_shifted* flag:
+
+.. code-block:: python
+
+   world.connect(battery, controller, 'P')
+   world.connect(controller, battery, 'schedule', time_shifted=True,
+                 initial_data={'schedule': initial_schedule})
+
+As for the first step this data cannot be provided yet, you have to set it via
+the *initial_data* argument. This example would result in a sequential execution
+of the two simulators. If you set the time_shifted flag for both connections, you
+get a parallel execution.
+
+The other option to resolve the cycle is to use asynchronous requests. For this you
+only connect the battery's *P* to the controller and let the control strategy set the
+new schedule via the asynchronous request :ref:`rpc.set_data`. To indicate
+this in your scenario, you set the
 *async_request* flag of :meth:`World.connect()` to ``True``:
 
 .. code-block:: python
@@ -246,6 +263,11 @@ let the control strategy set the new schedule via the asynchronous request
 This way, mosaik will push the value for *P* from the battery to the
 controller. It will then wait until the controller's :ref:`step <api.step>` is
 done before the next step for the battery will be computed.
+
+The advantage of this approach is that the call of set_data is optional, so
+you don't need to send a schedule on every step if there's no new schedule.
+The disadvantage is that you have to implement the set_data call within the
+simulator with the specific destination, making it less modular.
 
 The *step* implementation of the controller could roughly look like this:
 
