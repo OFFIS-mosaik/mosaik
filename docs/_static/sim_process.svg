@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="50mm" height="85mm" version="1.1" viewBox="0 0 50 85" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <defs>
+  <marker id="marker5232" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5184" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5142" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="Arrow1Lend" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5232-8" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5232-8-5" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5232-8-5-2" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+  <marker id="marker5232-8-5-2-6" overflow="visible" orient="auto">
+   <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+  </marker>
+ </defs>
+ <metadata>
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g transform="translate(0,-222)">
+  <g fill="none" stroke="#000">
+   <rect x="-17.6" y="211.4" width="14.4" height="5.6" stroke-opacity=".99533" stroke-width=".15"/>
+   <path d="m-19.2 226.6 6.275-3.2 6.275 3.2-6.275 3.2z" stroke-width=".15"/>
+   <path d="m2.6583 238.09 8-4.8 8 4.8-8 4.8z" stroke-width=".21255"/>
+  </g>
+  <g fill="#000000" font-family="sans-serif" letter-spacing="0px" word-spacing="0px">
+   <g stroke-width=".26458" text-anchor="middle">
+    <text x="10.579738" y="237.02042" font-size="2.1167px" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="10.579738" y="237.02042" text-align="center">keep</tspan><tspan x="10.579738" y="239.66626" text-align="center">running</tspan></text>
+    <text x="33.483898" y="236.57892" font-size="2.1167px" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="33.483898" y="236.57892" text-align="center">has</tspan><tspan x="33.483898" y="239.22476" text-align="center">next step</tspan></text>
+    <text x="33.911568" y="250.3932" font-size="1.5875px" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="33.911568" y="250.3932" text-align="center">wait for</tspan><tspan x="33.911568" y="253.03905" text-align="center">dependencies</tspan></text>
+   </g>
+   <text x="7.1999998" y="218.60001" font-size="2.8222px" style="line-height:1.25" xml:space="preserve"/>
+   <text x="10.418831" y="249.5621" font-size="2.1167px" stroke-width=".26458" text-align="center" text-anchor="middle" style="line-height:1.25" xml:space="preserve"><tspan x="10.418831" y="249.5621" text-align="center">wake up</tspan><tspan x="10.418831" y="252.20795" text-align="center">dependencies</tspan></text>
+  </g>
+  <rect x="25.058" y="261.6" width="17.6" height="6.3624" fill="none" stroke="#000" stroke-opacity=".99533" stroke-width=".20266"/>
+  <g fill="#000000" font-family="sans-serif" font-size="2.1167px" letter-spacing="0px" stroke-width=".26458" text-anchor="middle" word-spacing="0px">
+   <text x="33.556332" y="265.48724" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="33.556332" y="265.48724" stroke-width=".26458" text-align="center" text-anchor="middle">get input data</tspan></text>
+   <text x="33.813911" y="276.24039" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="33.813911" y="276.24039" stroke-width=".26458" text-align="center" text-anchor="middle">step</tspan></text>
+   <text x="34.18549" y="287.42133" text-align="center" style="line-height:1.25" xml:space="preserve"><tspan x="34.18549" y="287.42133" stroke-width=".26458" text-align="center" text-anchor="middle">get outputs</tspan></text>
+  </g>
+  <g fill="none" stroke="#000">
+   <g>
+    <g>
+     <g stroke-width=".15">
+      <path d="m10.658 242.89 1e-6 4.0375" marker-end="url(#Arrow1Lend)"/>
+      <path d="m33.858 302v3.4708h14.4v-77.475h-37.6v4" marker-end="url(#marker5142)"/>
+      <path d="m18.658 238.09 6.4 0.0375" marker-end="url(#marker5184)"/>
+      <path d="m33.858 242.89v4.0375" marker-end="url(#marker5232)"/>
+     </g>
+     <path d="m25.858 252 8-4.8 8 4.8-8 4.8z" stroke-width=".21255"/>
+     <path d="m33.858 256.76v4.0375" marker-end="url(#marker5232-8)" stroke-width=".15"/>
+    </g>
+    <rect x="1.8583" y="247.2" width="17.6" height="6.3624" stroke-opacity=".99533" stroke-width=".20266"/>
+    <path d="m33.858 267.96v4.0375" marker-end="url(#marker5232-8-5)" stroke-width=".15"/>
+    <rect x="25.058" y="272.8" width="17.612" height="6.3624" stroke-opacity=".99533" stroke-width=".20266"/>
+    <path d="m33.858 279.16v4.0375" marker-end="url(#marker5232-8-5-2)" stroke-width=".15"/>
+    <rect x="25.058" y="284" width="17.6" height="6.3625" stroke-opacity=".99533" stroke-width=".20266"/>
+   </g>
+   <path d="m45.858 239.96" stroke-width=".26458px"/>
+   <path d="m10.658 253.56v4.8" stroke-width=".15"/>
+  </g>
+  <g stroke="#000" stroke-opacity=".99533">
+   <circle cx="10.753" cy="224.71" r=".8" stroke-width=".15"/>
+   <circle cx="10.658" cy="259.18" r=".8" fill="none" stroke-width=".15"/>
+   <ellipse cx="10.667" cy="259.17" rx=".21635" ry=".22775" stroke-width=".041621"/>
+  </g>
+  <g fill="none" stroke="#000">
+   <path d="m10.658 224.53v4.2708" stroke-width=".137"/>
+   <path d="m42.4 248.8v6.4" stroke-width=".15"/>
+   <path d="m25.4 248.8v6.4" stroke-width=".15"/>
+   <path d="m25.858 238.09 8-4.8 8 4.8-8 4.8z" stroke-width=".21255"/>
+   <g stroke-width=".15">
+    <path d="m43.458 272.8v6.4"/>
+    <path d="m24.258 272.8v6.4"/>
+    <path d="m43.458 284v6.4"/>
+    <path d="m24.258 284v6.4"/>
+   </g>
+  </g>
+  <g fill="#000000" font-family="sans-serif" font-size="2.1167px" letter-spacing="0px" stroke-width=".26458" word-spacing="0px">
+   <text x="19.729166" y="236.78714" style="line-height:1.25" xml:space="preserve"><tspan x="19.729166" y="236.78714" stroke-width=".26458">yes</tspan></text>
+   <text x="28.849991" y="245.3163" style="line-height:1.25" xml:space="preserve"><tspan x="28.849991" y="245.3163" stroke-width=".26458">yes</tspan></text>
+   <text x="6.6583333" y="245.05798" style="line-height:1.25" xml:space="preserve"><tspan x="6.6583333" y="245.05798" stroke-width=".26458">no</tspan></text>
+  </g>
+  <path d="m33.858 233.29-1e-6 -5.2917" fill="none" stroke="#000" stroke-width=".15"/>
+  <text x="30.914852" y="231.16534" fill="#000000" font-family="sans-serif" font-size="2.1167px" letter-spacing="0px" stroke-width=".26458" word-spacing="0px" style="line-height:1.25" xml:space="preserve"><tspan x="30.914852" y="231.16534" stroke-width=".26458">no</tspan></text>
+  <g fill="none" stroke="#000">
+   <rect x="2.6583" y="271.2" width="19.2" height="21.6" stroke-opacity=".99533" stroke-width=".1"/>
+   <g>
+    <path d="m3.9875 274.41 3.6-2.4 3.6 2.4-3.6 2.4z" stroke-width=".10082"/>
+    <path d="m4.4708 280 3.2-2.4 3.2 2.4-3.2 2.4z" stroke-width=".095057"/>
+    <path d="m11 278.4v3.2" stroke-width=".067082"/>
+    <path d="m4.2833 278.32v3.2" stroke-width=".067082"/>
+   </g>
+   <rect x="4.0141" y="283.75" width="7.3677" height="3.1813" stroke-opacity=".99533" stroke-width=".092718"/>
+   <path d="m11.8 288.8v3.2" stroke-width=".068626"/>
+   <path d="m3.6 288.8v3.2" stroke-width=".068626"/>
+   <rect x="4.0141" y="288.81" width="7.3677" height="3.1813" stroke-opacity=".99533" stroke-width=".092718"/>
+  </g>
+  <g fill="#000000" font-family="sans-serif" font-size="1.4111px" letter-spacing="0px" stroke-width=".26458" word-spacing="0px">
+   <text x="12.420496" y="274.87265" style="line-height:1.25" xml:space="preserve"><tspan x="12.420496" y="274.87265" stroke-width=".26458">condition</tspan></text>
+   <text x="12.420496" y="280.211" style="line-height:1.25" xml:space="preserve"><tspan x="12.420496" y="280.211" stroke-width=".26458">event</tspan></text>
+   <text x="12.420496" y="285.49387" style="line-height:1.25" xml:space="preserve"><tspan x="12.420496" y="285.49387" stroke-width=".26458">sync. func.</tspan></text>
+   <text x="12.420496" y="290.87286" style="line-height:1.25" xml:space="preserve"><tspan x="12.420496" y="290.87286" stroke-width=".26458">async. func.</tspan></text>
+  </g>
+  <g fill="none" stroke="#000">
+   <path d="m42.4 234.4v6.4" stroke-width=".15"/>
+   <path d="m25.4 234.93v6.4" stroke-width=".15"/>
+   <rect x="25.071" y="295.09" width="17.6" height="6.3625" stroke-opacity=".99533" stroke-width=".20266"/>
+  </g>
+  <text x="33.643822" y="297.96741" fill="#000000" font-family="sans-serif" font-size="2.1167px" letter-spacing="0px" stroke-width=".26458" text-align="center" text-anchor="middle" word-spacing="0px" style="line-height:1.25" xml:space="preserve"><tspan x="33.643822" y="297.96741" text-align="center">notify</tspan><tspan x="33.643822" y="300.61325" text-align="center">dependencies</tspan></text>
+  <path d="m33.871 290.28v4.0375" fill="none" marker-end="url(#marker5232-8-5-2-6)" stroke="#000" stroke-width=".15"/>
+ </g>
+</svg>

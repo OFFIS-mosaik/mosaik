@@ -132,14 +132,17 @@ a co-simulation framework:
 
    :doc:`Read more … <simmanager>`
 
-#. Mosaik's **simulator** uses the event-discrete simulation library `SimPy
+#. Mosaik's **Scheduler** uses the event-discrete simulation library `SimPy
    <https://simpy.readthedocs.org>`_ for the coordinated simulation of
    a scenario.
+
+   Mosaik supports both time-discrete and event-discrete simulations as well
+   as a combination of both paradigms.
 
    Mosaik is able to handle simulators with different step sizes. A simulator
    may even vary its step size during the simulation.
 
-   Mosaik is able to track the dependencies between the simulators and only
+   Mosaik tracks the dependencies between the simulators and only
    lets them perform a simulation step if necessary (e.g., because its data is
    needed by another simulator). It is also able to let multiple simulators
    perform their simulation step in parallel if they don't depend on each

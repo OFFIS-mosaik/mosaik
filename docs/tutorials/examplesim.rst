@@ -166,9 +166,10 @@ step()
 ======
 
 The ``step()`` method tells your simulator to perform a simulation step. It
-returns to mosaik the time at which it wants to do its next step. It
 receives its current simulation time as well as a dictionary with input values
-from other simulators (if there are any):
+from other simulators (if there are any).  It returns to mosaik the time at which
+it wants to do its next step. For event-based (TODO: and hybrid?) simulators a next
+(self-)step is optional. If there is no next self-step, the return value is None/null.
 
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 46-58

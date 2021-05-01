@@ -77,10 +77,13 @@ Glossary
 
    Step
       Mosaik executes simulators in discrete time steps. The step size of a
-      simulator can be an arbitrary integer. It can also vary during the
-      simulation.
+      time-based simulator can be an arbitrary integer. It can also vary
+      during the simulation. Event-based simulators are stepped whenever its
+      inputs are updated (by other simulators). They can also schedule steps
+      for themselves.
 
-      Mosaik does not dictate a unit for the simulation time and step size. The
-      convention is to use seconds, but it is no problems if all simulators
-      used minutes or milli seconds – as long as all of them assume the same
-      unit.
+      Mosaik uses integers for the representation of time (to avoid rounding
+      errors etc.). It's unit (i.e. to how many seconds one integer step
+      corresponds) can be defined in the scenario, and is passed to every
+      simulation component via the :ref:`init function <api.init>` as key-word
+      parameter *time_resolution. It's a floating point number and defaults to *1.*.
