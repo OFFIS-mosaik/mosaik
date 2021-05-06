@@ -35,7 +35,7 @@ class Simulator(object):
 
     def step(self, deltas=None):
         """Set new model inputs from *deltas* to the models and perform a
-        simulatino step.
+        simulation step.
 
         *deltas* is a dictionary that maps model indices to new delta values
         for the model.

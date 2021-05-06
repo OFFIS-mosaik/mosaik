@@ -15,6 +15,8 @@ defined in the scenario, and is passed to every simulation component via the
 a floating point number and defaults to *1.*.
 
 
+.. _time_paradigms:
+
 Time paradigms
 ==============
 
@@ -311,7 +313,8 @@ dictionary or indicating a time later than the step's time.
 To prevent the loop to be run infinite times, mosaik raises a runtime error
 when a certain number of iterations within one time step has been reached. The
 default maximum iteration count is 100 and can be adjusted via the
-*max_loop_iterations* parameter within the scenario definition if needed (see TODO).
+*max_loop_iterations* parameter within the scenario definition if needed (see
+:class:`mosaik.scenario.World`).
 
 
 Stepping and simulation duration

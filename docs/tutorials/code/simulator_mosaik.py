@@ -9,6 +9,7 @@ import simulator
 
 
 META = {
+    'type': 'time-based',
     'models': {
         'ExampleModel': {
             'public': True,
@@ -26,7 +27,10 @@ class ExampleSim(mosaik_api.Simulator):
         self.eid_prefix = 'Model_'
         self.entities = {}  # Maps EIDs to model indices in self.simulator
 
-    def init(self, sid, eid_prefix=None):
+    def init(self, sid, time_resolution, eid_prefix=None):
+        if float(time_resolution) != 1.:
+            raise ValueError('ExampleSim only supports time_resolution=1., but'
+                             ' %s was set.' % time_resolution)
         if eid_prefix is not None:
             self.eid_prefix = eid_prefix
         return self.meta
@@ -43,7 +47,7 @@ class ExampleSim(mosaik_api.Simulator):
 
         return entities
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance):
         # Get inputs
         deltas = {}
         for eid, attrs in inputs.items():
@@ -55,7 +59,7 @@ class ExampleSim(mosaik_api.Simulator):
         # Perform simulation step
         self.simulator.step(deltas)
 
-        return time + 60  # Step size is 1 minute
+        return time + 1  # Step size is 1 second
 
     def get_data(self, outputs):
         models = self.simulator.models

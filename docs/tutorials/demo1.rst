@@ -38,11 +38,12 @@ just import it and execute it in-process. The line ``'python':
 ``simulator_mosaik`` and instantiate the class ``ExampleSim`` from it.
 
 The data collector will be started as external process which will communicate
-with mosaik via sockets. The line ``'cmd': 'python collector.py %(addr)s'``
+with mosaik via sockets. The line ``'cmd': '%(python)s collector.py %(addr)s'``
 tells mosaik to start the simulator by executing the command ``python
-collector.py``. Beforehand, mosaik replaces the placeholder ``%(addr)s`` with
-its actual socket address HOSTNAME:PORT so that the simulator knows where to
-connect to.
+collector.py``. Beforehand, mosaik replaces the placeholder ``%(python)s``
+with the current python interpreter (the same as used to execute the scenario
+script) and ``%(addr)s`` with its actual socket address HOSTNAME:PORT so that
+the simulator knows where to connect to.
 
 The section about the :doc:`Sim Manager </simmanager>` explains all this in
 detail.
@@ -50,6 +51,10 @@ detail.
 Here is the complete file of the data collector:
 
 .. literalinclude:: code/collector.py
+
+As its name suggests it collects all data it receives each step in a
+dictionary (including the current simulation time) and simply prints
+everything at the end of the simulation.
 
 The World
 =========
@@ -75,22 +80,20 @@ start the example simulator and the data collector:
 .. literalinclude:: code/demo_1.py
    :lines: 21-23
 
-We also set the *eid_prefix* for our example simulator and some configuration
-values for the database. It will collect data every minute until the simulation
-ends. What gets returned by :meth:`World.start()` is called a *model factory*.
+We also set the *eid_prefix* for our example simulator. What gets returned by
+:meth:`World.start()` is called a *model factory*.
 
 We can use this factory object to create model instances within the respective
 simulator. In your scenario, such an instance is represented as an
 :class:`Entity`. The model factory presents the available models as if they
 were classes within the factory's namespace. So this is how we can create one
-instance of our example model and one database instance:
+instance of our example model and one 'Monitor' instance:
 
 .. literalinclude:: code/demo_1.py
    :lines: 25-27
 
 The *init_val* parameter that we passed to ``ExampleModel`` is the same as in
-the ``create()`` method of our Sim API implementation. Similarly, the database
-has a parameter for its filename.
+the ``create()`` method of our Sim API implementation.
 
 Now, we need to connect the example model to the monitor. That's how we tell
 mosaik to send the outputs of the example model to the monitor.
@@ -104,7 +107,7 @@ only provide single attribute names, mosaik assumes that the source and
 destination use the same attribute name. If they differ, you can instead pass
 a tuple like ``('val_out', 'val_in')``.
 
-Usually, you will neither create single entities nor connect single entity
+Quite often, you will neither create single entities nor connect single entity
 pairs, but work with large(r) sets of entities. Mosaik allows you to easily
 create multiple entities with the same parameters at once. It also provides
 some utility functions for connecting sets of entities with each other. So lets
@@ -115,7 +118,7 @@ create two more entities and connect them to our monitor:
 
 Instead of instantiating the example model directly, we called its static
 method ``create()`` and passed the number of instances to it. It returns a list
-of entities (nine in this case). We used the utility function
+of entities (two in this case). We used the utility function
 :func:`mosaik.util.connect_many_to_one()` to connect all of them to the
 database. This function has a similar signature as :meth:`World.connect()`, but
 the first two parameters are a *world* instance and a set (or list) of entities

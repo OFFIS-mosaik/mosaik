@@ -64,6 +64,8 @@ In addition to the *sim config* you can optionally pass another dictionary to
 the host and port number for its network socket or timeouts).  Usually, the
 defaults work just well.
 
+.. _time_resolution:
+
 Via the *time_resolution* parameter you can set a global time resolution for
 the scenario, which will be passed to each simulator as keyword argument via
 the init function (see :ref:`API init <api.init>`). It tells each simulator how to
@@ -331,8 +333,8 @@ used to resolve eventual deadlocks (when two or more simulators have scheduled
 steps at the same time). In contrast to the time-shifted connections, weakly
 connected output can also be valid/used at the same point in time. This
 enables algebraic loops within one time step for example. You just have to
-make sure that you don't construct infinite loops. See XXX (TODO: insert link)
-for details.
+make sure that you don't construct infinite loops. See section
+:ref:`Same-time Loops <same-time_loops>` for details.
 
 How to filter entity sets
 =========================

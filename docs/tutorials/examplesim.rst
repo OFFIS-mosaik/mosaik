@@ -8,7 +8,7 @@ Integrating a simulation model into the mosaik ecosystem
 ========================================================
 
 In this section we'll first implement a simple example simulator. We'll then
-implement mosaik's SimAPI step-by-step
+implement mosaik's Sim-API step-by-step.
 
 .. _the_simulator:
 
@@ -72,14 +72,16 @@ containing the mosaik API as well as our simulator:
 Simulator meta data
 ===================
 
-Next, we prepare the meta data dictionary that tells mosaik which models our
-simulator implements and which parameters and attributes it has. Since this
-data is usually constant, we define this at module level (which improves
-readability):
+Next, we prepare the meta data dictionary that tells mosaik which
+:ref:`time paradigm <time_paradigms>` it follows (*time-based*, *event-based*,
+or *hybrid*), which models our simulator implements and which parameters and
+attributes it has. Since this data is usually constant, we define this at
+module level (which improves readability):
 
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 11-19
 
+In this case we create a *time-based* simulator.
 We added our "Model" model with the parameter *init_val* and the attributes
 *delta* and *val*. At this point we don't care if they are read-only or not. We
 just list everything we can read or write.  The *public* flag should usually be
@@ -127,11 +129,16 @@ that you pass to a simulator in your scenario definition). It must return the
 meta data dictionary ``self.meta``:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 29-32
+   :lines: 30-36
 
-The first argument is the ID that mosaik gave to that simulator instance. In
-addition to that, you can define further (optional) parameters which you can
-later set in your scenario. In this case, we can optionally overwrite the
+The first argument is the ID that mosaik gave to that simulator instance. The
+second argument is the :ref:`time resolution <time_resolution>` of the
+scenario. In this example only the default value of *1.* (second per integer
+time step) is supported. If you set another value in the scenario, the
+simulator would stop and throw an error.
+
+In addition to that, you can define further (optional) parameters which you
+can later set in your scenario. In this case, we can optionally overwrite the
 ``eid_prefix`` that we defined in ``__init__()``.
 
 
@@ -143,7 +150,7 @@ instances *(entities)* within that simulator. It must return a list with some
 information about each entity created:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 34-44
+   :lines: 38-48
 
 The first two parameters tell you how many instances of which model you should
 create. As in ``init()``, you can specify additional parameters for your model.
@@ -166,13 +173,17 @@ step()
 ======
 
 The ``step()`` method tells your simulator to perform a simulation step. It
-receives its current simulation time as well as a dictionary with input values
-from other simulators (if there are any).  It returns to mosaik the time at which
-it wants to do its next step. For event-based (TODO: and hybrid?) simulators a next
-(self-)step is optional. If there is no next self-step, the return value is None/null.
+receives its current simulation time, a dictionary with input values
+from other simulators (if there are any), and the time until the simulator can
+safely advance its internal time without creating a causality error. For
+time-based simulators as here it can be safely ignored (it is equal to the end
+of the simulation then). The method returns to mosaik
+the time at which it wants to do its next step. For event-based (TODO: and hybrid?)
+simulators a next (self-)step is optional. If there is no next self-step, the
+return value is None/null.
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 46-58
+   :lines: 50-62
 
 .. _inputs:
 
@@ -199,8 +210,10 @@ calculate the sum of all input values.
 After we converted the inputs to something that our simulator can work with,
 we let it finally perform its next simulation step.
 
-The return value ``time + 60`` tells mosaik that we wish to perform the next
-step in one minute (in simulation time).
+The return value ``time + 1`` tells mosaik that we wish to perform the next
+step in one second (in simulation time), as the *time_resolution* is 1.
+(second per integer step). Instead of using a fixed (hardcoded) step size you
+can easily implement any other stepping behavior.
 
 
 get_data()
@@ -211,7 +224,7 @@ The ``get_data()`` call allows other simulators to get the values of the
 the simulator meta data):
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 60-73
+   :lines: 64-77
 
 .. _outputs:
 
@@ -250,7 +263,7 @@ a socket, connects to mosaik and listens for requests from it. You just call it
 in your ``main()`` and pass an instance of your simulator class to it:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 76-81
+   :lines: 80-85
 
 Simulators running on different nodes than the mosaik instance are supported
 explicitly with the mosaik Python-API v2.4 upward via the **remote** flag. A simulator
