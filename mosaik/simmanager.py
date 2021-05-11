@@ -339,10 +339,14 @@ def expand_meta(meta, sim_name):
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    sim_type = meta.get('type', None)
-    if sim_type is None:
+    try:
+        sim_type = meta['type']
+    except KeyError:
         sim_type = meta['type'] = 'time-based'
-        meta['old-api'] = True  #TODO: Adjust/remove for new API version number
+        meta['old-api'] = True
+        print(f"DEPRECATION WARNING: Simulator {sim_name}'s meta doesn't "
+              "contain a type. 'time-based' is set as default. "
+              "This might cause an error in future releases.")
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
