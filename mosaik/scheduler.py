@@ -82,7 +82,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                     break
                 except Interrupt as i:
                     assert i.cause == 'Earlier step'
-                    sim.next_step = heapreplace(sim.next_steps, sim.next_step)
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
@@ -491,6 +490,8 @@ def notify_dependencies(world, sim):
                             dest_sim.has_next_step.succeed()
                         elif dest_sim.interruptable and \
                                 dest_sim.progress <= sim.output_time < dest_sim.next_step:
+                            dest_sim.next_step = heapreplace(
+                                dest_sim.next_steps, dest_sim.next_step)
                             dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.

@@ -69,17 +69,22 @@ def pre_step(world, sim, inputs):
     for pre in dfg.predecessors(sid):
         if pre in input_pres or dfg[pre][sid]['async_requests']:
             pre_node = None
+            pre_time = -1
+            # We check for all nodes if it is from the predecessor and it its
+            # step time is before the current step of sim. There might be cases
+            # where this simple procedure is wrong, e.g. when the pred has
+            # stepped but didn't provide the connected output.
             for inode in eg.nodes:
-                node_sid, istep = inode.rsplit('-', 1)
+                node_sid, itime = inode.rsplit('-', 1)
                 if node_sid == pre:
                     try:
-                        istep = int(istep)
+                        itime = int(itime)
                     except ValueError:
-                        istep = int(istep.split('~')[0])
-                    if istep <= next_step - dfg[pre][sid]['time_shifted']:
+                        itime = int(itime.split('~')[0])
+                    if (next_step - dfg[pre][sid]['time_shifted'] >= itime
+                            >= pre_time):
                         pre_node = inode
-                    else:
-                        break
+                        pre_time = itime
             if pre_node is not None:
                 eg.add_edge(pre_node, node_id)
                 assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']

@@ -22,8 +22,11 @@ sim_config = {
         'MAS': {'cmd': 'pyexamplemas %(addr)s'}
     },
     'generic': {
-        char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
-        for char in 'ABCDE'
+        **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
+        for char in 'ABCDE'},
+        'LoopSim': {
+            'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
+        },
     },
     'generic_remote': {
         char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}
