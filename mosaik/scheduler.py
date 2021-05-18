@@ -114,26 +114,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                               sim.sid, e)
 
 
-def get_max_advance(world, sim, until):
-    ancs_next_steps = []
-    for anc_sid, not_shifted_or_weak in sim.triggering_ancestors:
-        anc_sim = world.sims[anc_sid]
-        if anc_sim.next_step is not None:
-            ancs_next_steps.append(anc_sim.next_step - not_shifted_or_weak)
-        elif anc_sim.next_steps:
-            ancs_next_steps.append(anc_sim.next_steps[0] - not_shifted_or_weak)
-
-    if ancs_next_steps:
-        max_advance = min(ancs_next_steps)
-    else:
-        max_advance = until
-
-    if sim.next_steps:
-        max_advance = min(sim.next_steps[0] - 1, max_advance)
-
-    return max_advance
-
-
 def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     """
     Return a function that the :func:`sim_process()` uses to determine
@@ -238,6 +218,17 @@ def has_next_step(world, sim):
             raise NoStepException
 
         sim.next_step = get_next_step(sim)
+
+
+def rt_sleep(rt_factor, rt_start, sim, world):
+    """
+    If in real-time mode, check if to sleep and do so if necessary.
+    """
+    if rt_factor:
+        rt_passed = perf_counter() - rt_start
+        sleep = (rt_factor * sim.next_step) - rt_passed
+        if sleep > 0:
+            yield world.env.timeout(sleep)
 
 
 def wait_for_dependencies(world, sim, lazy_stepping):
@@ -353,6 +344,30 @@ def recursive_update(d, u):
     return d
 
 
+def get_max_advance(world, sim, until):
+    """
+    Checks how far *sim* can safely advance its internal time during next step
+    without causing a causality error.
+    """
+    ancs_next_steps = []
+    for anc_sid, not_shifted_or_weak in sim.triggering_ancestors:
+        anc_sim = world.sims[anc_sid]
+        if anc_sim.next_step is not None:
+            ancs_next_steps.append(anc_sim.next_step - not_shifted_or_weak)
+        elif anc_sim.next_steps:
+            ancs_next_steps.append(anc_sim.next_steps[0] - not_shifted_or_weak)
+
+    if ancs_next_steps:
+        max_advance = min(ancs_next_steps)
+    else:
+        max_advance = until
+
+    if sim.next_steps:
+        max_advance = min(sim.next_steps[0] - 1, max_advance)
+
+    return max_advance
+
+
 def step(world, sim, inputs, max_advance):
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
@@ -393,6 +408,22 @@ def step(world, sim, inputs, max_advance):
             sim.progress_tmp = max_advance
 
     sim.next_step = None
+
+
+def rt_check(rt_factor, rt_start, rt_strict, sim):
+    """
+    Check if simulation is fast enough for a given real-time factor.
+    """
+    if rt_factor:
+        rt_passed = perf_counter() - rt_start
+        delta = rt_passed - (rt_factor * sim.last_step)
+        if delta > 0:
+            if rt_strict:
+                raise RuntimeError('Simulation too slow for real-time factor '
+                                   '%s' % rt_factor)
+            else:
+                print('Simulation too slow for real-time factor %s - %ss '
+                      'behind time.' % (rt_factor, delta))
 
 
 def get_outputs(world, sim):
@@ -466,7 +497,7 @@ def treat_cycling_output(world, sim, data, output_time):
 
 def notify_dependencies(world, sim):
     """
-    Notify all simulators waiting for us
+    Notify all simulators waiting for us.
     """
     progress = sim.progress = sim.progress_tmp
 
@@ -503,7 +534,33 @@ def notify_dependencies(world, sim):
                 edge.pop('wait_lazy').succeed()
 
 
+def prune_dataflow_cache(world):
+    """
+    Prunes the dataflow cache.
+    """
+    min_cache_time = min(s.last_step for s in world.sims.values())
+    for i in range(world._df_cache_min_time, min_cache_time):
+        try:
+            del world._df_cache[i]
+        except KeyError:
+            pass
+    world._df_cache_min_time = min_cache_time
+
+
+def get_progress(sims, until):
+    """
+    Return the current progress of the simulation in percent.
+    """
+    times = [min(until, sim.progress + 1) for sim in sims.values()]
+    avg_time = sum(times) / len(times)
+    return avg_time * 100 / until
+
+
 def check_and_resolve_deadlocks(sim, waiting=False, end=False):
+    """
+    Checks for deadlocks which can occur when all simulators are either waiting
+    for a next step or for dependencies, or have finished already.
+    """
     waiting_sims = [] if not waiting else [sim]
     for isim in sim.related_sims:
         if not isim.has_next_step:
@@ -532,7 +589,6 @@ def check_and_resolve_deadlocks(sim, waiting=False, end=False):
                 # None of interdependent sims has a next step, isim can stop.
                 raise NoStepException
 
-
     # If we have no next step, we have to check if a predecessor is waiting for
     # us for async. requests or lazily:
     if sim.next_step is None:
@@ -543,56 +599,10 @@ def check_and_resolve_deadlocks(sim, waiting=False, end=False):
                 edge.pop('wait_lazy').succeed()
 
 
-def prune_dataflow_cache(world):
-    """
-    Prunes the dataflow cache.
-    """
-    min_cache_time = min(s.last_step for s in world.sims.values())
-    for i in range(world._df_cache_min_time, min_cache_time):
-        try:
-            del world._df_cache[i]
-        except KeyError:
-            pass
-    world._df_cache_min_time = min_cache_time
-
-
-def get_progress(sims, until):
-    """
-    Return the current progress of the simulation in percent.
-    """
-    times = [min(until, sim.progress + 1) for sim in sims.values()]
-    avg_time = sum(times) / len(times)
-    return avg_time * 100 / until
-
-
-def rt_sleep(rt_factor, rt_start, sim, world):
-    """
-    If in real-time mode, check if to sleep and do so if necessary.
-    """
-    if rt_factor:
-        rt_passed = perf_counter() - rt_start
-        sleep = (rt_factor * sim.next_step) - rt_passed
-        if sleep > 0:
-            yield world.env.timeout(sleep)
-
-
-def rt_check(rt_factor, rt_start, rt_strict, sim):
-    """
-    Check if simulation is fast enough for a given real-time factor.
-    """
-    if rt_factor:
-        rt_passed = perf_counter() - rt_start
-        delta = rt_passed - (rt_factor * sim.last_step)
-        if delta > 0:
-            if rt_strict:
-                raise RuntimeError('Simulation too slow for real-time factor '
-                                   '%s' % rt_factor)
-            else:
-                print('Simulation too slow for real-time factor %s - %ss '
-                      'behind time.' % (rt_factor, delta))
-
-
 def clear_wait_events(sim):
+    """
+    Clear/succeed all wait events *sim* is waiting for.
+    """
     for _, edge in sim.predecessors.values():
         if 'wait_event' in edge:
             edge.pop('wait_event').succeed()
@@ -604,6 +614,10 @@ def clear_wait_events(sim):
 
 
 def clear_wait_events_dependencies(sim):
+    """
+    Clear/succeed all wait events over which other simulators are waiting for
+    *sim*.
+    """
     for _, edge in sim.successors.values():
         if 'wait_event' in edge:
             edge.pop('wait_event').succeed()
