@@ -7,7 +7,7 @@ Creating and running simple simulation scenarios
 ================================================
 
 We will now create a simple scenario with mosaik in which we use
-a simple data collector to get some nice output from our simulation. That
+a simple data collector to print some output from our simulation. That
 means, we will instantiate a few ExampleModels and a data monitor. We will
 then connect the model instances to that monitor and simulate that for some
 time.
