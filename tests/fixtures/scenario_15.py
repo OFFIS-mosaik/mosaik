@@ -9,7 +9,7 @@ def create_scenario(world):
     model_b = world.start('B', step_type='event-based').A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))
     world.connect(model_b, model_a, ('val_out', 'val_in'), weak=True)
-    world.set_event(model_a.sid)
+    world.set_initial_event(model_a.sid)
 
 
 CONFIG = 'generic'

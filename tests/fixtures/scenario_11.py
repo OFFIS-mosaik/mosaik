@@ -8,7 +8,7 @@ def create_scenario(world):
     model_a = world.start('A', step_type='event-based',
                           self_steps={0: 1, 1: 3}).A()
     model_b = world.start('B', step_size=2).A()
-    world.set_event(model_a.sid)
+    world.set_initial_event(model_a.sid)
     world.connect(model_a, model_b, ('val_out', 'val_in'))
 
 

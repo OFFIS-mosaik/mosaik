@@ -267,7 +267,7 @@ class World(object):
             dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
-    def set_event(self, sid, time=0):
+    def set_initial_event(self, sid, time=0):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """

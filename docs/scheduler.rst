@@ -87,14 +87,15 @@ events can either be created by other simulators w are connected to this
 simulator via providing the connected attribute, or the simulator can also
 schedule events for itself via the step function's return value.
 The output provided by event-based simulators is only valid for a specific
-point in time, by default for the current time of the step, or for any later time
-if explicitly set via the (optional) output time. Providing the output attributes is optional for event-based
-simulators. As consequence a simulator connected to a specific attribute is only
-triggered/stepped if the output is actually provided. See the :ref:`API description
-<api.get_data>` for implementation details.
+point in time, by default for the current time of the step, or for any later
+time if explicitly set via the (optional) output time. Providing the output
+attributes is optional for event-based simulators. As consequence a simulator
+connected to a specific attribute is only triggered/stepped if the output is
+actually provided. See the :ref:`API description <api.get_data>` for
+implementation details.
 Event-based simulators do not necessarily start at time 0, but whenever their
-first event is scheduled, either by other simulators or via :meth:`World.set_event()`
-from the scenario definition.
+first event is scheduled, either by other simulators or via
+:meth:`World.set_initial_event()` from the scenario definition.
 
 .. figure:: /_static/scheduler-event-based-1.*
    :width: 600

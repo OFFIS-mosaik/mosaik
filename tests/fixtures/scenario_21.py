@@ -13,7 +13,7 @@ def create_scenario(world):
     world.connect(model_b, model_c, ('val_out', 'val_in'))
     world.connect(model_c, model_a, ('val_out', 'val_in'), weak=True,
                   initial_data={'val_out': -1})
-    world.set_event(model_a.sid)
+    world.set_initial_event(model_a.sid)
 
 
 CONFIG = 'generic'

@@ -162,16 +162,17 @@ Setting initial events
 ======================
 
 Time-based (and hybrid) simulators are automatically scheduled for time step 0,
-and will organize their scheduling until the simulation's end themselves afterward.
-For event-based simulators this is not the case, as they might only want to be
-stepped if an event is created by another simulator for example. Therefore you might
-need to set an initial event for some event-based ones via :meth:`World.set_event()`,
-which sets an event for time 0 by default, or at later times if explicitly stated:
+and will organize their scheduling until the simulation's end themselves
+afterward. For event-based simulators this is not the case, as they might only
+want to be stepped if an event is created by another simulator for example.
+Therefore you might need to set initial events for some event-based ones via
+:meth:`World.set_initial_event()`, which sets an event for time 0 by default,
+or at later times if explicitly stated:
 
 .. code-block:: python
 
-   >>> world.set_event(a.sid)
-   >>> world.set_event(b.sid, time=3)
+   >>> world.set_initial_event(a.sid)
+   >>> world.set_initial_event(b.sid, time=3)
 
 
 Connecting entities

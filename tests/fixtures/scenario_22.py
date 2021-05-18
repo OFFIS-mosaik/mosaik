@@ -8,7 +8,7 @@ def create_scenario(world):
     a = world.start('LoopSim', loop_length=2).A()
     b = world.start('EchoSim').A()
 
-    world.set_event(a.sid)
+    world.set_initial_event(a.sid)
 
     world.connect(a, b, ('loop_out', 'loop_in'))
     world.connect(b, a, ('loop_out', 'loop_in'), weak=True)

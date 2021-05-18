@@ -706,6 +706,9 @@ class MosaikRemote:
 
     @rpc
     def set_event(self, event_time):
+        """
+        Schedules an event/step at simulation time *event_time*.
+        """
         sim = self.world.sims[self.sim_id]
         """
         if not sim.set_events:

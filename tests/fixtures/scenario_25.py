@@ -15,8 +15,8 @@ def create_scenario(world):
     world.connect(model_a, model_b, ('val_out', 'val_in'))
     world.connect(model_b, model_c, ('val_out', 'val_in'))
     world.connect(model_c, model_b, ('val_out', 'val_in'), weak=True)
-    world.set_event(model_a.sid, 0)
-    world.set_event(model_b.sid, 0)
+    world.set_initial_event(model_a.sid, 0)
+    world.set_initial_event(model_b.sid, 0)
 
 
 CONFIG = 'generic'

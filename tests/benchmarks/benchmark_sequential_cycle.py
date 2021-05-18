@@ -35,7 +35,7 @@ else:
 a = world.start('TestSim', step_type=step_type).A()
 b = world.start('TestSim', step_type=step_type,
                 output_timing=dict(zip(range(args.until), range(1, args.until+1)))).A()
-world.set_event(a.sid)
+world.set_initial_event(a.sid)
 
 world.connect(a, b, ('val_out', 'val_in'))
 world.connect(b, a, ('val_out', 'val_in'), **connection_args)

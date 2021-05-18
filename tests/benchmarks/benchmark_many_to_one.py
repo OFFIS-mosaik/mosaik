@@ -21,7 +21,7 @@ else:
 
 a = world.start('TestSim', step_type=step_type, **stepping).A.create(args.N)
 if args.sim_type == 'event':
-    world.set_event(a[0].sid)
+    world.set_initial_event(a[0].sid)
 b = world.start('TestSim', step_type=step_type, **stepping).A.create(1)
 
 mosaik.util.connect_many_to_one(world, a, b[0], ('val_out', 'val_in'))
