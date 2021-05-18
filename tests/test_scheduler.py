@@ -301,7 +301,7 @@ def test_get_outputs_buffered(world):
     assert evt.triggered
 
     assert world.sims[2].timed_input_buffer.input_queue == [
-        (0, '0.0', '0', 'in', 0)]
+        (0, 0, '0.0', '0', 'in', 0)]
     assert world.sims[1].timed_input_buffer.input_queue == []
 
 

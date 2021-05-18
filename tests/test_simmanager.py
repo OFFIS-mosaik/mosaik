@@ -576,3 +576,17 @@ def test_mosaik_remote(rpc, err):
 
     finally:
         world.srv_sock.close()
+
+
+def test_timed_input_buffer():
+    """Test TimedInputBuffer, especially if a lower value is added at the same
+    time for the same connection.
+    """
+    buffer = simmanager.TimedInputBuffer()
+    buffer.add(1, 'src_sid', 'src_eid', 'dest_eid', 'dest_var', 2)
+    buffer.add(1, 'src_sid', 'src_eid', 'dest_eid', 'dest_var', 1)
+    buffer.add(2, 'src_sid', 'src_eid', 'dest_eid', 'dest_var', 0)
+    input_dict = buffer.get_input({}, 0)
+    assert input_dict == {}
+    input_dict = buffer.get_input({}, 1)
+    assert input_dict == {'dest_eid': {'dest_var': {'src_sid.src_eid': 1}}}

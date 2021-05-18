@@ -8,10 +8,11 @@ instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 """
 from ast import literal_eval
+from itertools import count
 
 import collections
 import copy
-import heapq
+import heapq as hq
 import importlib
 import os
 import shlex
@@ -26,7 +27,6 @@ import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
-from mosaik.timed_input_buffer import TimedInputBuffer
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -721,7 +721,7 @@ class MosaikRemote:
                                   'non-real-time mode.' % self.sim_sid)
         if event_time < self.world.until:
             sim.progress = min(event_time - 1, sim.progress)
-            heapq.heappush(sim.next_steps, event_time)
+            hq.heappush(sim.next_steps, event_time)
 
             if sim.has_next_step and not sim.has_next_step.triggered:
                 sim.has_next_step.succeed()
@@ -784,3 +784,34 @@ class StarterCollection(object):
                 connect=start_connect)
 
         return StarterCollection.__instance
+
+
+class TimedInputBuffer:
+    """
+    A buffer to store inputs with its corresponding *time*.
+
+    When the data is queried for a specific *step* time, all entries with
+    *time* <= *step* are added to the input_dictionary.
+
+    If there are several entries for the same connection at the same time, only
+    the most recent value is added.
+    """
+    def __init__(self):
+        self.input_queue = []
+        self.counter = count()  # Used to chronologically sort entries
+
+    def add(self, time, src_sid, src_eid, dest_eid, dest_var, value):
+        src_full_id = '.'.join(map(str, (src_sid, src_eid)))
+        hq.heappush(self.input_queue, (time, next(self.counter), src_full_id,
+                                       dest_eid, dest_var, value))
+
+    def get_input(self, input_dict, step):
+        while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
+            _, _, src_full_id, eid, attr, value = hq.heappop(self.input_queue)
+            input_dict.setdefault(eid, {}).setdefault(attr, {})[
+                src_full_id] = value
+
+        return input_dict
+
+    def __bool__(self):
+        return bool(len(self.input_queue))
