@@ -350,7 +350,10 @@ def expand_meta(meta, sim_name):
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
-        trigger = set(model_meta.setdefault('trigger', []))
+        trigger = model_meta.setdefault('trigger', [])
+        if trigger is True:
+            trigger = attrs
+        trigger = set(trigger)
         non_trigger = set(model_meta.get('non-trigger', []))
         if any(i in trigger for i in non_trigger):
             raise ScenarioError('Triggering and non-triggering attributes must'
@@ -379,6 +382,9 @@ def expand_meta(meta, sim_name):
             model_meta['persistent'] = attrs
         elif sim_type == 'hybrid':
             non_persistent = set(model_meta.get('non-persistent', []))
+            if non_persistent is True:
+                non_persistent = attrs
+            non_persistent = set(non_persistent)
             model_meta['persistent'] = attrs - non_persistent
         else:
             model_meta['persistent'] = []
