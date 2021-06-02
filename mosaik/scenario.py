@@ -620,7 +620,7 @@ class ModelMock(object):
     Instances of this class are exposed as attributes of
     :class:`ModelFactory` and allow the instantiation of simulator models.
 
-    You can *call* an instance of this class to create exactly one entiy:
+    You can *call* an instance of this class to create exactly one entity:
     ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
     method to create multiple entities with the same set of parameters at once:
     ``sim.ModelName.create(3, x=23)``.
