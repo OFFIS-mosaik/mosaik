@@ -519,11 +519,11 @@ def notify_dependencies(world, sim):
                         heappush(dest_sim.next_steps, sim.output_time)
                         if not dest_sim.has_next_step.triggered:
                             dest_sim.has_next_step.succeed()
-                        elif dest_sim.interruptable and \
-                                dest_sim.progress <= sim.output_time < dest_sim.next_step:
+                        elif sim.output_time < dest_sim.next_step:
                             dest_sim.next_step = heapreplace(
                                 dest_sim.next_steps, dest_sim.next_step)
-                            dest_sim.sim_proc.interrupt('Earlier step')
+                            if dest_sim.interruptable:
+                                dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, edge in sim.predecessors.values():

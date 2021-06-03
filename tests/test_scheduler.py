@@ -334,7 +334,7 @@ def test_treat_cycling_output(world, count):
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-@pytest.mark.parametrize('output_time, next_steps', [(2, []), (3, [3])])
+@pytest.mark.parametrize('output_time, next_steps', [(1, [2]), (2, []), (3, [3])])
 @pytest.mark.parametrize('progress, pop_wait', [(1, False), (2, True)])
 def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait):
     sim = world.sims[0]
@@ -348,16 +348,32 @@ def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait)
     sim.output_time = output_time
 
     world.sims[2].next_step = 2
-    world.sims[2].has_next_step = world.env.event()
+    world.sims[2].has_next_step = world.env.event().succeed()
 
     scheduler.notify_dependencies(world, sim)
 
     assert sim.progress == sim.progress_tmp
     assert world.sims[2].next_steps == next_steps
-    assert world.sims[2].has_next_step.triggered == bool(next_steps)
 
-    assert wait_event.triggered == pop_wait
-    assert ('wait_event' in world.df_graph[0][2]) == (not pop_wait)
+
+@pytest.mark.parametrize('world', ['event-based'], indirect=True)
+def test_notify_dependencies_trigger(world):
+    sim = world.sims[0]
+    sim.progress = -1
+    sim.progress_tmp = 1
+
+    world.df_graph[0][2].pop('wait_event')
+    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
+    sim.data = {'1': {'x': 1}}
+    sim.output_time = 1
+
+    world.sims[2].next_step = None
+    world.sims[2].has_next_step = world.env.event()
+
+    scheduler.notify_dependencies(world, sim)
+
+    assert world.sims[2].next_steps == [1]
+    assert world.sims[2].has_next_step.triggered
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
