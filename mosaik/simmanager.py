@@ -381,7 +381,7 @@ def expand_meta(meta, sim_name):
         if sim_type == 'time-based':
             model_meta['persistent'] = attrs
         elif sim_type == 'hybrid':
-            non_persistent = set(model_meta.get('non-persistent', []))
+            non_persistent = model_meta.get('non-persistent', [])
             if non_persistent is True:
                 non_persistent = attrs
             non_persistent = set(non_persistent)
