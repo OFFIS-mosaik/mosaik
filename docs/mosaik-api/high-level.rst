@@ -108,8 +108,6 @@ simply yield the event, e.g.:
 .. automethod:: MosaikRemote.set_event
    :noindex:
 
-TODO: Describe set_event usage/implementation!
-
 The *mosaik-api* package provides an `example "multi-agent system"
 <https://gitlab.com/mosaik/mosaik-api-python/-/blob/master/example_mas/mosaik.py>`_
 that demonstrates how asynchronous requests can be implemented.

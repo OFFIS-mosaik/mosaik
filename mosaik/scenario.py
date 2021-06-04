@@ -519,7 +519,10 @@ class World(object):
 
     def _classify_connections_with_cache(self, src, dest, attr_pairs):
         """
-        TODO: Add doc string
+        Classifies the connection by analyzing the model's meta data with
+        enabled cache, i.e. if it triggers a step of the destination, how the
+        data is cached, and if it's persistent and need's to be saved in the
+         input_memory.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
@@ -550,7 +553,9 @@ class World(object):
 
     def _classify_connections_without_cache(self, src, dest, attr_pairs):
         """
-        TODO: Add doc string
+        Classifies the connection by analyzing the model's meta data with
+        disabled cache, i.e. if it triggers a step of the destination, if the
+        attributes are persistent and need to be saved in the input_memory.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]

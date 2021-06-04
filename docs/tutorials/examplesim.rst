@@ -173,7 +173,7 @@ from other simulators (if there are any), and the time until the simulator can
 safely advance its internal time without creating a causality error. For
 time-based simulators (as in our example) it can be safely ignored (it is
 equal to the end of the simulation then). The method returns to mosaik the
-time at which it wants to do its next step. For event-based (TODO: and hybrid?)
+time at which it wants to do its next step. For event-based and hybrid
 simulators a next (self-)step is optional. If there is no next self-step, the
 return value is None/null.
 

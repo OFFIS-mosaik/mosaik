@@ -375,6 +375,9 @@ def step(world, sim, inputs, max_advance):
 
     *inputs* is a dictionary, that maps entity IDs to data dictionaries which
     map attribute names to lists of values (see :func:`get_input_data()`).
+
+    *max_advance* is the simulation time until the simulator can safely advance
+    it's internal time without causing any causality errors.
     """
     sim.last_step = sim.next_step
 
@@ -486,7 +489,7 @@ def treat_cycling_output(world, sim, data, output_time):
                             "Adjust `max_loop_iterations` in the scenario "
                             "if needed.")
                 else:
-                    cycle['time'] = output_time  # TODO: or sim.last_step?
+                    cycle['time'] = output_time
                     cycle['count'] = 1
                 # Check if output time could cause an earlier next step:
                 cycle_progress = output_time - 1 + cycle['min_length']
