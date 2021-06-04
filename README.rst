@@ -7,7 +7,7 @@ It lets you re-use existing simulators and couple them to simulate large-scale
 Smart Grid scenarios. Mosaik offers powerful mechanisms to specify and compose
 these scenarios.
 
-Version: 2.6.0
+Version: 2.6.1
 
 License: LGPL
 

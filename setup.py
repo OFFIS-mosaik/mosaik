@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-find_version='2.6.0'
+find_version='2.6.1'
 if os.environ.get('CI_COMMIT_TAG'):
     find_version = os.environ['CI_COMMIT_TAG']
 
