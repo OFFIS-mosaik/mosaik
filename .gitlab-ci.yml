@@ -73,7 +73,7 @@ Job_unit_tests_python37:
      #- python -m pytest --ignore=venv/
      - pip install tox
      - pip list
-     - tox
+     - tox -e py37
     except:
       - tags
 
