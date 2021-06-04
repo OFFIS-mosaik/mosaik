@@ -17,6 +17,7 @@ This page will show you how to create simple scenarios in these three steps.
 It will also provide some recipes that allow you to create more complex
 scenarios.
 
+.. _scenario_definition:
 
 The setup
 =========

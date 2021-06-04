@@ -16,6 +16,7 @@ Contents:
    scenario-definition
    simmanager
    scheduler
+   upgrade_to_v3
    faq
    dev/index
    api_reference/index
