@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 import mosaik
+import sphinx_rtd_theme
 
 # -- General configuration ----------------------------------------------------
 
@@ -34,6 +35,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
     'sphinx.ext.imgmath',
+    'sphinx_rtd_theme',
 ]
 
 # -- Options for Graphviz -------------------------------------------------
@@ -58,7 +60,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'mosaik'
-copyright = '2012-2020 OFFIS'
+copyright = '2012-2021 OFFIS'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -115,11 +117,6 @@ html_theme = 'sphinx_rtd_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #html_theme_options = {}
-
-# Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
-import sphinx_rtd_theme
-html_theme_path = ["_themes/sphinx_rtd_theme", ]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

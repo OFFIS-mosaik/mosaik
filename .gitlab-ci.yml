@@ -19,6 +19,7 @@ stages:
  - build_docker
  - run_docker
  - release
+ - Trigger-cross-projects
 
 
 .only-default: &only-default
@@ -59,7 +60,7 @@ Job_install_dependencies:
     except:
         - tags
 
-Job_unit_tests:  
+Job_unit_tests_python37:  
     <<: *only-default
     stage: unit_tests
     script:
@@ -72,9 +73,39 @@ Job_unit_tests:
      #- python -m pytest --ignore=venv/
      - pip install tox
      - pip list
-     - tox
+     - tox -e py37
     except:
       - tags
+
+Job_unit_tests_python36:  
+    <<: *only-default
+    image: python:3.6.10
+    stage: unit_tests
+    script:  
+      -   python -m pip install --quiet --upgrade tox
+      -   tox -e py36
+    except:
+      - tags     
+
+Job_unit_tests_python38:  
+    <<: *only-default
+    image: python:3.8.2
+    stage: unit_tests
+    script:  
+      -   python -m pip install --quiet --upgrade tox
+      -   tox -e py38
+    except:
+      - tags 
+    
+Linting_flake8:
+    <<: *only-default
+    allow_failure: true
+    stage: unit_tests
+    before_script:
+       - python -m pip install --quiet --upgrade flake8
+    script:
+       - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
+    when: manual 
      
 build_docker_preproduction:
    image: docker:latest
@@ -233,6 +264,15 @@ run_docker_tag:
      - tags
      
      
+mosaik-demo:
+   stage: Trigger-cross-projects
+   trigger: 
+    project: mosaik/mosaik-demo
+    branch: master  
+   only:
+    refs:
+     - tags
+
   
 
 

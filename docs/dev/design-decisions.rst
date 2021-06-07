@@ -59,14 +59,14 @@ behavior and a very hard to find bug.
 What do we learn from that? We need to explicitly tell mosaik how to resolve
 these cycles and prohibit normal circular data-flows as in the snippet above.
 
-If you remember mosaik 1, your next approach would be as follows:
+Mosaik provides two ways for this. The first is via time-shifted connections:
 
 .. code-block:: python
 
    connect(A, B, 'state')
-   connect(B, A, 'schedule', delay=True)
+   connect(B, A, 'schedule', time_shifted=True)
 
-This would tell mosaik how to resolve the cycle and throw an error if you
+This tells mosaik how to resolve the cycle and throw an error if you
 accidentally flip both lines.
 
 Theoretically, we could be done here. But we aren't. The data-flows in the
@@ -103,21 +103,20 @@ the schedules. However, you wouldn't store them somewhere so that
 *set_data()*. Mosaik stores that data in a special input_buffer of *A* which
 will be added to the input of *A*'s next step.
 
-So to wrap this up, there would be two possibilities to achieve cyclic
-data-flows:
+So to wrap this up, there are two possibilities to achieve cyclic data-flows:
 
 1. Passive controller:
 
    .. code-block:: python
 
       connect(A, B, 'state')
-      connect(B, A, 'schedules', delay=True)
+      connect(B, A, 'schedules', time_shifted=True)
 
    *B.step()* computes schedules and caches them somewhere. Mosaik gets these
    schedules via *B.get_data()* and sends them to *A*.
 
-   If you forget to set the ``delay=True`` flag, mosaik will raise an error at
-   *composition time*.
+   If you forget to set the ``time_shifted=True`` flag, mosaik will raise an
+   error at *composition time*.
 
    If you forget the second *connect()*, nothing will happen with the
    schedules. You may not notice this for a while.
@@ -134,11 +133,3 @@ data-flows:
    If you forget to set the ``async_requests=True`` flag, mosaik will raise an
    error at *simulation time*.
 
-So, two ways to achieve basically the same thing. What does the `Zen of Python
-<http://legacy.python.org/dev/peps/pep-0020/>`_ say to this?
-
-   *"There should be one-- and preferably only one --obvious way to do it."*
-
-Since the asynchronous requests can be used for other purposes as well and
-thus, cannot simply be stripped away, we chose the second way and excluded the
-first possibility.

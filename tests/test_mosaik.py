@@ -3,6 +3,8 @@ Test a complete mosaik simulation using mosaik as a library.
 
 """
 import importlib
+import glob
+import os
 import time
 
 import networkx as nx
@@ -10,30 +12,55 @@ import pytest
 
 from mosaik import scenario
 
-sim_config_local = {
-    char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'
+sim_config = {
+    'local': {
+        **{char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'},
+        'MAS': {'python': 'example_mas.mosaik:ExampleMas'}
+    },
+    'remote': {
+        **{char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'},
+        'MAS': {'cmd': 'pyexamplemas %(addr)s'}
+    },
+    'generic': {
+        **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
+        for char in 'ABCDE'},
+        'LoopSim': {
+            'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
+        },
+    },
+    'generic_remote': {
+        char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}
+        for char in 'ABCDE'
+    },
+    'loop': {
+        'LoopSim': {
+            'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
+        },
+        'EchoSim': {
+            'python': 'tests.simulators.loop_simulators.echo_simulator:EchoSim',
+        },
+    }
 }
-sim_config_local['MAS'] = {'python': 'example_mas.mosaik:ExampleMas'}
-sim_config_remote = {
-    char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'
-}
-sim_config_remote['MAS'] = {'cmd': 'pyexamplemas %(addr)s'}
 
-# We test all scenarios with local simulators and only the most complex one
-# with remote simulators to save some time (starting procs is quite expensive).
-test_cases = [('scenario_%s' % (i + 1), sim_config_local) for i in range(6)]
-test_cases.append(('scenario_5', sim_config_remote))
-test_cases.append(('scenario_6', sim_config_remote))
+# We test most scenarios with local simulators and only the most complex ones
+# and where it is necessary with remote simulators to save some time (starting
+# procs is quite expensive).
+
+test_cases = [os.path.basename(file).strip('.py')
+              for file in glob.glob('tests/fixtures/scenario_*.py')]
 
 
-# Test all combinations of both sim configs and the 5 test scenarios.
-@pytest.mark.parametrize(('fixture', 'sim_config'), test_cases)
-def test_mosaik(fixture, sim_config):
+@pytest.mark.parametrize('fixture', test_cases)
+@pytest.mark.parametrize('cache', [True, False])
+def test_mosaik(fixture, cache):
     fixture = importlib.import_module('tests.fixtures.%s' % fixture)
-    world = scenario.World(sim_config, debug=True)
+    world = scenario.World(sim_config[fixture.CONFIG], debug=True, cache=cache)
     try:
         fixture.create_scenario(world)
-        world.run(until=fixture.UNTIL)
+        if not hasattr(fixture, 'RT_FACTOR'):
+            world.run(until=fixture.UNTIL)
+        else:
+            world.run(until=fixture.UNTIL, rt_factor=fixture.RT_FACTOR)
 
         expected_graph = nx.parse_edgelist(fixture.EXECUTION_GRAPH.split('\n'),
                                            create_using=nx.DiGraph(), data=())
@@ -49,11 +76,12 @@ def test_mosaik(fixture, sim_config):
 
         for sim in world.sims.values():
             assert sim.last_step < fixture.UNTIL
+            assert sim.progress >= fixture.UNTIL - 1
     finally:
         world.shutdown()
 
 
-@pytest.mark.parametrize('sim_config', [sim_config_local, sim_config_remote])
+@pytest.mark.parametrize('sim_config', [sim_config['local'], sim_config['remote']])
 def test_call_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
@@ -67,7 +95,7 @@ def test_call_extra_methods(sim_config):
 
 def test_rt_sim():
     fixture = importlib.import_module('tests.fixtures.scenario_1')
-    world = scenario.World(sim_config_local)
+    world = scenario.World(sim_config['local'])
     try:
         fixture.create_scenario(world)
 
@@ -84,7 +112,7 @@ def test_rt_sim():
 @pytest.mark.parametrize('strict', [True, False])
 def test_rt_sim_too_slow(strict, capsys):
     fixture = importlib.import_module('tests.fixtures.scenario_1')
-    world = scenario.World(sim_config_local)
+    world = scenario.World(sim_config['local'])
     try:
         fixture.create_scenario(world)
 

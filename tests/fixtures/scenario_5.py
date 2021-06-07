@@ -24,6 +24,8 @@ def create_scenario(world):
     world.connect(model_b, model_e, ('val_out', 'val_in'))
 
 
+CONFIG = 'remote'
+
 EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-0 B-0-0

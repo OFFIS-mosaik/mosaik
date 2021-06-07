@@ -3,12 +3,12 @@ A simple data collector that prints all data when the simulation finishes.
 
 """
 import collections
-import pprint
 
 import mosaik_api
 
 
 META = {
+    'type': 'event-based',
     'models': {
         'Monitor': {
             'public': True,
@@ -25,11 +25,9 @@ class Collector(mosaik_api.Simulator):
         super().__init__(META)
         self.eid = None
         self.data = collections.defaultdict(lambda:
-                                            collections.defaultdict(list))
-        self.step_size = None
+                                            collections.defaultdict(dict))
 
-    def init(self, sid, step_size):
-        self.step_size = step_size
+    def init(self, sid, time_resolution):
         return self.meta
 
     def create(self, num, model):
@@ -39,13 +37,13 @@ class Collector(mosaik_api.Simulator):
         self.eid = 'Monitor'
         return [{'eid': self.eid, 'type': model}]
 
-    def step(self, time, inputs):
-        data = inputs[self.eid]
+    def step(self, time, inputs, max_advance):
+        data = inputs.get(self.eid, {})
         for attr, values in data.items():
             for src, value in values.items():
-                self.data[src][attr].append(value)
+                self.data[src][attr][time] = value
 
-        return time + self.step_size
+        return None
 
     def finalize(self):
         print('Collected data:')

@@ -307,7 +307,6 @@ This guide is based on *Windows 10, 64bit*.
 
    Mosaik should now be installed successfully.
 
-__ https://mosaik.offis.de/install/#windows-installer
 __ https://www.python.org/
 __ https://www.python.org/downloads/release/python-382/
 __ https://pip.readthedocs.org/

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-find_version='2.6.0'
+find_version='3.0.0'
 if os.environ.get('CI_COMMIT_TAG'):
     find_version = os.environ['CI_COMMIT_TAG']
 
@@ -18,8 +18,8 @@ setup(
                       open('AUTHORS.txt', encoding='utf-8').read()),
     url='https://mosaik.offis.de',
     install_requires=[
-        'networkx>=2.0',
-        'mosaik-api>=2.3',
+        'networkx>=2.5',
+        'mosaik-api>=3.0',
         'simpy>=3.0.10,<4.0.0',
         'simpy.io>=0.2.3',
     ],

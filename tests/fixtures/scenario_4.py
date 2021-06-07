@@ -13,10 +13,13 @@ def create_scenario(world):
     world.connect(model_a, model_b, ('val_out', 'val_in'))
 
 
+CONFIG = 'local'
+
 EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-0 B-0-0
 A-0-1 A-0-2
+A-0-2 A-0-3
 A-0-2 B-0-2
 B-0-0 B-0-2
 """

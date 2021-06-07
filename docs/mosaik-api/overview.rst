@@ -47,15 +47,16 @@ actively query mosaik for additional data.
 .. _async_requests_overview:
 
 Thus, while a simulator is executing a simulation step, it may make
-asynchronous requests to mosaik. It can get the current simulation progress
-(``get_progress()``), collect information about the simulated topology
-(``get_related_entities()``), query other entities for data (``get_data()``)
+asynchronous requests to mosaik. It can collect information about the
+simulated topology (``get_related_entities()``), request a new step for
+itself (``set_event()``), get the current simulation progress
+(``get_progress()``),  query other entities for data (``get_data()``)
 and set data for other entities (``set_data()``).
 
 .. image:: /_static/mosaik-api-sequence-step.*
    :width: 500
    :align: center
-   :alt: Sequence diagram for asychronous requests made by a simulator.
+   :alt: Sequence diagram for asynchronous requests made by a simulator.
 
-The next two section explain the :ref:`low-level API <low-level-api>` and the
+The next two sections explain the :ref:`low-level API <low-level-api>` and the
 :ref:`Python high-level API <high-level-api>` in more detail.

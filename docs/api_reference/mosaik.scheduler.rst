@@ -8,7 +8,7 @@
 
 .. autofunction:: sim_process
 
-.. autofunction:: step_required
+.. autofunction:: has_next_step
 
 .. autofunction:: wait_for_dependencies
 

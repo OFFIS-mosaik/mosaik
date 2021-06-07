@@ -4,7 +4,7 @@ Development setup and tests
 
 This guide will show you how to set up a development environment for mosaik
 or components of its ecosystem (like the `Python API
-<https://bitbucket.org/mosaik/mosaik-api-python>`_), how to run the tests,
+<https://gitlab.com/mosaik/mosaik-api-python>`_), how to run the tests,
 check the code coverage and quality, and build the documentation.
 
 
@@ -151,6 +151,6 @@ We use `Sphinx <http://sphinx-doc.org/>`_ to create mosaik's documentation:
 
 This will build the documentation to :file:`docs/_build/html`.
 
-When you push new revisions to mosaik's main repo
-(``bitbucket.org/mosaik/mosaik``) the `official documentation
+When you push new revisions to the develop branch of mosaik's main repo
+(``gitlab.com/mosaik/mosaik``) the `official documentation
 <https://mosaik.readthedocs.org>`_ is automatically updated via a hook.

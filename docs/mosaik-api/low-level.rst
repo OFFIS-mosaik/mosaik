@@ -62,7 +62,7 @@ and keyword arguments.
 
 The complete message sent via the network will be::
 
-   \x00\x00\x00\x36[1, 1, ["my_func", ["hello", "world"], {"times": 23}]]
+   \x00\x00\x00\x36[0, 1, ["my_func", ["hello", "world"], {"times": 23}]]
 
 In case of success, the reply's payload to this request could look like this:
 
@@ -107,9 +107,9 @@ Async. requests:
 API calls
 =========
 
-This section decribes the API calls ``init()``, ``create()``, ``setup_done()``,
+This section describes the API calls ``init()``, ``create()``, ``setup_done()``,
 ``step()``, ``get_data()`` and ``stop()``.  In addition to these, a simulator
-may *optionally* expose additonal functions (referred to as *extra methods*).
+may *optionally* expose additional functions (referred to as *extra methods*).
 These methods can be called at composition time (when you create your
 scenario).
 
@@ -120,16 +120,17 @@ init
 
 ::
 
-   ["init", [sim_id], {**sim_params}] -> meta
+   ["init", [sim_id], {time_resolution=time_resolution, **sim_params}] -> meta
 
 The ``init`` call is made once to initialize the simulator. It has one
-positional argument, the simulator ID, and an arbitrary amount of keyword
-arguments (*sim_params*).
+positional argument, the simulator ID, and *time_resolution* and an arbitrary
+amount of further parameters (*sim_params*) as keyword arguments.
 
 The return value *meta* is an object with meta data about the simulator::
 
     {
         "api_version": "x.y",
+        "type": "time-based"|"event-based"|"hybrid",
         "models": {
             "ModelName": {
                 "public": true|false,
@@ -149,6 +150,14 @@ The *api_version* is a string that defines which version of the mosaik API the
 simulator implements.  Since mosaik API version 2.2, the simulator's `major
 version <http://semver.org/>`_ ("x", in the snippet above) has to be equal to
 mosaik's.  Mosaik will cancel the simulation if a version mismatch occurs.
+
+The *type* defines how the simulator is stepped and for which time the output
+is valid. *Time-based* simulators only decide themselves on which points in
+time they want to be stepped (i.e. communicate with the other simulators).
+Their output is valid until the next step. *Event-based* simulators are always
+stepped when a predecessor provides new input, but they can also schedule
+steps for themselves. A more fine-grained behavior can be set for *hybrid*
+simulators. See the :ref:`scheduler description <stepping_types>` for details.
 
 *models* is an object describing the models provided by this simulator. The
 entry *public* determines whether a model can be instantiated by a user
@@ -173,14 +182,15 @@ Request:
 
 .. code-block:: json
 
-    ["init", ["PowerGridSim-0"], {"step_size": 60}]
+    ["init", ["PowerGridSim-0"], {"time_resolution": 1., "step_size": 60}]
 
 Reply:
 
 .. code-block:: json
 
     {
-       "api_version": "2.2",
+       "api_version": "3.0",
+       "type": "time-based",
        "models": {
             "Grid": {
                 "public": true,
@@ -326,14 +336,15 @@ step
 
 ::
 
-   ["step", [time, inputs], {}] -> time_next_step
+   ["step", [time, inputs, max_advance], {}] -> Optional[time_next_step]
 
-Perform the next simulation step from time *time* using input values from
+Perform the next simulation step at time *time* using input values from
 *inputs* and return the new simulation time (the time at which *step* should
-be called again).
+be called again) or null if the simulator doesn't need to step itself.
 
-*time* and the time returned are integers. Their unit is *seconds* (counted from
-simulation start).
+*time*, *max_advance*, and the time_next_step are integers (or null). Their
+unit is arbitrary, e.g. *seconds* (counted from simulation start), but has
+to be consistent among all simulators used in a scenario.
 
 *inputs* is a dict of dicts mapping entity IDs to attributes and dicts of
 values (each simulator has to decide on its own how to reduce the values (e.g.,
@@ -348,6 +359,13 @@ as its sum, average or maximum)::
         ...
     }
 
+*max_advance* tells the simulator how far it can advance its time without
+risking any causality error, i.e. it is guaranteed that no external step will
+be triggered before max_advance + 1, unless the simulator activates an output
+loop earlier than that. For time-based simulators (or hybrid ones without any
+triggering input) *max_advance* is always equal to the end of the simulation
+(*until*). See the description of the :ref:`scheduler <max_advance>` for more
+details.
 
 Example
 ^^^^^^^
@@ -363,7 +381,8 @@ Request:
             {
                   "node_1": {"P": [20, 3.14], "Q": [3, -2.5]},
                   "node_2": {"P": [42], "Q": [-23.2]},
-            }
+            },
+            3600
         ],
         {}
     ]
@@ -387,7 +406,7 @@ get_data
 Return the data for the requested attributes in *outputs*
 
 *outputs* is an object mapping entity IDs to lists of attribute names whose
-values are requested::
+values are requested (connected to any other simulator)::
 
     {
         "eid_1": ["attr_1", "attr_2", ...],
@@ -404,11 +423,22 @@ attribute names to their values::
            ...
         },
         ...
+        "time": *output_time* (optional)
     }
 
+Time-based simulators have set an entry for all requested attributes, whereas
+for event-based and hybrid simulators this is optional (e.g. if there's no new
+event).
 
-Example
-^^^^^^^
+Event-based and hybrid simulators can optionally set a timing of their
+non-persistent output attributes via a *time* entry, which is valid for all
+given (non-persistent) attributes. If not given, it defaults to the current
+time of the step. Thus only one output time is possible per step. For further
+output times the simulator has to schedule another self-step (via the step's
+return value).
+
+Examples
+^^^^^^^^
 
 Request:
 
@@ -425,6 +455,24 @@ Reply:
         "branch_0": {
             "I": 42.5
         }
+    }
+
+Request:
+
+.. code-block:: json
+
+    ["get_data", [{"node_0": ["msg"], "node_1": ["msg"]}], {}]
+
+Reply:
+
+.. code-block:: json
+
+
+    {
+        "node_1": {
+            "msg": "Hi"
+        },
+        "time": 140
     }
 
 
@@ -652,6 +700,34 @@ Request:
         }],
         {}
     ]
+
+Reply:
+
+.. code-block:: json
+
+    null
+
+
+.. _rpc.set_event:
+
+set_event
+---------
+
+::
+
+   ["set_event", [time], {}] -> null
+
+Request an event/step for itself at time *time*.
+
+
+Example
+^^^^^^^
+
+Request:
+
+.. code-block:: json
+
+    ["set_event", [5], {}]
 
 Reply:
 

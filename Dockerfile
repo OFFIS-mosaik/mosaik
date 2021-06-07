@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN ls
 RUN pip install .
 RUN pip install tox
-RUN tox
+RUN tox -e py37
