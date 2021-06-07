@@ -1,4 +1,5 @@
 from unittest import mock
+from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
 from mosaik.exceptions import ScenarioError
@@ -84,21 +85,26 @@ def test_world_connect(world):
     for i, j in zip(a, b):
         world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
-    assert world.df_graph.adj == {
+    connections = [
+        (str(a[0].eid), str(b[0].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
+        (str(a[1].eid), str(b[1].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
+     ]
+
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'dataflows': [
-                    (a[0].eid, b[0].eid, (('val_out', 'val_in'),
-                                          ('dummy_out', 'dummy_in'))),
-                    (a[1].eid, b[1].eid, (('val_out', 'val_in'),
-                                          ('dummy_out', 'dummy_in'))),
-                ],
+                'pred_waiting': False,
+                'time_shifted': False,
+                'weak': False,
+                'trigger': False,
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
     }
-    assert world.entity_graph.adj == {
+    assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a[0].eid: {'ExampleSim-1.' + b[0].eid: {}},
         'ExampleSim-1.' + b[0].eid: {'ExampleSim-0.' + a[0].eid: {}},
         'ExampleSim-0.' + a[1].eid: {'ExampleSim-1.' + b[1].eid: {}},
@@ -133,12 +139,13 @@ def test_world_connect_cycle(world):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, ('val_out', 'val_in'))
+    world.connect(b, a, ('val_in', 'val_out'))
     with pytest.raises(ScenarioError) as err:
-        world.connect(b, a, ('val_in', 'val_out'))
-    assert str(err.value) == ('Connection from "ExampleSim-1" to '
-                              '"ExampleSim-0" introduces cyclic dependencies.')
-    assert list(world.df_graph.edges()) == [('ExampleSim-0', 'ExampleSim-1')]
-    assert len(world._df_outattr) == 1
+        world.run(1)
+    assert str(err.value) == ('Scenario has unresolved cyclic dependencies: '
+                              '[\'ExampleSim-0\', \'ExampleSim-1\']. Use '
+                              'options "time-shifted" or "weak" for '
+                              'resolution.')
 
 
 def test_world_connect_wrong_attr_names(world):
@@ -176,11 +183,16 @@ def test_world_connect_no_attrs(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b)
 
-    assert world.df_graph.adj == {
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
+                'pred_waiting': False,
+                'time_shifted': False,
+                'weak': False,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
+                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -202,16 +214,22 @@ def test_world_connect_any_inputs(world):
     b.sim.meta['models']['B']['any_inputs'] = True
     world.connect(a, b, 'val_out')
 
-    assert world.df_graph.adj == {
+    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'pred_waiting': False,
+                'time_shifted': False,
+                'weak': False,
+                'trigger': False,
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
     }
-    assert world.entity_graph.adj == {
+    assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
@@ -225,11 +243,16 @@ def test_world_connect_async_requests(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, async_requests=True)
 
-    assert world.df_graph.adj == {
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
+                'pred_waiting': True,
+                'time_shifted': False,
+                'weak': False,
+                'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
+                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -241,10 +264,17 @@ def test_world_connect_time_shifted(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    assert world.shifted_graph.adj == {
+    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
-                'dataflows': [(a.eid, b.eid, (('val_out', 'val_out'),))],
+                'async_requests': False,
+                'pred_waiting': False,
+                'time_shifted': True,
+                'weak': False,
+                'trigger': False,
+                'dataflows': connections,
+                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -259,6 +289,18 @@ def test_world_connect_time_shifted(world):
             },
         },
     }
+
+
+@pytest.mark.parametrize('ctype', ['time_shifted', 'async_requests'])
+def test_world_connect_different_types(world, ctype):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    world.connect(a, b)
+    err = pytest.raises(ScenarioError, world.connect, a, b, **{ctype: True})
+    assert str(err.value) == (f'{ctype.capitalize()} and standard connections '
+                              'are mutually exclusive, but you have set both '
+                              'between simulators ExampleSim-0 and '
+                              'ExampleSim-1')
 
 
 def test_world_get_data(world):

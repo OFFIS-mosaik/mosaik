@@ -17,6 +17,7 @@ This page will show you how to create simple scenarios in these three steps.
 It will also provide some recipes that allow you to create more complex
 scenarios.
 
+.. _scenario_definition:
 
 The setup
 =========
@@ -63,6 +64,27 @@ In addition to the *sim config* you can optionally pass another dictionary to
 :class:`World` in order to overwrite some general parameters for mosaik (e.g.,
 the host and port number for its network socket or timeouts).  Usually, the
 defaults work just well.
+
+.. _time_resolution:
+
+Via the *time_resolution* parameter you can set a global time resolution for
+the scenario, which will be passed to each simulator as keyword argument via
+the init function (see :ref:`API init <api.init>`). It tells each simulator how to
+translate mosaik's integer time to simulated time (in seconds from simulation
+start). It has to be a float and it defaults to *1.*.
+
+If you set the *debug* flag to ``True`` an execution graph will be created
+during the simulation. This may be useful for debugging and testing. Note,
+that this increases the memory consumption and simulation time.
+
+There are two more technical parameters: You can set the *cache* flag to False
+if the average step size of the simulators is orders of magnitudes larger than
+the time resolution, i.e. a time resolution of microseconds where the typical
+step size is in the seconds range. This will considerably reduce the
+simulation time.
+
+Via *max_loop_iterations* you can limit the maximum iteration count within one
+time step for :ref:`same-time loops <same-time_loops>`. It's default value is 100.
 
 
 Starting simulators
@@ -137,6 +159,23 @@ three instance will have the same value for *init_val*. In both cases you'll
 get a list of entities (aka :term:`entity sets <entity set>`).
 
 
+Setting initial events
+======================
+
+Time-based (and hybrid) simulators are automatically scheduled for time step 0,
+and will organize their scheduling until the simulation's end themselves
+afterward. For event-based simulators this is not the case, as they might only
+want to be stepped if an event is created by another simulator for example.
+Therefore you might need to set initial events for some event-based ones via
+:meth:`World.set_initial_event()`, which sets an event for time 0 by default,
+or at later times if explicitly stated:
+
+.. code-block:: python
+
+   >>> world.set_initial_event(a.sid)
+   >>> world.set_initial_event(b.sid, time=3)
+
+
 Connecting entities
 ===================
 
@@ -164,8 +203,8 @@ other (that's why we created two instances of the *ExampleSim*).
 You are also not allowed to create circular dependencies via standard
 connections only (e.g., connect *a* to *b* and then connect *b* to *a*).
 There are several ways to allow a bidirectional or cyclic exchange of data,
-which is required for things like control strategies, e.g. via time-shifted
-connections. See section :ref:`cyclic_data-flows` for details.
+which is required for things like control strategies, e.g. via *time-shifted*
+or *weak* connections. See section :ref:`cyclic_data-flows` for details.
 
 
 .. _running-the-simulation:
@@ -183,7 +222,7 @@ finally run our simulation:
    Simulation finished successfully.
 
 This will execute the simulation from time 0 until we reach the time *until*
-(in simulated seconds). The :doc:`scheduler section <scheduler>` explains in
+(in simulated time units). The :doc:`scheduler section <scheduler>` explains in
 detail what happens when you call ``run()``.
 
 To wrap it all up, this is how our small example scenario finally looks like:
@@ -220,9 +259,11 @@ To wrap it all up, this is how our small example scenario finally looks like:
 How to achieve cyclic data-flows
 ========================================
 
-Cyclic data-flows are important when you want to integrate, for
-example, control strategies. However, this trivial approach is not allowed
-in mosaik:
+Bi-directional (or cyclic) data-flows can occur easily in many scenarios,
+e.g. when you want to integrate control strategies. In this case you have to
+explicitly define in which order the simulators have to be stepped in case they
+are scheduled at the same time step simultaneously. Otherwise the simulation would
+get stuck in a dead-lock. Therefore this trivial approach is not allowed in mosaik:
 
 .. code-block:: python
 
@@ -234,10 +275,15 @@ in mosaik:
 The problem with this is that mosaik cannot know whether to compute *battery.P*
 or *controller.schedule* first.
 
-There are different ways to solve this problem: The easiest way is to indicate
-explicitly that the output of at least one simulator (e.g. the schedule of the
-controller) is to be used for time steps afterwards (here by the battery) via
-the *time_shifted* flag:
+There are different ways to solve this problem, depending of the stepping type
+of your simulators:
+
+Time-based
+----------
+For time-based simulators the easiest way is to indicate explicitly that the
+output of at least one simulator (e.g. the schedule of the controller)is to be
+used for time steps afterwards (here by the battery) via the *time_shifted*
+flag:
 
 .. code-block:: python
 
@@ -280,6 +326,17 @@ The *step* implementation of the controller could roughly look like this:
           yield self.mosaik.set_data(schedule)
           return t + self.step_size
 
+Event-based
+-----------
+For cyclic dependencies of event-based simulators you have to set one (and
+only one) connection to *weak*, analogous to the *time_shifted* connections.
+This allows mosaik to create a topological ranking of the simulators which is
+used to resolve eventual deadlocks (when two or more simulators have scheduled
+steps at the same time). In contrast to the time-shifted connections, weakly
+connected output can also be valid/used at the same point in time. This
+enables algebraic loops within one time step for example. You just have to
+make sure that you don't construct infinite loops. See section
+:ref:`Same-time Loops <same-time_loops>` for details.
 
 How to filter entity sets
 =========================
@@ -391,19 +448,12 @@ takes two sets and connects them either evenly or purely randomly:
 
 Another relatively common use case is connecting a set of entities to one other
 entity, e.g., when you want to connect a number of controllable energy
-producers to a central scheduler:
+producers to a central scheduler. For this use case, mosaik provides
+:func:`mosaik.util.connect_many_to_one()`
 
 .. code-block:: python
 
-   from itertools import chain
-
-   def connect_many_to_one(world, src_set, dest_entity, *attrs,
-                           async_requests=False):
-       for src_entity in src_set:
-           world.connect(src_entity, dest_entity, *attrs,
-                         async_requests=async_requests)
-
-
+   ...
    pvs = pvsim.PV.create(30)
    chps = chpsim.CHP.create(20)
    controller = cs.Scheduler()
@@ -414,10 +464,21 @@ producers to a central scheduler:
                        async_requests=True)
 
 Connection rules are oftentimes highly specific for a project.
-:func:`~mosaik.util.connect_randomly()` is currently the only function that is
-useful and complicated enough to ship it with mosaik. But as you can see in the
-``connect_many_to_one`` example, writing your own connection method is not that
-hard.
+:func:`~mosaik.util.connect_randomly()` and
+:func:`~mosaik.util.connect_many_to_one()` are currently the only functions that
+are useful and complicated enough to ship it with mosaik. But writing your own
+connection method is not that hard, as you can see in the
+``connect_many_to_one`` example:
+
+.. code-block:: python
+
+   from itertools import chain
+
+   def connect_many_to_one(world, src_set, dest_entity, *attrs,
+                           async_requests=False):
+       for src_entity in src_set:
+           world.connect(src_entity, dest_entity, *attrs,
+                         async_requests=async_requests)
 
 
 How to retrieve static data from entities
@@ -458,8 +519,9 @@ format.
 contains a node for every simulator that you started. The simulator ID is used
 to label the nodes. If you established a data-flow between two simulators (by
 connecting at least two of their entities), a directed edge between two nodes
-is inserted.  The edges contain the *async_requests* flag (see
-:ref:`integrate-control-strategies`) and a list of the data-flows.
+is inserted.  The edges contain a list of the data-flows as well as the
+*async_requests*, *time_shifted*, and *weak* flags
+(see :ref:`cyclic_data-flows`) and the *trigger* and *pred_waiting* flags.
 
 The data-flow graph may, for example, look like this:
 

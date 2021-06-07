@@ -12,10 +12,10 @@ SIM_CONFIG = {
         'python': 'controller:Controller',
     },
     'Collector': {
-        'cmd': 'python collector.py %(addr)s',
+        'cmd': '%(python)s collector.py %(addr)s',
     },
 }
-END = 10 * 60  # 10 minutes
+END = 10  # 10 seconds
 
 # Create World
 world = mosaik.World(SIM_CONFIG)
@@ -23,7 +23,7 @@ world = mosaik.World(SIM_CONFIG)
 # Start simulators
 examplesim = world.start('ExampleSim', eid_prefix='Model_')
 examplectrl = world.start('ExampleCtrl')
-collector = world.start('Collector', step_size=60)
+collector = world.start('Collector')
 
 # Instantiate models
 models = [examplesim.ExampleModel(init_val=i) for i in range(-2, 3, 2)]
@@ -32,9 +32,11 @@ monitor = collector.Monitor()
 
 # Connect entities
 for model, agent in zip(models, agents):
-    world.connect(model, agent, ('val', 'val_in'), async_requests=True)
+    world.connect(model, agent, ('val', 'val_in'))
+    world.connect(agent, model, 'delta', weak=True)
 
 mosaik.util.connect_many_to_one(world, models, monitor, 'val', 'delta')
+mosaik.util.connect_many_to_one(world, agents, monitor, 'delta')
 
 # Run simulation
 world.run(until=END)

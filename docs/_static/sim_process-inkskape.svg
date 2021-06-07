@@ -1,0 +1,816 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="50mm"
+   height="85mm"
+   viewBox="0 0 50 85"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15, custom)"
+   sodipodi:docname="sim_process-inkskape.svg"
+   inkscape:export-filename="C:\Users\traub\VB_shared\kubuntu\mosaik\docs\_static\sim_process.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300">
+  <defs
+     id="defs2">
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5232"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         id="path5230"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:isstock="true"
+       style="overflow:visible"
+       id="marker5184"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow1Lend"
+       inkscape:collect="always">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path5182"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5142"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         id="path5140"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lend"
+       style="overflow:visible"
+       inkscape:isstock="true"
+       inkscape:collect="always">
+      <path
+         id="path4751"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:isstock="true"
+       style="overflow:visible"
+       id="marker5058"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow1Mend">
+      <path
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path5056"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5232-8"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path5230-9"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5232-8-5"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path5230-9-9"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5232-8-5-2"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path5230-9-9-4"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5232-8-5-2-6"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path5230-9-9-4-1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2"
+     inkscape:cx="73.124913"
+     inkscape:cy="161.23379"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="true"
+     objecttolerance="20"
+     inkscape:window-width="1920"
+     inkscape:window-height="986"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:document-rotation="0">
+    <inkscape:grid
+       type="xygrid"
+       id="grid4522"
+       units="mm"
+       spacingx="0.00099999997"
+       spacingy="0.00099999997"
+       empspacing="6"
+       enabled="false" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-222)">
+    <rect
+       id="rect3713-2"
+       width="14.400001"
+       height="5.5999923"
+       x="-17.6"
+       y="211.40001"
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m -19.2,226.6 6.275,-3.2 6.2749984,3.2 -6.2749984,3.2 z"
+       id="path4520-6"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.212554;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 2.6583334,238.09186 8.0000006,-4.8 8,4.8 -8,4.8 z"
+       id="path4520-6-3"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="10.579738"
+       y="237.02042"
+       id="text4571"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan4569"
+         x="10.579738"
+         y="237.02042"
+         style="font-size:2.11667px;text-align:center;text-anchor:middle;stroke-width:0.264583">keep</tspan><tspan
+         sodipodi:role="line"
+         x="10.579738"
+         y="239.66626"
+         style="font-size:2.11667px;text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4573">running</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="33.483898"
+       y="236.57892"
+       id="text4571-8"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan4569-3"
+         x="33.483898"
+         y="236.57892"
+         style="font-size:2.11667px;text-align:center;text-anchor:middle;stroke-width:0.264583">has</tspan><tspan
+         sodipodi:role="line"
+         x="33.483898"
+         y="239.22476"
+         style="font-size:2.11667px;text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4573-3">next step</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="33.911568"
+       y="250.3932"
+       id="text4571-8-3"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan4569-3-7"
+         x="33.911568"
+         y="250.3932"
+         style="font-size:1.5875px;text-align:center;text-anchor:middle;stroke-width:0.264583">wait for</tspan><tspan
+         sodipodi:role="line"
+         x="33.911568"
+         y="253.03905"
+         style="font-size:1.5875px;text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan8750">dependencies</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.82222px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="7.1999998"
+       y="218.60001"
+       id="text4655" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="10.418831"
+       y="249.5621"
+       id="text4659"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan4657"
+         x="10.418831"
+         y="249.5621"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583">wake up</tspan><tspan
+         sodipodi:role="line"
+         x="10.418831"
+         y="252.20795"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4661">dependencies</tspan></text>
+    <rect
+       id="rect3713-2-0-7"
+       width="17.599998"
+       height="6.3624377"
+       x="25.058334"
+       y="261.59982"
+       style="fill:none;stroke:#000000;stroke-width:0.202661;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="33.556332"
+       y="265.48724"
+       id="text4659-1"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         x="33.556332"
+         y="265.48724"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4661-5">get input data</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="33.813911"
+       y="276.24039"
+       id="text4659-1-1"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         x="33.813911"
+         y="276.24039"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4661-5-2">step</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="34.18549"
+       y="287.42133"
+       id="text4659-1-2"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         x="34.18549"
+         y="287.42133"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4661-5-9">get outputs</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 10.658333,242.89186 10e-7,4.03747"
+       id="path4746"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5142)"
+       d="m 33.858334,302.00436 v 3.47083 h 14.4 v -77.47503 h -37.6 v 4"
+       id="path5048"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5184)"
+       d="m 18.658334,238.09186 6.4,0.0375"
+       id="path5174"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5232)"
+       d="m 33.858334,242.89186 v 4.03747"
+       id="path5222"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.212554;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 25.858332,252.00016 8.000002,-4.8 8,4.8 -8,4.8 z"
+       id="path4520-6-3-2"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5232-8)"
+       d="m 33.858334,256.76269 v 4.03747"
+       id="path5222-8"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-87"
+       width="17.6"
+       height="6.3624434"
+       x="1.8583333"
+       y="247.19966"
+       style="fill:none;stroke:#000000;stroke-width:0.202661;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5232-8-5)"
+       d="m 33.858334,267.96269 v 4.03747"
+       id="path5222-8-2"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-1"
+       width="17.612495"
+       height="6.3624349"
+       x="25.058334"
+       y="272.80014"
+       style="fill:none;stroke:#000000;stroke-width:0.202661;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5232-8-5-2)"
+       d="m 33.858334,279.16269 v 4.03747"
+       id="path5222-8-2-5"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-1-9"
+       width="17.600002"
+       height="6.3624926"
+       x="25.058334"
+       y="284.0004"
+       style="fill:none;stroke:#000000;stroke-width:0.202661;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 45.858332,239.96269 Z"
+       id="path6730"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 10.658334,253.56269 v 4.8"
+       id="path4746-6"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <circle
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.15;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       id="path7302"
+       cx="10.752827"
+       cy="224.70517"
+       r="0.80000001"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <circle
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.15;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       id="path7302-9"
+       cx="10.658332"
+       cy="259.17667"
+       r="0.80000001"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <ellipse
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.0416208;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       id="path7302-1"
+       cx="10.6666"
+       cy="259.17188"
+       rx="0.21635477"
+       ry="0.22774681"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.137;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 10.658334,224.52933 v 4.27083"
+       id="path4746-4-8"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 42.4,248.8 v 6.4"
+       id="path6728-6"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 25.4,248.8 v 6.4"
+       id="path6728-7-7"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.212554;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 25.858332,238.09186 8.000002,-4.8 8.000001,4.8 -8.000001,4.8 z"
+       id="path4520-6-3-2-0"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 43.458334,272.80016 v 6.4"
+       id="path8450"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 24.258334,272.80016 v 6.4"
+       id="path8450-2"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 43.458334,284.00016 v 6.4"
+       id="path8450-8"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 24.258334,284.00016 v 6.4"
+       id="path8450-2-2"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="19.729166"
+       y="236.78714"
+       id="text8551"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan8549"
+         x="19.729166"
+         y="236.78714"
+         style="stroke-width:0.264583">yes</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="28.849991"
+       y="245.3163"
+       id="text8551-7"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan8549-8"
+         x="28.849991"
+         y="245.3163"
+         style="stroke-width:0.264583">yes</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="6.6583333"
+       y="245.05798"
+       id="text8573"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan8571"
+         x="6.6583333"
+         y="245.05798"
+         style="stroke-width:0.264583">no</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 33.858334,233.29186 -10e-7,-5.2917"
+       id="path8575"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"
+       sodipodi:nodetypes="cc" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="30.914852"
+       y="231.16534"
+       id="text8573-5"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         id="tspan8571-0"
+         x="30.914852"
+         y="231.16534"
+         style="stroke-width:0.264583">no</tspan></text>
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       id="rect8595"
+       width="19.199999"
+       height="21.599993"
+       x="2.6583333"
+       y="271.2001" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.100823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 3.9875,274.41265 3.5999998,-2.4 3.6000012,2.4 -3.6000012,2.4 z"
+       id="path4520-6-3-8"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.0950571;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 4.4708313,280 3.2000012,-2.4 3.2000015,2.4 -3.2000015,2.4 z"
+       id="path4520-6-3-2-6"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.067082;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 11,278.4 v 3.2"
+       id="path6728-6-7"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.067082;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 4.2833319,278.31652 v 3.2"
+       id="path6728-7-7-6"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-1-9-9"
+       width="7.3677087"
+       height="3.1812589"
+       x="4.0140624"
+       y="283.75452"
+       style="fill:none;stroke:#000000;stroke-width:0.0927184;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.0686257;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 11.8,288.8 v 3.20001"
+       id="path8450-8-1"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.0686257;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 3.6,288.8 v 3.20001"
+       id="path8450-2-2-7"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-1-9-9-2"
+       width="7.3677087"
+       height="3.1812589"
+       x="4.0140624"
+       y="288.81287"
+       style="fill:none;stroke:#000000;stroke-width:0.0927184;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:1.41111px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="12.420496"
+       y="274.87265"
+       id="text8736"><tspan
+         sodipodi:role="line"
+         id="tspan8734"
+         x="12.420496"
+         y="274.87265"
+         style="stroke-width:0.264583">condition</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:1.41111px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="12.420496"
+       y="280.211"
+       id="text8740"><tspan
+         sodipodi:role="line"
+         id="tspan8738"
+         x="12.420496"
+         y="280.211"
+         style="stroke-width:0.264583">event</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:1.41111px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="12.420496"
+       y="285.49387"
+       id="text8744"><tspan
+         sodipodi:role="line"
+         id="tspan8742"
+         x="12.420496"
+         y="285.49387"
+         style="stroke-width:0.264583">sync. func.</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:1.41111px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="12.420496"
+       y="290.87286"
+       id="text8748"><tspan
+         sodipodi:role="line"
+         id="tspan8746"
+         x="12.420496"
+         y="290.87286"
+         style="stroke-width:0.264583">async. func.</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 42.4,234.4 v 6.4"
+       id="path6728-6-8"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 25.4,234.92917 v 6.4"
+       id="path6728-7-7-64"
+       inkscape:connector-curvature="0"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <rect
+       id="rect3713-2-0-7-1-9-0"
+       width="17.600002"
+       height="6.3624926"
+       x="25.070833"
+       y="295.0881"
+       style="fill:none;stroke:#000000;stroke-width:0.202661;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.995327"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:2.11667px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="33.643822"
+       y="297.96741"
+       id="text4659-1-2-2"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"><tspan
+         sodipodi:role="line"
+         x="33.643822"
+         y="297.96741"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan4661-5-9-8">notify</tspan><tspan
+         sodipodi:role="line"
+         x="33.643822"
+         y="300.61325"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan1057">dependencies</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker5232-8-5-2-6)"
+       d="m 33.870833,290.27526 v 4.03747"
+       id="path5222-8-2-5-4"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="C:\Users\traub\Documents\mosaik-isaac-paper\sim_process.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+  </g>
+</svg>

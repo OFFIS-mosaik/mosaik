@@ -4,8 +4,7 @@
 The high-level API
 ==================
 
-Currently, there are high-level API for Python and Java. Implementations for 
-C# and MatLab will be available soon.
+Currently, there are high-level APIs for Python, Java, C#, and MatLab.
 
 
 Installation
@@ -67,6 +66,9 @@ API calls
    .. autoattribute:: mosaik
       :annotation:
 
+   .. autoattribute:: time_resolution
+      :annotation:
+
 The *mosaik-api* package provides an `example simulator
 <https://gitlab.com/mosaik/mosaik-api-python/-/blob/master/example_sim/mosaik.py>`_
 that demonstrates how the API can be implemented.
@@ -77,14 +79,15 @@ Asynchronous requests
 
 The :ref:`asynchronous requests <asynchronous-requests>` can be called via the
 ``MosaikRemote`` proxy ``self.mosaik`` from within
-:meth:`~mosaik_api.Simulator.step()`. They don't return the actual results but
-an *event* (similar to a *future* of *deferred*). The event will eventually
-hold the actual result. To wait for that result to arrive, you simply yield
-the event, e.g.:
+:meth:`~mosaik_api.Simulator.step()`, except for ``set_data()`` which has to
+be called from another thread/process (see below). They don't return the
+actual results but an *event* (similar to a *future* of *deferred*). The event
+will eventually hold the actual result. To wait for that result to arrive, you
+simply yield the event, e.g.:
 
 .. code-block:: python
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance):
         progress = yield self.mosaik.get_progress()
         # ...
 
@@ -102,9 +105,12 @@ the event, e.g.:
 .. automethod:: MosaikRemote.set_data
    :noindex:
 
+.. automethod:: MosaikRemote.set_event
+   :noindex:
+
 The *mosaik-api* package provides an `example "multi-agent system"
 <https://gitlab.com/mosaik/mosaik-api-python/-/blob/master/example_mas/mosaik.py>`_
-that demonstrates how to perform asynchronous requests can be implemented.
+that demonstrates how asynchronous requests can be implemented.
 
 
 Starting the simulator
@@ -125,6 +131,7 @@ Here is an example with a bit more context:
 
 
     example_meta = {
+        'type': 'time-based',
         'models' {
             'A': {
                   'public': True,

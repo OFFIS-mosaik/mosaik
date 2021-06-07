@@ -6,6 +6,29 @@ Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
 
+3.0.0 - 2021-06-07
+------------------
+
+- This is a major upgrade to improve the discrete-event capabilities. Simulators' steps
+  can now also be triggered by the output of other simulators.
+
+- [NEW] Native support of discrete-event simulations
+- [NEW] A global time resolution can be set for the scenario.
+- [NEW] Simulators can request steps asynchronously via *set_event()* to react to external events.
+- [NEW] Ability to specify output data as non-persistent (i.e. transient)
+- [CHANGE] New api 3:
+  - Simulators have now a *type* ('time-based'|'event-based'|'hybrid').
+  - *time_resolution* is passed as argument of the *init* function.
+  - *max_advance* is passed as argument of the *step* function.
+- [CHANGE] Update of the documentation
+
+2.6.1 - 2021-06-04
+------------------
+
+- [CHANGE] Updated ReadTheDocs to support versioning
+- [CHANGE] Updated setup: mosaik-api>=2.3,<3
+- [CHANGE] Updated networkx version to 2.5
+
 2.6.0 - 2020-05-08
 ==================
 

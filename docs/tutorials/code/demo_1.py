@@ -9,17 +9,17 @@ SIM_CONFIG = {
         'python': 'simulator_mosaik:ExampleSim',
     },
     'Collector': {
-        'cmd': 'python collector.py %(addr)s',
+        'cmd': '%(python)s collector.py %(addr)s',
     },
 }
-END = 10 * 60  # 10 minutes
+END = 10  # 10 seconds
 
 # Create World
 world = mosaik.World(SIM_CONFIG)
 
 # Start simulators
 examplesim = world.start('ExampleSim', eid_prefix='Model_')
-collector = world.start('Collector', step_size=60)
+collector = world.start('Collector')
 
 # Instantiate models
 model = examplesim.ExampleModel(init_val=2)

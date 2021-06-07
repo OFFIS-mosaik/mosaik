@@ -5,7 +5,7 @@ docutils==0.16
 imagesize==0.7.1
 Jinja2==2.9
 MarkupSafe==0.23
-mosaik-api==2.4.2
+mosaik-api==3.0.0
 networkx==2.5
 simpy==3.0.13
 simpy.io==0.2.3

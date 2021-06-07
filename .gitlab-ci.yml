@@ -73,13 +73,13 @@ Job_unit_tests_python37:
      #- python -m pytest --ignore=venv/
      - pip install tox
      - pip list
-     - tox
+     - tox -e py37
     except:
       - tags
 
 Job_unit_tests_python36:  
     <<: *only-default
-    image: python:3.6.10-slim
+    image: python:3.6.10
     stage: unit_tests
     script:  
       -   python -m pip install --quiet --upgrade tox
@@ -89,7 +89,7 @@ Job_unit_tests_python36:
 
 Job_unit_tests_python38:  
     <<: *only-default
-    image: python:3.8.2-slim
+    image: python:3.8.2
     stage: unit_tests
     script:  
       -   python -m pip install --quiet --upgrade tox
