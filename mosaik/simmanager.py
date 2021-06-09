@@ -657,29 +657,22 @@ class MosaikRemote:
         """
         sim = self.world.sims[self.sim_id]
         assert sim.next_step == sim.last_step  # Assert simulator is in step()
-        cache_slice = (self.world._df_cache[sim.last_step]
-                       if self.world._df_cache is not None else {})
 
         data = {}
-        missing = collections.defaultdict(
+        requests = collections.defaultdict(
             lambda: collections.defaultdict(list))
         dfg = self.world.df_graph
         dest_sid = self.sim_id
-        # Try to get data from cache
+        # Prepare data request
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
             # Check if async_requests are enabled.
             self._assert_async_requests(dfg, sid, dest_sid)
-
-            data[full_id] = {}
             for attr in attr_names:
-                try:
-                    data[full_id][attr] = cache_slice[sid][eid][attr]
-                except KeyError:
-                    missing[sid][eid].append(attr)
+                requests[sid][eid].append(attr)
 
-        # Query simulator for data not in the cache
-        for sid, attrs in missing.items():
+        # Query simulator for data
+        for sid, attrs in requests.items():
             dep = self.world.sims[sid]
             assert (dep.progress >= sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)

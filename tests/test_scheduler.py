@@ -199,30 +199,12 @@ def test_get_input_data(world):
     Simple test for get_input_data().
     """
     world.sims[2].next_step = 0
-    world._df_cache = {0: {
-        0: {'1': {'x': 0, 'y': 1}},
-        1: {'2': {'x': 2, 'z': 4}},
-    }}
+    world.sims[2].timed_input_buffer.add(0, 0, '1', '0', 'in', 0)
+    world.sims[2].timed_input_buffer.add(0, 1, '2', '0', 'in', 4)
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
-    world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
-    world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
     data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {'in': {'0.1': 0, '1.2': 4, '3': 5},
                           'spam': {'3': 'eggs'}}}
-
-
-@pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_get_input_data_shifted(world):
-    """
-    Getting input data transmitted via a shifted connection.
-    """
-    world.sims[4].next_step = 0
-    world._df_cache = {-1: {
-        5: {'1': {'z': 7}}
-    }}
-    world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
-    data = scheduler.get_input_data(world, world.sims[4])
-    assert data == {'0': {'in': {'5.1': 7}}}
 
 
 @pytest.mark.parametrize('world,next_steps,next_step_s1,expected',
@@ -256,32 +238,6 @@ def test_step(world):
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
     assert (sim.last_step, sim.progress_tmp) == (0, 0)
-
-
-# TODO: Test also for output_time if 'time' is indicated by event-based sims
-@pytest.mark.parametrize('world, cache_t1',
-                         [('time-based', True),
-                          ('event-based', False)], indirect=['world'])
-def test_get_outputs(world, cache_t1):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_outattr[0][0] = ['x', 'y']
-    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
-    sim = world.sims[0]
-    sim.last_step, sim.progress_tmp = 0, 1
-    sim.output_time = -1
-
-    gen = scheduler.get_outputs(world, sim)
-    evt = next(gen)
-    pytest.raises(StopIteration, gen.send, evt.value)
-    assert evt.triggered
-
-    expected_cache = {0: {0: {'0': {'x': 0, 'y': 1}}, 'spam': 'eggs'}}
-    if cache_t1:
-        expected_cache[1] = {0: {'0': {'x': 0, 'y': 1}}}
-
-    assert world._df_cache == expected_cache
-
-    assert sim.output_time == 0
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
@@ -377,21 +333,7 @@ def test_notify_dependencies_trigger(world):
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_prune_dataflow_cache(world):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_cache[1] = {'foo': 'bar'}
-    for s in world.sims.values():
-        s.last_step = 1
-    scheduler.prune_dataflow_cache(world)
-
-    assert world._df_cache == {
-        1: {'foo': 'bar'},
-    }
-
-
-@pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_get_outputs_shifted(world):
-    world._df_cache[1] = {'spam': 'eggs'}
     world._df_outattr[5][0] = ['x', 'y']
     wait_event = world.env.event()
     world.df_graph[5][4]['wait_event'] = wait_event
@@ -405,13 +347,9 @@ def test_get_outputs_shifted(world):
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     scheduler.notify_dependencies(world, sim)
-    scheduler.prune_dataflow_cache(world)
     assert evt.triggered
     assert wait_event.triggered
     assert 'wait_event' not in world.df_graph[5][4]
-    assert world._df_cache == {
-        1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
-    }
 
 
 def test_get_progress():

@@ -58,7 +58,7 @@ class World(object):
     """
 
     def __init__(self, sim_config, mosaik_config=None, time_resolution=1.,
-                 debug=False, cache=True, max_loop_iterations=100):
+                 debug=False, max_loop_iterations=100):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -110,14 +110,8 @@ class World(object):
         # List of outputs for each simulator and model:
         # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
         self._df_outattr = defaultdict(lambda: defaultdict(list))
-        if cache:
-            self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
-            # Cache for simulation results
-            self._df_cache = defaultdict(dict)
-            self._df_cache_min_time = 0
-        else:
-            self.persistent_outattrs = {}
-            self._df_cache = None
+
+        self.persistent_outattrs = {}
 
     def start(self, sim_name, **sim_params):
         """
@@ -190,13 +184,9 @@ class World(object):
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        if self._df_cache is not None:
-            trigger, cached, time_buffered, memorized, persistent = \
-                self._classify_connections_with_cache(src, dest, attr_pairs)
-        else:
-            trigger, time_buffered, memorized, persistent = \
-                self._classify_connections_without_cache(src, dest, attr_pairs)
-            cached = []
+        trigger, time_buffered, memorized, persistent = \
+            self._classify_connections(src, dest, attr_pairs)
+
 
         if time_shifted:
             if type(initial_data) is not dict or initial_data == {}:
@@ -210,11 +200,6 @@ class World(object):
                     raise ScenarioError('Incorrect attr "%s" in "initial_data".'
                                         % attr)
 
-                if self._df_cache is not None:
-                    self._df_cache[-1].setdefault(src.sid, {})
-                    self._df_cache[-1][src.sid].setdefault(src.eid, {})
-                    self._df_cache[-1][src.sid][src.eid][attr] = val
-
         pred_waiting = async_requests
 
         self.df_graph.add_edge(src.sid, dest.sid,
@@ -226,11 +211,6 @@ class World(object):
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, attr_pairs))
-
-        cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
-            'cached_connections', [])
-        if cached:
-            cached_connections.append((src.eid, dest.eid, cached))
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
@@ -517,45 +497,11 @@ class World(object):
                     attr_errors.append((entities[i], attr))
         return attr_errors
 
-    def _classify_connections_with_cache(self, src, dest, attr_pairs):
+    def _classify_connections(self, src, dest, attr_pairs):
         """
-        Classifies the connection by analyzing the model's meta data with
-        enabled cache, i.e. if it triggers a step of the destination, how the
-        data is cached, and if it's persistent and need's to be saved in the
-         input_memory.
-        """
-        entities = [src, dest]
-        emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1]['any_inputs']]
-        any_trigger = False
-        cached = []
-        time_buffered = []
-        memorized = []
-        persistent = []
-
-        for attr_pair in attr_pairs:
-            trigger = (attr_pair[1] in emeta[1]['trigger'] or (
-                any_inputs[1] and dest.sim.meta['type'] == 'event-based'))
-            if trigger:
-                any_trigger = True
-
-            is_persistent = attr_pair[0] in emeta[0]['persistent']
-            if is_persistent:
-                persistent.append(attr_pair)
-            if src.sim.meta['type'] != 'time-based':
-                time_buffered.append(attr_pair)
-                if is_persistent:
-                    memorized.append(attr_pair)
-            else:
-                cached.append(attr_pair)
-        return (any_trigger, tuple(cached), tuple(time_buffered),
-                tuple(memorized), tuple(persistent))
-
-    def _classify_connections_without_cache(self, src, dest, attr_pairs):
-        """
-        Classifies the connection by analyzing the model's meta data with
-        disabled cache, i.e. if it triggers a step of the destination, if the
-        attributes are persistent and need to be saved in the input_memory.
+        Classifies the connection by analyzing the model's meta data,
+        i.e. if it triggers a step of the destination, if the attributes are
+         persistent and need to be saved in the input_memory.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]

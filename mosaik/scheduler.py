@@ -91,8 +91,6 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
             rt_check(rt_factor, rt_start, rt_strict, sim)
             yield from get_outputs(world, sim)
             notify_dependencies(world, sim)
-            if world._df_cache:
-                prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
                 print('Progress: %.2f%%' % world.sim_progress, end='\r')
@@ -307,20 +305,6 @@ def get_input_data(world, sim):
     recursive_union(input_data, input_memory)
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_step)
 
-    if world._df_cache is not None:
-        for src_sid, (_, edge) in sim.predecessors.items():
-            t = sim.next_step - edge['time_shifted']
-            cache_slice = world._df_cache[t]
-            dataflows = edge['cached_connections']
-            for src_eid, dest_eid, attrs in dataflows:
-                for src_attr, dest_attr in attrs:
-                    v = cache_slice.get(src_sid, {}).get(src_eid, {})\
-                        .get(src_attr, SENTINEL)
-                    if v is not SENTINEL:
-                        vals = input_data.setdefault(dest_eid, {}) \
-                            .setdefault(dest_attr, {})
-                        vals[FULL_ID % (src_sid, src_eid)] = v
-
     recursive_update(input_memory, input_data)
 
     return input_data
@@ -441,32 +425,20 @@ def get_outputs(world, sim):
     if outattr:
         data = yield sim.proxy.get_data(outattr)
 
-        if sim.meta['type'] == 'time-based' and world._df_cache is not None:
-            # Create a cache entry for every point in time the data is valid
-            # for.
-            for i in range(sim.last_step, sim.progress_tmp + 1):
-                world._df_cache[i][sim.sid] = data
-            sim.output_time = sim.last_step
-        else:
-            output_time = sim.output_time = data.get('time', sim.last_step)
-            if sim.last_step > output_time:
-                raise SimulationError(
-                    'Output time (%s) is not >= time (%s) for simulator "%s"'
-                    % (output_time, sim.last_step, sim.sid))
+        output_time = sim.output_time = data.get('time', sim.last_step)
+        if sim.last_step > output_time:
+            raise SimulationError(
+                'Output time (%s) is not >= time (%s) for simulator "%s"'
+                % (output_time, sim.last_step, sim.sid))
 
-            treat_cycling_output(world, sim, data, output_time)
+        treat_cycling_output(world, sim, data, output_time)
 
-            if world._df_cache is not None:
-                world._df_cache[sim.last_step][sim.sid] = data
-                # TODO: Is it a problem if persistent data are also written?
-                world._df_cache[output_time][sim.sid] = data
-
-            for (src_eid, src_attr), destinations in sim.buffered_output.items():
-                for dest_sid, dest_eid, dest_attr in destinations:
-                    val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                    if val is not SENTINEL:
-                        world.sims[dest_sid].timed_input_buffer.add(
-                            output_time, sid, src_eid, dest_eid, dest_attr, val)
+        for (src_eid, src_attr), destinations in sim.buffered_output.items():
+            for dest_sid, dest_eid, dest_attr in destinations:
+                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
+                if val is not SENTINEL:
+                    world.sims[dest_sid].timed_input_buffer.add(
+                        output_time, sid, src_eid, dest_eid, dest_attr, val)
         sim.data = data
 
 
@@ -535,19 +507,6 @@ def notify_dependencies(world, sim):
         elif 'wait_lazy' in edge:
             if pre_sim.next_step is None or pre_sim.next_step <= progress + 1:
                 edge.pop('wait_lazy').succeed()
-
-
-def prune_dataflow_cache(world):
-    """
-    Prunes the dataflow cache.
-    """
-    min_cache_time = min(s.last_step for s in world.sims.values())
-    for i in range(world._df_cache_min_time, min_cache_time):
-        try:
-            del world._df_cache[i]
-        except KeyError:
-            pass
-    world._df_cache_min_time = min_cache_time
 
 
 def get_progress(sims, until):

@@ -455,8 +455,8 @@ def _rpc_get_data(mosaik, world):
     Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
     RPC.
     """
-    data = yield mosaik.get_data({'X.2': ['attr']})
-    assert data == {'X.2': {'attr': 'val'}}
+    data = yield mosaik.get_data({'W.2': ['attr']})
+    assert data == {'W.2': {'attr': 'val'}}
 
 
 def _rpc_set_data(mosaik, world):
@@ -537,6 +537,7 @@ def test_mosaik_remote(rpc, err):
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
         edges = [('X.%s' % x, 'X.%s' % y) for x, y in edges]
+        world.df_graph.add_edge('W', 'X', async_requests=True)
         world.df_graph.add_edge('X', 'X', async_requests=True)
         world.df_graph.add_edge('Y', 'X', async_requests=False)
         world.df_graph.add_node('Z')
@@ -544,11 +545,6 @@ def test_mosaik_remote(rpc, err):
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim='ExampleSim', type='A')
         world.sim_progress = 23
-        world._df_cache = {
-            1: {
-                'X': {'2': {'attr': 'val'}},
-            },
-        }
 
         def simulator():
             sock = backend.TCPSocket.connection(env, ('localhost', 5555))
@@ -560,6 +556,16 @@ def test_mosaik_remote(rpc, err):
             finally:
                 sock.close()
 
+        class DummyProxy():
+            def get_data(self, request):
+                data = {'2': {'attr': 'val'}}
+                return world.env.timeout(0, value=data)
+
+        class DummySimProxy():
+            proxy = DummyProxy()
+            last_step = 1
+            progress = 1
+
         def greeter():
             sock = yield world.srv_sock.accept()
             rpc_con = JSON_RPC(Packet(sock))
@@ -567,6 +573,7 @@ def test_mosaik_remote(rpc, err):
                                              rpc_con, world)
             proxy.last_step = proxy.next_step = 1
             world.sims['X'] = proxy
+            world.sims['W'] = DummySimProxy()
 
         env.process(greeter())
         if err is None:

@@ -99,7 +99,6 @@ def test_world_connect(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': connections,
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -192,7 +191,6 @@ def test_world_connect_no_attrs(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
-                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -224,7 +222,6 @@ def test_world_connect_any_inputs(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': connections,
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -252,7 +249,6 @@ def test_world_connect_async_requests(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': [(a.eid, b.eid, ())],
-                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -274,20 +270,9 @@ def test_world_connect_time_shifted(world):
                 'weak': False,
                 'trigger': False,
                 'dataflows': connections,
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
-    }
-
-    assert world._df_cache == {
-        -1: {
-            'ExampleSim-0': {
-                a.eid: {
-                    'val_out': 1.0
-                },
-            },
-        },
     }
 
 
