@@ -108,14 +108,14 @@ class TestSim(mosaik_api.Simulator):
         if self.event_setter_wait:
             self.event_setter_wait.succeed()
 
-    def event_setter(self, env, message):
+    def event_setter(self, env):
         last_time = 0
         wait_event = env.event()
         self.event_setter_wait = wait_event
         yield wait_event
         for real_time, event_time in self.events.items():
             yield env.timeout(real_time - last_time)
-            yield message.send(["set_event", [event_time], {}])
+            yield self.mosaik.set_event(event_time)
             last_time = real_time
 
 
