@@ -146,6 +146,7 @@ Executing the scenario script will then give us the following output:
 .. literalinclude:: code/demo_1.out
    :lines: 1-9,30-
 
+The progress of the simulation is also printed as we run the simulation. This is because the :meth:`World.run()` method has another argument, print_progress, that has a boolean flag set to True by default, which prints the progress of our simulation whenever we run it. If we do not want the progress to be printed, we can set the print_progress flag to False in the :meth:`World.run(until=END,print_progress=False)` method.  
 
 Summary
 =======
