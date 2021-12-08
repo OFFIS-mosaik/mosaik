@@ -16,8 +16,7 @@ a common context in order to perform a coordinated simulation of a given (Smart
 Grid) scenario.
 
 That means that all simulators (or other tools and hardware-in-the-loop)
-involved in a simulation usually run in their own process with their own event
-loop. Mosaik just tries to synchronize these processes and manages the exchange
+involved in a simulation usually run in their own process. Mosaik just tries to synchronize these processes and manages the exchange
 of data between them.
 
 To allow this, mosaik
