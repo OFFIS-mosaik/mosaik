@@ -15,6 +15,13 @@ In the second part, we'll also integrate a simple control mechanism into
 mosaik. We'll then create a scenario in which that control mechanism controls
 the example simulator from part one.
 
+In the third part, we'll implement an additional master controller, which communicates
+with the other controllers. This communication takes place as same-time loop without
+progress in simulation time and illustrated this new mosaik 3.0 feature.
+It can be used for negotiation between multiple agents or controllers, like shown
+in the tutorial at hand, but also for initialization of simulations consisting of
+multiple phsycial systems.
+
 The **Odysseus tutorial** you'll learn how to connect the data-stream-management-tool
 Odysseus to mosaik. The second part shows some examples on how to use Odysseus. 
 This tutorial may also be of some use when you want to connect any other component
@@ -33,6 +40,7 @@ Basic tutorial
    demo1
    examplectrl
    demo2
+   sametimeloops
 
 Odysseus tutorial
 

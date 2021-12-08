@@ -297,12 +297,13 @@ Same-time (algebraic) loops
 
 Loops which are closed by a weak connection can be run multiple times within
 the same mosaik time step, as weak connections do not necessarily imply a
-temporal. This can be used for example to only advance the simulation time
+temporal progress. This can be used for example to only advance the simulation time
 when the state has converged to a stable solution. To activate (and also stay
 in) a same-time cycle, a simulator has to provide its 'cyclic' attribute(s) via
 the :ref:`api.get_data` function and indicating as output time the current
-step time. To omit the cycle the attribute(s) in the get_data's return
-dictionary or indicating a time later than the step's time.
+step time. To escape the cycle, the attribute(s) in the get_data's return
+dictionary have to be omitted or a time later than the step's time indicated.
+An example scenario for this is shown in a :doc:`tutorial</tutorials/sametimeloops>`.
 
 .. figure:: /_static/scheduler-event-based-2.*
    :width: 300

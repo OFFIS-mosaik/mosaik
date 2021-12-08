@@ -3,7 +3,7 @@
 Integrating a control mechanism
 ===============================
 
-The scenario that we're going to create in this last part of the tutorial will
+The scenario that we're going to create in this part of the tutorial will
 be similar to the one we created before but incorporate the control mechanism
 that we just created.
 

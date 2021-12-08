@@ -137,7 +137,7 @@ back the attributes that are actually needed by (connected to) other
 simulators:
 
 .. literalinclude:: code/controller.py
-   :lines: 60-72
+   :lines: 60-69
 
 
 
