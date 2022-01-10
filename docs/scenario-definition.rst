@@ -106,6 +106,14 @@ time step for :ref:`same-time loops <same-time_loops>`. It's default value is 10
 
    >>> world = mosaik.World(sim_config, max_loop_iterations=100)
 
+You can also set the *lazy_stepping* flag (default: ``True``). If
+``True``, a simulator can only run ahead one step of its successors. If
+``False``, a simulator always steps as long as all inputs are provided. This
+might decrease the simulation time but increase the memory consumption.
+
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, lazy_stepping=False)
 
 Starting simulators
 ===================
