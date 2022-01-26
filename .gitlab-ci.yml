@@ -96,6 +96,15 @@ Job_unit_tests_python38:
       -   tox -e py38
     except:
       - tags 
+
+Job_unit_tests_multi:  
+    <<: *only-default
+    image: fkrull/multi-python
+    stage: unit_tests
+    script:
+      -   tox
+    except:
+      - tags 
     
 Linting_flake8:
     <<: *only-default
