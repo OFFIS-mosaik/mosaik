@@ -172,8 +172,8 @@ run_docker_production:
 pypi:
   stage: release
   variables:
-    TWINE_USERNAME: $PYPI_USER
-    TWINE_PASSWORD: $PYPI_PASSWORDD
+    TWINE_USERNAME: $MOSAIK_PYPI_USER
+    TWINE_PASSWORD: $MOSAIK_PYPI_PASSWORD
   before_script:
       - echo 'version name is = '
       - echo ${CI_COMMIT_TAG}
@@ -190,7 +190,7 @@ pypi:
       - python setup.py sdist bdist_wheel
       - twine check dist/*
       - echo $PYPI_USER
-      - twine upload --repository-url https://upload.pypi.org/legacy/ --username $PYPI_USER --password $PYPI_PASSWORDD dist/*
+      - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
   only:
      - tags
   except:

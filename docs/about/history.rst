@@ -6,6 +6,12 @@ Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
 
+3.0.1 - 2022-05-02
+------------------
+
+- [CHANGE] Set external events via highlevel function call
+- [FIX] Allow PATCH version to be included in the mosaik-api version format
+
 3.0.0 - 2021-06-07
 ------------------
 

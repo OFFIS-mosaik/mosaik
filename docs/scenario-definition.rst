@@ -60,10 +60,14 @@ running processes. The :doc:`simulator manager docs<simmanager>` explain how
 this all works and give you some hints when to use which method of starting
 a simulator.
 
-In addition to the *sim config* you can optionally pass another dictionary to
+In addition to the *sim config* you can optionally pass the *mosaik_config* dictionary to
 :class:`World` in order to overwrite some general parameters for mosaik (e.g.,
 the host and port number for its network socket or timeouts).  Usually, the
 defaults work just well.
+
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, mosaik_config={'addr': ('127.0.0.1', 5555), 'start_timeout': 10, 'stop_timeout': 10,})
 
 .. _time_resolution:
 
@@ -71,11 +75,19 @@ Via the *time_resolution* parameter you can set a global time resolution for
 the scenario, which will be passed to each simulator as keyword argument via
 the init function (see :ref:`API init <api.init>`). It tells each simulator how to
 translate mosaik's integer time to simulated time (in seconds from simulation
-start). It has to be a float and it defaults to *1.*.
+start). It has to be a float and it defaults to ``1.``.
+
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, time_resolution=1.)
 
 If you set the *debug* flag to ``True`` an execution graph will be created
 during the simulation. This may be useful for debugging and testing. Note,
 that this increases the memory consumption and simulation time.
+
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, debug=False)
 
 There are two more technical parameters: You can set the *cache* flag to False
 if the average step size of the simulators is orders of magnitudes larger than
@@ -83,9 +95,25 @@ the time resolution, i.e. a time resolution of microseconds where the typical
 step size is in the seconds range. This will considerably reduce the
 simulation time.
 
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, cache=True)
+
 Via *max_loop_iterations* you can limit the maximum iteration count within one
 time step for :ref:`same-time loops <same-time_loops>`. It's default value is 100.
 
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, max_loop_iterations=100)
+
+You can also set the *lazy_stepping* flag (default: ``True``). If
+``True``, a simulator can only run ahead one step of its successors. If
+``False``, a simulator always steps as long as all inputs are provided. This
+might decrease the simulation time but increase the memory consumption.
+
+.. code-block:: python
+
+   >>> world = mosaik.World(sim_config, lazy_stepping=False)
 
 Starting simulators
 ===================
@@ -224,6 +252,13 @@ finally run our simulation:
 This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
 detail what happens when you call ``run()``.
+
+The progress of the simulation is also printed as we run the simulation.
+This is because the :meth:`World.run()` method has another argument, *print_progress*,
+that has a boolean flag set to True by default, which prints the progress of our
+simulation whenever we run it. If we do not want the progress to be printed, we can
+set the *print_progress* flag to False in the ``World.run(until=END, print_progress=False)``
+method.
 
 To wrap it all up, this is how our small example scenario finally looks like:
 
