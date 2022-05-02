@@ -239,7 +239,7 @@ run_docker_tag:
 mosaik-demo:
    stage: Trigger-cross-projects
    trigger: 
-    project: mosaik/mosaik-demo
+    project: mosaik/examples/mosaik-demo
     branch: master  
    only:
     refs:
