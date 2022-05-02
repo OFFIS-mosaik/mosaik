@@ -4,7 +4,7 @@ coverage==5.1
 decorator==4.3.0
 flake8==3.7.9
 mccabe==0.6.1
-mosaik-api==3.0.0
+mosaik-api==3.0.1
 networkx==2.5
 pep8==1.7.1
 pkginfo==1.5.0.1
