@@ -25,7 +25,7 @@ Two of the most important parameters that you need in almost every simulation
 are the *simulator configuration* and the *duration* of your simulation:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 6-16
+   :lines: 6-15
 
 The *sim config* specifies which simulators are available and how to start
 them. In the example above, we list our *ExampleSim* as well as *Collector* (the
@@ -65,7 +65,7 @@ which entities exist and how they are connected. It also provides most of the
 functionality that you need for modelling your scenario:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 2,4,18-19
+   :lines: 2-3,17-18
 
 
 The scenario
@@ -78,7 +78,7 @@ parameters which will be passed to the simulators ``init()`` method. So lets
 start the example simulator and the data collector:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 21-23
+   :lines: 20-22
 
 We also set the *eid_prefix* for our example simulator. What gets returned by
 :meth:`World.start()` is called a *model factory*.
@@ -90,7 +90,7 @@ were classes within the factory's namespace. So this is how we can create one
 instance of our example model and one 'Monitor' instance:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 25-27
+   :lines: 24-26
 
 The *init_val* parameter that we passed to ``ExampleModel`` is the same as in
 the ``create()`` method of our Sim API implementation.
@@ -99,7 +99,7 @@ Now, we need to connect the example model to the monitor. That's how we tell
 mosaik to send the outputs of the example model to the monitor.
 
 .. literalinclude:: code/demo_1.py
-   :lines: 29-30
+   :lines: 28-29
 
 The method :meth:`World.connect()` takes one entity pair – the source and the
 destination entity, as well as a list of attributes or attribute tuples. If you
@@ -114,7 +114,7 @@ some utility functions for connecting sets of entities with each other. So lets
 create two more entities and connect them to our monitor:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 3-4,32-34
+   :lines: 2-3,31-33
 
 Instead of instantiating the example model directly, we called its static
 method ``create()`` and passed the number of instances to it. It returns a list
@@ -137,7 +137,7 @@ In order to start the simulation, we call :meth:`World.run()` and specify for
 how long we want our simulation to run:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 36-37
+   :lines: 35-36
 
 .. _demo1_output:
 
