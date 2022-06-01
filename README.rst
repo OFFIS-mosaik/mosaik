@@ -44,7 +44,7 @@ A simple demo scenario with mosaik::
 Installation
 ------------
 
-Mosaik requires Python >= 3.4. Use `pip`__ to install it, preferably into
+Mosaik requires Python >= 3.8. Use `pip`__ to install it, preferably into
 a `virtualenv`__::
 
     $ pip install mosaik
