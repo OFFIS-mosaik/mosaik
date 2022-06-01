@@ -5,7 +5,7 @@ image: python:3.9
   - venv/
   
 variables:
-  MyDocker_Container: "mycontainer"
+  DOCKER_CONTAINER: "mycontainer"
   TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
   RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
   VERSION_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
@@ -73,13 +73,7 @@ build_docker_preproduction:
     - docker build --pull -t $TEST_IMAGE .
     - docker push $TEST_IMAGE
    only:
-    refs:
-     - merge_requests
      - develop
-     - /^release_\w+/
-     - /^hotfix_\w+/
-   except:
-     - master
  
 run_docker_preproduction:
    image: docker:latest
@@ -91,18 +85,12 @@ run_docker_preproduction:
    script:
     - docker pull $TEST_IMAGE
     - docker tag $TEST_IMAGE myimage
-    - docker run --name 'mycontainer' myimage
-    - docker stop 'mycontainer'
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
-     - merge_requests
      - develop
-     - /^release_\w+/
-     - /^hotfix_\w+/
-   except:
-     - master
      
 build_docker_production:
    image: docker:latest
@@ -117,11 +105,7 @@ build_docker_production:
     - docker build --pull -t $RELEASE_IMAGE .
     - docker push $RELEASE_IMAGE
    only:
-    refs:
-     - merge_requests
      - master
-   except:
-     - develop
    
 run_docker_production:
    image: docker:latest
@@ -133,16 +117,12 @@ run_docker_production:
    script:
     - docker pull $RELEASE_IMAGE
     - docker tag $RELEASE_IMAGE myimage
-    - docker run --name 'mycontainer' myimage
-    - docker stop 'mycontainer'
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
-     - merge_requests
      - master
-   except:
-     - develop
    
 pypi:
   stage: release
@@ -168,11 +148,6 @@ pypi:
       - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
   only:
      - tags
-  except:
-    - develop
-    - /^feature_\w+/
-    - /^release_\w+/
-    - /^hotfix_\w+/
   
 build_docker_tag:
    image: docker:latest
@@ -187,7 +162,6 @@ build_docker_tag:
     - docker build --pull -t $VERSION_IMAGE .
     - docker push $VERSION_IMAGE
    only:
-    refs:
      - tags
  
 run_docker_tag:
@@ -200,12 +174,11 @@ run_docker_tag:
    script:
     - docker pull $VERSION_IMAGE
     - docker tag $VERSION_IMAGE myimage
-    - docker run --name $MyDocker_Container myimage
-    - docker stop $MyDocker_Container
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
      - tags
      
 mosaik-demo:
@@ -214,5 +187,4 @@ mosaik-demo:
     project: mosaik/examples/mosaik-demo
     branch: master  
    only:
-    refs:
      - tags
