@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-find_version='3.0.1'
+find_version='3.0.2'
 if os.environ.get('CI_COMMIT_TAG'):
     find_version = os.environ['CI_COMMIT_TAG']
 
@@ -39,9 +39,10 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
