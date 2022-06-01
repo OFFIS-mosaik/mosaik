@@ -27,7 +27,7 @@ The results of this control function will be returned to the controllers as 'del
 The :meth:`__init__` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
 
 .. literalinclude:: code/controller_master.py
-   :lines: 22-27
+   :lines: 21-27
 
 The :meth:`step()` is changed, so that first the current time is updated in the ``self.time`` variable.
 Also the control function is changed.
@@ -37,7 +37,7 @@ The control function of the master controller limits the sum of all deltas to be
 If these limits are exceeded the delta of all controllers will be overwritten by the master controller with ``0`` and sent to the other controller as 'delta_out'.
 
 .. literalinclude:: code/controller_master.py
-   :lines: 38-52
+   :lines: 39-52
 
 Additionally, two small changes in the :meth:`get_data` method were done.
 First, the name was updated to 'delta_out' in the check for the correct attribute name.

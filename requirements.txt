@@ -4,7 +4,6 @@ coverage==5.1
 decorator==4.3.0
 flake8==3.7.9
 mccabe==0.6.1
-mosaik-api==3.0.1
 networkx==2.5
 pep8==1.7.1
 pkginfo==1.5.0.1
@@ -18,7 +17,8 @@ pytz==2020.1
 requests==2.23.0
 requests-toolbelt==0.9.1
 simpy==3.0.13
-simpy.io==0.2.3
+mosaik-simpy-io>=0.2.4
+mosaik-api==3.0.2
 six==1.14.0
 tox==3.20.1
 twine==3.1.1

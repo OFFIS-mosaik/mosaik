@@ -87,7 +87,7 @@ be used in the following way:
 .. code-block:: python
 
    # Model name and "params" are used for constructing instances:
-   model = ExampleModel(init_val=42)
+   model = example_model.Model(init_val=42)
    # "attrs" are normal attributes:
    print(model.val)
    print(model.delta)
@@ -101,7 +101,7 @@ The package ``mosaik_api`` defines a base class ``Simulator`` for which we now
 need to write a sub-class:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 23-27
+   :lines: 23-28
 
 In our simulator's ``__init__()`` method (the constructor) we need to call
 ``Simulator.__init__()`` and pass the meta data dictionary to it.
@@ -124,7 +124,7 @@ that you pass to a simulator in your scenario definition). It must return the
 meta data dictionary ``self.meta``:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 29-35
+   :lines: 30-36
 
 The first argument is the ID that mosaik gave to that simulator instance. The
 second argument is the :ref:`time resolution <time_resolution>` of the
@@ -145,7 +145,7 @@ instances *(entities)* within that simulator. It must return a list with some
 information about each entity created:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 37-47
+   :lines: 38-48
 
 The first two parameters tell mosaik how many instances of which model you
 want to create. As in ``init()``, you can specify additional parameters for
@@ -178,7 +178,7 @@ simulators a next (self-)step is optional. If there is no next self-step, the
 return value is None/null.
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 49-60
+   :lines: 51-63
 
 .. _inputs:
 
@@ -238,7 +238,7 @@ The ``get_data()`` call allows other simulators to get the values of the
 the simulator meta data):
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 62-72
+   :lines: 65-78
 
 .. _outputs:
 
@@ -289,7 +289,7 @@ a socket, connects to mosaik and listens for requests from it. You just call it
 in your ``main()`` and pass an instance of your simulator class to it:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 77-82
+   :lines: 81-86
 
 Simulators running on different nodes than the mosaik instance are supported
 explicitly with the mosaik Python-API v2.4 upward via the **remote** flag. A simulator

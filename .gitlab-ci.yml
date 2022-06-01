@@ -1,40 +1,24 @@
-image: python:3.7
-
+image: python:3.9
 
 .cache:
  paths:
   - venv/
   
 variables:
-  MyDocker_Container: "mycontainer"
+  DOCKER_CONTAINER: "mycontainer"
   TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
   RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
   VERSION_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
 
-
 stages:
-#- ver
  - install_dependencies
  - unit_tests
  - build_docker
  - run_docker
  - release
- - Trigger-cross-projects
+ - Trigger-cross-projects 
 
-
-.only-default: &only-default
-  only:
-    - master
-    - merge_requests
-    - tags
-    - develop
-    - /^feature_\w+/
-    - /^release_\w+/
-    - /^hotfix_\w+/
-    
-
-Job_install_dependencies:  
-    <<: *only-default
+Job_install_dependencies:
     stage: install_dependencies
     before_script:
       - python -V
@@ -56,12 +40,10 @@ Job_install_dependencies:
       - dist/
       - build/
      expire_in: 60 minutes
-     
     except:
         - tags
 
 Job_unit_tests:
-    <<: *only-default
     image: fkrull/multi-python
     stage: unit_tests
     script:
@@ -70,7 +52,6 @@ Job_unit_tests:
       - tags 
     
 Linting_flake8:
-    <<: *only-default
     allow_failure: true
     stage: unit_tests
     before_script:
@@ -92,40 +73,24 @@ build_docker_preproduction:
     - docker build --pull -t $TEST_IMAGE .
     - docker push $TEST_IMAGE
    only:
-    refs:
-     - merge_requests
      - develop
-     - /^release_\w+/
-     - /^hotfix_\w+/
-   except:
-     - master
-   
-  
  
 run_docker_preproduction:
-  #image: docker:git
    image: docker:latest
    stage: run_docker
    services:
     - docker:dind
- 
    before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
    script:
     - docker pull $TEST_IMAGE
     - docker tag $TEST_IMAGE myimage
-    - docker run --name 'mycontainer' myimage
-    - docker stop 'mycontainer'
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
-     - merge_requests
      - develop
-     - /^release_\w+/
-     - /^hotfix_\w+/
-   except:
-     - master
      
 build_docker_production:
    image: docker:latest
@@ -136,18 +101,12 @@ build_docker_production:
     - docker --version
     - docker info
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
- 
    script:
     - docker build --pull -t $RELEASE_IMAGE .
     - docker push $RELEASE_IMAGE
    only:
-    refs:
-     - merge_requests
      - master
-   except:
-     - develop
    
- 
 run_docker_production:
    image: docker:latest
    stage: run_docker
@@ -158,16 +117,12 @@ run_docker_production:
    script:
     - docker pull $RELEASE_IMAGE
     - docker tag $RELEASE_IMAGE myimage
-    - docker run --name 'mycontainer' myimage
-    - docker stop 'mycontainer'
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
-     - merge_requests
      - master
-   except:
-     - develop
    
 pypi:
   stage: release
@@ -182,7 +137,7 @@ pypi:
       - pip install -U twine wheel setuptools
       - rm -rf dist
       - rm -rf build
-      - python setup.py check sdist bdist  # This will fail if your creds are bad.
+      - python setup.py check sdist bdist  # This will fail if your credentials are wrong.
       - ls
       - rm -rf dist
       - rm -rf build
@@ -193,11 +148,6 @@ pypi:
       - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
   only:
      - tags
-  except:
-    - develop
-    - /^feature_\w+/
-    - /^release_\w+/
-    - /^hotfix_\w+/
   
 build_docker_tag:
    image: docker:latest
@@ -212,10 +162,7 @@ build_docker_tag:
     - docker build --pull -t $VERSION_IMAGE .
     - docker push $VERSION_IMAGE
    only:
-    refs:
      - tags
-   
-   
  
 run_docker_tag:
    image: docker:latest
@@ -227,14 +174,12 @@ run_docker_tag:
    script:
     - docker pull $VERSION_IMAGE
     - docker tag $VERSION_IMAGE myimage
-    - docker run --name $MyDocker_Container myimage
-    - docker stop $MyDocker_Container
+    - docker run --name $DOCKER_CONTAINER myimage
+    - docker stop $DOCKER_CONTAINER
    after_script:
     - docker info
    only:
-    refs:
      - tags
-     
      
 mosaik-demo:
    stage: Trigger-cross-projects
@@ -242,14 +187,4 @@ mosaik-demo:
     project: mosaik/examples/mosaik-demo
     branch: master  
    only:
-    refs:
      - tags
-
-  
-
-
-    
-
-
-   
-

@@ -6,6 +6,11 @@ Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
 
+3.0.2 - 2022-06-01
+------------------
+
+- [CHANGE] Updated mosaik-api version to 3.0.2
+
 3.0.1 - 2022-05-02
 ------------------
 
