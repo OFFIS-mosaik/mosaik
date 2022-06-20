@@ -1,3 +1,4 @@
+from heapq import heappush
 from mosaik import exceptions, scenario, scheduler, simmanager
 import pytest
 
@@ -112,14 +113,13 @@ def test_sim_process_error(monkeypatch):
 
 
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
-@pytest.mark.parametrize('progress', [0, 2])
-def test_has_next_step(world, progress, monkeypatch):
+@pytest.mark.parametrize('next_steps_empty', [True, False])
+def test_has_next_step(world, next_steps_empty, monkeypatch):
     """
     Test has_next_step without and with next_steps.
     """
     sim = world.sims[0]
-    sim.progress = progress
-    sim.next_steps = []
+    sim.next_steps = ([] if next_steps_empty else [1])
 
     def dummy_check(*args):
         pass
@@ -128,12 +128,7 @@ def test_has_next_step(world, progress, monkeypatch):
 
     gen = scheduler.has_next_step(world, sim)
     evt = next(gen)
-    assert not evt.triggered
-
-    sim.next_steps.append(1)
-    with pytest.raises(StopIteration):
-        next(gen)
-    assert sim.next_step == max(1, progress)
+    assert evt.triggered == (not next_steps_empty)
 
 
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
@@ -142,7 +137,7 @@ def test_wait_for_dependencies(world, weak, number_waiting):
     """
     Test waiting for dependencies and triggering them.
     """
-    world.sims[2].next_step = 0
+    heappush(world.sims[2].next_steps, 0)
     world.df_graph[1][2]['weak'] = weak
     evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
     assert len(evt._events) == number_waiting
@@ -154,7 +149,7 @@ def test_wait_for_dependencies_all_done(world):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    world.sims[2].next_step = 0
+    heappush(world.sims[2].next_steps, 0)
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[2], True)
@@ -170,7 +165,8 @@ def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     required.
     """
     world.sims[5].progress = progress
-    world.sims[4].next_step = 1
+    # Move this simulators first step to 1
+    world.sims[4].next_steps = [1]
     evt = scheduler.wait_for_dependencies(world, world.sims[4], False)
     assert len(evt._events) == number_waiting
     assert evt.triggered == (not bool(number_waiting))
@@ -182,7 +178,7 @@ def test_wait_for_dependencies_lazy(world, lazy_stepping):
     """
     Test waiting for dependencies and triggering them.
     """
-    world.sims[1].next_step = 1
+    world.sims[1].next_steps = [1]
     evt = scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping)
     assert len(evt._events) == (1 if lazy_stepping else 0)
     assert evt.triggered == (not lazy_stepping)
@@ -198,7 +194,7 @@ def test_get_input_data(world):
     """
     Simple test for get_input_data().
     """
-    world.sims[2].next_step = 0
+    heappush(world.sims[2].next_steps, 0)
     world._df_cache = {0: {
         0: {'1': {'x': 0, 'y': 1}},
         1: {'2': {'x': 2, 'z': 4}},
@@ -216,7 +212,7 @@ def test_get_input_data_shifted(world):
     """
     Getting input data transmitted via a shifted connection.
     """
-    world.sims[4].next_step = 0
+    heappush(world.sims[4].next_steps, 0)
     world._df_cache = {-1: {
         5: {'1': {'z': 7}}
     }}
@@ -231,12 +227,13 @@ def test_get_input_data_shifted(world):
                              ('event-based', [3], 2, 1)], indirect=['world'])
 def test_get_max_advance(world, next_steps, next_step_s1, expected):
     sim = world.sims[2]
-    sim.next_step = 1
     sim.next_steps = next_steps
+    heappush(sim.next_steps, 1)
 
     # In the event-based world, sims 0 and 1 are triggering ancestors of sim 2:
     world.sims[0].next_steps = [3]
-    world.sims[1].next_step = next_step_s1
+    if next_step_s1 is not None:
+        heappush(world.sims[1].next_steps, next_step_s1)
 
     max_advance = scheduler.get_max_advance(world, sim, until=5)
     assert max_advance == expected
@@ -248,8 +245,8 @@ def test_step(world):
     inputs = object()
     sim = world.sims[0]
     sim.meta['old-api'] = True
-    sim.next_step = 0
-    assert (sim.last_step, sim.next_step) == (-1, 0)
+    heappush(sim.next_steps, 0)
+    assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
 
     gen = scheduler.step(world, sim, inputs, 0)
     evt = next(gen)
@@ -334,7 +331,7 @@ def test_treat_cycling_output(world, count):
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-@pytest.mark.parametrize('output_time, next_steps', [(1, [2]), (2, []), (3, [3])])
+@pytest.mark.parametrize('output_time, next_steps', [(1, [1, 2]), (2, [2]), (3, [2, 3])])
 @pytest.mark.parametrize('progress, pop_wait', [(1, False), (2, True)])
 def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait):
     sim = world.sims[0]
@@ -347,7 +344,7 @@ def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait)
     sim.data = {'1': {'x': 1}}
     sim.output_time = output_time
 
-    world.sims[2].next_step = 2
+    heappush(world.sims[2].next_steps, 2)
     world.sims[2].has_next_step = world.env.event().succeed()
 
     scheduler.notify_dependencies(world, sim)
@@ -399,7 +396,7 @@ def test_get_outputs_shifted(world):
     sim.meta['type'] = 'time-based'
     sim.progress = 0
     sim.last_step, sim.progress_tmp = 1, 1
-    world.sims[4].next_step = 2
+    heappush(world.sims[4].next_steps, 2)
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)

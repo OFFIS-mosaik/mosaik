@@ -431,7 +431,6 @@ class SimProxy:
 
         # Simulation state
         self.last_step = -1
-        self.next_step = None
         if self.meta.get('type', 'time-based') != 'event-based':
             self.next_steps = [0]
         else:
@@ -658,7 +657,7 @@ class MosaikRemote:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
         sim = self.world.sims[self.sim_id]
-        assert sim.next_step == sim.last_step  # Assert simulator is in step()
+        # TODO: maybe assert that simulator is in step?
         cache_slice = (self.world._df_cache[sim.last_step]
                        if self.world._df_cache is not None else {})
 
@@ -732,13 +731,15 @@ class MosaikRemote:
                                   'non-real-time mode.' % self.sim_sid)
         if event_time < self.world.until:
             sim.progress = min(event_time - 1, sim.progress)
+            earlier_step = sim.next_steps and event_time < sim.next_steps[0]
             hq.heappush(sim.next_steps, event_time)
+
 
             if sim.has_next_step and not sim.has_next_step.triggered:
                 sim.has_next_step.succeed()
             # We interrupt the simulator if the new step is smaller than
             # next_step, unless it is already executing a step:
-            elif sim.interruptable and event_time < sim.next_step:
+            elif sim.interruptable and earlier_step:
                 sim.sim_proc.interrupt('Earlier step')
         else:
             print(f"Warning: Event set at {event_time} by {sim.sid} is after "
