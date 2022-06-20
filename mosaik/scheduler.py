@@ -267,8 +267,9 @@ def wait_for_dependencies(world, sim, lazy_stepping):
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc_sim.next_steps and suc_sim.progress + 1 < t:
+                elif (suc_sim.next_step is not None or suc_sim.next_steps) and suc_sim.progress + 1 < t:
                     evt = world.env.event()
+                    events.append(evt)
                     edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events

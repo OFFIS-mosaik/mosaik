@@ -184,8 +184,8 @@ def test_wait_for_dependencies_lazy(world, lazy_stepping):
     """
     world.sims[1].next_step = 1
     evt = scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping)
-    assert len(evt._events) == 0
-    assert evt.triggered == 1
+    assert len(evt._events) == (1 if lazy_stepping else 0)
+    assert evt.triggered == (not lazy_stepping)
     if lazy_stepping:
         assert 'wait_lazy' in world.df_graph[1][2]
         evt = scheduler.wait_for_dependencies(world, world.sims[1], True)
