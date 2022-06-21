@@ -11,7 +11,7 @@ Both have their advantages and disadvantages and therefore, the right choice dep
 We recommend to use the SimAPI version for beginners.
 
 No matter which connection we use, we first have to 
-`download <hhttp://odysseus.informatik.uni-oldenburg.de/downloads>`_ Odysseus Server and Studio Client.
+`download <http://odysseus.informatik.uni-oldenburg.de/downloads>`_ Odysseus Server and Studio Client.
 For the first start of Odysseus Studio the default user "System" and password "manager" have to be used, 
 the tenant can be left empty.
 
