@@ -326,8 +326,7 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False, print_progress=True,
-            lazy_stepping=True):
+    def run(self, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
         """
         Start the simulation until the simulation time *until* is reached.
 
@@ -377,7 +376,7 @@ class World(object):
             dbg.enable()
         try:
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
-                                            print_progress, lazy_stepping),
+                                            lazy_stepping),
                               self)
             logger.info('Simulation finished successfully.')
         except KeyboardInterrupt:

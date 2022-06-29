@@ -46,8 +46,7 @@ def test_run(monkeypatch):
     world.df_graph.add_nodes_from([0, 1])
     world.trigger_graph.add_node('dummy')
 
-    def dummy_proc(world, sim, until, rt_factor, rt_strict, print_progress,
-                   lazy_stepping):
+    def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True
         yield world.env.event().succeed()
 

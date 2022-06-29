@@ -14,8 +14,7 @@ from mosaik.simmanager import FULL_ID
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
-        lazy_stepping=True):
+def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -47,16 +46,14 @@ def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, print_progress,
-                                          lazy_stepping))
+                                          rt_strict, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
-                lazy_stepping):
+def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -95,8 +92,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
             if world._df_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
-            if print_progress:
-                logger.trace('Progress: {:.2f}%', world.sim_progress)
+            logger.trace('Progress: {:.2f}%', world.sim_progress)
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
