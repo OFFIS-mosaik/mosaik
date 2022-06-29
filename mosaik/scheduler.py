@@ -229,13 +229,13 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     events = []
-    t = sim.next_steps[0]
+    next_step = sim.next_steps[0]
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
     for pre_sim, edge in sim.predecessors.values():
         # Wait for dep_sim if it hasn't progressed until actual time step:
-        if pre_sim.progress + edge['time_shifted'] < t:
+        if pre_sim.progress + edge['time_shifted'] < next_step:
             evt = world.env.event()
             events.append(evt)
             edge['wait_event'] = evt
@@ -248,14 +248,14 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
         for suc_sim, edge in sim.successors.values():
-            if edge['pred_waiting'] and suc_sim.progress + 1 < t:
+            if edge['pred_waiting'] and suc_sim.progress + 1 < next_step:
                 evt = world.env.event()
                 events.append(evt)
                 edge['wait_async'] = evt
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc_sim.next_steps and suc_sim.progress + 1 < t:
+                elif suc_sim.next_steps and suc_sim.progress + 1 < next_step:
                     evt = world.env.event()
                     events.append(evt)
                     edge['wait_lazy'] = evt
@@ -368,17 +368,17 @@ def step(world, sim, inputs, max_advance):
     *max_advance* is the simulation time until the simulator can safely advance
     it's internal time without causing any causality errors.
     """
-    t = heappop(sim.next_steps)
-    if t < sim.progress:
+    current_step = heappop(sim.next_steps)
+    if current_step < sim.progress:
         raise SimulationError(f'Simulator {sim.id} is trying to perform a step'
-                              f'at time {t}, but it has already progressed to'
+                              f'at time {current_step}, but it has already progressed to'
                               f'time {sim.progress}.')
-    sim.last_step = t
+    sim.last_step = current_step
 
     if 'old-api' in sim.meta:
-        next_step = yield sim.proxy.step(t, inputs)
+        next_step = yield sim.proxy.step(current_step, inputs)
     else:
-        next_step = yield sim.proxy.step(t, inputs, max_advance)
+        next_step = yield sim.proxy.step(current_step, inputs, max_advance)
 
     if next_step is not None:
         if type(next_step) != int:
