@@ -446,6 +446,7 @@ class SimProxy:
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event
         self.interruptable = False
+        self.is_in_step = False
         self.trigger_cycles = []
         self.rank = None  # topological rank
 
@@ -657,7 +658,7 @@ class MosaikRemote:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
         sim = self.world.sims[self.sim_id]
-        # TODO: maybe assert that simulator is in step?
+        assert sim.is_in_step        
         cache_slice = (self.world._df_cache[sim.last_step]
                        if self.world._df_cache is not None else {})
 

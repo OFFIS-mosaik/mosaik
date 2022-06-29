@@ -369,6 +369,7 @@ def step(world, sim, inputs, max_advance):
     it's internal time without causing any causality errors.
     """
     current_step = heappop(sim.next_steps)
+    sim.is_in_step = True
     if current_step < sim.progress:
         raise SimulationError(f'Simulator {sim.id} is trying to perform a step'
                               f'at time {current_step}, but it has already progressed to'
@@ -403,6 +404,8 @@ def step(world, sim, inputs, max_advance):
             sim.progress_tmp = min(sim.next_steps[0] - 1, max_advance)
         else:
             sim.progress_tmp = max_advance
+    
+    sim.is_in_step = False
 
 
 def rt_check(rt_factor, rt_start, rt_strict, sim):
