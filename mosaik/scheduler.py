@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 """
 from heapq import heappush, heappop, heapreplace
+from loguru import logger
 import networkx as nx
 from time import perf_counter
 from simpy.exceptions import Interrupt
@@ -95,7 +96,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
             if print_progress:
-                print('Progress: %.2f%%' % world.sim_progress, end='\r')
+                logger.trace('Progress: {:.2f}%', world.sim_progress)
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
@@ -425,8 +426,9 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
                 raise RuntimeError('Simulation too slow for real-time factor '
                                    '%s' % rt_factor)
             else:
-                print('Simulation too slow for real-time factor %s - %ss '
-                      'behind time.' % (rt_factor, delta))
+                logger.warning('Simulation too slow for real-time factor '
+                               '{rt_factor} - {delta}s behind time.'
+                               , rt_factor=rt_factor, delta=delta)
 
 
 def get_outputs(world, sim):
