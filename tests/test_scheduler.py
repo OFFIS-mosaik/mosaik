@@ -105,7 +105,7 @@ def test_sim_process_error(monkeypatch):
 
     excinfo = pytest.raises(exceptions.SimulationError, next,
                             scheduler.sim_process(None, Sim(), None, 1, False,
-                                                  True, False))
+                                                  False))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 

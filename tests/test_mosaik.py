@@ -110,7 +110,7 @@ def test_rt_sim():
 
 
 @pytest.mark.parametrize('strict', [True, False])
-def test_rt_sim_too_slow(strict, capsys):
+def test_rt_sim_too_slow(strict, caplog):
     fixture = importlib.import_module('tests.fixtures.scenario_1')
     world = scenario.World(sim_config['local'])
     try:
@@ -122,7 +122,6 @@ def test_rt_sim_too_slow(strict, capsys):
                           rt_factor=factor, rt_strict=strict)
         else:
             world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
-            out, err = capsys.readouterr()
-            assert 'too slow for real-time factor' in out
+            assert 'too slow for real-time factor' in caplog.text
     finally:
         world.shutdown()

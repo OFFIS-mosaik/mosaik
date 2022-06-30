@@ -24,14 +24,14 @@ class World(object):
 
 @pytest.mark.parametrize(['error', 'errmsg'], [
     (ConnectionResetError('Spam'),
-     'ERROR: Spam\nMosaik terminating\n'),
+     'Spam'),
     (RemoteException('spam', 'eggs'),
-     'RemoteException:\neggs\n————————————————\nMosaik terminating\n'),
+     'eggs'),
     (exceptions.SimulationError('spam'),
-     'ERROR: spam\nMosaik terminating\n'),
+     'spam'),
 
 ])
-def test_sync_process_error(error, errmsg, capsys):
+def test_sync_process_error(error, errmsg, caplog):
     """
     Test sims breaking during their start.
     """
@@ -43,9 +43,7 @@ def test_sync_process_error(error, errmsg, capsys):
 
     pytest.raises(SystemExit, util.sync_process, gen(), world)
 
-    out, err = capsys.readouterr()
-    assert out == errmsg
-    assert err == ''
+    assert errmsg in caplog.text
 
 
 def test_sync_process_errback():

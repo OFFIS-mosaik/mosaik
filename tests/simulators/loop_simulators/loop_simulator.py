@@ -5,11 +5,10 @@ It more complex than it needs to be to be more flexible and show off various
 features of the mosaik API.
 
 """
-import logging
+from loguru import logger
 
 import mosaik_api
 
-logger = logging.getLogger('example_sim')
 
 example_sim_meta = {
     'type': 'hybrid',
@@ -54,7 +53,8 @@ class LoopSim(mosaik_api.Simulator):
             self.loop_count = 0
         else:
             next_step = None
-        print('LOOP STEP', time, next_step )
+        logger.info('step at {time}, next step at {next_step}', time=time, 
+                    next_step=next_step)
         return next_step
 
     def get_data(self, outputs):
@@ -62,7 +62,8 @@ class LoopSim(mosaik_api.Simulator):
             data = {}
         else:
             data = {self.eid: {'loop_out': self.loop_count}}
-        print('LOOP DATA', self.time, data)
+        logger.info('get_data at {time}, returning {data}', 
+                    time=self.time, data=data)
 
         return data
 
