@@ -244,15 +244,18 @@ This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
 detail what happens when you call ``run()``.
 
-The progress of the simulation is also printed as we run the simulation.
-This is because the :meth:`World.run()` method has another argument, *print_progress*,
-that has a boolean flag set to True by default, which prints the progress of our
-simulation whenever we run it. If we do not want the progress to be printed, we can 
-set the *print_progress* flag to False.
+While the simulation is running, the current progress is logged via loguru at
+the ``'TRACE'`` level. You can make this trace visible by setting the
+environment variable ``LOGURU_LEVEL`` to ``TRACE`` or by adding a handler at
+the ``TRACE`` level to loguru, for example like this:
 
 .. code-block:: python
 
-   >>> world.run(until=END, print_progress=False)
+   import sys
+   from loguru import logger
+
+   logger.remove()  # Remove the existing handler
+   logger.add(sys.stderr, level='TRACE')
 
 We can also set the *lazy_stepping* flag (default: ``True``). If
 ``True``, a simulator can only run ahead one step of its successors. If
