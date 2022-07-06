@@ -22,7 +22,9 @@ It can be used for negotiation between multiple agents or controllers, like show
 in the tutorial at hand, but also for initialization of simulations consisting of
 multiple phsycial systems.
 
-In the next part, we'll implement a scenario with a new controller, which sets **external events**. These external events come from a simple button click-event of a graphical user interface. Therefore, with this new mosaik 3.0 feature it is possible to do Human-in-the-Loop simulations to support human interactions.
+In the next part, we'll implement a scenario with a new controller, which sets **external events**.
+These external events come from a simple button click-event of a graphical user interface.
+Therefore, with this new mosaik 3.0 feature it is possible to do Human-in-the-Loop simulations to support human interactions.
 
 The **Odysseus tutorial** you'll learn how to connect the data-stream-management-tool
 Odysseus to mosaik. The second part shows some examples on how to use Odysseus. 
