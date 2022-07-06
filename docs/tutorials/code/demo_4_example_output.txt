@@ -1,0 +1,37 @@
+Starting "Controller" as "Controller-0" ...
+WARNING: Controller-0 has no connections.
+Starting simulation.
+In step at time 0
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 9.655498433858156e-05s behind time.
+[b'B'] b'Push button was clicked!'
+Current simulation time: 11
+Set external Event at time 12
+In step at time 12
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 0.000688756990712136s behind time.
+[b'B'] b'Push button was clicked!'
+Current simulation time: 16
+Set external Event at time 17
+In step at time 17
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 0.0013458110042847693s behind time.
+[b'B'] b'Push button was clicked!'
+Current simulation time: 26
+Set external Event at time 27
+In step at time 27
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 0.0013047059765085578s behind time.
+[b'B'] b'Push button was clicked!'
+Current simulation time: 29
+Set external Event at time 30
+In step at time 30
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 0.0019755829707719386s behind time.
+[b'B'] b'Push button was clicked!'
+Current simulation time: 33
+Set external Event at time 34
+In step at time 34
+max_advance 60
+Simulation too slow for real-time factor 1.0 - 0.0011994789820164442s behind time.
+Simulation finished successfully.
