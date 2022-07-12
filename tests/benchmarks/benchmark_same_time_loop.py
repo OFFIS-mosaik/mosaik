@@ -1,22 +1,20 @@
+#benchmark_same_time_loop.py
 import os
 import sys
 
 import mosaik
 
 from argparser import argparser
-
-sys.path.insert(0, os.getcwd())
-from tests.plotting.execution_graph_tools import plot_execution_graph_st
-
 from comparison import write_exeuction_graph, compare_execution_graph
 
+sys.path.insert(0, os.getcwd())
 
 args, world_args, run_args = argparser(until=10, sim_type='event')
 if args.plot or args.compare:
     world_args['debug'] = True
 
 SIM_CONFIG = {
-    0: {'TestSim': {'python': 'tests.simulators.generic_test_simulator:TestSim'}},
+    0: {'TestSim': {'python': 'simulators.generic_test_simulator:TestSim'}},
     1: {'TestSim': {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}}
 }
 
@@ -51,6 +49,7 @@ world.connect(b, a, ('val_out', 'val_in'), **connection_args)
 world.run(**run_args)
 
 if args.plot:
+    from plotting.execution_graph_tools import plot_execution_graph_st
     plot_execution_graph_st(world)
 
 if args.compare:

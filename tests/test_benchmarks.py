@@ -14,7 +14,7 @@ BENCHMARKS = glob.glob(os.path.join(CODE_DIR, 'benchmark*.py'))
 
 @pytest.mark.parametrize('benchmark_filename', BENCHMARKS)
 def test_benchmarks(benchmark_filename):
-	returncode = subprocess.call([sys.executable, benchmark_filename, '--compare', '1'], cwd=CODE_DIR)
+	returncode = subprocess.call([sys.executable, benchmark_filename, '--compare', '1'], cwd=os.path.dirname(os.path.abspath(__file__)))
 	if returncode == 3:
 		print(f'Execution graph of {benchmark_filename} is different than the comparison graph')
 	assert returncode == 0

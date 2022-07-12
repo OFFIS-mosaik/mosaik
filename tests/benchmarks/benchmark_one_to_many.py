@@ -1,15 +1,21 @@
+# benchmark_one_to_many.py
+import os
+import sys
+
 import mosaik
 
 from argparser import argparser
 from comparison import write_exeuction_graph, compare_execution_graph
 
+sys.path.insert(0, os.getcwd())
+
 args, world_args, run_args = argparser(N=10000, until=10)
-if args.compare:
+if args.plot or args.compare:
     world_args['debug'] = True
 
 SIM_CONFIG = {
     'TestSim': {
-        'python': 'tests.simulators.generic_test_simulator:TestSim',
+        'python': 'simulators.generic_test_simulator:TestSim',
     },
 }
 
