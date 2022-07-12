@@ -13,6 +13,7 @@ def argparser(N=10000, until=100, sim_type='time', remote=0):
     parser.add_argument('-t', '--sim-type', type=str, default=sim_type,
                         choices=['time', 't', 'event', 'e'], help="Simulator type")
     parser.add_argument('-l', '--lazy_stepping', type=int)
+    parser.add_argument('--compare', type=int, default=0, help="Compare execution graph with previously stored version")
     args = parser.parse_args()
 
     world_args = ['debug', 'cache']

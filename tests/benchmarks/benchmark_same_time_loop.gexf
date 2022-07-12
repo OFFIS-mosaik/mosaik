@@ -1,0 +1,224 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gexf version="1.2" xmlns="http://www.gexf.net/1.2draft" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd">
+  <meta lastmodifieddate="2022-06-30">
+    <creator>NetworkX 2.6.3</creator>
+  </meta>
+  <graph defaultedgetype="directed" mode="static" name="">
+    <attributes class="node" mode="static">
+      <attribute id="0" title="t" type="double" />
+      <attribute id="1" title="inputs" type="string" />
+      <attribute id="2" title="t_end" type="double" />
+    </attributes>
+    <nodes>
+      <node id="TestSim-0-0" label="TestSim-0-0">
+        <attvalues>
+          <attvalue for="0" value="34383.187264435" />
+          <attvalue for="1" value="{}" />
+          <attvalue for="2" value="34383.18730349" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-0" label="TestSim-1-0">
+        <attvalues>
+          <attvalue for="0" value="34383.187462293" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 0}}}" />
+          <attvalue for="2" value="34383.187511228" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-0~1" label="TestSim-0-0~1">
+        <attvalues>
+          <attvalue for="0" value="34383.187681925" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 0}}}" />
+          <attvalue for="2" value="34383.187732781" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-0~1" label="TestSim-1-0~1">
+        <attvalues>
+          <attvalue for="0" value="34383.187888733" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 0}}}" />
+          <attvalue for="2" value="34383.187953124" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-0~2" label="TestSim-0-0~2">
+        <attvalues>
+          <attvalue for="0" value="34383.188094754" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 0}}}" />
+          <attvalue for="2" value="34383.188151588" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-0~2" label="TestSim-1-0~2">
+        <attvalues>
+          <attvalue for="0" value="34383.188283629" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 0}}}" />
+          <attvalue for="2" value="34383.188349569" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-0~3" label="TestSim-0-0~3">
+        <attvalues>
+          <attvalue for="0" value="34383.188486822" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 0}}}" />
+          <attvalue for="2" value="34383.188552774" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-0~3" label="TestSim-1-0~3">
+        <attvalues>
+          <attvalue for="0" value="34383.188682943" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 0}}}" />
+          <attvalue for="2" value="34383.188757731" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-1" label="TestSim-0-1">
+        <attvalues>
+          <attvalue for="0" value="34383.18891065" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 0}}}" />
+          <attvalue for="2" value="34383.1889886" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-1" label="TestSim-1-1">
+        <attvalues>
+          <attvalue for="0" value="34383.189124057" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 1}}}" />
+          <attvalue for="2" value="34383.189207241" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-1~1" label="TestSim-0-1~1">
+        <attvalues>
+          <attvalue for="0" value="34383.189342023" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 1}}}" />
+          <attvalue for="2" value="34383.189423943" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-1~1" label="TestSim-1-1~1">
+        <attvalues>
+          <attvalue for="0" value="34383.189553689" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 1}}}" />
+          <attvalue for="2" value="34383.189642652" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-1~2" label="TestSim-0-1~2">
+        <attvalues>
+          <attvalue for="0" value="34383.189774928" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 1}}}" />
+          <attvalue for="2" value="34383.189920079" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-1~2" label="TestSim-1-1~2">
+        <attvalues>
+          <attvalue for="0" value="34383.190062888" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 1}}}" />
+          <attvalue for="2" value="34383.190162625" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-2" label="TestSim-0-2">
+        <attvalues>
+          <attvalue for="0" value="34383.190298645" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 1}}}" />
+          <attvalue for="2" value="34383.190398555" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-2" label="TestSim-1-2">
+        <attvalues>
+          <attvalue for="0" value="34383.190528075" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 2}}}" />
+          <attvalue for="2" value="34383.19063485" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-5" label="TestSim-0-5">
+        <attvalues>
+          <attvalue for="0" value="34383.19089052" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 2}}}" />
+          <attvalue for="2" value="34383.191078695" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-5" label="TestSim-1-5">
+        <attvalues>
+          <attvalue for="0" value="34383.191354732" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 5}}}" />
+          <attvalue for="2" value="34383.191497492" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-5~1" label="TestSim-0-5~1">
+        <attvalues>
+          <attvalue for="0" value="34383.191876348" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 5}}}" />
+          <attvalue for="2" value="34383.192021142" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-5~1" label="TestSim-1-5~1">
+        <attvalues>
+          <attvalue for="0" value="34383.192290793" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 5}}}" />
+          <attvalue for="2" value="34383.192519864" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-5~2" label="TestSim-0-5~2">
+        <attvalues>
+          <attvalue for="0" value="34383.192780402" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 5}}}" />
+          <attvalue for="2" value="34383.192906622" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-5~2" label="TestSim-1-5~2">
+        <attvalues>
+          <attvalue for="0" value="34383.193051857" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 5}}}" />
+          <attvalue for="2" value="34383.193189359" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-5~3" label="TestSim-0-5~3">
+        <attvalues>
+          <attvalue for="0" value="34383.193328194" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 5}}}" />
+          <attvalue for="2" value="34383.193461503" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-5~3" label="TestSim-1-5~3">
+        <attvalues>
+          <attvalue for="0" value="34383.193595357" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 5}}}" />
+          <attvalue for="2" value="34383.193760661" />
+        </attvalues>
+      </node>
+      <node id="TestSim-0-8" label="TestSim-0-8">
+        <attvalues>
+          <attvalue for="0" value="34383.193904625" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-1.0': 5}}}" />
+          <attvalue for="2" value="34383.194045109" />
+        </attvalues>
+      </node>
+      <node id="TestSim-1-8" label="TestSim-1-8">
+        <attvalues>
+          <attvalue for="0" value="34383.194177081" />
+          <attvalue for="1" value="{'0': {'val_in': {'TestSim-0.0': 8}}}" />
+          <attvalue for="2" value="34383.1943261" />
+        </attvalues>
+      </node>
+    </nodes>
+    <edges>
+      <edge id="0" source="TestSim-0-0" target="TestSim-1-0" />
+      <edge id="1" source="TestSim-1-0" target="TestSim-0-0~1" />
+      <edge id="2" source="TestSim-0-0~1" target="TestSim-1-0~1" />
+      <edge id="3" source="TestSim-1-0~1" target="TestSim-0-0~2" />
+      <edge id="4" source="TestSim-0-0~2" target="TestSim-1-0~2" />
+      <edge id="5" source="TestSim-1-0~2" target="TestSim-0-0~3" />
+      <edge id="6" source="TestSim-0-0~3" target="TestSim-1-0~3" />
+      <edge id="7" source="TestSim-1-0~3" target="TestSim-0-1" />
+      <edge id="8" source="TestSim-0-1" target="TestSim-1-1" />
+      <edge id="9" source="TestSim-1-1" target="TestSim-0-1~1" />
+      <edge id="10" source="TestSim-0-1~1" target="TestSim-1-1~1" />
+      <edge id="11" source="TestSim-1-1~1" target="TestSim-0-1~2" />
+      <edge id="12" source="TestSim-0-1~2" target="TestSim-1-1~2" />
+      <edge id="13" source="TestSim-1-1~2" target="TestSim-0-2" />
+      <edge id="14" source="TestSim-0-2" target="TestSim-1-2" />
+      <edge id="15" source="TestSim-1-2" target="TestSim-0-5" />
+      <edge id="16" source="TestSim-0-5" target="TestSim-1-5" />
+      <edge id="17" source="TestSim-1-5" target="TestSim-0-5~1" />
+      <edge id="18" source="TestSim-0-5~1" target="TestSim-1-5~1" />
+      <edge id="19" source="TestSim-1-5~1" target="TestSim-0-5~2" />
+      <edge id="20" source="TestSim-0-5~2" target="TestSim-1-5~2" />
+      <edge id="21" source="TestSim-1-5~2" target="TestSim-0-5~3" />
+      <edge id="22" source="TestSim-0-5~3" target="TestSim-1-5~3" />
+      <edge id="23" source="TestSim-1-5~3" target="TestSim-0-8" />
+      <edge id="24" source="TestSim-0-8" target="TestSim-1-8" />
+    </edges>
+  </graph>
+</gexf>
