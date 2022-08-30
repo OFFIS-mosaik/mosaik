@@ -18,6 +18,7 @@ import os
 import shlex
 import subprocess
 import sys
+from loguru import logger
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -346,9 +347,10 @@ def expand_meta(meta, sim_name):
     except KeyError:
         sim_type = meta['type'] = 'time-based'
         meta['old-api'] = True
-        print(f"DEPRECATION WARNING: Simulator {sim_name}'s meta doesn't "
-              "contain a type. 'time-based' is set as default. "
-              "This might cause an error in future releases.")
+        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
+                       'contain a type. \'time-based\' is set as default. '
+                       'This might cause an error in future releases.', 
+                       sim_name=sim_name)
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
@@ -544,8 +546,8 @@ class RemoteProcess(SimProxy):
             timeout = self._world.env.timeout(self._stop_timeout)
             res = yield (self._rpc_con.remote.stop() | timeout)
             if timeout in res:
-                print('Simulator "%s" did not close its connection in time.' %
-                      self.sid)
+                logger.warning('Simulator "{sim_id}" did not close its connection in time.',
+                               sim_id=self.sid)
                 self._rpc_con.close()
         except ConnectionError:
             # We may get a ConnectionError if the remote site closes its
@@ -741,8 +743,9 @@ class MosaikRemote:
             elif sim.interruptable and event_time < sim.next_step:
                 sim.sim_proc.interrupt('Earlier step')
         else:
-            print(f"Warning: Event set at {event_time} by {sim.sid} is after "
-                  f"simulation end {self.world.until} and will be ignored.")
+            logger.warning("Event set at {event_time} by {sim_id} is after "
+                           "simulation end {until} and will be ignored.",
+                           event_time=event_time, sim_id=sim.sid, until=self.world.until)
 
     def _assert_async_requests(self, dfg, src_sid, dest_sid):
         """

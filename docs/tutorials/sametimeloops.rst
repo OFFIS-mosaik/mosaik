@@ -87,7 +87,6 @@ The collector just shows the final result of the same-time loop and not the step
 It can be seen that the 'delta' of 'Agent_1' changes to -1 at time step 2 and at time step 4 all 'delta' attributes are set to 0 by the master controller.
 
 .. literalinclude:: code/demo_3.out
-   :lines: 8-25
 
 A visualization of the execution graph shows the data flows in the simulation.
 For the first two time steps, only the controllers are executed, as they do not provide any output for 'delta'.

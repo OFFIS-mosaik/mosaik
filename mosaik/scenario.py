@@ -11,6 +11,7 @@ from collections import defaultdict
 import itertools
 
 import networkx
+from loguru import logger
 
 from mosaik import simmanager
 from mosaik import scheduler
@@ -126,7 +127,8 @@ class World(object):
         """
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
-        print('Starting "%s" as "%s" ...' % (sim_name, sim_id))
+        logger.info('Starting "{sim_name}" as "{sim_id}" ...'
+                   , sim_name=sim_name, sim_id=sim_id)
         sim = simmanager.start(self, sim_name, sim_id, self.time_resolution,
                                sim_params)
         self.sims[sim_id] = sim
@@ -324,8 +326,7 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False, print_progress=True,
-            lazy_stepping=True):
+    def run(self, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
         """
         Start the simulation until the simulation time *until* is reached.
 
@@ -355,7 +356,7 @@ class World(object):
         # Check if a simulator is not connected to anything:
         for sid, deg in sorted(list(networkx.degree(self.df_graph))):
             if deg == 0:
-                print('WARNING: %s has no connections.' % sid)
+                logger.warning('{sim_id} has no connections.', sim_id=sid)
 
         self.detect_unresolved_cycles()
 
@@ -369,17 +370,17 @@ class World(object):
         self.cache_triggering_ancestors()
         self.create_simulator_ranking()
 
-        print('Starting simulation.')
+        logger.info('Starting simulation.')
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
             dbg.enable()
         try:
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
-                                            print_progress, lazy_stepping),
+                                            lazy_stepping),
                               self)
-            print('Simulation finished successfully.')
+            logger.info('Simulation finished successfully.')
         except KeyboardInterrupt:
-            print('Simulation canceled. Terminating ...')
+            logger.info('Simulation canceled. Terminating ...')
         finally:
             self.shutdown()
             if self._debug:
