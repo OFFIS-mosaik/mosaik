@@ -5,10 +5,6 @@ docutils==0.16
 imagesize==0.7.1
 Jinja2==2.9
 MarkupSafe==0.23
-mosaik-api==3.0.1
-networkx==2.5
-simpy==3.0.13
-simpy.io==0.2.3
 snowballstemmer==1.2.1
 Sphinx==4.0.2
 sphinx-rtd-theme==0.5.2
