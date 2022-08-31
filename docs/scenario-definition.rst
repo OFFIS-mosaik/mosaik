@@ -106,15 +106,6 @@ time step for :ref:`same-time loops <same-time_loops>`. It's default value is 10
 
    >>> world = mosaik.World(sim_config, max_loop_iterations=100)
 
-You can also set the *lazy_stepping* flag (default: ``True``). If
-``True``, a simulator can only run ahead one step of its successors. If
-``False``, a simulator always steps as long as all inputs are provided. This
-might decrease the simulation time but increase the memory consumption.
-
-.. code-block:: python
-
-   >>> world = mosaik.World(sim_config, lazy_stepping=False)
-
 Starting simulators
 ===================
 
@@ -256,9 +247,21 @@ detail what happens when you call ``run()``.
 The progress of the simulation is also printed as we run the simulation.
 This is because the :meth:`World.run()` method has another argument, *print_progress*,
 that has a boolean flag set to True by default, which prints the progress of our
-simulation whenever we run it. If we do not want the progress to be printed, we can
-set the *print_progress* flag to False in the ``World.run(until=END, print_progress=False)``
-method.
+simulation whenever we run it. If we do not want the progress to be printed, we can 
+set the *print_progress* flag to False.
+
+.. code-block:: python
+
+   >>> world.run(until=END, print_progress=False)
+
+We can also set the *lazy_stepping* flag (default: ``True``). If
+``True``, a simulator can only run ahead one step of its successors. If
+``False``, a simulator always steps as long as all inputs are provided. This
+might decrease the simulation time but increase the memory consumption.
+
+.. code-block:: python
+
+   >>> world.run(until=END, lazy_stepping=False)
 
 To wrap it all up, this is how our small example scenario finally looks like:
 
