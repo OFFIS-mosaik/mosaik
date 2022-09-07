@@ -87,7 +87,7 @@ be used in the following way:
 .. code-block:: python
 
    # Model name and "params" are used for constructing instances:
-   model = ExampleModel(init_val=42)
+   model = example_model.Model(init_val=42)
    # "attrs" are normal attributes:
    print(model.val)
    print(model.delta)
@@ -101,7 +101,7 @@ The package ``mosaik_api`` defines a base class ``Simulator`` for which we now
 need to write a sub-class:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 23-27
+   :lines: 23-28
 
 In our simulator's ``__init__()`` method (the constructor) we need to call
 ``Simulator.__init__()`` and pass the meta data dictionary to it.
@@ -124,7 +124,7 @@ that you pass to a simulator in your scenario definition). It must return the
 meta data dictionary ``self.meta``:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 29-35
+   :lines: 30-36
 
 The first argument is the ID that mosaik gave to that simulator instance. The
 second argument is the :ref:`time resolution <time_resolution>` of the
@@ -145,7 +145,7 @@ instances *(entities)* within that simulator. It must return a list with some
 information about each entity created:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 37-47
+   :lines: 38-48
 
 The first two parameters tell mosaik how many instances of which model you
 want to create. As in ``init()``, you can specify additional parameters for
@@ -178,7 +178,7 @@ simulators a next (self-)step is optional. If there is no next self-step, the
 return value is None/null.
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 49-60
+   :lines: 51-63
 
 .. _inputs:
 
@@ -191,13 +191,32 @@ In this example, the *inputs* could be something like this:
            'delta': {'src_id_0': 23},
        },
        'Model_1':
-           'delta': {'src_id_1': 42},
+           'delta': {'src_id_1': 42},‘val’ :{ 'src_id_1': 20},
        },
    }
 
 The inner dictionaries containing the actual values may contain multiple
-entries if multiple source entities provide input for another entity. The
-simulator receiving these inputs is responsible for aggregating them (e.g., by
+entries if multiple source entities provide input for another entity. In
+the case above, we have two source entities, ‘Model_0’ providing the
+delta value to the destination entity (object of ExampleSim) and
+‘Model_1' providing the delta and val value to the destination entity
+(object of ExampleSim). The source entitiy, ‘Model_0’ has the attribute
+‘delta’ as the key to another nested dictionary which contains the
+simulator id and its corresponding ‘delta’ value. Similarly the source
+entity ‘Model_1’ has the attributes ‘delta’ and ‘val’ as the keys to two
+other nested dictionaries which contain the simulator id and its
+corresponding ‘delta’ and ‘val’ values.
+
+The structure of the *inputs* dictionary created by mosaik is always the
+same as depicted above, only the number of source entities (dependent on
+the connections in the scenario (‘Model_0’ and ‘Model_1’ in our case))
+and the number of attributes passed by the source entity varies. The
+first key of the nested dictionary will be the source entity
+(‘Model_1’), the following keys will be the attributes passed by this
+source entity to the destination entity (‘delta’: {'src_id_1': 42},
+‘val’: {‘src_id_1': 20}).
+
+The simulator receiving these inputs is responsible for aggregating them (e.g., by
 taking their sum, minimum or maximum. Since we are not interested in the
 source's IDs, we convert that dict to a list with ``values.values()`` before we
 calculate the sum of all input values.
@@ -219,7 +238,7 @@ The ``get_data()`` call allows other simulators to get the values of the
 the simulator meta data):
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 62-72
+   :lines: 65-78
 
 .. _outputs:
 
@@ -232,6 +251,23 @@ The *outputs* parameter contains the query and may in our case look like this:
        'Model_1': ['value'],
    }
 
+The Outputs dictionary may contain multiple keys if multiple destination
+entities ask for the output from the source entity. In this case we have
+two destination entities ‘Model_0’ and ‘Model_1’ which are requesting
+for the source attributes. ‘Model_0’ is requesting for the two source
+attributes ‘delta’ and ‘value’, whereas ‘Model_1’ is requesting for 1
+source attribute ‘value’. The structure of the Outputs dictionary
+created by mosaik is always the same as depicted above, only the number
+of destination entities (dependent on the connections in the scenario
+(‘Model_0’ and ‘Model_1’ in our case)) and the number of attributes
+requested by the destination entity varies.
+
+In our implementation we loop over each entity ID for which data is requested.
+We then loop over all requested attributes and check if they are valid. If so,
+we dynamically get the requested value from our model instance via
+``getattr(obj, 'attr')``. We store all values in the ``data`` dictionary and
+return it when we are done.
+
 The expected return value would then be:
 
 .. code-block:: python
@@ -241,11 +277,6 @@ The expected return value would then be:
        'Model_1': {'value': 3},
    }
 
-In our implementation we loop over each entity ID for which data is requested.
-We then loop over all requested attributes and check if they are valid. If so,
-we dynamically get the requested value from our model instance via
-``getattr(obj, 'attr')``. We store all values in the ``data`` dictionary and
-return it when we are done.
 
 
 Making it executable
@@ -258,7 +289,7 @@ a socket, connects to mosaik and listens for requests from it. You just call it
 in your ``main()`` and pass an instance of your simulator class to it:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 77-82
+   :lines: 81-86
 
 Simulators running on different nodes than the mosaik instance are supported
 explicitly with the mosaik Python-API v2.4 upward via the **remote** flag. A simulator

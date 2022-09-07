@@ -1,0 +1,24 @@
+Collected data:
+- ExampleCtrl-0.Agent_0:
+  - delta: {4: 0, 5: 0}
+- ExampleCtrl-0.Agent_1:
+  - delta: {2: -1, 4: 0, 5: 0}
+- ExampleCtrl-0.Agent_2:
+  - delta: {4: 0, 5: 0}
+- ExampleMasterCtrl-0.Master_Agent_0:
+  - delta_out: {4: 0, 5: 0}
+- ExampleSim-0.Model_0:
+  - delta: {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 0}
+  - val: {0: -1, 1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
+- ExampleSim-0.Model_1:
+  - delta: {0: 1, 1: 1, 2: 1, 3: -1, 4: -1, 5: 0}
+  - val: {0: 1, 1: 2, 2: 3, 3: 2, 4: 1, 5: 1}
+- ExampleSim-0.Model_2:
+  - delta: {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 0}
+  - val: {0: -1, 1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
+Starting "ExampleSim" as "ExampleSim-0" ...
+Starting "ExampleCtrl" as "ExampleCtrl-0" ...
+Starting "ExampleMasterCtrl" as "ExampleMasterCtrl-0" ...
+Starting "Collector" as "Collector-0" ...
+Starting simulation.
+Progress: 4.17%Progress: 8.33%Progress: 12.50%Progress: 16.67%Progress: 20.83%Progress: 25.00%Progress: 29.17%Progress: 29.17%Progress: 41.67%Progress: 45.83%Progress: 50.00%Progress: 58.33%Progress: 62.50%Progress: 66.67%Progress: 66.67%Progress: 70.83%Progress: 70.83%Progress: 75.00%Progress: 79.17%Progress: 83.33%Progress: 87.50%Progress: 87.50%Progress: 87.50%Progress: 91.67%Progress: 100.00%Simulation finished successfully.

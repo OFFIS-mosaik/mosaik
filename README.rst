@@ -7,7 +7,7 @@ It lets you re-use existing simulators and couple them to simulate large-scale
 Smart Grid scenarios. Mosaik offers powerful mechanisms to specify and compose
 these scenarios.
 
-Version: 3.0.0
+Version: 3.0.2
 
 License: LGPL
 
@@ -44,7 +44,7 @@ A simple demo scenario with mosaik::
 Installation
 ------------
 
-Mosaik requires Python >= 3.4. Use `pip`__ to install it, preferably into
+Mosaik requires Python >= 3.8. Use `pip`__ to install it, preferably into
 a `virtualenv`__::
 
     $ pip install mosaik

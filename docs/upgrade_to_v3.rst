@@ -38,7 +38,7 @@ Max_advance time
 *max_advance* tells the simulator how far it can advance its time without
 risking any causality error, i.e. it is guaranteed that no external step will
 be triggered before max_advance + 1. It is determined for each step and passed
-to the component as third positional argument of the API's :ref:`init <api.step>`
+to the component as third positional argument of the API's :ref:`step <api.step>`
 function.
 
 .. _sticking_with_v2:

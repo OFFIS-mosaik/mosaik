@@ -321,9 +321,11 @@ def validate_api_version(version):
     except ValueError:
         raise ScenarioError('Version parts of %r must be integer' %
                             version) from None
-    if len(v_tuple) != 2:
-        raise ScenarioError('Version must be formatted like '
-                            '"major.minor", but is %r' % version) from None
+    if len(v_tuple) < 2:
+        raise ScenarioError('Version must follow at least the format '
+                            '"major.minor" and can optionally include '
+                            'the patch version like "major.minor.patch", '
+                            'but is %r' % version) from None
     if not (v_tuple[0] == API_MAJOR and v_tuple[1] <= API_MINOR):
         raise ScenarioError('Version must be between %(major)s.0 and '
                             '%(major)s.%(minor)s' % {'major': API_MAJOR,

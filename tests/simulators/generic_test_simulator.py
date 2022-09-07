@@ -16,6 +16,8 @@ output_timing : dict of {int: int}, optional
     {step_time: output_time, ..}
     If set, output will only be returned at time steps which are in
     output_timing.
+    Can also contain a list of output_times: {int: [int, int, ..]} for same time loops
+    with multiple steps within the same step_time.
 events : dict of {float: int}, default {}
     {real_time: event_time, ..}
     An event will be requested for simulation time event_time after real_time
@@ -96,7 +98,17 @@ class TestSim(mosaik_api.Simulator):
         if self.output_timing is None:
             data = {eid: {'val_out': self.time} for eid in self.entities}
         else:
-            output_time = self.output_timing.pop(self.time, None)
+            try:
+                current_output_timing = self.output_timing[self.time]
+                if isinstance(current_output_timing, list):
+                    if len(current_output_timing) > 0:
+                        output_time = current_output_timing.pop(0)
+                    else:
+                        output_time = None
+                else:
+                    output_time = self.output_timing.pop(self.time, None)
+            except:
+                output_time = None
             if output_time is not None:
                 data = {'time': output_time,
                         **{eid: {'val_out': self.time} for eid in self.entities}}
@@ -108,14 +120,14 @@ class TestSim(mosaik_api.Simulator):
         if self.event_setter_wait:
             self.event_setter_wait.succeed()
 
-    def event_setter(self, env, message):
+    def event_setter(self, env):
         last_time = 0
         wait_event = env.event()
         self.event_setter_wait = wait_event
         yield wait_event
         for real_time, event_time in self.events.items():
             yield env.timeout(real_time - last_time)
-            yield message.send(["set_event", [event_time], {}])
+            yield self.mosaik.set_event(event_time)
             last_time = real_time
 
 

@@ -40,7 +40,7 @@ no parameters and two attributes, the input 'val_in' and the output 'delta'.
 Let's continue and implement :class:`mosaik_api.Simulator`:
 
 .. literalinclude:: code/controller.py
-   :lines: 21-24
+   :lines: 21-26
 
 Again, nothing special is going on here. We pass our meta data dictionary to
 our super class and set an empty list for our agents.
@@ -54,7 +54,7 @@ the meta data, so there's nothing we need to do in this case.
 Implementing :meth:`~mosaik_api.Simulator.create()` is also straight forward:
 
 .. literalinclude:: code/controller.py
-   :lines: 27-35
+   :lines: 28-36
 
 Every agent gets an ID like "Agent_*<num>*". Because there might be multiple
 :meth:`~mosaik_api.Simulator.create()` calls, we need to keep track of how many
@@ -68,7 +68,7 @@ do it. This okay, since we'll implement the agent's "intelligence" directly in
 :meth:`~mosaik_api.Simulator.step()`:
 
 .. literalinclude:: code/controller.py
-   :lines: 37-45
+   :lines: 38-52
 
 The ``inputs`` arguments is a nested dictionary and will look like this:
 
@@ -94,15 +94,15 @@ connect one model per agent, and fetch its value.
 We now do the actual check:
 
 .. literalinclude:: code/controller.py
-   :lines: 47-52
+   :lines: 54-59
 
 If the value is ≤ -3 or ≥ 3, we have to set a new *delta* value. Else, we don't
 need to do anything and can continue with a new iteration of the loop.
 
-If we have a new *delta*, we add it to the ``commands`` dict:
+If we have a new *delta*, we add it to the ``data`` dict:
 
 .. literalinclude:: code/controller.py
-   :lines: 54
+   :lines: 61
 
 After finishing the loop, the ``data`` dict may look like this:
 
@@ -120,14 +120,14 @@ At the end of the step, we put the data dict to the class attribute self.data,
 to make it accessible in the get_data method
 
 .. literalinclude:: code/controller.py
-   :lines: 56
+   :lines: 63
 
 We return *None* to mosaik, as we don't want to step ourself, but only when
 the controlled models provide new values.
 
 
 .. literalinclude:: code/controller.py
-   :lines: 58
+   :lines: 65
 
 After having called step, mosaik requests the new set-points via the get_data
 function. In principle we could just return the self.data dictionary, as we
@@ -137,7 +137,7 @@ back the attributes that are actually needed by (connected to) other
 simulators:
 
 .. literalinclude:: code/controller.py
-   :lines: 60-72
+   :lines: 67-77
 
 
 

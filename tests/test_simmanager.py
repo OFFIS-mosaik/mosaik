@@ -597,3 +597,13 @@ def test_timed_input_buffer():
     assert input_dict == {}
     input_dict = buffer.get_input({}, 1)
     assert input_dict == {'dest_eid': {'dest_var': {'src_sid.src_eid': 1}}}
+
+def test_global_time_resolution(world):
+    # Default time resolution set to 1.0
+    simulator = world.start('SimulatorMock')
+    assert simulator._sim._world.time_resolution == 1.0
+
+    # Set global time resolution to 60.0
+    world.time_resolution = 60.0
+    simulator_2 = world.start('SimulatorMock')
+    assert simulator_2._sim._world.time_resolution == 60.0

@@ -25,6 +25,7 @@ class ExampleSim(mosaik_api.Simulator):
         super().__init__(META)
         self.eid_prefix = 'Model_'
         self.entities = {}  # Maps EIDs to model instances/entities
+        self.time = 0
 
     def init(self, sid, time_resolution, eid_prefix=None):
         if float(time_resolution) != 1.:
@@ -46,7 +47,9 @@ class ExampleSim(mosaik_api.Simulator):
 
         return entities
 
+
     def step(self, time, inputs, max_advance):
+        self.time = time
         # Check for new delta and do step for each model instance:
         for eid, model_instance in self.entities.items():
             if eid in inputs:
@@ -63,6 +66,7 @@ class ExampleSim(mosaik_api.Simulator):
         data = {}
         for eid, attrs in outputs.items():
             model = self.entities[eid]
+            data['time'] = self.time
             data[eid] = {}
             for attr in attrs:
                 if attr not in self.meta['models']['ExampleModel']['attrs']:

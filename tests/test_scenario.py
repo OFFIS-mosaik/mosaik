@@ -43,6 +43,7 @@ def test_world():
     world = scenario.World(sim_config, mosaik_config)
     try:
         assert world.sim_config is sim_config
+        assert world.time_resolution == 1.0
         assert world.config['start_timeout'] == 23
         assert world.sims == {}
         assert world.env
@@ -69,12 +70,24 @@ def test_world_start(world):
     assert isinstance(fac, scenario.ModelFactory)
     assert world.sims == {'ExampleSim-0': fac._sim}
     assert fac._sim._inst.step_size == 2
+    assert fac._sim._world.time_resolution == 1.0
     assert 'ExampleSim-0' in world.df_graph
 
     world.start('ExampleSim')
     assert list(sorted(world.sims)) == ['ExampleSim-0', 'ExampleSim-1']
     assert 'ExampleSim-1' in world.df_graph
 
+def test_global_time_resolution():
+    """
+    Test if the simulator process has the correct time_resolution
+    """
+    world = scenario.World(sim_config, time_resolution=60.0)
+
+    try:
+        fac = world.start('ExampleSim', step_size=2)
+        assert fac._sim._world.time_resolution == 60.0
+    finally:
+        world.shutdown()
 
 def test_world_connect(world):
     """

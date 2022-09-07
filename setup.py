@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-find_version='3.0.0'
+find_version='3.0.2'
 if os.environ.get('CI_COMMIT_TAG'):
     find_version = os.environ['CI_COMMIT_TAG']
 
@@ -19,11 +19,10 @@ setup(
     url='https://mosaik.offis.de',
     install_requires=[
         'networkx>=2.5',
-        'mosaik-api>=3.0',
+        'mosaik-api>=3.0.2',
         'simpy>=3.0.10,<4.0.0',
-        'simpy.io>=0.2.3',
+        'mosaik-simpy-io>=0.2.4',
     ],
-
     packages=find_packages(exclude=['tests*']),
     include_package_data=True,
     entry_points={
@@ -40,9 +39,10 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
