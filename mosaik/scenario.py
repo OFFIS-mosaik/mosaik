@@ -184,9 +184,7 @@ class World(object):
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
-        trigger, time_buffered, memorized, persistent = \
-            self._classify_connections(src, dest, attr_pairs)
-
+        trigger, persistent = self._classify_connections(src, dest, attr_pairs)
 
         if time_shifted:
             if type(initial_data) is not dict or initial_data == {}:
@@ -221,7 +219,7 @@ class World(object):
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
-        for src_attr, dest_attr in time_buffered:
+        for src_attr, dest_attr in attr_pairs:
             src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (dest.sid, dest.eid, dest_attr))
 
@@ -239,7 +237,7 @@ class World(object):
                                         f' from {FULL_ID % (src.sid, src.eid)} '
                                         f'to {FULL_ID % (dest.sid, dest.eid)}.')
 
-        for src_attr, dest_attr in memorized:
+        for src_attr, dest_attr in persistent:
             if weak:
                 init_val = initial_data[src_attr]
             else:
@@ -503,21 +501,19 @@ class World(object):
         i.e. if it triggers a step of the destination, if the attributes are
          persistent and need to be saved in the input_memory.
         """
-        entities = [src, dest]
-        emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1]['any_inputs']]
-        trigger = False
-        persistent = []
-        for attr_pair in attr_pairs:
-            if (attr_pair[1] in emeta[1]['trigger'] or (
-                    any_inputs[1] and dest.sim.meta['type'] == 'event-based')):
-                trigger = True
-            is_persistent = attr_pair[0] in emeta[0]['persistent']
-            if is_persistent:
-                persistent.append(attr_pair)
-        memorized = persistent
+        src_emeta, dest_emeta = [e.sim.meta['models'][e.type] for e in (src, dest)]
+        trigger = any(
+            dest_attr in dest_emeta["trigger"]
+            or (dest_emeta["any_inputs"] and dest.sim.meta["type"] == "event-based")
+            for _, dest_attr in attr_pairs
+        )
+        persistent = tuple(
+            attr_pair
+            for attr_pair in attr_pairs 
+            if attr_pair[0] in src_emeta['persistent']
+        )
 
-        return trigger, tuple(attr_pairs), tuple(memorized), tuple(persistent)
+        return trigger, persistent
 
 
 class ModelFactory():
