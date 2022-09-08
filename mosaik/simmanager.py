@@ -98,10 +98,10 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, time_resolution,
                           sim_params)
-
             try:
                 proxy.meta['api_version'] = validate_api_version(
                     proxy.meta['api_version'])
+                type_check(proxy.meta, sim_name, sim_id)
                 proxy.meta = expand_meta(proxy.meta, sim_name)
                 return proxy
             except ScenarioError as se:
@@ -111,7 +111,6 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
     else:
         raise ScenarioError('Simulator "%s" could not be started: '
                             'Invalid configuration' % sim_name)
-
 
 def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
     """
@@ -206,7 +205,7 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
         # This distinction has to be made due to a change in python 3.8.0.
         # It might become unecessary for future releases supporting
         # python >= 3.8 only.
-        if str(e).count(':')==2:
+        if str(e).count(':') == 2:
             eout = e.args[1]
         else:
             eout = str(e).split('] ')[1]
@@ -342,15 +341,7 @@ def expand_meta(meta, sim_name):
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    try:
-        sim_type = meta['type']
-    except KeyError:
-        sim_type = meta['type'] = 'time-based'
-        meta['old-api'] = True
-        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
-                       'contain a type. \'time-based\' is set as default. '
-                       'This might cause an error in future releases.', 
-                       sim_name=sim_name)
+    sim_type = meta['type']
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
@@ -394,6 +385,27 @@ def expand_meta(meta, sim_name):
             model_meta['persistent'] = []
 
     return meta
+
+
+def type_check(meta, sim_name, sim_id):
+    """
+        Checks if  meta's type exists and is correctly set.
+        Raise a :exc: `ScenarioError` if the type ist not correct.
+        """
+    if 'type' not in meta:
+        sim_type = meta['type'] = 'time-based'
+        meta['old-api'] = True
+        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
+                       'contain a type. \'{sim_type}\' is set as default. '
+                       'This might cause an error in future releases.',
+                       sim_name=sim_name, sim_type=sim_type)
+    else:
+        types = ['time-based', 'event-based', 'hybrid']
+        if meta['type'] not in types:
+            typo = meta['type']
+            meta['type'] = 'time-based'
+            raise ScenarioError(f'{sim_id} contains an unknown type: \'{typo}\'. '
+                                f'Please check for typos in your Simulators \'{sim_name}\' meta and scenario.')
 
 
 class SimProxy:
@@ -810,6 +822,7 @@ class TimedInputBuffer:
     If there are several entries for the same connection at the same time, only
     the most recent value is added.
     """
+
     def __init__(self):
         self.input_queue = []
         self.counter = count()  # Used to chronologically sort entries
