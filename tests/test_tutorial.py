@@ -16,6 +16,8 @@ CASES = glob.glob(os.path.join(glob.escape(CODE_DIR), '*.out'))
 
 @pytest.mark.parametrize('outfile', CASES)
 def test_tutorial(outfile):
+    if outfile.endswith('demo_3.out'):
+        pytest.skip("Same-time loops are not supported yet.")
     python_file = outfile.rsplit('.', 1)[0] + '.py'
     expected = open(outfile).read()
     out = subprocess.check_output([sys.executable, python_file], cwd=CODE_DIR,

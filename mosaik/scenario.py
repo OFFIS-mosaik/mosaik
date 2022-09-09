@@ -17,6 +17,8 @@ from mosaik import scheduler
 from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
 
+from mosaik.attribute_caches import NonPersistentInput, OutputCache, PersistentInput
+
 
 backend = simmanager.backend
 base_config = {
@@ -187,16 +189,25 @@ class World(object):
         trigger, persistent = self._classify_connections(src, dest, attr_pairs)
 
         if time_shifted:
-            if type(initial_data) is not dict or initial_data == {}:
-                raise ScenarioError('Time shifted connections have to be '
-                                    'set with default inputs for the first step.')
-            # list for assertion of correct assignment:
-            check_attrs = [a[0] for a in attr_pairs]
-            # Set default values for first data exchange:
-            for attr, val in initial_data.items():
-                if attr not in check_attrs:
-                    raise ScenarioError('Incorrect attr "%s" in "initial_data".'
-                                        % attr)
+            # TODO: If an attribute is connected to several inputs with time-hifts,
+            # initial data needs to be given for each instance. In this case, the
+            # las given value "wins". Consider checking for consistency or not 
+            # requiring repeated values. (Previoutly, seperate values could be given
+            # for each instance but as the values afterwards will always be the same
+            # this does not make much sense.)
+            src_attrs = set(a[0] for a in attr_pairs)
+            given_inits = set(initial_data.keys())
+            if missing_inits := src_attrs.difference(given_inits):
+                raise ScenarioError(
+                    f'Connections for the attributes {", ".join(missing_inits)} are '
+                    f'time-shifted but are missing initial values.'
+                )
+            if superfluous_inits := given_inits.difference(src_attrs):
+                raise ScenarioError(
+                    f'`initial_data` is given for the attributes '
+                    f'{", ".join(superfluous_inits)} but these attributes are not '
+                    f'being connected.'
+                )
 
         pred_waiting = async_requests
 
@@ -222,28 +233,15 @@ class World(object):
         for src_attr, dest_attr in attr_pairs:
             src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (dest.sid, dest.eid, dest_attr))
-
-        if weak:
-            for src_attr, dest_attr in persistent:
-                try:
-                    dest.sim.input_buffer.setdefault(dest.eid, {}).setdefault(
-                        dest_attr, {})[
-                        FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
-                except KeyError:
-                    raise ScenarioError('Weak connections of persistent '
-                                        'attributes have to be set with '
-                                        'default inputs for the first step. '
-                                        f'{src_attr} is missing for connection'
-                                        f' from {FULL_ID % (src.sid, src.eid)} '
-                                        f'to {FULL_ID % (dest.sid, dest.eid)}.')
-
-        for src_attr, dest_attr in persistent:
-            if weak:
-                init_val = initial_data[src_attr]
+            output_cache = src.sim.outputs.setdefault((src.eid, src_attr), OutputCache())
+            if src_attr in initial_data:
+                output_cache.add(0, initial_data[src_attr])
+            if (src_attr, dest_attr) in persistent:
+                input_cache = PersistentInput(output_cache)
             else:
-                init_val = None
-            dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
-                dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
+                input_cache = NonPersistentInput(output_cache)
+
+            dest.sim.inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {})[src.full_id] = input_cache
 
     def set_initial_event(self, sid, time=0):
         """

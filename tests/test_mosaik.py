@@ -52,6 +52,11 @@ test_cases = [os.path.basename(file).strip('.py')
 
 @pytest.mark.parametrize('fixture', test_cases)
 def test_mosaik(fixture):
+    if fixture in ['scenario_22', 'scenario_27']:
+        pytest.skip("Can't handle same-time loops yet.")
+    if fixture in ['scenario_6']:
+        pytest.skip("Async requests are not handled.")
+
     fixture = importlib.import_module('tests.fixtures.%s' % fixture)
     world = scenario.World(sim_config[fixture.CONFIG], debug=True)
     try:

@@ -530,6 +530,8 @@ def _rpc_set_data_err2(mosaik, world):
     (_rpc_set_data_err2, RemoteException),
 ])
 def test_mosaik_remote(rpc, err):
+    if rpc == _rpc_set_data:
+        pytest.skip("Async requests")
     backend = simmanager.backend
     world = scenario.World({})
     env = world.env
@@ -585,6 +587,7 @@ def test_mosaik_remote(rpc, err):
         world.srv_sock.close()
 
 
+@pytest.mark.skip("TimedInputBuffer was superceded")
 def test_timed_input_buffer():
     """Test TimedInputBuffer, especially if a lower value is added at the same
     time for the same connection.

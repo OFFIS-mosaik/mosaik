@@ -193,6 +193,7 @@ def test_wait_for_dependencies_lazy(world, lazy_stepping):
         assert evt.triggered == False
 
 
+@pytest.mark.skip("Timed input buffer was superceded.")
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_get_input_data(world):
     """
@@ -240,6 +241,7 @@ def test_step(world):
     assert (sim.last_step, sim.progress_tmp) == (0, 0)
 
 
+@pytest.mark.skip("Timed Input Buffer was superceded")
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
 def test_get_outputs_buffered(world):
     sim = world.sims[0]
@@ -332,6 +334,7 @@ def test_notify_dependencies_trigger(world):
     assert world.sims[2].has_next_step.triggered
 
 
+@pytest.mark.skip("Incomplete world setup in test")
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_get_outputs_shifted(world):
     world._df_outattr[5][0] = ['x', 'y']

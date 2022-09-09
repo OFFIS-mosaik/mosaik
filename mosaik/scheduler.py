@@ -299,13 +299,19 @@ def get_input_data(world, sim):
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_memory = sim.input_memory
-    input_data = sim.input_buffer
-    sim.input_buffer = {}
-    recursive_union(input_data, input_memory)
-    input_data = sim.timed_input_buffer.get_input(input_data, sim.next_step)
+    input_data = {}
 
-    recursive_update(input_memory, input_data)
+    for eid, attrs in sim.inputs.items():
+        for attr, srcs in attrs.items():
+            for src, cache in srcs.items():
+                try:
+                    value = cache.get(sim.next_step)
+                    if value is not None:
+                        input_data.setdefault(eid, {}).setdefault(attr, {})[src] = value
+                except KeyError:
+                    # TODO: Adjust OutputCache to enable distinction between
+                    # unset and expired values.
+                    pass
 
     return input_data
 
@@ -433,13 +439,12 @@ def get_outputs(world, sim):
 
         treat_cycling_output(world, sim, data, output_time)
 
-        for (src_eid, src_attr), destinations in sim.buffered_output.items():
-            for dest_sid, dest_eid, dest_attr in destinations:
-                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                if val is not SENTINEL:
-                    world.sims[dest_sid].timed_input_buffer.add(
-                        output_time, sid, src_eid, dest_eid, dest_attr, val)
         sim.data = data
+
+        for eid, attrs in data.items():
+            if eid == 'time': continue
+            for attr, value in attrs.items():
+                sim.outputs[(eid, attr)].add(output_time, value)
 
 
 def treat_cycling_output(world, sim, data, output_time):

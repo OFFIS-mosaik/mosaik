@@ -439,10 +439,9 @@ class SimProxy:
         self.next_self_step = None
         self.progress_tmp = -1
         self.progress = -1
-        self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
-        self.input_memory = {}
-        self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
+        self.inputs = {}
+        self.outputs = {}
         self.sim_proc = None  # SimPy process
         self.has_next_step = None  # SimPy event
         self.wait_events = None  # SimPy event
@@ -788,34 +787,3 @@ class StarterCollection(object):
                 connect=start_connect)
 
         return StarterCollection.__instance
-
-
-class TimedInputBuffer:
-    """
-    A buffer to store inputs with its corresponding *time*.
-
-    When the data is queried for a specific *step* time, all entries with
-    *time* <= *step* are added to the input_dictionary.
-
-    If there are several entries for the same connection at the same time, only
-    the most recent value is added.
-    """
-    def __init__(self):
-        self.input_queue = []
-        self.counter = count()  # Used to chronologically sort entries
-
-    def add(self, time, src_sid, src_eid, dest_eid, dest_var, value):
-        src_full_id = '.'.join(map(str, (src_sid, src_eid)))
-        hq.heappush(self.input_queue, (time, next(self.counter), src_full_id,
-                                       dest_eid, dest_var, value))
-
-    def get_input(self, input_dict, step):
-        while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
-            _, _, src_full_id, eid, attr, value = hq.heappop(self.input_queue)
-            input_dict.setdefault(eid, {}).setdefault(attr, {})[
-                src_full_id] = value
-
-        return input_dict
-
-    def __bool__(self):
-        return bool(len(self.input_queue))

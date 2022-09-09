@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from sortedcontainers import SortedDict
-from typing import TYPE_CHECKING
+from typing import Generic, Optional, Tuple, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Generic, Optional, Tuple, TypeVar
     from _typeshed import SupportsAllComparisons
-
-
-V = TypeVar("V")
-T = TypeVar("T", bound=SupportsAllComparisons)
+    V = TypeVar("V")
+    T = TypeVar("T", bound=SupportsAllComparisons)
+else:
+    V = TypeVar("V")
+    T = TypeVar("T")
 
 
 class OutputCache(Generic[T, V]):
@@ -99,7 +99,8 @@ class OutputCache(Generic[T, V]):
         # the value to the left of this index, hence the `-1`.
         index = self._cache.bisect_right(time) - 1
         if index < 0:
-            raise KeyError("Trying to access expired data")
+            # TODO: Add a way to distinguish between expired and never set.
+            raise KeyError(f"Data for time {time} was never set or is expired.")
 
         time, data = self._cache.peekitem(index)
         if self._newest_access is None or time >= self._newest_access:
@@ -129,8 +130,11 @@ class PersistentInput(Generic[T, V]):
     def __init__(self, output: OutputCache[T, V]):
         self._output = output
 
-    def get(self, time: T):
-        self._output.get(time)
+    def get(self, time: T) -> Optional[V]:
+        return self._output.get(time)
+
+    def __repr__(self):
+        return f"<PI referring to {repr(self._output)}>"
 
 
 class NonPersistentInput(Generic[T, V]):
@@ -150,3 +154,6 @@ class NonPersistentInput(Generic[T, V]):
             return value
         else:
             return None
+
+    def __repr__(self):
+        return f"<NPI referring to {repr(self._output)}>"
