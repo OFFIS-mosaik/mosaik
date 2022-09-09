@@ -197,12 +197,14 @@ class World(object):
             # this does not make much sense.)
             src_attrs = set(a[0] for a in attr_pairs)
             given_inits = set(initial_data.keys())
-            if missing_inits := src_attrs.difference(given_inits):
+            missing_inits = src_attrs.difference(given_inits)
+            if missing_inits:
                 raise ScenarioError(
                     f'Connections for the attributes {", ".join(missing_inits)} are '
                     f'time-shifted but are missing initial values.'
                 )
-            if superfluous_inits := given_inits.difference(src_attrs):
+            superfluous_inits = given_inits.difference(src_attrs)
+            if superfluous_inits:
                 raise ScenarioError(
                     f'`initial_data` is given for the attributes '
                     f'{", ".join(superfluous_inits)} but these attributes are not '
