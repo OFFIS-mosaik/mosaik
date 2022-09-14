@@ -63,6 +63,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         keep_running = get_keep_running_func(world, sim, until, rt_factor,
                                              rt_start)
         while keep_running():
+            warn_if_successors_terminated(world, sim)
             try:
                 yield from has_next_step(world, sim)
             except WakeUpException:
@@ -134,17 +135,6 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
         check_functions.append(check_time)
 
-    if world.df_graph.out_degree(sim.sid) != 0:
-        # If there are any successors, we check if they are still alive.
-        # If all successors have finished, there's no need for us to continue
-        # running.
-        processes = [world.sims[suc_sid].sim_proc for suc_sid in
-                     world.df_graph.successors(sim.sid)]
-
-        def check_successors():
-            return not all(process.triggered for process in processes)
-
-        check_functions.append(check_successors)
 
     if sim.meta['type'] != 'time-based':
         # If we are not self-stepped we can stop if all predecessors have
@@ -174,6 +164,20 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         return all([f() for f in check_functions])
 
     return keep_running
+
+
+def warn_if_successors_terminated(world, sim):
+    if 'warn_if_successors_terminated' in sim.meta:
+        should_warn = sim.meta['warn_if_successors_terminated']
+    else:
+        should_warn = world.df_graph.out_degree(sim.sid) > 0
+    
+    processes = [world.sims[suc_sid].sim_proc 
+                 for suc_sid in sim.successors]
+
+    if should_warn and all(process.triggered for process in processes):
+        logger.warning(f"Simulator {sim.sid}'s output is not used anymore put it "
+                       f"is still running.")
 
 
 def get_next_step(sim):
