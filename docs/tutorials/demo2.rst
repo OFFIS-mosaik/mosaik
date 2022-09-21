@@ -56,7 +56,6 @@ model is to be changed. And second, that the new delta is set at the models'
 subsequent step after it has been derived by the agents.
 
 .. literalinclude:: code/demo_2.out
-   :lines: 1-16,45-
 
 This is the complete scenario:
 

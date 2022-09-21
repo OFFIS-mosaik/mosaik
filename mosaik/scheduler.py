@@ -2,6 +2,7 @@
 This module is responsible for performing the simulation of a scenario.
 """
 from heapq import heappush, heappop, heapreplace
+from loguru import logger
 import networkx as nx
 from time import perf_counter
 from simpy.exceptions import Interrupt
@@ -13,8 +14,7 @@ from mosaik.simmanager import FULL_ID
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
-        lazy_stepping=True):
+def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -46,16 +46,14 @@ def run(world, until, rt_factor=None, rt_strict=False, print_progress=True,
     processes = []
     for sim in world.sims.values():
         process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, print_progress,
-                                          lazy_stepping))
+                                          rt_strict, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
-                lazy_stepping):
+def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -65,6 +63,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
         keep_running = get_keep_running_func(world, sim, until, rt_factor,
                                              rt_start)
         while keep_running():
+            warn_if_successors_terminated(world, sim)
             try:
                 yield from has_next_step(world, sim)
             except WakeUpException:
@@ -94,8 +93,7 @@ def sim_process(world, sim, until, rt_factor, rt_strict, print_progress,
             if world._df_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
-            if print_progress:
-                print('Progress: %.2f%%' % world.sim_progress, end='\r')
+            logger.trace('Progress: {:.2f}%', world.sim_progress)
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
@@ -137,17 +135,6 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
         check_functions.append(check_time)
 
-    if world.df_graph.out_degree(sim.sid) != 0:
-        # If there are any successors, we check if they are still alive.
-        # If all successors have finished, there's no need for us to continue
-        # running.
-        processes = [world.sims[suc_sid].sim_proc for suc_sid in
-                     world.df_graph.successors(sim.sid)]
-
-        def check_successors():
-            return not all(process.triggered for process in processes)
-
-        check_functions.append(check_successors)
 
     if sim.meta['type'] != 'time-based':
         # If we are not self-stepped we can stop if all predecessors have
@@ -176,6 +163,20 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
         return all([f() for f in check_functions])
 
     return keep_running
+
+
+def warn_if_successors_terminated(world, sim):
+    if 'warn_if_successors_terminated' in sim.meta:
+        should_warn = sim.meta['warn_if_successors_terminated']
+    else:
+        should_warn = world.df_graph.out_degree(sim.sid) > 0
+    
+    processes = [world.sims[suc_sid].sim_proc 
+                 for suc_sid in sim.successors]
+
+    if should_warn and all(process.triggered for process in processes):
+        logger.warning(f"Simulator {sim.sid}'s output is not used anymore put it "
+                       f"is still running.")
 
 
 def has_next_step(world, sim):
@@ -420,8 +421,9 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
                 raise RuntimeError('Simulation too slow for real-time factor '
                                    '%s' % rt_factor)
             else:
-                print('Simulation too slow for real-time factor %s - %ss '
-                      'behind time.' % (rt_factor, delta))
+                logger.warning('Simulation too slow for real-time factor '
+                               '{rt_factor} - {delta}s behind time.'
+                               , rt_factor=rt_factor, delta=delta)
 
 
 def get_outputs(world, sim):
