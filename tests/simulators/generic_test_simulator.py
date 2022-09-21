@@ -26,6 +26,7 @@ events : dict of {float: int}, default {}
 
 import logging
 import mosaik_api
+import copy
 from time import sleep
 
 
@@ -45,7 +46,7 @@ sim_meta = {
 
 class TestSim(mosaik_api.Simulator):
     def __init__(self):
-        super().__init__(sim_meta)
+        super().__init__(copy.deepcopy(sim_meta))
         self.sid = None
         self.entities = []
         self.step_size = None
