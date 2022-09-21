@@ -52,7 +52,7 @@ class TestSim(mosaik_api.Simulator):
         self.value = None
         self.event_setter_wait = None
 
-    def init(self, sid, time_resolution, step_type='time-based', step_size=1,
+    def init(self, sid, time_resolution, step_type='time-based', step_size=1, trigger=None,
              self_steps={}, wallclock_duration=0., output_timing=None,
              events={}):
         self.sid = sid
@@ -65,6 +65,9 @@ class TestSim(mosaik_api.Simulator):
             output_timing = {float(key): val
                              for key, val in output_timing.items()}
         self.output_timing = output_timing
+
+        if trigger:
+            self.meta['models']['A']['trigger'] = trigger
 
         if step_type == 'hybrid':
             self.meta['models']['A']['persistent'] = ['val_out']
