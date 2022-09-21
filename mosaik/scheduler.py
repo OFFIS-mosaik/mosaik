@@ -154,8 +154,7 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
 
             def check_trigger():
                 return (sim.next_steps
-                        or any(pre_sim.next_step or pre_sim.next_steps
-                               for pre_sim in pre_sims)
+                        or any(pre_sim.next_steps for pre_sim in pre_sims)
                         or (perf_counter() - rt_start < rt_factor * until))
 
         check_functions.append(check_trigger)
@@ -180,14 +179,6 @@ def warn_if_successors_terminated(world, sim):
                        f"is still running.")
 
 
-def get_next_step(sim):
-    next_step = heappop(sim.next_steps) if sim.next_steps else None
-    if next_step:
-        next_step = max(next_step, sim.progress)
-
-    return next_step
-
-
 def has_next_step(world, sim):
     """
     Return an :class:`~simpy.events.Event` that is triggered when *sim*
@@ -196,9 +187,8 @@ def has_next_step(world, sim):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     sim.has_next_step = world.env.event()
-    sim.next_step = next_step = get_next_step(sim)
 
-    if next_step is not None:
+    if sim.next_steps:
         sim.has_next_step.succeed()
         yield sim.has_next_step
     else:
@@ -218,8 +208,6 @@ def has_next_step(world, sim):
         except NoStepException:
             raise NoStepException
 
-        sim.next_step = get_next_step(sim)
-
 
 def rt_sleep(rt_factor, rt_start, sim, world):
     """
@@ -227,7 +215,7 @@ def rt_sleep(rt_factor, rt_start, sim, world):
     """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
-        sleep = (rt_factor * sim.next_step) - rt_passed
+        sleep = (rt_factor * sim.next_steps[0]) - rt_passed
         if sleep > 0:
             yield world.env.timeout(sleep)
 
@@ -242,13 +230,13 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     events = []
-    t = sim.next_step
+    next_step = sim.next_steps[0]
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
     for pre_sim, edge in sim.predecessors.values():
         # Wait for dep_sim if it hasn't progressed until actual time step:
-        if pre_sim.progress + edge['time_shifted'] < t:
+        if pre_sim.progress + edge['time_shifted'] < next_step:
             evt = world.env.event()
             events.append(evt)
             edge['wait_event'] = evt
@@ -261,15 +249,16 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
         for suc_sim, edge in sim.successors.values():
-            if edge['pred_waiting'] and suc_sim.progress + 1 < t:
+            if edge['pred_waiting'] and suc_sim.progress + 1 < next_step:
                 evt = world.env.event()
                 events.append(evt)
                 edge['wait_async'] = evt
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc_sim.next_steps and suc_sim.progress + 1 < t:
+                elif suc_sim.next_steps and suc_sim.progress + 1 < next_step:
                     evt = world.env.event()
+                    events.append(evt)
                     edge['wait_lazy'] = evt
     wait_events = world.env.all_of(events)
     sim.wait_events = wait_events
@@ -306,11 +295,11 @@ def get_input_data(world, sim):
     input_data = sim.input_buffer
     sim.input_buffer = {}
     recursive_union(input_data, input_memory)
-    input_data = sim.timed_input_buffer.get_input(input_data, sim.next_step)
+    input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
     if world._df_cache is not None:
         for src_sid, (_, edge) in sim.predecessors.items():
-            t = sim.next_step - edge['time_shifted']
+            t = sim.next_steps[0] - edge['time_shifted']
             cache_slice = world._df_cache[t]
             dataflows = edge['cached_connections']
             for src_eid, dest_eid, attrs in dataflows:
@@ -353,9 +342,7 @@ def get_max_advance(world, sim, until):
     ancs_next_steps = []
     for anc_sid, not_shifted_or_weak in sim.triggering_ancestors:
         anc_sim = world.sims[anc_sid]
-        if anc_sim.next_step is not None:
-            ancs_next_steps.append(anc_sim.next_step - not_shifted_or_weak)
-        elif anc_sim.next_steps:
+        if anc_sim.next_steps:
             ancs_next_steps.append(anc_sim.next_steps[0] - not_shifted_or_weak)
 
     if ancs_next_steps:
@@ -363,8 +350,10 @@ def get_max_advance(world, sim, until):
     else:
         max_advance = until
 
-    if sim.next_steps:
+    if len(sim.next_steps) >= 2:
+        tmp = heappop(sim.next_steps)
         max_advance = min(sim.next_steps[0] - 1, max_advance)
+        heappush(sim.next_steps, tmp)
 
     return max_advance
 
@@ -380,12 +369,18 @@ def step(world, sim, inputs, max_advance):
     *max_advance* is the simulation time until the simulator can safely advance
     it's internal time without causing any causality errors.
     """
-    sim.last_step = sim.next_step
+    current_step = heappop(sim.next_steps)
+    sim.is_in_step = True
+    if current_step < sim.progress:
+        raise SimulationError(f'Simulator {sim.id} is trying to perform a step'
+                              f'at time {current_step}, but it has already progressed to'
+                              f'time {sim.progress}.')
+    sim.last_step = current_step
 
     if 'old-api' in sim.meta:
-        next_step = yield sim.proxy.step(sim.next_step, inputs)
+        next_step = yield sim.proxy.step(current_step, inputs)
     else:
-        next_step = yield sim.proxy.step(sim.next_step, inputs, max_advance)
+        next_step = yield sim.proxy.step(current_step, inputs, max_advance)
 
     if next_step is not None:
         if type(next_step) != int:
@@ -410,8 +405,8 @@ def step(world, sim, inputs, max_advance):
             sim.progress_tmp = min(sim.next_steps[0] - 1, max_advance)
         else:
             sim.progress_tmp = max_advance
-
-    sim.next_step = None
+    
+    sim.is_in_step = False
 
 
 def rt_check(rt_factor, rt_start, rt_strict, sim):
@@ -510,7 +505,7 @@ def notify_dependencies(world, sim):
     for dest_sim, edge in sim.successors.values():
         if 'wait_event' in edge:
             weak_or_shifted = edge['time_shifted'] or edge['weak']
-            if dest_sim.next_step - weak_or_shifted <= progress:
+            if dest_sim.next_steps[0] - weak_or_shifted <= progress:
                 edge.pop('wait_event').succeed()
         if edge['trigger']:
             dataflows = edge['dataflows']
@@ -518,24 +513,22 @@ def notify_dependencies(world, sim):
                 data_eid = sim.data.get(eid, {})
                 for attr, _ in attrs:
                     if (attr in data_eid
-                        and sim.output_time not in dest_sim.next_steps
-                            + [dest_sim.next_step]
+                            and sim.output_time not in dest_sim.next_steps
                             and sim.output_time < world.until):
+                        earlier_step = (dest_sim.next_steps 
+                                and sim.output_time < dest_sim.next_steps[0])
                         heappush(dest_sim.next_steps, sim.output_time)
                         if not dest_sim.has_next_step.triggered:
                             dest_sim.has_next_step.succeed()
-                        elif sim.output_time < dest_sim.next_step:
-                            dest_sim.next_step = heapreplace(
-                                dest_sim.next_steps, dest_sim.next_step)
-                            if dest_sim.interruptable:
-                                dest_sim.sim_proc.interrupt('Earlier step')
+                        elif earlier_step and dest_sim.interruptable:
+                            dest_sim.sim_proc.interrupt('Earlier step')
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, edge in sim.predecessors.values():
-        if 'wait_async' in edge and pre_sim.next_step <= progress + 1:
+        if 'wait_async' in edge and pre_sim.next_steps[0] <= progress + 1:
             edge.pop('wait_async').succeed()
         elif 'wait_lazy' in edge:
-            if pre_sim.next_step is None or pre_sim.next_step <= progress + 1:
+            if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress + 1:
                 edge.pop('wait_lazy').succeed()
 
 
@@ -587,7 +580,7 @@ def check_and_resolve_deadlocks(sim, waiting=False, end=False):
         if waiting_sims:
             sim_queue = []
             for isim in waiting_sims:
-                heappush(sim_queue, (isim.next_step, isim.rank, isim))
+                heappush(sim_queue, (isim.next_steps[0], isim.rank, isim))
             clear_wait_events(sim_queue[0][2])
         else:
             if not end:
@@ -596,7 +589,7 @@ def check_and_resolve_deadlocks(sim, waiting=False, end=False):
 
     # If we have no next step, we have to check if a predecessor is waiting for
     # us for async. requests or lazily:
-    if sim.next_step is None:
+    if not sim.next_steps:
         for pre_sim, edge in sim.predecessors.values():
             if 'wait_async' in edge:
                 edge.pop('wait_async').succeed()
