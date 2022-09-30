@@ -116,7 +116,7 @@ def sim_process(
             if world._df_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
-            logger.trace('Progress: {:.2f}%', world.sim_progress)
+            world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
@@ -607,6 +607,12 @@ def get_progress(sims: Dict[SimId, SimProxy], until: int) -> float:
     times = [min(until, sim.progress + 1) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
+
+
+def get_avg_progress(sims: Dict[SimId, SimProxy], until: int) -> int:
+    """Get the average progress of all simulations (in time steps)."""
+    times = [min(until, sim.progress + 1) for sim in sims.values()]
+    return sum(times) // len(times)
 
 
 def check_and_resolve_deadlocks(

@@ -15,6 +15,7 @@ import itertools
 import networkx
 from simpy.core import Environment
 from loguru import logger
+from tqdm import tqdm
 
 from mosaik import simmanager
 from mosaik import scheduler
@@ -465,6 +466,7 @@ class World(object):
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
+        print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
     ):
         """
@@ -511,6 +513,7 @@ class World(object):
         self.create_simulator_ranking()
 
         logger.info('Starting simulation.')
+        self.tqdm = tqdm(total=until, disable=not print_progress)
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
             dbg.enable()
@@ -518,10 +521,13 @@ class World(object):
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
                                             lazy_stepping),
                               self)
+            self.tqdm.close()
             logger.info('Simulation finished successfully.')
         except KeyboardInterrupt:
+            self.tqdm.close()
             logger.info('Simulation canceled. Terminating ...')
         finally:
+            self.tqdm.close()
             self.shutdown()
             if self._debug:
                 dbg.disable()
