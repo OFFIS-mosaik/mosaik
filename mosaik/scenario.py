@@ -513,24 +513,50 @@ class World(object):
         self.create_simulator_ranking()
 
         logger.info('Starting simulation.')
-        self.tqdm = tqdm(total=until, disable=not print_progress)
+        # 11 is the length of "Total: 100%"
+        max_sim_id_len = max(max(len(sid) for sid in self.sims), 11)
+        until_len = len(str(until))
+        self.tqdm = tqdm(
+            total=until,
+            disable=not print_progress,
+            colour='green',
+            bar_format=(
+                None
+                if print_progress != 'individual'
+                else "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}" %
+                    (" " * (max_sim_id_len - 11), "  " * until_len)
+            ),
+            unit='st',
+        )
+        for sid, sim in self.sims.items():
+            sim.tqdm = tqdm(
+                total=until,
+                desc=sid,
+                bar_format="{desc:>%i} |{bar}| {n_fmt:>%i}/{total_fmt}{postfix:10}" %
+                    (max_sim_id_len, until_len),
+                leave=False,
+                disable=print_progress != 'individual',
+            )
         import mosaik._debug as dbg  # always import, enable when requested
         if self._debug:
             dbg.enable()
+        success = False
         try:
             util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
                                             lazy_stepping),
                               self)
-            self.tqdm.close()
-            logger.info('Simulation finished successfully.')
+            success = True
         except KeyboardInterrupt:
-            self.tqdm.close()
             logger.info('Simulation canceled. Terminating ...')
         finally:
+            for sid, sim in reversed(self.sims.items()):
+                sim.tqdm.close()
             self.tqdm.close()
             self.shutdown()
             if self._debug:
                 dbg.disable()
+            if success:
+                logger.info('Simulation finished successfully.')
 
     def detect_unresolved_cycles(self):
         cycles = list(networkx.simple_cycles(self.df_graph))
