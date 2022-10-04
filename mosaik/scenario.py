@@ -514,7 +514,7 @@ class World(object):
 
         logger.info('Starting simulation.')
         # 11 is the length of "Total: 100%"
-        max_sim_id_len = max(max(len(sid) for sid in self.sims), 11)
+        max_sim_id_len = max(max(len(str(sid)) for sid in self.sims), 11)
         until_len = len(str(until))
         self.tqdm = tqdm(
             total=until,
