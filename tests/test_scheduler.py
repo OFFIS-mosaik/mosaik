@@ -241,9 +241,9 @@ def test_get_max_advance(world, next_steps, next_step_s1, expected):
 # TODO: Implement test/parameter for new API (passing max_advance)
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
 def test_step(world):
-    inputs = object()
+    inputs = {}
     sim = world.sims[0]
-    sim.meta['old-api'] = True
+    sim.meta['old_api'] = True
     heappush(sim.next_steps, 0)
     assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
 

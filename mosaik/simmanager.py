@@ -7,6 +7,8 @@ It is able to start pure Python simulators in-process (by importing and
 instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 """
+from __future__ import annotations
+
 from ast import literal_eval
 from itertools import count
 
@@ -29,6 +31,12 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, OrderedDict, Tuple, Union
+    from simpy.events import Event, Process
+    from mosaik.scenario import Meta, OutputData, SimId, World, DataflowEdge
+
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
 API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
@@ -36,7 +44,13 @@ FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
 
-def start(world, sim_name, sim_id, time_resolution, sim_params):
+def start(
+    world: World,
+    sim_name: str,
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any],
+):
     """
     Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
@@ -100,7 +114,7 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
                           sim_params)
 
             try:
-                proxy.meta['api_version'] = validate_api_version(
+                proxy.meta['api_version'] = validate_api_version(  # type: ignore
                     proxy.meta['api_version'])
                 proxy.meta = expand_meta(proxy.meta, sim_name)
                 return proxy
@@ -113,7 +127,14 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
                             'Invalid configuration' % sim_name)
 
 
-def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_inproc(
+    world: World,
+    sim_name: str,
+    sim_config: Dict[Literal['python', 'env'], str],
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+) -> SimProxy:
     """
     Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
@@ -167,7 +188,14 @@ def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_param
     return LocalProcess(sim_name, sim_id, meta, sim, world)
 
 
-def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_proc(
+    world: World,
+    sim_name: str,
+    sim_config: Dict[Literal['cmd', 'cwd', 'env'], str],
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+) -> SimProxy:
     """
     Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
@@ -192,7 +220,7 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
     # Make a copy of the current env. vars dictionary and update it with the
     # user provided values (or an empty dict as a default):
     env = dict(os.environ)
-    env.update(sim_config.get('env', {}))
+    env.update(sim_config.get('env', {}))  # type: ignore
 
     kwargs = {
         'bufsize': 1,
@@ -218,7 +246,14 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
     return proxy
 
 
-def start_connect(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_connect(
+    world: World,
+    sim_name: str,
+    sim_config,
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+):
     """
     Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
@@ -243,7 +278,7 @@ def start_connect(world, sim_name, sim_config, sim_id, time_resolution, sim_para
 
 
 def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
-               sim_params, proc=None, addr=None):
+               sim_params, proc=None, addr=None) -> SimProxy:
     """
     Try to establish a connection with *sim_name* and perform the ``init()``
     API call.
@@ -309,7 +344,9 @@ def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
     return sync_process(greeter(), world, errback=cb)
 
 
-def validate_api_version(version):
+def validate_api_version(
+    version: str
+) -> Union[Tuple[int, int], Tuple[int, int, int]]:
     """
     Validate the *version*.
 
@@ -335,7 +372,7 @@ def validate_api_version(version):
     return v_tuple
 
 
-def expand_meta(meta, sim_name):
+def expand_meta(meta: Meta, sim_name: str):
     """
         Checks if (non-)triggering attributes ("(non-)trigger") are given and
         adds them to each model's meta data if necessary.
@@ -346,7 +383,7 @@ def expand_meta(meta, sim_name):
         sim_type = meta['type']
     except KeyError:
         sim_type = meta['type'] = 'time-based'
-        meta['old-api'] = True
+        meta['old_api'] = True
         logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
                        'contain a type. \'time-based\' is set as default. '
                        'This might cause an error in future releases.', 
@@ -404,7 +441,82 @@ class SimProxy:
     simulator.
     """
 
-    def __init__(self, name, sid, meta, world):
+    name: str
+    """The name of this simulator (in the SIM_CONFIG)."""
+    sid: SimId
+    """This simulator's ID."""
+    meta: Meta
+    """This simulator's meta."""
+
+    proxy: Any
+    """The actual proxy for this simulator."""
+
+    rt_start: float
+    """The real time when this simulator started (as returned by
+    `perf_counter()`."""
+
+    next_steps: List[int]
+    """The scheduled next steps this simulator will take, organized as a heap.
+    Once the immediate next step has been chosen (and the `has_next_step` event
+    has been triggered), the step is moved to `next_step` instead."""
+    next_step: Optional[int]
+    """This simulator's immediate next step once it has been determined. The
+    step is removed from the `next_steps` heap at that point and the
+    `has_next_step` event is triggered."""
+    has_next_step: Event
+    """An event that is triggered once this simulator's next step has been
+    determined."""
+    next_self_step: Optional[int]
+    """The next self-scheduled step for this simulator."""
+    interruptable: bool
+    """Set when this simulator's next step has been scheduled but it is still
+    waiting for dependencies which might trigger earlier steps for this
+    simulator."""
+
+    predecessors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    """This simulator's predecessors in the dataflow graph and the corresponding
+    edges."""
+    successors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    """This simulator's successors in the dataflow graph and the corresponding
+    edge.."""
+    triggering_ancestors: Iterable[Tuple[SimId, bool]]
+    """
+    An iterable of this sim's ancestors that can trigger a step of this
+    simulator. The second component specifies whether the connecting is weak or
+    time-shifted (False) or immediate (True).
+    """
+
+    input_buffer: Dict
+    """Inputs received via `set_data`."""
+    input_memory: Dict
+    """Memory of previous inputs for persistent attributes."""
+    timed_input_buffer: TimedInputBuffer
+    """'Usual' inputs. (But also see `world._df_cache`.)"""
+
+    progress_tmp: int
+    """This simulator's progress after a step has been made but before other
+    simulators should see it."""
+    progress: int
+    """This simulator's progress in mosaik time.
+
+    For time-based simulators, if `progress` is t then the next step will happen
+    at time t + 1."""
+    last_step: int
+    """The most recent step this simulator performed."""
+
+    output_time: int
+    """The output time associated with `data`. Usually, this will be equal to
+    `last_step` but simulators may specify a different time for their output."""
+    data: OutputData
+    """The newest data returned by this simulator."""
+    related_sims: Iterable[SimProxy]
+    """Simulators related to this simulator. (Currently all other simulators.)"""
+    sim_proc: Process
+    """The SimPy process for this simulator."""
+    wait_events: Event
+    """The event (usually an AllOf event) this simulator is waiting for."""
+
+    def __init__(self, name: str, sid: SimId, meta: Meta, world: World):
         self.name = name
         self.sid = sid
         self.meta = meta
@@ -444,9 +556,9 @@ class SimProxy:
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
-        self.sim_proc = None  # SimPy process
-        self.has_next_step = None  # SimPy event
-        self.wait_events = None  # SimPy event
+        self.sim_proc = None  # type: ignore  # will be set in Mosaik's init
+        self.has_next_step = None  # type: ignore
+        self.wait_events = None  # type: ignore
         self.interruptable = False
         self.is_in_step = False
         self.trigger_cycles = []
@@ -731,7 +843,7 @@ class MosaikRemote:
         """
         if not self.world.rt_factor:
             raise SimulationError('Simulator "%s" tried to set an event in '
-                                  'non-real-time mode.' % self.sim_sid)
+                                  'non-real-time mode.' % self.sim_id)
         if event_time < self.world.until:
             sim.progress = min(event_time - 1, sim.progress)
             earlier_step = sim.next_steps and event_time < sim.next_steps[0]
@@ -790,7 +902,7 @@ class StarterCollection(object):
     # Singleton instance of the starter collection.
     __instance = None
 
-    def __new__(cls):
+    def __new__(cls) -> OrderedDict[str, Callable[..., SimProxy]]:
         if StarterCollection.__instance is None:
             # Create collection with default starters (i.e., starters defined
             # my mosaik core).
