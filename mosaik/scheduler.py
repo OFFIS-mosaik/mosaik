@@ -1,6 +1,8 @@
 """
 This module is responsible for performing the simulation of a scenario.
 """
+from __future__ import annotations
+
 from heapq import heappush, heappop, heapreplace
 from loguru import logger
 import networkx as nx
@@ -8,13 +10,25 @@ from time import perf_counter
 from simpy.exceptions import Interrupt
 
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
-from mosaik.simmanager import FULL_ID
+from mosaik.simmanager import FULL_ID, SimProxy
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Any, Dict, Generator, Iterable, Iterator, Optional
+    from mosaik.scenario import World, InputData, OutputData, SimId
+    from simpy.events import Event
 
 
 SENTINEL = object()
 
 
-def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
+def run(
+    world: World,
+    until: int,
+    rt_factor: Optional[float] = None,
+    rt_strict: bool = False,
+    lazy_stepping: bool = True,
+) -> Iterator[Event]:
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -53,7 +67,14 @@ def run(world, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
     yield env.all_of(processes)
 
 
-def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
+def sim_process(
+    world: World,
+    sim: SimProxy,
+    until: int,
+    rt_factor: Optional[float],
+    rt_strict: bool,
+    lazy_stepping: bool,
+) -> Iterator[Event]:
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -112,7 +133,13 @@ def sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping):
                               sim.sid, e)
 
 
-def get_keep_running_func(world, sim, until, rt_factor, rt_start):
+def get_keep_running_func(
+    world: World,
+    sim: SimProxy,
+    until: int,
+    rt_factor: Optional[float],
+    rt_start: float
+):
     """
     Return a function that the :func:`sim_process()` uses to determine
     when to stop.
@@ -165,12 +192,12 @@ def get_keep_running_func(world, sim, until, rt_factor, rt_start):
     return keep_running
 
 
-def warn_if_successors_terminated(world, sim):
-    if 'warn_if_successors_terminated' in sim.meta:
-        should_warn = sim.meta['warn_if_successors_terminated']
+def warn_if_successors_terminated(world: World, sim: SimProxy):
+    if 'warn_if_successors_terminated' in world.config:
+        should_warn = world.config['warn_if_successors_terminated']
     else:
         should_warn = world.df_graph.out_degree(sim.sid) > 0
-    
+
     processes = [world.sims[suc_sid].sim_proc 
                  for suc_sid in sim.successors]
 
@@ -179,7 +206,7 @@ def warn_if_successors_terminated(world, sim):
                        f"is still running.")
 
 
-def has_next_step(world, sim):
+def has_next_step(world: World, sim: SimProxy) -> Iterable[Event]:
     """
     Return an :class:`~simpy.events.Event` that is triggered when *sim*
     has a next step.
@@ -209,7 +236,12 @@ def has_next_step(world, sim):
             raise NoStepException
 
 
-def rt_sleep(rt_factor, rt_start, sim, world):
+def rt_sleep(
+    rt_factor: Optional[float],
+    rt_start: float,
+    sim: SimProxy,
+    world: World
+) -> Iterable[Event]:
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
@@ -220,7 +252,11 @@ def rt_sleep(rt_factor, rt_start, sim, world):
             yield world.env.timeout(sleep)
 
 
-def wait_for_dependencies(world, sim, lazy_stepping):
+def wait_for_dependencies(
+    world: World,
+    sim: SimProxy,
+    lazy_stepping: bool
+) -> Event:
     """
     Return an event (:class:`simpy.events.AllOf`) that is triggered when
     all dependencies can provide input data for *sim*.
@@ -269,7 +305,7 @@ def wait_for_dependencies(world, sim, lazy_stepping):
     return wait_events
 
 
-def get_input_data(world, sim):
+def get_input_data(world: World, sim: SimProxy) -> InputData:
     """
     Return a dictionary with the input data for *sim*.
 
@@ -334,7 +370,7 @@ def recursive_update(d, u):
     return d
 
 
-def get_max_advance(world, sim, until):
+def get_max_advance(world: World, sim: SimProxy, until: int) -> int:
     """
     Checks how far *sim* can safely advance its internal time during next step
     without causing a causality error.
@@ -358,7 +394,12 @@ def get_max_advance(world, sim, until):
     return max_advance
 
 
-def step(world, sim, inputs, max_advance):
+def step(
+    world: World,
+    sim: SimProxy,
+    inputs: InputData,
+    max_advance: int
+) -> Generator[Event, int, None]:
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -377,7 +418,7 @@ def step(world, sim, inputs, max_advance):
                               f'time {sim.progress}.')
     sim.last_step = current_step
 
-    if 'old-api' in sim.meta:
+    if 'old_api' in sim.meta and sim.meta['old_api']:
         next_step = yield sim.proxy.step(current_step, inputs)
     else:
         next_step = yield sim.proxy.step(current_step, inputs, max_advance)
@@ -409,7 +450,12 @@ def step(world, sim, inputs, max_advance):
     sim.is_in_step = False
 
 
-def rt_check(rt_factor, rt_start, rt_strict, sim):
+def rt_check(
+    rt_factor: Optional[float],
+    rt_start: float,
+    rt_strict: bool,
+    sim: SimProxy
+):
     """
     Check if simulation is fast enough for a given real-time factor.
     """
@@ -426,7 +472,7 @@ def rt_check(rt_factor, rt_start, rt_strict, sim):
                                , rt_factor=rt_factor, delta=delta)
 
 
-def get_outputs(world, sim):
+def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]:
     """
     Get all required output data from a simulator *sim*.
     Yield an event that is triggered when all output data is received.
@@ -445,7 +491,8 @@ def get_outputs(world, sim):
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
-            output_time = sim.output_time = data.get('time', sim.last_step)
+            output_time: int 
+            output_time = sim.output_time = data.get('time', sim.last_step)  # type: ignore
             if sim.last_step > output_time:
                 raise SimulationError(
                     'Output time (%s) is not >= time (%s) for simulator "%s"'
@@ -467,7 +514,12 @@ def get_outputs(world, sim):
         sim.data = data
 
 
-def treat_cycling_output(world, sim, data, output_time):
+def treat_cycling_output(
+    world: World,
+    sim: SimProxy,
+    data: OutputData,
+    output_time: int
+):
     """
     Check for each triggering cycle if the maximum number of iterations
     within the same time step has been reached. Also adjust the progress
@@ -495,7 +547,7 @@ def treat_cycling_output(world, sim, data, output_time):
                 break
 
 
-def notify_dependencies(world, sim):
+def notify_dependencies(world: World, sim: SimProxy):
     """
     Notify all simulators waiting for us.
     """
@@ -532,7 +584,7 @@ def notify_dependencies(world, sim):
                 edge.pop('wait_lazy').succeed()
 
 
-def prune_dataflow_cache(world):
+def prune_dataflow_cache(world: World):
     """
     Prunes the dataflow cache.
     """
@@ -545,7 +597,7 @@ def prune_dataflow_cache(world):
     world._df_cache_min_time = min_cache_time
 
 
-def get_progress(sims, until):
+def get_progress(sims: Dict[SimId, SimProxy], until: int) -> float:
     """
     Return the current progress of the simulation in percent.
     """
@@ -554,7 +606,11 @@ def get_progress(sims, until):
     return avg_time * 100 / until
 
 
-def check_and_resolve_deadlocks(sim, waiting=False, end=False):
+def check_and_resolve_deadlocks(
+    sim: SimProxy,
+    waiting: bool = False,
+    end: bool = False
+):
     """
     Checks for deadlocks which can occur when all simulators are either waiting
     for a next step or for dependencies, or have finished already.
@@ -597,7 +653,7 @@ def check_and_resolve_deadlocks(sim, waiting=False, end=False):
                 edge.pop('wait_lazy').succeed()
 
 
-def clear_wait_events(sim):
+def clear_wait_events(sim: SimProxy):
     """
     Clear/succeed all wait events *sim* is waiting for.
     """
@@ -611,7 +667,7 @@ def clear_wait_events(sim):
                 edge.pop(wait_type).succeed()
 
 
-def clear_wait_events_dependencies(sim):
+def clear_wait_events_dependencies(sim: SimProxy):
     """
     Clear/succeed all wait events over which other simulators are waiting for
     *sim*.
