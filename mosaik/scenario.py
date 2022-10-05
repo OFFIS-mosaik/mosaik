@@ -462,7 +462,8 @@ class World(object):
 
         return results
 
-    def run(self,
+    def run(
+        self,
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
@@ -549,7 +550,7 @@ class World(object):
         except KeyboardInterrupt:
             logger.info('Simulation canceled. Terminating ...')
         finally:
-            for sid, sim in reversed(self.sims.items()):
+            for sid, sim in self.sims.items():
                 sim.tqdm.close()
             self.tqdm.close()
             self.shutdown()
