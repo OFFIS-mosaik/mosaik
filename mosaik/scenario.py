@@ -527,7 +527,7 @@ class World(object):
                 else "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}" %
                     (" " * (max_sim_id_len - 11), "  " * until_len)
             ),
-            unit='st',
+            unit='steps',
         )
         for sid, sim in self.sims.items():
             sim.tqdm = tqdm(
