@@ -371,7 +371,6 @@ def test_local_process():
     assert sp._inst is es
     assert sp.meta is es.meta
     assert sp.last_step == -1
-    assert sp.next_step is None
     assert sp.next_steps == [0]
 
 
@@ -556,7 +555,8 @@ def test_mosaik_remote(rpc, err):
             rpc_con = JSON_RPC(Packet(sock))
             proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
                                              rpc_con, world)
-            proxy.last_step = proxy.next_step = 1
+            proxy.last_step = 1
+            proxy.is_in_step = True
             world.sims['X'] = proxy
 
         env.process(greeter())

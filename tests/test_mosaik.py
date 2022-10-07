@@ -67,7 +67,6 @@ def test_mosaik(fixture, cache):
         for node, inputs in fixture.INPUTS.items():
             expected_graph.add_node(node, inputs=inputs)
 
-        print(world.execution_graph.adj)
         assert world.execution_graph.adj == expected_graph.adj
 
         for node, data in world.execution_graph.nodes.items():

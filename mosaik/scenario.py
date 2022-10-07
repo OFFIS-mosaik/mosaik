@@ -7,16 +7,24 @@ user to start simulators. It provides a :class:`ModelFactory` (and
 a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The method :meth:`World.run()` finally starts the simulation.
 """
+from __future__ import annotations
+
 from collections import defaultdict
 import itertools
 
 import networkx
+from simpy.core import Environment
 from loguru import logger
 
 from mosaik import simmanager
 from mosaik import scheduler
 from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, TypedDict, Union
+    from simpy.events import Event
 
 
 backend = simmanager.backend
@@ -28,6 +36,103 @@ base_config = {
 
 FULL_ID = simmanager.FULL_ID
 
+
+if TYPE_CHECKING:
+    Attr = str
+    """An attribute name"""
+    SimId = str
+    """A simulator ID"""
+    EntityId = str
+    """An entity ID"""
+    FullId = str
+    """A full ID of the form "sim_id.entity_id" """
+    InputData = Dict[EntityId, Dict[Attr, Dict[FullId, Any]]]
+    """The format of input data for simulator's step methods."""
+    OutputData = Dict[EntityId, Dict[Attr, Any]]
+    """The format of output data as return by `get_data`"""
+
+    class ModelDescription(TypedDict):
+        """Description of a single model in `Meta`"""
+        public: bool
+        """Whether the model can be created directly."""
+        params: List[str]
+        """The parameters given during creating of this model."""
+        any_inputs: bool
+        """Whether this model accepts inputs other than those specified in `attrs`."""
+        attrs: List[Attr]
+        """The input and output attributes of this model."""
+        trigger: Iterable[Attr]
+        """The input attributes that trigger a step of the associated simulator.
+
+        (Non-trigger attributes are collected and supplied to the simulator when it
+        steps next.)"""
+        persistent: Iterable[Attr]
+        """The output attributes that are persistent."""
+
+    class Meta(TypedDict):
+        """The meta-data for a simulator."""
+        api_version: str
+        """The API version that this simulator supports in the format "major.minor"."""
+        old_api: bool
+        """Whether this simulator uses the old API (without the `max_advance` parameter
+        in `step`. Only used internally. Optional, if unset, treat as `false`."""
+        type: Literal['time-based', 'event-based', 'hybrid']
+        """The simulator's stepping type."""
+        models: Dict[str, ModelDescription]
+        """The descriptions of this simulator's models."""
+        extra_methods: List[str]
+        """The extra methods this simulator supports."""
+
+    class ModelOptionals(TypedDict, total=False):
+        env: Dict[str, str]
+        """The environment variables to set for this simulator."""
+        cwd: str
+        """The current working directory for this simulator."""
+
+    class PythonModel(ModelOptionals):
+        python: str
+        """The Simulator subclass for this simulator, encoded as a string
+        `module_name:ClassName`."""
+
+    class ConnectModel(ModelOptionals):
+        connect: str
+        """The `host:port` address for this simulator."""
+    
+    class CmdModel(ModelOptionals):
+        cmd: str
+        """The command to start this simulator. String %(python)s will be replaced
+        by the python command used to start this scenario, %(addr)s will be replaced
+        by the `host:port` combination to which the simulator should connect."""
+
+    SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+
+    # The events can be unset. By splitting them into their own class, we
+    # can make them optional.
+    class DataflowEgdeEvents(TypedDict, total=False):
+        wait_event: Event
+        """Event on which destination simulator is waiting for its inputs."""
+        wait_lazy: Event
+        """Event on which source simulator is waiting in case of lazy stepping."""
+        wait_async: Event
+        """Event on which source simulator is waiting to support async requests."""
+        
+
+    class DataflowEdge(DataflowEgdeEvents):
+        """The information associated with an edge in the dataflow graph."""
+        async_requests: bool
+        """Whether there can be async requests along this edge."""
+        time_shifted: bool
+        """Whether dataflow along this edge is time shifted."""
+        weak: bool
+        """Whether this edge is weak (used for same-time loops)."""
+        trigger: bool
+        """Whether any of the destination simulator's inputs used by this edge are
+        trigger inputs."""
+        pred_waiting: bool
+        """Whether the source simulator of this edge has to wait for the destination
+        simulator."""
+        cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+        dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
 
 class World(object):
     """
@@ -58,8 +163,28 @@ class World(object):
     that this increases the memory consumption and simulation time.
     """
 
-    def __init__(self, sim_config, mosaik_config=None, time_resolution=1.,
-                 debug=False, cache=True, max_loop_iterations=100):
+    until: int
+    """The time until which this simulation will run."""
+    rt_factor: Optional[float]
+    """The number of real-time seconds corresponding to one mosaik step."""
+    sim_progress: float
+    """The progress of the entire simulation (in percent)."""
+    _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
+    """Cache for faster dataflow. (Used if `cache=True` is set during World creation."""
+    env: Environment
+    """The SimPy environment for this simulation."""
+    sims: Dict[SimId, simmanager.SimProxy]
+    """A dictionary of already started simulators instances."""
+
+    def __init__(
+        self,
+        sim_config: SimConfig,
+        mosaik_config=None,
+        time_resolution: float = 1.,
+        debug: bool = False,
+        cache: bool = True,
+        max_loop_iterations: int = 100
+    ):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
@@ -77,9 +202,8 @@ class World(object):
         self.max_loop_iterations = max_loop_iterations
 
         self.sims = {}
-        """A dictionary of already started simulators instances."""
 
-        self.env = backend.Environment()
+        self.env = backend.Environment()  # type: ignore
         """The SimPy.io networking :class:`~simpy.io.select.Environment`."""
 
         self.srv_sock = backend.TCPSocket.server(self.env, self.config['addr'])
@@ -120,7 +244,7 @@ class World(object):
             self.persistent_outattrs = {}
             self._df_cache = None
 
-    def start(self, sim_name, **sim_params):
+    def start(self, sim_name: str, **sim_params) -> ModelFactory:
         """
         Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
@@ -136,8 +260,16 @@ class World(object):
         self.trigger_graph.add_node(sim_id)
         return ModelFactory(self, sim)
 
-    def connect(self, src, dest, *attr_pairs, async_requests=False,
-                time_shifted=False, initial_data={}, weak=False):
+    def connect(
+        self,
+        src: Entity,
+        dest: Entity,
+        *attr_pairs: Union[str, Tuple[str, str]],
+        async_requests: bool = False,
+        time_shifted: bool = False,
+        initial_data: Dict[Attr, Any] = {},
+        weak: bool = False
+    ):
         """
         Connect the *src* entity to *dest* entity.
 
@@ -185,19 +317,19 @@ class World(object):
                                         f'simulators {src.sid} and {dest.sid}')
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        attr_pairs = tuple((a, a) if type(a) is str else a for a in attr_pairs)
+        expanded_attrs = tuple((a, a) if isinstance(a, str) else a for a in attr_pairs)
 
-        missing_attrs = self._check_attributes(src, dest, attr_pairs)
+        missing_attrs = self._check_attributes(src, dest, expanded_attrs)
         if missing_attrs:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         if self._df_cache is not None:
             trigger, cached, time_buffered, memorized, persistent = \
-                self._classify_connections_with_cache(src, dest, attr_pairs)
+                self._classify_connections_with_cache(src, dest, expanded_attrs)
         else:
             trigger, time_buffered, memorized, persistent = \
-                self._classify_connections_without_cache(src, dest, attr_pairs)
+                self._classify_connections_without_cache(src, dest, expanded_attrs)
             cached = []
 
         if time_shifted:
@@ -205,7 +337,7 @@ class World(object):
                 raise ScenarioError('Time shifted connections have to be '
                                     'set with default inputs for the first step.')
             # list for assertion of correct assignment:
-            check_attrs = [a[0] for a in attr_pairs]
+            check_attrs = [a[0] for a in expanded_attrs]
             # Set default values for first data exchange:
             for attr, val in initial_data.items():
                 if attr not in check_attrs:
@@ -227,7 +359,7 @@ class World(object):
                                pred_waiting=pred_waiting)
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-        dfs.append((src.eid, dest.eid, attr_pairs))
+        dfs.append((src.eid, dest.eid, expanded_attrs))
 
         cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
             'cached_connections', [])
@@ -239,7 +371,7 @@ class World(object):
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
-        outattr = [a[0] for a in attr_pairs]
+        outattr = [a[0] for a in expanded_attrs]
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
@@ -269,13 +401,16 @@ class World(object):
             dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
-    def set_initial_event(self, sid, time=0):
+    def set_initial_event(self, sid: SimId, time: int = 0):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
         self.sims[sid].next_steps = [time]
 
-    def get_data(self, entity_set, *attributes):
+    def get_data(self,
+        entity_set: Iterable[Entity],
+        *attributes: Attr
+    ) -> Dict[Entity, Dict[Attr, Any]]:
         """
         Get and return the values of all *attributes* for each entity of an
         *entity_set*.
@@ -326,7 +461,12 @@ class World(object):
 
         return results
 
-    def run(self, until, rt_factor=None, rt_strict=False, lazy_stepping=True):
+    def run(self,
+        until: int,
+        rt_factor: Optional[float] = None,
+        rt_strict: bool = False,
+        lazy_stepping: bool = True,
+    ):
         """
         Start the simulation until the simulation time *until* is reached.
 
@@ -500,7 +640,11 @@ class World(object):
             self.srv_sock.close()
             self.srv_sock = None
 
-    def _check_attributes(self, src, dest, attr_pairs):
+    def _check_attributes(self,
+        src: Entity,
+        dest: Entity,
+        attr_pairs: Iterable[Tuple[Attr, Attr]],
+    ) -> Iterable[Tuple[Entity, Attr]]:
         """
         Check if *src* and *dest* have the attributes in *attr_pairs*.
 
@@ -518,7 +662,17 @@ class World(object):
                     attr_errors.append((entities[i], attr))
         return attr_errors
 
-    def _classify_connections_with_cache(self, src, dest, attr_pairs):
+    def _classify_connections_with_cache(self,
+        src: Entity,
+        dest: Entity,
+        attr_pairs: Iterable[Tuple[Attr, Attr]],
+    ) -> Tuple[
+        bool,
+        Iterable[Tuple[Attr, Attr]],
+        Iterable[Tuple[Attr, Attr]],
+        Iterable[Tuple[Attr, Attr]],
+        Iterable[Tuple[Attr, Attr]],
+    ]:
         """
         Classifies the connection by analyzing the model's meta data with
         enabled cache, i.e. if it triggers a step of the destination, how the
@@ -552,7 +706,16 @@ class World(object):
         return (any_trigger, tuple(cached), tuple(time_buffered),
                 tuple(memorized), tuple(persistent))
 
-    def _classify_connections_without_cache(self, src, dest, attr_pairs):
+    def _classify_connections_without_cache(self,
+        src: Entity,
+        dest: Entity,
+        attr_pairs: Iterable[Tuple[Attr, Attr]],
+    ) -> Tuple[
+        bool,
+        Iterable[Tuple[Attr, Attr]],
+        Iterable[Tuple[Attr, Attr]],
+        Iterable[Tuple[Attr, Attr]],
+    ]:
         """
         Classifies the connection by analyzing the model's meta data with
         disabled cache, i.e. if it triggers a step of the destination, if the
@@ -587,7 +750,7 @@ class ModelFactory():
     marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
     """
 
-    def __init__(self, world, sim):
+    def __init__(self, world: World, sim: simmanager.SimProxy):
         self.meta = sim.meta
         self._world = world
         self._env = world.env
@@ -632,7 +795,7 @@ class ModelMock(object):
     ``sim.ModelName.create(3, x=23)``.
     """
 
-    def __init__(self, world, name, sim):
+    def __init__(self, world: World, name: str, sim: simmanager.SimProxy):
         self._world = world
         self._env = world.env
         self._name = name
@@ -647,7 +810,7 @@ class ModelMock(object):
         self._check_params(**model_params)
         return self.create(1, **model_params)[0]
 
-    def create(self, num, **model_params):
+    def create(self, num: int, **model_params):
         """
         Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.
@@ -720,6 +883,12 @@ class Entity(object):
     An entity represents an instance of a simulation model within mosaik.
     """
     __slots__ = ['sid', 'eid', 'sim_name', 'type', 'children', 'sim']
+    sid: SimId
+    eid: EntityId
+    sim_name: str
+    type: str
+    children: Iterable[Entity]
+    sim: simmanager.SimProxy
 
     def __init__(self, sid, eid, sim_name, type, children, sim):
         self.sid = sid
@@ -741,7 +910,7 @@ class Entity(object):
         """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
 
     @property
-    def full_id(self):
+    def full_id(self) -> FullId:
         """
         Full, globally unique entity id ``sid.eid``.
         """
