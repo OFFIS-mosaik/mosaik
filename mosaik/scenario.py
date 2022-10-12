@@ -224,7 +224,7 @@ class World(object):
         :class:`Entity`."""
 
         self.sim_progress = 0
-        """Progress of the current simulation."""
+        """Progress of the current simulation (in percent)."""
 
         self._debug = False
         if debug:

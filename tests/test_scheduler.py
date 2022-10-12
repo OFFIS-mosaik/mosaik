@@ -160,7 +160,7 @@ def test_wait_for_dependencies_all_done(world):
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-@pytest.mark.parametrize("progress,number_waiting", [(-1, 1), (0, 0)])
+@pytest.mark.parametrize("progress,number_waiting", [(0, 1), (1, 0)])
 def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     """
     Shifted dependency has not/has stepped far enough. Waiting is/is not
@@ -256,7 +256,7 @@ def test_step(world):
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress_tmp) == (0, 0)
+    assert (sim.last_step, sim.progress_tmp) == (0, 1)
 
 
 # TODO: Test also for output_time if 'time' is indicated by event-based sims
@@ -268,7 +268,7 @@ def test_get_outputs(world, cache_t1):
     world._df_outattr[0][0] = ['x', 'y']
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims[0]
-    sim.last_step, sim.progress_tmp = 0, 1
+    sim.last_step, sim.progress_tmp = 0, 2
     sim.output_time = -1
     sim.tqdm = tqdm(disable=True)
 
@@ -330,10 +330,10 @@ def test_treat_cycling_output(world, count):
     sim.trigger_cycles[0]['count'] = count
 
     sim.last_step = output_time = 1
-    sim.progress_tmp = 1
+    sim.progress_tmp = 2
     data = {'1': {'x': 1}}
     scheduler.treat_cycling_output(world, sim, data, output_time)
-    assert sim.progress_tmp == 0
+    assert sim.progress_tmp == 1
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
@@ -401,9 +401,8 @@ def test_get_outputs_shifted(world):
     world.df_graph[5][4]['wait_event'] = wait_event
     sim = world.sims[5]
     sim.meta['type'] = 'time-based'
-    sim.progress = 0
+    sim.progress = 1
     sim.last_step = 1
-    sim.progress_tmp = 1
     sim.tqdm = tqdm(disable=True)
     heappush(world.sims[4].next_steps, 2)
 
@@ -425,19 +424,19 @@ def test_get_progress():
         def __init__(self, time):
             self.progress = time
 
-    sims = {i: Sim(-1) for i in range(2)}
+    sims = {i: Sim(0) for i in range(2)}
     assert scheduler.get_progress(sims, 4) == 0
 
-    sims[0].progress = 0
+    sims[0].progress = 1
     assert scheduler.get_progress(sims, 4) == 12.5
 
-    sims[0].progress = 1
+    sims[0].progress = 2
     assert scheduler.get_progress(sims, 4) == 25
 
-    sims[1].progress = 2
-    sims[0].progress = 2
+    sims[1].progress = 3
+    sims[0].progress = 3
     assert scheduler.get_progress(sims, 4) == 75
 
-    sims[0].progress = 3
-    sims[1].progress = 5
+    sims[0].progress = 4
+    sims[1].progress = 4
     assert scheduler.get_progress(sims, 4) == 100

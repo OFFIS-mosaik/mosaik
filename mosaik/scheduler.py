@@ -160,10 +160,10 @@ def get_keep_running_func(
     if no_set_events:
         if world.trigger_graph.in_degree(sim.sid) == 0:
             def check_time():
-                return sim.progress + 1 < until
+                return sim.progress < until
         else:
             def check_time():
-                return sim.progress < until
+                return sim.progress <= until
 
         check_functions.append(check_time)
 
@@ -281,7 +281,7 @@ def wait_for_dependencies(
     # to provide the required input data for us:
     for pre_sim, edge in sim.predecessors.values():
         # Wait for dep_sim if it hasn't progressed until actual time step:
-        if pre_sim.progress + edge['time_shifted'] < next_step:
+        if pre_sim.progress + edge['time_shifted'] <= next_step:
             evt = world.env.event()
             events.append(evt)
             edge['wait_event'] = evt
@@ -294,14 +294,14 @@ def wait_for_dependencies(
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
         for suc_sim, edge in sim.successors.values():
-            if edge['pred_waiting'] and suc_sim.progress + 1 < next_step:
+            if edge['pred_waiting'] and suc_sim.progress < next_step:
                 evt = world.env.event()
                 events.append(evt)
                 edge['wait_async'] = evt
             elif lazy_stepping:
                 if 'wait_lazy' in edge:
                     events.append(edge['wait_lazy'])
-                elif suc_sim.next_steps and suc_sim.progress + 1 < next_step:
+                elif suc_sim.next_steps and suc_sim.progress < next_step:
                     evt = world.env.event()
                     events.append(evt)
                     edge['wait_lazy'] = evt
@@ -421,8 +421,8 @@ def step(
     """
     current_step = heappop(sim.next_steps)
     sim.is_in_step = True
-    if current_step < sim.progress:
-        raise SimulationError(f'Simulator {sim.id} is trying to perform a step'
+    if current_step < sim.progress - 1:
+        raise SimulationError(f'Simulator {sim.sid} is trying to perform a step'
                               f'at time {current_step}, but it has already progressed to'
                               f'time {sim.progress}.')
     sim.last_step = current_step
@@ -449,13 +449,13 @@ def step(
         sim.next_self_step = next_step
 
     if sim.meta['type'] == 'time-based':
-        sim.progress_tmp = next_step - 1
+        sim.progress_tmp = next_step
     else:
         assert max_advance >= sim.last_step
         if sim.next_steps:
-            sim.progress_tmp = min(sim.next_steps[0] - 1, max_advance)
+            sim.progress_tmp = min(sim.next_steps[0], max_advance + 1)
         else:
-            sim.progress_tmp = max_advance
+            sim.progress_tmp = max_advance + 1
     
     sim.is_in_step = False
 
@@ -498,7 +498,7 @@ def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]
         if sim.meta['type'] == 'time-based' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid
             # for.
-            for i in range(sim.last_step, sim.progress_tmp + 1):
+            for i in range(sim.last_step, sim.progress_tmp):
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
@@ -552,7 +552,7 @@ def treat_cycling_output(
                     cycle['time'] = output_time
                     cycle['count'] = 1
                 # Check if output time could cause an earlier next step:
-                cycle_progress = output_time - 1 + cycle['min_length']
+                cycle_progress = output_time + cycle['min_length']
                 if cycle_progress < sim.progress_tmp:
                     sim.progress_tmp = cycle_progress
                 break
@@ -568,7 +568,7 @@ def notify_dependencies(world: World, sim: SimProxy):
     for dest_sim, edge in sim.successors.values():
         if 'wait_event' in edge:
             weak_or_shifted = edge['time_shifted'] or edge['weak']
-            if dest_sim.next_steps[0] - weak_or_shifted <= progress:
+            if dest_sim.next_steps[0] - weak_or_shifted < progress:
                 edge.pop('wait_event').succeed()
         if edge['trigger']:
             dataflows = edge['dataflows']
@@ -589,10 +589,10 @@ def notify_dependencies(world: World, sim: SimProxy):
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, edge in sim.predecessors.values():
-        if 'wait_async' in edge and pre_sim.next_steps[0] <= progress + 1:
+        if 'wait_async' in edge and pre_sim.next_steps[0] <= progress:
             edge.pop('wait_async').succeed()
         elif 'wait_lazy' in edge:
-            if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress + 1:
+            if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
                 edge.pop('wait_lazy').succeed()
 
 
@@ -613,7 +613,7 @@ def get_progress(sims: Dict[SimId, SimProxy], until: int) -> float:
     """
     Return the current progress of the simulation in percent.
     """
-    times = [min(until, sim.progress + 1) for sim in sims.values()]
+    times = [sim.progress for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 
