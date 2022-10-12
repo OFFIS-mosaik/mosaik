@@ -493,9 +493,6 @@ class SimProxy:
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
 
-    progress_tmp: int
-    """This simulator's progress after a step has been made but before other
-    simulators should see it."""
     progress: int
     """This simulator's progress in mosaik time.
 
@@ -551,7 +548,6 @@ class SimProxy:
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress_tmp = 0
         self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.input_memory = {}

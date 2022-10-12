@@ -111,10 +111,10 @@ def sim_process(
                 break
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
-            yield from step(world, sim, input_data, max_advance)
+            progress = yield from step(world, sim, input_data, max_advance)
             rt_check(rt_factor, rt_start, rt_strict, sim)
-            yield from get_outputs(world, sim)
-            notify_dependencies(world, sim)
+            progress = yield from get_outputs(world, sim, progress)
+            notify_dependencies(world, sim, progress)
             if world._df_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
@@ -408,7 +408,7 @@ def step(
     sim: SimProxy,
     inputs: InputData,
     max_advance: int
-) -> Generator[Event, int, None]:
+) -> Generator[Event, int, int]:
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -420,7 +420,6 @@ def step(
     it's internal time without causing any causality errors.
     """
     current_step = heappop(sim.next_steps)
-    sim.is_in_step = True
     if current_step < sim.progress - 1:
         raise SimulationError(f'Simulator {sim.sid} is trying to perform a step'
                               f'at time {current_step}, but it has already progressed to'
@@ -428,10 +427,12 @@ def step(
     sim.last_step = current_step
 
     sim.tqdm.set_postfix_str('stepping')
-    if 'old_api' in sim.meta:
+    sim.is_in_step = True
+    if 'old_api' in sim.meta and sim.meta['old_api']:
         next_step = yield sim.proxy.step(current_step, inputs)
     else:
         next_step = yield sim.proxy.step(current_step, inputs, max_advance)
+    sim.is_in_step = False
 
     if next_step is not None:
         if type(next_step) != int:
@@ -449,15 +450,14 @@ def step(
         sim.next_self_step = next_step
 
     if sim.meta['type'] == 'time-based':
-        sim.progress_tmp = next_step
+        return next_step
     else:
         assert max_advance >= sim.last_step
         if sim.next_steps:
-            sim.progress_tmp = min(sim.next_steps[0], max_advance + 1)
+            return min(sim.next_steps[0], max_advance + 1)
         else:
-            sim.progress_tmp = max_advance + 1
-    
-    sim.is_in_step = False
+            return max_advance + 1
+
 
 
 def rt_check(
@@ -482,7 +482,7 @@ def rt_check(
                                , rt_factor=rt_factor, delta=delta)
 
 
-def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]:
+def get_outputs(world: World, sim: SimProxy, progress: int) -> Generator[Any, OutputData, int]:
     """
     Get all required output data from a simulator *sim*.
     Yield an event that is triggered when all output data is received.
@@ -498,7 +498,7 @@ def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]
         if sim.meta['type'] == 'time-based' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid
             # for.
-            for i in range(sim.last_step, sim.progress_tmp):
+            for i in range(sim.last_step, progress):
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
@@ -509,7 +509,7 @@ def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]
                     'Output time (%s) is not >= time (%s) for simulator "%s"'
                     % (output_time, sim.last_step, sim.sid))
 
-            treat_cycling_output(world, sim, data, output_time)
+            progress = treat_cycling_output(world, sim, data, output_time, progress)
 
             if world._df_cache is not None:
                 world._df_cache[sim.last_step][sim.sid] = data
@@ -524,13 +524,16 @@ def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]
                             output_time, sid, src_eid, dest_eid, dest_attr, val)
         sim.data = data
 
+    return progress
+
 
 def treat_cycling_output(
     world: World,
     sim: SimProxy,
     data: OutputData,
-    output_time: int
-):
+    output_time: int,
+    progress: int,
+) -> int:
     """
     Check for each triggering cycle if the maximum number of iterations
     within the same time step has been reached. Also adjust the progress
@@ -553,16 +556,18 @@ def treat_cycling_output(
                     cycle['count'] = 1
                 # Check if output time could cause an earlier next step:
                 cycle_progress = output_time + cycle['min_length']
-                if cycle_progress < sim.progress_tmp:
-                    sim.progress_tmp = cycle_progress
+                if cycle_progress < progress:
+                    progress = cycle_progress
                 break
 
+    return progress
 
-def notify_dependencies(world: World, sim: SimProxy):
+
+def notify_dependencies(world: World, sim: SimProxy, progress: int):
     """
     Notify all simulators waiting for us.
     """
-    progress = sim.progress = sim.progress_tmp
+    sim.progress = progress
 
     # Notify simulators waiting for inputs from us.
     for dest_sim, edge in sim.successors.values():

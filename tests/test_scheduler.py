@@ -254,9 +254,9 @@ def test_step(world):
 
     gen = scheduler.step(world, sim, inputs, 0)
     evt = next(gen)
-    pytest.raises(StopIteration, gen.send, evt.value)
+    exc_info = pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
-    assert (sim.last_step, sim.progress_tmp) == (0, 1)
+    assert (sim.last_step, exc_info.value.value) == (0, 1)
 
 
 # TODO: Test also for output_time if 'time' is indicated by event-based sims
@@ -268,11 +268,11 @@ def test_get_outputs(world, cache_t1):
     world._df_outattr[0][0] = ['x', 'y']
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims[0]
-    sim.last_step, sim.progress_tmp = 0, 2
+    sim.last_step = 0 
     sim.output_time = -1
     sim.tqdm = tqdm(disable=True)
 
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, progress=2)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -298,7 +298,7 @@ def test_get_outputs_buffered(world):
         ('0', 'z'): [(1, '0', 'in')],
     }
 
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, progress=0)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
     assert evt.triggered
@@ -314,7 +314,7 @@ def test_get_outputs_buffered(world):
     pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))])
 def test_treat_cycling_output(world, count):
     """
-    Tests if progress_tmp is adjusted when a triggering cycle could cause
+    Tests if progress is adjusted when a triggering cycle could cause
     an earlier step than predicted by get_max_advance function, or if an error
     is risen if the maximum iteration count is reached.
     """
@@ -330,19 +330,16 @@ def test_treat_cycling_output(world, count):
     sim.trigger_cycles[0]['count'] = count
 
     sim.last_step = output_time = 1
-    sim.progress_tmp = 2
     data = {'1': {'x': 1}}
-    scheduler.treat_cycling_output(world, sim, data, output_time)
-    assert sim.progress_tmp == 1
+    assert scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
 @pytest.mark.parametrize('output_time, next_steps', [(1, [1, 2]), (2, [2]), (3, [2, 3])])
-@pytest.mark.parametrize('progress, pop_wait', [(1, False), (2, True)])
+@pytest.mark.parametrize('progress, pop_wait', [(2, False), (3, True)])
 def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait):
     sim = world.sims[0]
-    sim.progress = -1
-    sim.progress_tmp = progress
+    sim.progress = 0
 
     wait_event = world.env.event()
     world.df_graph[0][2]['wait_event'] = wait_event
@@ -353,17 +350,16 @@ def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait)
     heappush(world.sims[2].next_steps, 2)
     world.sims[2].has_next_step = world.env.event().succeed()
 
-    scheduler.notify_dependencies(world, sim)
+    scheduler.notify_dependencies(world, sim, progress)
 
-    assert sim.progress == sim.progress_tmp
+    assert sim.progress == progress
     assert world.sims[2].next_steps == next_steps
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
 def test_notify_dependencies_trigger(world):
     sim = world.sims[0]
-    sim.progress = -1
-    sim.progress_tmp = 1
+    sim.progress = 0
 
     world.df_graph[0][2].pop('wait_event')
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
@@ -373,7 +369,7 @@ def test_notify_dependencies_trigger(world):
     world.sims[2].next_step = None
     world.sims[2].has_next_step = world.env.event()
 
-    scheduler.notify_dependencies(world, sim)
+    scheduler.notify_dependencies(world, sim, progress=1)
 
     assert world.sims[2].next_steps == [1]
     assert world.sims[2].has_next_step.triggered
@@ -406,10 +402,10 @@ def test_get_outputs_shifted(world):
     sim.tqdm = tqdm(disable=True)
     heappush(world.sims[4].next_steps, 2)
 
-    gen = scheduler.get_outputs(world, sim)
+    gen = scheduler.get_outputs(world, sim, progress=2)
     evt = next(gen)
     pytest.raises(StopIteration, gen.send, evt.value)
-    scheduler.notify_dependencies(world, sim)
+    scheduler.notify_dependencies(world, sim, progress=2)
     scheduler.prune_dataflow_cache(world)
     assert evt.triggered
     assert wait_event.triggered
