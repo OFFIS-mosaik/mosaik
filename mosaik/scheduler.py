@@ -105,6 +105,8 @@ def sim_process(
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
+            if sim.next_steps[0] >= world.until:
+                break
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
             yield from step(world, sim, input_data, max_advance)
@@ -564,9 +566,10 @@ def notify_dependencies(world: World, sim: SimProxy):
             for eid, _, attrs in dataflows:
                 data_eid = sim.data.get(eid, {})
                 for attr, _ in attrs:
-                    if (attr in data_eid
-                            and sim.output_time not in dest_sim.next_steps
-                            and sim.output_time < world.until):
+                    if (
+                        attr in data_eid
+                        and sim.output_time not in dest_sim.next_steps
+                    ):
                         earlier_step = (dest_sim.next_steps 
                                 and sim.output_time < dest_sim.next_steps[0])
                         heappush(dest_sim.next_steps, sim.output_time)
