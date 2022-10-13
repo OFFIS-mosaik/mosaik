@@ -37,8 +37,8 @@ mosaik.util.connect_many_to_one(world, a, b[0], ('val_out', 'val_in'))
 
 world.run(**run_args)
 
+# Write execution_graph to file for comparison
+# write_exeuction_graph(world, __file__)
+
 if args.compare:
     compare_execution_graph(world, __file__)
-
-# Write execution_graph to file for comparison
-#write_exeuction_graph(world, __file__)

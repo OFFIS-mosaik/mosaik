@@ -56,4 +56,4 @@ if args.compare:
     compare_execution_graph(world, __file__)
 
 # Write execution_graph to file for comparison
-#write_exeuction_graph(world, __file__)
+# write_exeuction_graph(world, __file__)

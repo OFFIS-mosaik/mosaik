@@ -33,7 +33,7 @@ world.connect(a, b, ('val_out', 'val_in'))
 world.run(**run_args)
 
 # Write execution_graph to file for comparison
-#write_exeuction_graph(world, __file__)
+# write_exeuction_graph(world, __file__)
 
 if args.compare:
     compare_execution_graph(world, __file__)
