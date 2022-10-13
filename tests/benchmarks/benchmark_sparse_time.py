@@ -15,7 +15,7 @@ if args.plot or args.compare:
 run_args['until'] *= args.N
 SIM_CONFIG = {
     'ExampleSim': {
-        'python': 'simulators.generic_test_simulator:TestSim'
+        'python': 'tests.simulators.generic_test_simulator:TestSim'
     },
 }
 

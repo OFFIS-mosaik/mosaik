@@ -10,8 +10,8 @@ import sys
 import pytest
 import pytest_benchmark
 
-CODE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'benchmarks')
-BENCHMARKS = glob.glob(os.path.join(CODE_DIR, 'benchmark*.py'))
+benchmarks = [os.path.abspath(file)
+              for file in glob.glob('tests/benchmarks/benchmark*.py')]
 
 @pytest.mark.benchmark(
     #group="group-name",
@@ -23,7 +23,7 @@ BENCHMARKS = glob.glob(os.path.join(CODE_DIR, 'benchmark*.py'))
     warmup=False
 )
 
-@pytest.mark.parametrize('benchmark_filename', BENCHMARKS)
+@pytest.mark.parametrize('benchmark_filename', benchmarks)
 def test_benchmarks(benchmark, benchmark_filename):
 	returncode = benchmark(run_it, benchmark_filename)
 	if returncode == 3:
@@ -31,4 +31,4 @@ def test_benchmarks(benchmark, benchmark_filename):
 	assert returncode == 0
 
 def run_it(benchmark_filename):
-	return subprocess.call([sys.executable, benchmark_filename, '--compare', '1'], cwd=os.path.dirname(os.path.abspath(__file__)))
+	return subprocess.call([sys.executable, benchmark_filename, '--compare', '1'])

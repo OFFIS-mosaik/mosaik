@@ -14,7 +14,7 @@ if args.plot or args.compare:
     world_args['debug'] = True
 
 SIM_CONFIG = {
-    0: {'TestSim': {'python': 'simulators.generic_test_simulator:TestSim'}},
+    0: {'TestSim': {'python': 'tests.simulators.generic_test_simulator:TestSim'}},
     1: {'TestSim': {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}}
 }
 

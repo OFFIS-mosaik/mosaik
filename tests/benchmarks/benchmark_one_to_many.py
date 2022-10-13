@@ -15,7 +15,7 @@ if args.plot or args.compare:
 
 SIM_CONFIG = {
     'TestSim': {
-        'python': 'simulators.generic_test_simulator:TestSim',
+        'python': 'tests.simulators.generic_test_simulator:TestSim',
     },
 }
 
