@@ -484,6 +484,15 @@ class World(object):
         prints by default only a warning. In order to raise
         a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
 
+        ``print_progress`` controls whether progress bars are printed while the
+        simulation is running. The default is to print one bar representing the
+        global progress of the simulation. You can also set
+        ``print_progress='individual'`` to get one bar per simulator in your
+        simulation (in addition to the global one). ``print_progress=False`
+        turns off the progress bars completely. The progress bars use
+        `tqdm <https://pypi.org/project/tqdm/>`_; see their documentation
+        on how to write to the console without interfering with the bars.
+
         You can also set the *lazy_stepping* flag (default: ``True``). If
         ``True`` a simulator can only run ahead one step of it's successors. If
         ``False`` a simulator always steps as long all input is provided. This

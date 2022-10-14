@@ -244,18 +244,17 @@ This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
 detail what happens when you call ``run()``.
 
-While the simulation is running, the current progress is logged via loguru at
-the ``'TRACE'`` level. You can make this trace visible by setting the
-environment variable ``LOGURU_LEVEL`` to ``TRACE`` or by adding a handler at
-the ``TRACE`` level to loguru, for example like this:
+While the simulation is running, the current progress is visualized using a
+`tqdm <https://pypi.org/project/tqdm/>`_ progress bar. You can turn this off
+using the `print_progress` parameter of `world.run`:
 
 .. code-block:: python
 
-   import sys
-   from loguru import logger
+   world.run(until=10, print_progress=False)
 
-   logger.remove()  # Remove the existing handler
-   logger.add(sys.stderr, level='TRACE')
+If you want a more detailed progress report, you can also set
+``print_progress='individual'`` which will produce a separate progress bar for
+each simulator in your simulation.
 
 We can also set the *lazy_stepping* flag (default: ``True``). If
 ``True``, a simulator can only run ahead one step of its successors. If
