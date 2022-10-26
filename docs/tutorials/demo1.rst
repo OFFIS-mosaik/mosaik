@@ -149,16 +149,12 @@ Mosaik will also produce some diagnostic output along the lines of
 
 .. literalinclude:: code/demo_1.err
 
-By setting the environment variable ``LOGURU_LEVEL`` to ``TRACE`` or by adding
+If you don't want the progress bar, you can run the simulation with
 
 .. code-block:: python
-   import loguru
-   import sys
-   loguru.logger.remove() # Remove old stderr logger
-   loguru.logger.add(sys.stderr, level='TRACE')
+   world.run(until=END, print_progress=False)
 
-at the beginning of the file, you will also get information about the progress
-of your simulation.
+instead. For even more progress bars, set ``print_progress='individual'``, instead.
 
 Summary
 =======

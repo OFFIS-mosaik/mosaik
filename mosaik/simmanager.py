@@ -112,10 +112,10 @@ def start(
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, time_resolution,
                           sim_params)
-
             try:
                 proxy.meta['api_version'] = validate_api_version(  # type: ignore
                     proxy.meta['api_version'])
+                type_check(proxy.meta, sim_name, sim_id)
                 proxy.meta = expand_meta(proxy.meta, sim_name)
                 return proxy
             except ScenarioError as se:
@@ -234,7 +234,7 @@ def start_proc(
         # This distinction has to be made due to a change in python 3.8.0.
         # It might become unecessary for future releases supporting
         # python >= 3.8 only.
-        if str(e).count(':')==2:
+        if str(e).count(':') == 2:
             eout = e.args[1]
         else:
             eout = str(e).split('] ')[1]
@@ -379,15 +379,7 @@ def expand_meta(meta: Meta, sim_name: str):
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    try:
-        sim_type = meta['type']
-    except KeyError:
-        sim_type = meta['type'] = 'time-based'
-        meta['old_api'] = True
-        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
-                       'contain a type. \'time-based\' is set as default. '
-                       'This might cause an error in future releases.', 
-                       sim_name=sim_name)
+    sim_type = meta['type']
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
@@ -431,6 +423,27 @@ def expand_meta(meta: Meta, sim_name: str):
             model_meta['persistent'] = []
 
     return meta
+
+
+def type_check(meta, sim_name, sim_id):
+    """
+        Checks if  meta's type exists and is correctly set.
+        Raise a :exc: `ScenarioError` if the type ist not correct.
+        """
+    if 'type' not in meta:
+        sim_type = meta['type'] = 'time-based'
+        meta['old-api'] = True
+        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
+                       'contain a type. \'{sim_type}\' is set as default. '
+                       'This might cause an error in future releases.',
+                       sim_name=sim_name, sim_type=sim_type)
+    else:
+        types = ['time-based', 'event-based', 'hybrid']
+        if meta['type'] not in types:
+            typo = meta['type']
+            meta['type'] = 'time-based'
+            raise ScenarioError(f'{sim_id} contains an unknown type: \'{typo}\'. '
+                                f'Please check for typos in your Simulators \'{sim_name}\' meta and scenario.')
 
 
 class SimProxy:
@@ -493,14 +506,12 @@ class SimProxy:
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
 
-    progress_tmp: int
-    """This simulator's progress after a step has been made but before other
-    simulators should see it."""
     progress: int
     """This simulator's progress in mosaik time.
 
-    For time-based simulators, if `progress` is t then the next step will happen
-    at time t + 1."""
+    This simulator has done all its work before time `progress`; its next stept will be
+    at time `progress` or later. For time-based simulators, the next step will happen
+    at time `progress`."""
     last_step: int
     """The most recent step this simulator performed."""
 
@@ -550,8 +561,7 @@ class SimProxy:
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress_tmp = -1
-        self.progress = -1
+        self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
@@ -797,7 +807,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.progress >= sim.last_step >= dep.last_step)
+            assert (dep.progress > sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -845,7 +855,7 @@ class MosaikRemote:
             raise SimulationError('Simulator "%s" tried to set an event in '
                                   'non-real-time mode.' % self.sim_id)
         if event_time < self.world.until:
-            sim.progress = min(event_time - 1, sim.progress)
+            sim.progress = min(event_time, sim.progress)
             earlier_step = sim.next_steps and event_time < sim.next_steps[0]
             hq.heappush(sim.next_steps, event_time)
 
@@ -924,6 +934,7 @@ class TimedInputBuffer:
     If there are several entries for the same connection at the same time, only
     the most recent value is added.
     """
+
     def __init__(self):
         self.input_queue = []
         self.counter = count()  # Used to chronologically sort entries

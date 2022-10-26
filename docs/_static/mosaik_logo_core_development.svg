@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   width="309"
+   height="325"
+   id="svg3175"
+   sodipodi:docname="mosaik_logo_core_development.svg"
+   xml:space="preserve"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   inkscape:export-filename="mosaik_logo_core_development.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"><sodipodi:namedview
+     id="namedview55"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="2.3256818"
+     inkscape:cx="105.56044"
+     inkscape:cy="150.7085"
+     inkscape:window-width="2560"
+     inkscape:window-height="1361"
+     inkscape:window-x="-220"
+     inkscape:window-y="-1449"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" /><defs
+     id="defs3177"><rect
+       x="36.978404"
+       y="20.209128"
+       width="248.52927"
+       height="265.72853"
+       id="rect28684" /><clipPath
+       id="clipEmfPath2" /><clipPath
+       id="clipEmfPath2-9" /></defs><metadata
+     id="metadata3180"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><g
+     transform="translate(-150,-552.36218)"
+     id="layer1"><path
+       d="m 369,717.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-8"
+       style="fill:#b81c1c;fill-opacity:1;stroke:none" /><path
+       d="m 274.5,662.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-84"
+       style="fill:#484848;fill-opacity:1;stroke:none" /><path
+       d="m 274.5,552.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-3"
+       style="fill:#5e8227;fill-opacity:1;stroke:none" /><path
+       d="m 180,607.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-4"
+       style="fill:#3b9ac4;fill-opacity:1;stroke:none" /><path
+       d="m 274.5,772.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-8-0"
+       style="fill:#d98d36;fill-opacity:1;stroke:none" /><path
+       d="m 180,717.36218 -30,52.5 30,52.5 h 60 l 30,-52.5 -30,-52.5 z"
+       id="path4005-8-1"
+       style="fill:#913a91;fill-opacity:1;stroke:none" /><text
+       xml:space="preserve"
+       transform="matrix(1.2445828,0,0,1.2445828,107.24385,527.53825)"
+       id="text28682"
+       style="line-height:9.44882px;letter-spacing:-0.02px;word-spacing:-0.04px;white-space:pre;shape-inside:url(#rect28684);display:inline;fill:#a0842c;fill-opacity:0"><tspan
+         x="36.978516"
+         y="28.381358"
+         id="tspan30640"><tspan
+           dx="0 0 0 0.039999541 -0.04000042 0 0 0 0 0 0 0 0 0 0.040002402 -0.039998513 0 0 0 0 0 0.040002402 -0.040006142 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30638">def run(world, until, rt_factor=None, </tspan></tspan><tspan
+         x="36.978516"
+         y="38.689593"
+         id="tspan30644"><tspan
+           dx="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402 -0.039998513 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30642">rt_strict=False, print_progress=True,
+</tspan></tspan><tspan
+         x="36.978516"
+         y="48.997829"
+         id="tspan30648"><tspan
+           dx="0 0 0 0 0 0 0 0 -0.039998513 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30646">        lazy_stepping=True):
+</tspan></tspan><tspan
+         x="36.978516"
+         y="59.306064"
+         id="tspan30652"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30650">    &quot;&quot;&quot;
+</tspan></tspan><tspan
+         x="36.978516"
+         y="69.614299"
+         id="tspan30656"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0.040002402 -0.040002327 0 0 0.039998587 -0.039998513 0 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30654">    Run the simulation for </tspan></tspan><tspan
+         x="36.978516"
+         y="79.922534"
+         id="tspan30660"><tspan
+           dx="0 0.040000018 -0.039999943 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.039987143 -0.039990883 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30658">a :class:`~mosaik.scenario.World` until
+</tspan></tspan><tspan
+         x="36.978516"
+         y="90.230769"
+         id="tspan30664"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0.040002402 -0.040002327 0 0 0 0 0 0 0 0 0 0.040002402 -0.039998513 0 0 0 0.040002402 -0.040006142 0 0 0 0 0 0 0.040002402 -0.040006142 0 0 0.040002402 -0.040006142 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30662">    the simulation time *until* has been </tspan></tspan><tspan
+         x="36.978516"
+         y="100.539"
+         id="tspan30668"><tspan
+           dx="0 0 0 0 0 0 0 0 0.039998587"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30666">reached.
+</tspan></tspan><tspan
+         x="36.978516"
+         y="110.84724"
+         id="tspan30672"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30670">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="121.15547"
+         id="tspan30676"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0 0 0 0.040002402 -0.040002327 0 0 0.039994773 -0.039998513 0 0 0 0 0.039994773 -0.039998513 0 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30674">    Return the final simulation time.
+</tspan></tspan><tspan
+         x="36.978516"
+         y="131.46371"
+         id="tspan30680"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30678">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="141.77194"
+         id="tspan30684"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30682">    </tspan></tspan><tspan
+         x="36.978516"
+         y="152.08016"
+         id="tspan30688"><tspan
+           dx="0 0 0 0.039999541 -0.04000042 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.039987143"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30686">See :meth:`mosaik.scenario.World.run()` </tspan></tspan><tspan
+         x="36.978516"
+         y="162.38839"
+         id="tspan30692"><tspan
+           dx="0 0 0 0.039999541 -0.04000042 0.040000495 -0.039998513 0 0 0 0 0 0 0 0.040002402 -0.039998513 0 0 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0.040002402 -0.040006142 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30690">for a detailed description of the
+</tspan></tspan><tspan
+         x="36.978516"
+         y="172.69662"
+         id="tspan30696"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0 0 0 0 0 0 0 0 0.040002402 -0.039998513 0 0 0.040002402 -0.040006142 0 0 0 0 0 0 0 0 0 0 0.039987143 -0.039990883 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30694">    *rt_factor* and *rt_strict* arguments.
+</tspan></tspan><tspan
+         x="36.978516"
+         y="183.00485"
+         id="tspan30700"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30698">    &quot;&quot;&quot;
+</tspan></tspan><tspan
+         x="36.978516"
+         y="193.31308"
+         id="tspan30704"><tspan
+           dx="0 0 0 0 -0.04000042 0 0 0 0 0 0 0 0 0 0 0.040002402 -0.039998513 0.039994773 -0.039998513 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30702">    world.until = until
+</tspan></tspan><tspan
+         x="36.978516"
+         y="203.6213"
+         id="tspan30708"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30706">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="213.92953"
+         id="tspan30712"><tspan
+           dx="0 0 0 0 -0.04000042 0 0.039998587 -0.039998513 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0.040002402 -0.039998513 0 0 0.040002402 -0.039990883 0 0 0 0.040002402 -0.040006142 0 0 0.040002402 -0.040006142 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30710">    if rt_factor is not None and rt_factor </tspan></tspan><tspan
+         x="36.978516"
+         y="224.23776"
+         id="tspan30716"><tspan
+           dx="0 0 0.040000018 -0.039999466 0 0.040000495"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30714">&lt;= 0:
+</tspan></tspan><tspan
+         x="36.978516"
+         y="234.54599"
+         id="tspan30720"><tspan
+           dx="0 0 0 0 0 0 0 0 -0.039998513 0 0 0 0 0.040002402 -0.039998513 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402 -0.039990883 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30718">        raise ValueError('&quot;rt_factor&quot; is </tspan></tspan><tspan
+         x="36.978516"
+         y="244.85421"
+         id="tspan30724"><tspan
+           dx="0 0 0.040000018 -0.039999466 0 0 0.039998587 -0.039998513 0 0 0 0.040002402 -0.039998513 0 0.040002402 -0.039998513 0.039994773 -0.039998513 0 0 0.039994773 -0.039998513 0.040002402 -0.040006142 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30722">%s but must be &gt; 0&quot;' % rt_factor)
+</tspan></tspan><tspan
+         x="36.978516"
+         y="255.16244"
+         id="tspan30728"><tspan
+           dx="0 0 0 0 -0.04000042 0 0.039998587 -0.039998513 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0.040002402 -0.039998513 0 0 0.040002402 -0.039990883 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30726">    if rt_factor is not None:
+</tspan></tspan><tspan
+         x="36.978516"
+         y="265.47068"
+         id="tspan30732"><tspan
+           dx="0 0 0 0 0 0 0 0 -0.039998513 0.039998587 -0.039998513 0 0 0 0 0 0.040002402 -0.039998513 0 0 0 0 0 0 0 0 0.040002402 -0.040006142 0 0.040002402 -0.040006142 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30730">        # Adjust rt_factor to the </tspan></tspan><tspan
+         x="36.978516"
+         y="275.77891"
+         id="tspan30736"><tspan
+           dx="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.040002402"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30734">time_resolution:
+</tspan></tspan><tspan
+         x="36.978516"
+         y="286.08714"
+         id="tspan30740"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30738">        </tspan></tspan><tspan
+         x="36.978516"
+         y="294.10987"
+         id="tspan30744"><tspan
+           dx="0 5.8646021 5.8646021 5.8646016 5.8646026 5.8646026 5.8646007 5.8646045 5.8646007 5.9046006 210.27611 5.8646045 5.9045739 210.27611 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8645434 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30742">rt_factor *= world.time_resolution
+</tspan></tspan><tspan
+         x="36.978516"
+         y="304.41811"
+         id="tspan30748"><tspan
+           dx="0 192.62227 192.62227 192.62228 192.58226 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044 192.58232 5.9046044 192.58226 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30746">    world.rt_factor = rt_factor
+</tspan></tspan><tspan
+         x="36.978516"
+         y="314.72634"
+         id="tspan30752"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30750">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="325.03458"
+         id="tspan30756"><tspan
+           dx="0 122.48705 122.48705 122.48705 122.44706 5.8646045 5.8646045 5.9046044 122.44703 5.9046044 122.44706 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30754">    env = world.env
+</tspan></tspan><tspan
+         x="36.978516"
+         y="335.34281"
+         id="tspan30760"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30758">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="345.65104"
+         id="tspan30764"><tspan
+           dx="0 163.39926 163.39926 163.39929 163.35924 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044 163.35924 5.9046044 163.35924 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30762">    setup_done_events = []
+</tspan></tspan><tspan
+         x="36.978516"
+         y="355.95928"
+         id="tspan30768"><tspan
+           dx="0 215.96068 215.96068 215.96072 215.92064 5.8646045 5.8646045 5.9046044 215.9207 5.8646045 5.8646045 5.9046044 215.92064 5.8646045 5.9046044 215.92076 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8644824 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30766">    for sim in world.sims.values():
+</tspan></tspan><tspan
+         x="36.978516"
+         y="366.26751"
+         id="tspan30772"><tspan
+           dx="0 274.2067 274.2067 274.20673 274.20667 274.20673 274.20673 274.20673 274.1666 5.8647265 5.9044824 274.16672 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.9044824 274.16672 5.8647265 5.9044824 274.16672 5.8647265 5.8644824 5.9047265 274.16672 5.8644824 5.8644824 5.9047265"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30770">        if sim.meta['api_version'] &gt;= (2, 2):
+</tspan></tspan><tspan
+         x="36.978516"
+         y="376.57575"
+         id="tspan30776"><tspan
+           dx="0 338.21732 338.21732 338.21735 338.21729 338.21735 338.21735 338.21735 338.21722 338.21747 338.21722 338.21722 338.17746 5.9044824 338.17722 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.9042382 338.1777 5.8642383 5.8647265 5.9047265 338.17722 5.8647265 5.8642383 5.8647265 5.8647265 5.9047265 338.17722 5.8647265 5.9042382 338.1777 5.8642383 5.8647265 5.9047265 338.17722 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.9047265 338.17722 5.8647265 5.8647265 5.8647265 5.9042382"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30774">            # setup_done() was added in API version 2.2:
+</tspan></tspan><tspan
+         x="36.978516"
+         y="386.88398"
+         id="tspan30780"><tspan
+           dx="0 361.87573 361.87573 361.87567 361.87579 361.87567 361.87567 361.87592 361.87567 361.87567 361.87567 361.87592 361.83542 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.9047265"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30778">            setup_done_events.append(sim.proxy.setup_done())
+</tspan></tspan><tspan
+         x="36.978516"
+         y="397.19221"
+         id="tspan30784"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30782">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="407.50045"
+         id="tspan30788"><tspan
+           dx="0 239.4191 239.4191 239.41907 239.37914 5.8645434 5.8646045 5.8646045 5.8646045 5.9046044 239.37907 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30786">    yield env.all_of(setup_done_events)
+</tspan></tspan><tspan
+         x="36.978516"
+         y="417.80868"
+         id="tspan30792"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30790">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="428.11692"
+         id="tspan30796"><tspan
+           dx="0 116.64245 116.64245 116.64247 116.60242 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.864574 5.9046044 116.60246 5.9046044 116.60246 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30794">    processes = []
+</tspan></tspan><tspan
+         x="36.978516"
+         y="438.42515"
+         id="tspan30800"><tspan
+           dx="0 215.96068 215.96068 215.96072 215.92064 5.8646045 5.8646045 5.9046044 215.9207 5.8646045 5.8646045 5.9046044 215.92064 5.8646045 5.9046044 215.92076 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8644824 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30798">    for sim in world.sims.values():
+</tspan></tspan><tspan
+         x="36.978516"
+         y="448.73338"
+         id="tspan30804"><tspan
+           dx="0 426.12634 426.12634 426.1264 426.12628 426.1264 426.1264 426.12616 426.0864 5.8647265 5.8644824 5.8647265 5.8644824 5.8647265 5.8644824 5.9047265 426.08615 5.9047265 426.0864 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.9047265 426.0864 5.8647265 5.8647265 5.8642383 5.9047265 426.0864 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.9042382 426.0864 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.8647265 5.8647265 5.8642383 5.8647265 5.9047265"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30802">        process = env.process(sim_process(world, sim, until, rt_factor,
+</tspan></tspan><tspan
+         x="36.978516"
+         y="459.04162"
+         id="tspan30808"><tspan
+           dx="0 407.39255 407.39255 407.39258 407.39252 407.39252 407.39264 407.39252 407.39252 407.39252 407.39252 407.39276 407.39252 407.39252 407.39252 407.39252 407.39252 407.39252 407.39252 407.39252 407.39252 407.39252 407.39301 407.39203 407.39301 407.39203 407.39301 407.39203 407.39301 407.39203 407.39301 407.39203 407.39301 407.39203 407.39301 407.39203 407.39301 407.39301 407.39203 407.39301 407.39203 407.39301 407.35202 5.8657031 5.86375 5.86375 5.8657031 5.86375 5.8657031 5.86375 5.8657031 5.86375 5.9037499 407.35397 5.86375 5.8657031 5.86375 5.86375 5.8657031 5.86375 5.8657031 5.86375 5.8657031 5.86375 5.8657031 5.86375 5.86375 5.8657031 5.9037499"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30806">                                          rt_strict, print_progress,
+</tspan></tspan><tspan
+         x="36.978516"
+         y="469.34985"
+         id="tspan30812"><tspan
+           dx="0 343.14194 343.14194 343.14185 343.14203 343.14191 343.14178 343.14203 343.14203 343.14178 343.14203 343.14178 343.14178 343.14203 343.14203 343.14203 343.14203 343.14154 343.14203 343.14203 343.14203 343.14203 343.14154 343.14203 343.14154 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.14105 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.14203 343.10202 5.86375 5.8647265 5.8647265 5.8647265 5.8647265 5.8647265 5.8647265 5.86375 5.8647265 5.8647265 5.8647265 5.8647265 5.8647265 5.8647265 5.9047265"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30810">                                          lazy_stepping))
+</tspan></tspan><tspan
+         x="36.978516"
+         y="479.65809"
+         id="tspan30816"><tspan
+           dx="0 186.61768 186.61768 186.61768 186.61768 186.61768 186.61768 186.61761 186.57774 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044 186.57762 5.9046044 186.57774 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8644824 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30814">        sim.sim_proc = process
+</tspan></tspan><tspan
+         x="36.978516"
+         y="489.96632"
+         id="tspan30820"><tspan
+           dx="0 204.23148 204.23148 204.23151 204.23145 204.23151 204.23151 204.23138 204.19151 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30818">        processes.append(process)
+</tspan></tspan><tspan
+         x="36.978516"
+         y="500.27455"
+         id="tspan30824"><tspan
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30822">
+</tspan></tspan><tspan
+         x="36.978516"
+         y="510.58279"
+         id="tspan30828"><tspan
+           dx="0 186.84726 186.84726 186.84723 186.8073 5.8646045 5.8646045 5.8646045 5.8646045 5.9046044 186.80724 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045 5.8646045"
+           style="font-size:10.6667px;font-family:Consolas;-inkscape-font-specification:'Consolas, Normal';baseline-shift:baseline;fill:#ffffff;fill-opacity:1"
+           id="tspan30826">    yield env.all_of(processes)</tspan></tspan></text></g></svg>
