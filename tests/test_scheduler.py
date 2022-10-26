@@ -1,4 +1,6 @@
 from heapq import heappush
+
+from tqdm import tqdm
 from mosaik import exceptions, scenario, scheduler, simmanager
 import pytest
 
@@ -119,6 +121,7 @@ def test_has_next_step(world, next_steps_empty, monkeypatch):
     """
     sim = world.sims[0]
     sim.next_steps = ([] if next_steps_empty else [1])
+    sim.tqdm = tqdm(disable=True)
 
     def dummy_check(*args):
         pass
@@ -227,6 +230,7 @@ def test_get_input_data_shifted(world):
 def test_get_max_advance(world, next_steps, next_step_s1, expected):
     sim = world.sims[2]
     sim.next_steps = next_steps
+    sim.tqdm = tqdm(disable=True)
     heappush(sim.next_steps, 1)
 
     # In the event-based world, sims 0 and 1 are triggering ancestors of sim 2:
@@ -243,6 +247,7 @@ def test_get_max_advance(world, next_steps, next_step_s1, expected):
 def test_step(world):
     inputs = {}
     sim = world.sims[0]
+    sim.tqdm = tqdm(disable=True)
     sim.meta['old_api'] = True
     heappush(sim.next_steps, 0)
     assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
@@ -265,6 +270,7 @@ def test_get_outputs(world, cache_t1):
     sim = world.sims[0]
     sim.last_step, sim.progress_tmp = 0, 1
     sim.output_time = -1
+    sim.tqdm = tqdm(disable=True)
 
     gen = scheduler.get_outputs(world, sim)
     evt = next(gen)
@@ -284,6 +290,7 @@ def test_get_outputs(world, cache_t1):
 def test_get_outputs_buffered(world):
     sim = world.sims[0]
     sim.last_step = 0
+    sim.tqdm = tqdm(disable=True)
     world._df_outattr[0][0] = ['x', 'y', 'z']
     sim.buffered_output.setdefault(('0', 'x'), []).append((2, '0', 'in'))
     sim.buffered_output = {
@@ -378,6 +385,7 @@ def test_prune_dataflow_cache(world):
     world._df_cache[1] = {'foo': 'bar'}
     for s in world.sims.values():
         s.last_step = 1
+        s.tqdm = tqdm(disable=True)
     scheduler.prune_dataflow_cache(world)
 
     assert world._df_cache == {
@@ -394,7 +402,9 @@ def test_get_outputs_shifted(world):
     sim = world.sims[5]
     sim.meta['type'] = 'time-based'
     sim.progress = 0
-    sim.last_step, sim.progress_tmp = 1, 1
+    sim.last_step = 1
+    sim.progress_tmp = 1
+    sim.tqdm = tqdm(disable=True)
     heappush(world.sims[4].next_steps, 2)
 
     gen = scheduler.get_outputs(world, sim)

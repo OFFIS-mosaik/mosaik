@@ -53,6 +53,7 @@ def run(
     for sim in world.sims.values():
         if sim.meta['api_version'] >= (2, 2):
             # setup_done() was added in API version 2.2:
+            sim.tqdm.set_postfix_str('setup')
             setup_done_events.append(sim.proxy.setup_done())
 
     yield env.all_of(setup_done_events)
@@ -98,6 +99,7 @@ def sim_process(
             while True:
                 try:
                     yield from rt_sleep(rt_factor, rt_start, sim, world)
+                    sim.tqdm.set_postfix_str('waiting')
                     yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
                 except Interrupt as i:
@@ -116,7 +118,8 @@ def sim_process(
             if world._df_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
-            logger.trace('Progress: {:.2f}%', world.sim_progress)
+            world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+            sim.tqdm.update(sim.progress + 1 - sim.tqdm.n)
         sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
@@ -219,6 +222,7 @@ def has_next_step(world: World, sim: SimProxy) -> Iterable[Event]:
 
     if sim.next_steps:
         sim.has_next_step.succeed()
+        sim.tqdm.set_postfix_str('no step')
         yield sim.has_next_step
     else:
         try:
@@ -226,11 +230,13 @@ def has_next_step(world: World, sim: SimProxy) -> Iterable[Event]:
                 rt_passed = perf_counter() - sim.rt_start
                 timeout = world.env.timeout(max((world.rt_factor * world.until)
                                                 - rt_passed, 0.1*world.rt_factor))
+                sim.tqdm.set_postfix_str('no step')
                 results = yield sim.has_next_step | timeout
                 if timeout in results:
                     raise NoStepException
             else:
                 check_and_resolve_deadlocks(sim)
+                sim.tqdm.set_postfix_str('no step')
                 yield sim.has_next_step
         except Interrupt:
             raise WakeUpException
@@ -251,6 +257,7 @@ def rt_sleep(
         rt_passed = perf_counter() - rt_start
         sleep = (rt_factor * sim.next_steps[0]) - rt_passed
         if sleep > 0:
+            sim.tqdm.set_postfix_str('sleeping')
             yield world.env.timeout(sleep)
 
 
@@ -420,7 +427,8 @@ def step(
                               f'time {sim.progress}.')
     sim.last_step = current_step
 
-    if 'old_api' in sim.meta and sim.meta['old_api']:
+    sim.tqdm.set_postfix_str('stepping')
+    if 'old_api' in sim.meta:
         next_step = yield sim.proxy.step(current_step, inputs)
     else:
         next_step = yield sim.proxy.step(current_step, inputs, max_advance)
@@ -484,6 +492,7 @@ def get_outputs(world: World, sim: SimProxy) -> Generator[Any, OutputData, None]
     sid = sim.sid
     outattr = world._df_outattr[sid]
     if outattr:
+        sim.tqdm.set_postfix_str('get_data')
         data = yield sim.proxy.get_data(outattr)
 
         if sim.meta['type'] == 'time-based' and world._df_cache is not None:
@@ -607,6 +616,12 @@ def get_progress(sims: Dict[SimId, SimProxy], until: int) -> float:
     times = [min(until, sim.progress + 1) for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
+
+
+def get_avg_progress(sims: Dict[SimId, SimProxy], until: int) -> int:
+    """Get the average progress of all simulations (in time steps)."""
+    times = [min(until, sim.progress + 1) for sim in sims.values()]
+    return sum(times) // len(times)
 
 
 def check_and_resolve_deadlocks(

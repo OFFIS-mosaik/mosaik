@@ -332,6 +332,7 @@ def test_world_get_data(world):
 
 
 def test_world_run_twice(world):
+    world.start('ExampleSim')
     world.run(0)
     pytest.raises(RuntimeError, world.run, 1)
 
