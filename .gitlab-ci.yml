@@ -55,7 +55,7 @@ Job_benchmarks:
     image: fkrull/multi-python
     stage: unit_tests
     script:
-      - tox -c tox-benchmark.in
+      - tox -c tox-benchmark.ini
     rules:
       - when: manual 
     
