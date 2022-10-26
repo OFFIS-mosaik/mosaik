@@ -14,12 +14,7 @@ benchmarks = [os.path.abspath(file)
               for file in glob.glob('tests/benchmarks/benchmark*.py')]
 
 @pytest.mark.benchmark(
-    #group="group-name",
-    #min_time=0.1,
-    #max_time=0.5,
     min_rounds=1,
-    #timer=time.time,
-    #disable_gc=True,
     warmup=False
 )
 
