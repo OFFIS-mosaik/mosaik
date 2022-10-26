@@ -395,7 +395,7 @@ class World(object):
                                         f'to {FULL_ID % (dest.sid, dest.eid)}.')
 
         for src_attr, dest_attr in memorized:
-            if weak:
+            if weak or time_shifted:
                 init_val = initial_data[src_attr]
             else:
                 init_val = None
