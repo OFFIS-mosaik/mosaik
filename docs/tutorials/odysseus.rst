@@ -5,6 +5,8 @@ Connecting mosaik and Odysseus
 In this first part of the tutorial we cover the two ways to connect mosaik and 
 :doc:`Odysseus<../ecosystem/odysseus>`, the :doc:`second part<odysseus2>` is about how 
 to use Odysseus to process, visualize and store simulation data.
+.. note::
+    Connecting mosaik and Odysseus works currently only with mosaik 2.6.
 
 You can choose between two different solutions to connect mosaik and Odysseus.
 Both have their advantages and disadvantages and therefore, the right choice depends on your use case.
