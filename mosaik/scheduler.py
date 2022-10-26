@@ -576,17 +576,18 @@ def notify_dependencies(world: World, sim: SimProxy, progress: int):
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
                 edge.pop('wait_event').succeed()
         if edge['trigger']:
+            input_time = sim.output_time + edge['time_shifted']
             dataflows = edge['dataflows']
             for eid, _, attrs in dataflows:
                 data_eid = sim.data.get(eid, {})
                 for attr, _ in attrs:
                     if (
                         attr in data_eid
-                        and sim.output_time not in dest_sim.next_steps
+                        and input_time not in dest_sim.next_steps
                     ):
                         earlier_step = (dest_sim.next_steps 
-                                and sim.output_time < dest_sim.next_steps[0])
-                        heappush(dest_sim.next_steps, sim.output_time)
+                                and input_time < dest_sim.next_steps[0])
+                        heappush(dest_sim.next_steps, input_time)
                         if not dest_sim.has_next_step.triggered:
                             dest_sim.has_next_step.succeed()
                         elif earlier_step and dest_sim.interruptable:
