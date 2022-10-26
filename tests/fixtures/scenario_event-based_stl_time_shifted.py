@@ -20,10 +20,14 @@ CONFIG = 'generic'
 
 EXECUTION_GRAPH = """
 A-0-0 B-0-0
+B-0-0 A-0-1
+A-0-1 B-0-1
 """
 
 INPUTS = {
     'B-0-0': {'0': {'val_in': {'A-0.0': 0}}},
+    'A-0-1': {'0': {'val_in': {'B-0.0': 0}}},
+    'B-0-1': {'0': {'val_in': {'A-0.0': 1}}},
 }
 
-UNTIL = 1
+UNTIL = 2
