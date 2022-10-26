@@ -325,6 +325,9 @@ class World(object):
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
+        # Check dataflow connection (non-)persistent --> (non-)trigger
+        self._check_attributes_values(src, dest, attr_pairs)
+
         if self._df_cache is not None:
             trigger, cached, time_buffered, memorized, persistent = \
                 self._classify_connections_with_cache(src, dest, expanded_attrs)
@@ -703,6 +706,24 @@ class World(object):
                 if not (any_inputs[i] or attr in emeta[i]['attrs']):
                     attr_errors.append((entities[i], attr))
         return attr_errors
+
+    def _check_attributes_values(self, src, dest, attr_pairs):
+        """
+        Check if *src* and *dest* attributes in *attr_pairs* are a combination of
+        persistent and trigger or non-persistent and non-trigger.
+
+        """
+        entities = [src, dest]
+        emeta = [e.sim.meta['models'][e.type] for e in entities]
+        non_persistent = set(emeta[1]['attrs']).symmetric_difference(emeta[1]['persistent'])
+        non_trigger = set(emeta[1]['attrs']).symmetric_difference(emeta[1]['trigger'])
+        for attr_pair in attr_pairs:
+            if (attr_pair[1] in emeta[1]['trigger']) and (attr_pair[0] in emeta[1]['persistent']):
+                logger.warning('A connection between persistent and trigger attributes is not recommended.'
+                               'This might cause problems in the simulation!')
+            elif (attr_pair[1] in non_trigger) and (attr_pair[0] in non_persistent):
+                logger.warning('A connection between non-persistent and non-trigger attributes is not recommended. '
+                               'This might cause problems in the simulation!')
 
     def _classify_connections_with_cache(self,
         src: Entity,
