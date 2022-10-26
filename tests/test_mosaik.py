@@ -50,10 +50,10 @@ test_cases = [os.path.basename(file).strip('.py')
               for file in glob.glob('tests/fixtures/scenario_*.py')]
 
 
-@pytest.mark.parametrize('fixture', test_cases)
+@pytest.mark.parametrize('fixture_name', test_cases)
 @pytest.mark.parametrize('cache', [True, False])
-def test_mosaik(fixture, cache):
-    fixture = importlib.import_module('tests.fixtures.%s' % fixture)
+def test_mosaik(fixture_name, cache):
+    fixture = importlib.import_module('tests.fixtures.%s' % fixture_name)
     world = scenario.World(sim_config[fixture.CONFIG], debug=True, cache=cache)
     try:
         fixture.create_scenario(world)
