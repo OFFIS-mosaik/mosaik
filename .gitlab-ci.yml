@@ -47,9 +47,17 @@ Job_unit_tests:
     image: fkrull/multi-python
     stage: unit_tests
     script:
-      -   tox
+      - tox
     except:
       - tags 
+
+Job_benchmarks:
+    image: fkrull/multi-python
+    stage: unit_tests
+    script:
+      - tox -c tox-benchmark.in
+    rules:
+      - when: manual 
     
 Linting_flake8:
     allow_failure: true
