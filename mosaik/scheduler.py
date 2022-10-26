@@ -120,7 +120,6 @@ def sim_process(
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
             sim.tqdm.update(sim.progress + 1 - sim.tqdm.n)
-        sim.progress_tmp = until
         sim.progress = until
         clear_wait_events_dependencies(sim)
         check_and_resolve_deadlocks(sim, end=True)
