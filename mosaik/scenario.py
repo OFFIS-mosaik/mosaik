@@ -715,10 +715,10 @@ class World(object):
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
-        non_persistent = set(emeta[1]['attrs']).symmetric_difference(emeta[1]['persistent'])
-        non_trigger = set(emeta[1]['attrs']).symmetric_difference(emeta[1]['trigger'])
+        non_persistent = set(emeta[0]['attrs']).difference(emeta[0]['persistent'])
+        non_trigger = set(emeta[1]['attrs']).difference(emeta[1]['trigger'])
         for attr_pair in attr_pairs:
-            if (attr_pair[1] in emeta[1]['trigger']) and (attr_pair[0] in emeta[1]['persistent']):
+            if (attr_pair[1] in emeta[1]['trigger']) and (attr_pair[0] in emeta[0]['persistent']):
                 logger.warning('A connection between persistent and trigger attributes is not recommended.'
                                'This might cause problems in the simulation!')
             elif (attr_pair[1] in non_trigger) and (attr_pair[0] in non_persistent):
