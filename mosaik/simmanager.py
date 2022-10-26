@@ -506,14 +506,12 @@ class SimProxy:
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
 
-    progress_tmp: int
-    """This simulator's progress after a step has been made but before other
-    simulators should see it."""
     progress: int
     """This simulator's progress in mosaik time.
 
-    For time-based simulators, if `progress` is t then the next step will happen
-    at time t + 1."""
+    This simulator has done all its work before time `progress`; its next stept will be
+    at time `progress` or later. For time-based simulators, the next step will happen
+    at time `progress`."""
     last_step: int
     """The most recent step this simulator performed."""
 
@@ -563,8 +561,7 @@ class SimProxy:
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress_tmp = -1
-        self.progress = -1
+        self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
@@ -810,7 +807,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.progress >= sim.last_step >= dep.last_step)
+            assert (dep.progress > sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -858,7 +855,7 @@ class MosaikRemote:
             raise SimulationError('Simulator "%s" tried to set an event in '
                                   'non-real-time mode.' % self.sim_id)
         if event_time < self.world.until:
-            sim.progress = min(event_time - 1, sim.progress)
+            sim.progress = min(event_time, sim.progress)
             earlier_step = sim.next_steps and event_time < sim.next_steps[0]
             hq.heappush(sim.next_steps, event_time)
 
