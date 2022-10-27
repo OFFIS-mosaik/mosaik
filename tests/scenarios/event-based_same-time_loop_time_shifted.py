@@ -1,7 +1,7 @@
 """
-This scenario consists of two event-based simulators in a loop. If they are connected as time_shifted
-and the simulator B return the current time as timestamp for it's output data, they enter a same time loop,
-which should not be the case.
+This scenario has two event-based simulators in a time-shifted loop. The second
+simulator's output should be delayed due to the time shift, so that the simulators
+do not enter a same-time loop.
 
   A ⇄ B
 
