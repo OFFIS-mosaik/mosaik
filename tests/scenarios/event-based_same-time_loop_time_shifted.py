@@ -1,6 +1,6 @@
 """
-This scenario has to event-based simulators in a time-shifted loop. The second
-simulator's output should be delayned due to the time shift, so that the simulators
+This scenario has two event-based simulators in a time-shifted loop. The second
+simulator's output should be delayed due to the time shift, so that the simulators
 do not enter a same-time loop.
 
   A ⇄ B
