@@ -14,7 +14,6 @@ def create_scenario(world):
     world.connect(model_a, model_b, ('val_out', 'val_in'))
 
 
-
 CONFIG = 'generic'
 
 EXECUTION_GRAPH = """
