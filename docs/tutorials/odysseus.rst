@@ -11,7 +11,7 @@ Both have their advantages and disadvantages and therefore, the right choice dep
 We recommend to use the SimAPI version for beginners.
 
 No matter which connection we use, we first have to 
-`download <http://odysseus.informatik.uni-oldenburg.de/downloads>`_ Odysseus Server and Studio Client.
+`download <https://odysseus.informatik.uni-oldenburg.de/downloads>`_ Odysseus Server and Studio Client.
 For the first start of Odysseus Studio the default user "System" and password "manager" have to be used, 
 the tenant can be left empty.
 
@@ -28,16 +28,16 @@ processing in Odysseus will block the other system as well. If this is a problem
 in your use case, you should look in the section :ref:`zero_mq`.
 
 First we have to install the mosaik `feature 
-<http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_ 
+<https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_
 from the incubcation site in odysseus, which can be found in the Odysseus Wrapper Plugins.
 
 After installing the feature we create a new Odysseus project and in the 
 project a new Odysseus script file (more information on Odysseus projects and script files can be found in this 
-`tutorial <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_). 
+`tutorial <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_).
 To use mosaik as source we can 
 use the mosaik operator which contains a standard configuration of mandatory parameters.
 The script-code in the Odysseus query language `PQL 
-<http://wiki.odysseus.informatik.uni-oldenburg.de/pages/viewpage.action?pageId=4587829>`_ 
+<https://wiki.odysseus.informatik.uni-oldenburg.de/pages/viewpage.action?pageId=4587829>`_
 looks like this:
 
 .. literalinclude:: code/odysseus_tutorial_sources.qry
@@ -84,7 +84,7 @@ and restarted during the simulation without affecting mosaik.
 This behaviour holds the risk of loosing data so it should only be used if this 
 doesn't cause problems.
 
-First we have to install the following `features <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_
+First we have to install the following `features <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/How+to+install+new+features>`_
 for Odysseus from incubation site:
 
 * Odysseus Wrapper Plugins / Zero MQ

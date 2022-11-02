@@ -113,13 +113,10 @@ def test_start_external_process(world):
     sp.stop()
 
 
-def test_start_proc_timeout_accept(world, capsys):
+def test_start_proc_timeout_accept(world, caplog):
     world.config['start_timeout'] = 0.1
     pytest.raises(SystemExit, simmanager.start, world, 'Fail', '', 1., {})
-    out, err = capsys.readouterr()
-    assert out == ('ERROR: Simulator "Fail" did not connect to mosaik in '
-                   'time.\nMosaik terminating\n')
-    assert err == ''
+    assert 'Simulator "Fail" did not connect to mosaik in time.' in caplog.text 
 
 
 def test_start_external_process_with_environment_variables(world, tmpdir):
@@ -180,10 +177,11 @@ def test_start_connect(world):
     sock.close()
 
 
-def test_start_connect_timeout_init(world, capsys):
+def test_start_connect_timeout_init(world, caplog):
     """
     Test connecting to an already running simulator.
     """
+    caplog.handler.setLevel(10)
     world.config['start_timeout'] = 0.1
     env = world.env
     sock = scenario.backend.TCPSocket.server(env, ('127.0.0.1', 5556))
@@ -199,10 +197,8 @@ def test_start_connect_timeout_init(world, capsys):
     def starter():
         pytest.raises(SystemExit, simmanager.start, world, 'ExampleSimC',
                       '', 1., {})
-        out, err = capsys.readouterr()
-        assert out == ('ERROR: Simulator "ExampleSimC" did not reply to the '
-                       'init() call in time.\nMosaik terminating\n')
-        assert err == ''
+        assert 'Simulator "ExampleSimC" did not reply to the init() call in ' \
+            'time.' in caplog.text
 
         yield env.event().succeed()
 
@@ -273,7 +269,7 @@ def test_start_user_error(sim_config, err_msg):
         world.shutdown()
 
 
-def test_start_sim_error(capsys):
+def test_start_sim_error(caplog):
     """
     Test connection failures of external processes.
     """
@@ -282,15 +278,13 @@ def test_start_sim_error(capsys):
         pytest.raises(SystemExit, simmanager.start, world, 'spam', '', 1.,
                       {'foo': 'bar'})
 
-        out, err = capsys.readouterr()
-        assert out == ('ERROR: Simulator "spam" could not be started: Could '
-                       'not connect to "foo:1234"\nMosaik terminating\n')
-        assert err == ''
+        assert 'Simulator "spam" could not be started: Could not connect to ' \
+            '"foo:1234"' in caplog.text
     finally:
         world.shutdown()
 
 
-def test_start_init_error(capsys):
+def test_start_init_error(caplog):
     """
     Test simulator crashing during init().
     """
@@ -299,11 +293,8 @@ def test_start_init_error(capsys):
         pytest.raises(SystemExit, simmanager.start, world,
                       'spam', '', 1., {'foo': 3})
 
-        out, err = capsys.readouterr()
-        assert out.startswith('ERROR: ')
-        assert out.endswith('Simulator "spam" closed its connection during '
-                            'the init() call.\nMosaik terminating\n')
-        assert err == ''
+        assert 'Simulator "spam" closed its connection during ' \
+               'the init() call.' in caplog.text
     finally:
         world.shutdown()
 
@@ -380,7 +371,6 @@ def test_local_process():
     assert sp._inst is es
     assert sp.meta is es.meta
     assert sp.last_step == -1
-    assert sp.next_step is None
     assert sp.next_steps == [0]
 
 
@@ -573,7 +563,8 @@ def test_mosaik_remote(rpc, err):
             rpc_con = JSON_RPC(Packet(sock))
             proxy = simmanager.RemoteProcess('X', 'X', {'models': {}}, None,
                                              rpc_con, world)
-            proxy.last_step = proxy.next_step = 1
+            proxy.last_step = 1
+            proxy.is_in_step = True
             world.sims['X'] = proxy
             world.sims['W'] = DummySimProxy()
 

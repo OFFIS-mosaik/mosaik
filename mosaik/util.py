@@ -4,6 +4,7 @@ This module contains some utility functions and classes.
 """
 import random
 import sys
+from loguru import logger
 
 from simpy.io.network import RemoteException
 
@@ -32,14 +33,9 @@ def sync_process(generator, world, *, errback=None, ignore_errors=False):
             # Avoid endless recursions when called from "world.shutdown()"
             return
 
-        if type(exc) is RemoteException:
-            print('RemoteException:')
-            print(exc.remote_traceback)
-            print('————————————————')
-        else:
-            print('ERROR: %s' % exc)
+        logger.exception(exc)
 
-        print('Mosaik terminating')
+        logger.info('Mosaik terminating.')
         world.shutdown()
         sys.exit(1)
 

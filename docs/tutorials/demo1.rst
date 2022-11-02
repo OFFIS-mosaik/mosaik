@@ -144,9 +144,17 @@ how long we want our simulation to run:
 Executing the scenario script will then give us the following output:
 
 .. literalinclude:: code/demo_1.out
-   :lines: 1-9,30-
 
-The progress of the simulation is also printed as we run the simulation. This is because the :meth:`World.run()` method has another argument, print_progress, that has a boolean flag set to True by default, which prints the progress of our simulation whenever we run it. If we do not want the progress to be printed, we can set the print_progress flag to False in the :meth:`World.run(until=END,print_progress=False)` method.  
+Mosaik will also produce some diagnostic output along the lines of
+
+.. literalinclude:: code/demo_1.err
+
+If you don't want the progress bar, you can run the simulation with
+
+.. code-block:: python
+   world.run(until=END, print_progress=False)
+
+instead. For even more progress bars, set ``print_progress='individual'``, instead.
 
 Summary
 =======
