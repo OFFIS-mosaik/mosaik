@@ -51,6 +51,8 @@ Job_unit_tests:
       - tox
     except:
       - tags 
+    needs:
+      - Job_install_dependencies
 
 Job_benchmarks:
     image: fkrull/multi-python
@@ -60,7 +62,9 @@ Job_benchmarks:
       - tox -c tox-benchmark.ini
     rules:
       - when: manual 
-    
+    needs:
+      - Job_install_dependencies
+
 Linting_flake8:
     allow_failure: true
     stage: unit_tests
@@ -69,6 +73,8 @@ Linting_flake8:
     script:
        - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
     when: manual 
+    needs:
+      - Job_install_dependencies
      
 build_docker_preproduction:
    image: docker:latest
