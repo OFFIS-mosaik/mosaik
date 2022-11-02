@@ -13,6 +13,7 @@ variables:
 stages:
  - install_dependencies
  - unit_tests
+ - benchmarks
  - build_docker
  - run_docker
  - release
@@ -53,7 +54,8 @@ Job_unit_tests:
 
 Job_benchmarks:
     image: fkrull/multi-python
-    stage: unit_tests
+    stage: benchmarks
+    allow_failure: true
     script:
       - tox -c tox-benchmark.ini
     rules:
