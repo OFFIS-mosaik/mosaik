@@ -17,9 +17,7 @@ Impressum
 **Vertretungsberechtigter Vorstand**
 
 | Prof. Dr. Sebastian Lehnhoff (Vorsitzender)
-| Prof. Dr.-Ing. Wolfgang H. Nebel
 | Prof. Dr. techn. Susanne Boll-Westermann
-| Prof. Dr.-Ing. Axel Hahn
 | Prof. Dr.-Ing. Andreas Hein
 
 
