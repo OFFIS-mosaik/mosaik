@@ -303,6 +303,10 @@ class World(object):
         if src.sid == dest.sid:
             raise ScenarioError('Cannot connect entities sharing the same '
                                 'simulator.')
+        if async_requests:
+            logger.warning('DEPRECATION: Async_request connections are deprecated'
+                           'and will be removed with set_data() in future releases.'
+                           'Use time_shifted and weak connections instead')
 
         if async_requests and time_shifted:
             raise ScenarioError('Async_requests and time_shifted connections '
