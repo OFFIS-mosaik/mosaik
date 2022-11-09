@@ -60,3 +60,24 @@ The documentation is available at https://mosaik.readthedocs.io.
 Please report bugs and ideas for improvement to our `issue tracker`__.
 
 __ https://gitlab.com/mosaik/mosaik/-/issues
+
+How to cite mosaik
+------------------
+If you want to cite mosaik, e.g. in a work in which you use mosaik, you can use this publication::
+
+    C. Steinbrink, M. Blank-Babazadeh, A. El-Ama, S. Holly, B. Lüers, M. Nebel-Wenner, R.P. Ramirez Acosta, T. Raub, J.S. Schwarz, S. Stark, A. Nieße, and S. Lehnhoff, “CPES Testing with mosaik: Co-Simulation Planning, Execution and Analysis”, Applied Sciences, vol. 9, no. 5, 2019.
+
+Or as bibtex::
+    
+    @Article{app9050923,
+        AUTHOR = {Steinbrink, Cornelius and Blank-Babazadeh, Marita and El-Ama, André and Holly, Stefanie and Lüers, Bengt and Nebel-Wenner, Marvin and Ramírez Acosta, Rebeca P. and Raub, Thomas and Schwarz, Jan Sören and Stark, Sanja and Nieße, Astrid and Lehnhoff, Sebastian},
+        TITLE = {CPES Testing with mosaik: Co-Simulation Planning, Execution and Analysis},
+        JOURNAL = {Applied Sciences},
+        VOLUME = {9},
+        YEAR = {2019},
+        NUMBER = {5},
+        ARTICLE-NUMBER = {923},
+        URL = {https://www.mdpi.com/2076-3417/9/5/923},
+        ISSN = {2076-3417},
+        DOI = {10.3390/app9050923}
+    }
