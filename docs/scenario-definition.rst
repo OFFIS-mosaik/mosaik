@@ -40,12 +40,16 @@ a :class:`World` instance:
 .. code-block:: python
 
    >>> import mosaik
+   >>> from mosaik.scenario import SimConfig
    >>>
-   >>> sim_config = {
+   >>> sim_config: SimConfig = {
    ...     'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
    ... }
    >>>
    >>> world = mosaik.World(sim_config)
+
+(You can leave off the type annotation on ``sim_config`` and the line importing
+``SimConfig`` if you're not using type checking.)
 
 As we start simulator instances by using *world*, it needs to know what
 simulators are available and how to start them. This is called the *sim config*
