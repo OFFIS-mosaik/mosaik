@@ -30,7 +30,9 @@ are the *simulator configuration* and the *duration* of your simulation:
 The *sim config* specifies which simulators are available and how to start
 them. In the example above, we list our *ExampleSim* as well as *Collector* (the
 names are arbitrarily chosen). For each simulator listed, we also specify how
-to start it.
+to start it. (If you are using type checking, you can import ``SimConfig`` from
+``mosaik.scenario`` and change the first line to ``SIM_CONFIG: SimConfig = {``,
+instead.)
 
 Since our example simulator is, like mosaik, written in Python 3, mosaik can
 just import it and execute it in-process. The line ``'python':
