@@ -41,8 +41,9 @@ Job_install_dependencies:
       - dist/
       - build/
      expire_in: 60 minutes
-    except:
-        - tags
+    rules:
+      - if: $CI_COMMIT_TAG
+        when: never
 
 Job_unit_tests:
     image: fkrull/multi-python
@@ -51,8 +52,7 @@ Job_unit_tests:
       - tox
     except:
       - tags 
-    needs:
-      - Job_install_dependencies
+    needs: []
 
 Job_benchmarks:
     image: fkrull/multi-python
@@ -62,6 +62,7 @@ Job_benchmarks:
       - tox -c tox-benchmark.ini
     rules:
       - when: manual
+    needs: []
 
 Linting_flake8:
     allow_failure: true
@@ -71,8 +72,7 @@ Linting_flake8:
     script:
        - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
     when: manual 
-    needs:
-      - Job_install_dependencies
+    needs: []
      
 build_docker_preproduction:
    image: docker:latest
@@ -160,45 +160,45 @@ pypi:
       - twine check dist/*
       - echo $PYPI_USER
       - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
-  only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
   
 build_docker_tag:
-   image: docker:latest
-   stage: build_docker
-   services:
+  image: docker:latest
+  stage: build_docker
+  services:
     - docker:dind
-   before_script:
+  before_script:
     - docker --version
     - docker info
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-   script:
+  script:
     - docker build --pull -t $VERSION_IMAGE .
     - docker push $VERSION_IMAGE
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
  
 run_docker_tag:
-   image: docker:latest
-   stage: run_docker
-   services:
+  image: docker:latest
+  stage: run_docker
+  services:
     - docker:dind
-   before_script:
+  before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-   script:
+  script:
     - docker pull $VERSION_IMAGE
     - docker tag $VERSION_IMAGE myimage
     - docker run --name $DOCKER_CONTAINER myimage
     - docker stop $DOCKER_CONTAINER
-   after_script:
+  after_script:
     - docker info
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
      
 mosaik-demo:
-   stage: Trigger-cross-projects
-   trigger: 
+  stage: Trigger-cross-projects
+  trigger: 
     project: mosaik/examples/mosaik-demo
     branch: master  
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
