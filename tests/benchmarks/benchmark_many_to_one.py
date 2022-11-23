@@ -1,8 +1,17 @@
+# benchmark_many_to_one.py
+import os
+import sys
+
 import mosaik
 
 from argparser import argparser
+from comparison import write_exeuction_graph, compare_execution_graph
+
+sys.path.insert(0, os.getcwd())
 
 args, world_args, run_args = argparser(N=10000, until=10, sim_type='e')
+if args.plot or args.compare:
+    world_args['debug'] = True
 
 SIM_CONFIG = {
     'TestSim': {
@@ -12,7 +21,7 @@ SIM_CONFIG = {
 
 world = mosaik.World(SIM_CONFIG, **world_args)
 
-if args.sim_type == 'time':
+if args.sim_type == 'time': 
     step_type = 'time-based'
     stepping = {'step_size': 1}
 else:
@@ -27,3 +36,9 @@ b = world.start('TestSim', step_type=step_type, **stepping).A.create(1)
 mosaik.util.connect_many_to_one(world, a, b[0], ('val_out', 'val_in'))
 
 world.run(**run_args)
+
+# Write execution_graph to file for comparison
+# write_execution_graph(world, __file__)
+
+if args.compare:
+    compare_execution_graph(world, __file__)

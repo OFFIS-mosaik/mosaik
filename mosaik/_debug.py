@@ -46,7 +46,7 @@ def pre_step(world, sim, inputs):
     sims = world.sims
 
     sid = sim.sid
-    next_step = sim.next_step
+    next_step = sim.next_steps[0]
     node = '%s-%s'
     node_id = node % (sid, next_step)
 

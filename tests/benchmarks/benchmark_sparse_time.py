@@ -1,13 +1,18 @@
 # benchmark_sparse_time.py
+import os
+import sys
+
+import mosaik
 
 from argparser import argparser
-import mosaik.util
+from comparison import write_exeuction_graph, compare_execution_graph
 
+sys.path.insert(0, os.getcwd())
 
 args, world_args, run_args = argparser(N=10000, until=1000)
+if args.plot or args.compare:
+    world_args['debug'] = True
 run_args['until'] *= args.N
-
-# Sim config. and other parameters
 SIM_CONFIG = {
     'ExampleSim': {
         'python': 'tests.simulators.generic_test_simulator:TestSim'
@@ -26,3 +31,9 @@ world.connect(a, b, ('val_out', 'val_in'))
 
 # Run simulation
 world.run(**run_args)
+
+# Write execution_graph to file for comparison
+# write_exeuction_graph(world, __file__)
+
+if args.compare:
+    compare_execution_graph(world, __file__)

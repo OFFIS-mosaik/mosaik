@@ -3,8 +3,9 @@ Babel==2.8.0
 coverage==5.1
 decorator==4.3.0
 flake8==3.7.9
+loguru==0.6.0
 mccabe==0.6.1
-networkx==2.5
+networkx==2.6.3
 pep8==1.7.1
 pkginfo==1.5.0.1
 pluggy==0.13.1
@@ -13,6 +14,7 @@ pyflakes==2.1.0
 Pygments==2.6.1
 pytest==5.4.1
 pytest-cov==2.8.1
+pytest-benchmark==3.4.1
 pytz==2020.1
 requests==2.23.0
 requests-toolbelt==0.9.1

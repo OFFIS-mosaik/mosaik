@@ -7,6 +7,8 @@ It is able to start pure Python simulators in-process (by importing and
 instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 """
+from __future__ import annotations
+
 from ast import literal_eval
 from itertools import count
 
@@ -18,6 +20,7 @@ import os
 import shlex
 import subprocess
 import sys
+from loguru import logger
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -28,6 +31,12 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, OrderedDict, Tuple, Union
+    from simpy.events import Event, Process
+    from mosaik.scenario import Meta, OutputData, SimId, World, DataflowEdge
+
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
 API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
@@ -35,7 +44,13 @@ FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
 
-def start(world, sim_name, sim_id, time_resolution, sim_params):
+def start(
+    world: World,
+    sim_name: str,
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any],
+):
     """
     Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
@@ -97,10 +112,10 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
         if sim_type in sim_config:
             proxy = start(world, sim_name, sim_config, sim_id, time_resolution,
                           sim_params)
-
             try:
-                proxy.meta['api_version'] = validate_api_version(
+                proxy.meta['api_version'] = validate_api_version(  # type: ignore
                     proxy.meta['api_version'])
+                type_check(proxy.meta, sim_name, sim_id)
                 proxy.meta = expand_meta(proxy.meta, sim_name)
                 return proxy
             except ScenarioError as se:
@@ -112,7 +127,14 @@ def start(world, sim_name, sim_id, time_resolution, sim_params):
                             'Invalid configuration' % sim_name)
 
 
-def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_inproc(
+    world: World,
+    sim_name: str,
+    sim_config: Dict[Literal['python', 'env'], str],
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+) -> SimProxy:
     """
     Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
@@ -166,7 +188,14 @@ def start_inproc(world, sim_name, sim_config, sim_id, time_resolution, sim_param
     return LocalProcess(sim_name, sim_id, meta, sim, world)
 
 
-def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_proc(
+    world: World,
+    sim_name: str,
+    sim_config: Dict[Literal['cmd', 'cwd', 'env'], str],
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+) -> SimProxy:
     """
     Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
@@ -191,7 +220,7 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
     # Make a copy of the current env. vars dictionary and update it with the
     # user provided values (or an empty dict as a default):
     env = dict(os.environ)
-    env.update(sim_config.get('env', {}))
+    env.update(sim_config.get('env', {}))  # type: ignore
 
     kwargs = {
         'bufsize': 1,
@@ -205,7 +234,7 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
         # This distinction has to be made due to a change in python 3.8.0.
         # It might become unecessary for future releases supporting
         # python >= 3.8 only.
-        if str(e).count(':')==2:
+        if str(e).count(':') == 2:
             eout = e.args[1]
         else:
             eout = str(e).split('] ')[1]
@@ -217,7 +246,14 @@ def start_proc(world, sim_name, sim_config, sim_id, time_resolution, sim_params)
     return proxy
 
 
-def start_connect(world, sim_name, sim_config, sim_id, time_resolution, sim_params):
+def start_connect(
+    world: World,
+    sim_name: str,
+    sim_config,
+    sim_id: SimId,
+    time_resolution: float,
+    sim_params: Dict[str, Any]
+):
     """
     Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
@@ -242,7 +278,7 @@ def start_connect(world, sim_name, sim_config, sim_id, time_resolution, sim_para
 
 
 def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
-               sim_params, proc=None, addr=None):
+               sim_params, proc=None, addr=None) -> SimProxy:
     """
     Try to establish a connection with *sim_name* and perform the ``init()``
     API call.
@@ -308,7 +344,9 @@ def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
     return sync_process(greeter(), world, errback=cb)
 
 
-def validate_api_version(version):
+def validate_api_version(
+    version: str
+) -> Union[Tuple[int, int], Tuple[int, int, int]]:
     """
     Validate the *version*.
 
@@ -334,21 +372,14 @@ def validate_api_version(version):
     return v_tuple
 
 
-def expand_meta(meta, sim_name):
+def expand_meta(meta: Meta, sim_name: str):
     """
         Checks if (non-)triggering attributes ("(non-)trigger") are given and
         adds them to each model's meta data if necessary.
 
         Raise a :exc: `ScenarioError` if the given values are not consistent.
         """
-    try:
-        sim_type = meta['type']
-    except KeyError:
-        sim_type = meta['type'] = 'time-based'
-        meta['old-api'] = True
-        print(f"DEPRECATION WARNING: Simulator {sim_name}'s meta doesn't "
-              "contain a type. 'time-based' is set as default. "
-              "This might cause an error in future releases.")
+    sim_type = meta['type']
 
     for model, model_meta in meta['models'].items():
         attrs = set(model_meta.get('attrs', []))
@@ -394,6 +425,27 @@ def expand_meta(meta, sim_name):
     return meta
 
 
+def type_check(meta, sim_name, sim_id):
+    """
+        Checks if  meta's type exists and is correctly set.
+        Raise a :exc: `ScenarioError` if the type ist not correct.
+        """
+    if 'type' not in meta:
+        sim_type = meta['type'] = 'time-based'
+        meta['old-api'] = True
+        logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
+                       'contain a type. \'{sim_type}\' is set as default. '
+                       'This might cause an error in future releases.',
+                       sim_name=sim_name, sim_type=sim_type)
+    else:
+        types = ['time-based', 'event-based', 'hybrid']
+        if meta['type'] not in types:
+            typo = meta['type']
+            meta['type'] = 'time-based'
+            raise ScenarioError(f'{sim_id} contains an unknown type: \'{typo}\'. '
+                                f'Please check for typos in your Simulators \'{sim_name}\' meta and scenario.')
+
+
 class SimProxy:
     """
     Handler for an external simulator.
@@ -402,7 +454,80 @@ class SimProxy:
     simulator.
     """
 
-    def __init__(self, name, sid, meta, world):
+    name: str
+    """The name of this simulator (in the SIM_CONFIG)."""
+    sid: SimId
+    """This simulator's ID."""
+    meta: Meta
+    """This simulator's meta."""
+
+    proxy: Any
+    """The actual proxy for this simulator."""
+
+    rt_start: float
+    """The real time when this simulator started (as returned by
+    `perf_counter()`."""
+
+    next_steps: List[int]
+    """The scheduled next steps this simulator will take, organized as a heap.
+    Once the immediate next step has been chosen (and the `has_next_step` event
+    has been triggered), the step is moved to `next_step` instead."""
+    next_step: Optional[int]
+    """This simulator's immediate next step once it has been determined. The
+    step is removed from the `next_steps` heap at that point and the
+    `has_next_step` event is triggered."""
+    has_next_step: Event
+    """An event that is triggered once this simulator's next step has been
+    determined."""
+    next_self_step: Optional[int]
+    """The next self-scheduled step for this simulator."""
+    interruptable: bool
+    """Set when this simulator's next step has been scheduled but it is still
+    waiting for dependencies which might trigger earlier steps for this
+    simulator."""
+
+    predecessors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    """This simulator's predecessors in the dataflow graph and the corresponding
+    edges."""
+    successors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    """This simulator's successors in the dataflow graph and the corresponding
+    edge.."""
+    triggering_ancestors: Iterable[Tuple[SimId, bool]]
+    """
+    An iterable of this sim's ancestors that can trigger a step of this
+    simulator. The second component specifies whether the connecting is weak or
+    time-shifted (False) or immediate (True).
+    """
+
+    input_buffer: Dict
+    """Inputs received via `set_data`."""
+    input_memory: Dict
+    """Memory of previous inputs for persistent attributes."""
+    timed_input_buffer: TimedInputBuffer
+    """'Usual' inputs. (But also see `world._df_cache`.)"""
+
+    progress: int
+    """This simulator's progress in mosaik time.
+
+    This simulator has done all its work before time `progress`; its next stept will be
+    at time `progress` or later. For time-based simulators, the next step will happen
+    at time `progress`."""
+    last_step: int
+    """The most recent step this simulator performed."""
+
+    output_time: int
+    """The output time associated with `data`. Usually, this will be equal to
+    `last_step` but simulators may specify a different time for their output."""
+    data: OutputData
+    """The newest data returned by this simulator."""
+    related_sims: Iterable[SimProxy]
+    """Simulators related to this simulator. (Currently all other simulators.)"""
+    sim_proc: Process
+    """The SimPy process for this simulator."""
+    wait_events: Event
+    """The event (usually an AllOf event) this simulator is waiting for."""
+
+    def __init__(self, name: str, sid: SimId, meta: Meta, world: World):
         self.name = name
         self.sid = sid
         self.meta = meta
@@ -431,22 +556,21 @@ class SimProxy:
 
         # Simulation state
         self.last_step = -1
-        self.next_step = None
         if self.meta.get('type', 'time-based') != 'event-based':
             self.next_steps = [0]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress_tmp = -1
-        self.progress = -1
+        self.progress = 0
         self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
-        self.sim_proc = None  # SimPy process
-        self.has_next_step = None  # SimPy event
-        self.wait_events = None  # SimPy event
+        self.sim_proc = None  # type: ignore  # will be set in Mosaik's init
+        self.has_next_step = None  # type: ignore
+        self.wait_events = None  # type: ignore
         self.interruptable = False
+        self.is_in_step = False
         self.trigger_cycles = []
         self.rank = None  # topological rank
 
@@ -544,8 +668,8 @@ class RemoteProcess(SimProxy):
             timeout = self._world.env.timeout(self._stop_timeout)
             res = yield (self._rpc_con.remote.stop() | timeout)
             if timeout in res:
-                print('Simulator "%s" did not close its connection in time.' %
-                      self.sid)
+                logger.warning('Simulator "{sim_id}" did not close its connection in time.',
+                               sim_id=self.sid)
                 self._rpc_con.close()
         except ConnectionError:
             # We may get a ConnectionError if the remote site closes its
@@ -658,7 +782,7 @@ class MosaikRemote:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
         sim = self.world.sims[self.sim_id]
-        assert sim.next_step == sim.last_step  # Assert simulator is in step()
+        assert sim.is_in_step        
         cache_slice = (self.world._df_cache[sim.last_step]
                        if self.world._df_cache is not None else {})
 
@@ -683,7 +807,7 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.progress >= sim.last_step >= dep.last_step)
+            assert (dep.progress > sim.last_step >= dep.last_step)
             dep_data = yield dep.proxy.get_data(attrs)
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -729,20 +853,23 @@ class MosaikRemote:
         """
         if not self.world.rt_factor:
             raise SimulationError('Simulator "%s" tried to set an event in '
-                                  'non-real-time mode.' % self.sim_sid)
+                                  'non-real-time mode.' % self.sim_id)
         if event_time < self.world.until:
-            sim.progress = min(event_time - 1, sim.progress)
+            sim.progress = min(event_time, sim.progress)
+            earlier_step = sim.next_steps and event_time < sim.next_steps[0]
             hq.heappush(sim.next_steps, event_time)
+
 
             if sim.has_next_step and not sim.has_next_step.triggered:
                 sim.has_next_step.succeed()
             # We interrupt the simulator if the new step is smaller than
             # next_step, unless it is already executing a step:
-            elif sim.interruptable and event_time < sim.next_step:
+            elif sim.interruptable and earlier_step:
                 sim.sim_proc.interrupt('Earlier step')
         else:
-            print(f"Warning: Event set at {event_time} by {sim.sid} is after "
-                  f"simulation end {self.world.until} and will be ignored.")
+            logger.warning("Event set at {event_time} by {sim_id} is after "
+                           "simulation end {until} and will be ignored.",
+                           event_time=event_time, sim_id=sim.sid, until=self.world.until)
 
     def _assert_async_requests(self, dfg, src_sid, dest_sid):
         """
@@ -785,7 +912,7 @@ class StarterCollection(object):
     # Singleton instance of the starter collection.
     __instance = None
 
-    def __new__(cls):
+    def __new__(cls) -> OrderedDict[str, Callable[..., SimProxy]]:
         if StarterCollection.__instance is None:
             # Create collection with default starters (i.e., starters defined
             # my mosaik core).
@@ -807,6 +934,7 @@ class TimedInputBuffer:
     If there are several entries for the same connection at the same time, only
     the most recent value is added.
     """
+
     def __init__(self):
         self.input_queue = []
         self.counter = count()  # Used to chronologically sort entries

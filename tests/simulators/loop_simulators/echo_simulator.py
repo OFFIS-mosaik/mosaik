@@ -5,11 +5,10 @@ It more complex than it needs to be to be more flexible and show off various
 features of the mosaik API.
 
 """
-import logging
+from loguru import logger
 
 import mosaik_api
 
-logger = logging.getLogger('echo_sim')
 
 example_sim_meta = {
     'type': 'event-based',
@@ -37,7 +36,7 @@ class EchoSim(mosaik_api.Simulator):
         return [{'eid': self.eid, 'type': model}]
 
     def step(self, time, inputs, max_advance):
-        print('ECHO SIM', inputs)
+        logger.info('step at {time} with inputs {inputs}', time=time, inputs=inputs)
         self.loop_count = list(inputs[self.eid]['loop_in'].values())[0]
         return None
 

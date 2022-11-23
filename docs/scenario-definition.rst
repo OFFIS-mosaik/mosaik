@@ -40,12 +40,16 @@ a :class:`World` instance:
 .. code-block:: python
 
    >>> import mosaik
+   >>> from mosaik.scenario import SimConfig
    >>>
-   >>> sim_config = {
+   >>> sim_config: SimConfig = {
    ...     'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
    ... }
    >>>
    >>> world = mosaik.World(sim_config)
+
+(You can leave off the type annotation on ``sim_config`` and the line importing
+``SimConfig`` if you're not using type checking.)
 
 As we start simulator instances by using *world*, it needs to know what
 simulators are available and how to start them. This is called the *sim config*
@@ -244,15 +248,17 @@ This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
 detail what happens when you call ``run()``.
 
-The progress of the simulation is also printed as we run the simulation.
-This is because the :meth:`World.run()` method has another argument, *print_progress*,
-that has a boolean flag set to True by default, which prints the progress of our
-simulation whenever we run it. If we do not want the progress to be printed, we can 
-set the *print_progress* flag to False.
+While the simulation is running, the current progress is visualized using a
+`tqdm <https://pypi.org/project/tqdm/>`_ progress bar. You can turn this off
+using the `print_progress` parameter of `world.run`:
 
 .. code-block:: python
 
-   >>> world.run(until=END, print_progress=False)
+   world.run(until=10, print_progress=False)
+
+If you want a more detailed progress report, you can also set
+``print_progress='individual'`` which will produce a separate progress bar for
+each simulator in your simulation.
 
 We can also set the *lazy_stepping* flag (default: ``True``). If
 ``True``, a simulator can only run ahead one step of its successors. If

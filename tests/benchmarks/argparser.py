@@ -12,15 +12,15 @@ def argparser(N=10000, until=100, sim_type='time', remote=0):
     parser.add_argument('-u', '--until', type=int, default=until, help="Simulation length")
     parser.add_argument('-t', '--sim-type', type=str, default=sim_type,
                         choices=['time', 't', 'event', 'e'], help="Simulator type")
-    parser.add_argument('-p', '--print_progress', type=int)
     parser.add_argument('-l', '--lazy_stepping', type=int)
+    parser.add_argument('--compare', type=int, default=0, help="Compare execution graph with previously stored version")
     args = parser.parse_args()
 
     world_args = ['debug', 'cache']
     world_args = {arg: getattr(args, arg) for arg in world_args
                   if getattr(args, arg) is not None}
 
-    optional_run_args = ['until', 'print_progress', 'lazy_stepping']
+    optional_run_args = ['until', 'lazy_stepping']
     run_args = {arg: getattr(args, arg) for arg in optional_run_args
                 if getattr(args, arg) is not None}
 
