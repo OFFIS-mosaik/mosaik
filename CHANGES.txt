@@ -1,6 +1,19 @@
 Changelog
 =========
 
+3.1.0 - 2022-11-23
+------------------
+- [NEW] Add progress bar to visualize simulation progress (https://gitlab.com/mosaik/mosaik/-/merge_requests/58)
+- [NEW] Add type annotations (https://gitlab.com/mosaik/mosaik/-/issues/107)
+- [NEW] Add proper logging (https://gitlab.com/mosaik/mosaik/-/issues/98)
+- [DEPRECATED] Deprecated tags for set_data und async_requests (https://gitlab.com/mosaik/mosaik/-/issues/102)
+- [CHANGE] Improved benchmarks with new result table (https://gitlab.com/mosaik/mosaik/-/issues/94)
+- [FIX] Unexpected behavior of (time-based) simulators whose output is not used anymore (https://gitlab.com/mosaik/mosaik/-/issues/90)
+- [FIX] Lazy stepping does not work (https://gitlab.com/mosaik/mosaik/-/issues/89)
+- [FIX] Negative max_advance values in same time loop (https://gitlab.com/mosaik/mosaik/-/issues/82)
+- [FIX] Initial data for time-shifted connection for hybrid simulator (https://gitlab.com/mosaik/mosaik/-/issues/81)
+- [FIX] Bug related to None value for "dest_sim.next_step" in particular connection structure (https://gitlab.com/mosaik/mosaik/-/issues/80)
+
 3.0.2 - 2022-06-01
 ------------------
 
