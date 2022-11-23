@@ -47,7 +47,7 @@ Linting_flake8:
        - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
     rules:
       - if: '$CI_COMMIT_TAG == null'
-      - when: manual
+        when: manual
         allow_failure: true
     needs: []
      
