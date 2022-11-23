@@ -330,7 +330,7 @@ class World(object):
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         # Check dataflow connection (non-)persistent --> (non-)trigger
-        self._check_attributes_values(src, dest, attr_pairs)
+        self._check_attributes_values(src, dest, expanded_attrs)
 
         if self._df_cache is not None:
             trigger, cached, time_buffered, memorized, persistent = \
@@ -711,7 +711,11 @@ class World(object):
                     attr_errors.append((entities[i], attr))
         return attr_errors
 
-    def _check_attributes_values(self, src, dest, attr_pairs):
+    def _check_attributes_values(self,
+        src:Entity,
+        dest:Entity,
+        attr_pairs:Iterable[Tuple[Attr, Attr]],
+):
         """
         Check if *src* and *dest* attributes in *attr_pairs* are a combination of
         persistent and trigger or non-persistent and non-trigger.
