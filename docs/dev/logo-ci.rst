@@ -31,20 +31,6 @@ Letters converted to objects so that it nicely renders on all devices.
    :alt: mosaik logo in SVG format for the web
 
 
-SVG for Inkscape
-----------------
-
-This is the Inkscape master file for the logo. In order to edit it in Inkscape,
-you need to install the `Aller font`__.
-
-__ http://www.fontsquirrel.com/fonts/Aller
-
-.. image:: /_static/mosaik_logo-inkscape.svg
-   :width: 640px
-   :align: center
-   :alt: mosaik-logo in SVG format for editing in Inkscape
-
-
 Simple logo
 ===========
 
