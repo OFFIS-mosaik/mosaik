@@ -11,39 +11,12 @@ variables:
   VERSION_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
 
 stages:
- - install_dependencies
  - unit_tests
  - benchmarks
  - build_docker
  - run_docker
  - release
  - Trigger-cross-projects 
-
-Job_install_dependencies:
-    stage: install_dependencies
-    before_script:
-      - python -V
-      - apt-get update -q -y 
-    script:
-     - pip install -U virtualenv
-     - virtualenv venv
-     - source venv/bin/activate
-     - pip install -r requirements.txt
-     - rm -rf dist
-     - rm -rf build
-     - python setup.py bdist_wheel sdist
-     - pip install .
-    artifacts:
-     paths:
-      - venv/
-      - venv/bin/
-      - venv/bin/bash/
-      - dist/
-      - build/
-     expire_in: 60 minutes
-    rules:
-      - if: $CI_COMMIT_TAG
-        when: never
 
 Job_unit_tests:
     image: fkrull/multi-python
