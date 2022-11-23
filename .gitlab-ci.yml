@@ -23,8 +23,8 @@ Job_unit_tests:
     stage: unit_tests
     script:
       - tox
-    except:
-      - tags 
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
     needs: []
 
 Job_benchmarks:
@@ -34,6 +34,7 @@ Job_benchmarks:
     script:
       - tox -c tox-benchmark.ini
     rules:
+      - if: '$CI_COMMIT_TAG == null'
       - when: manual
     needs: []
 
@@ -44,7 +45,10 @@ Linting_flake8:
        - python -m pip install --quiet --upgrade flake8
     script:
        - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
-    when: manual 
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
+      - when: manual
+        allow_failure: true
     needs: []
      
 build_docker_preproduction:
@@ -135,7 +139,9 @@ pypi:
       - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
   rules:
     - if: $CI_COMMIT_TAG
-  
+      when: manual
+
+# Build a docker container with the new mosaik version and publish it in the GitLab docker regitry
 build_docker_tag:
   image: docker:latest
   stage: build_docker
@@ -150,6 +156,7 @@ build_docker_tag:
     - docker push $VERSION_IMAGE
   rules:
     - if: $CI_COMMIT_TAG
+      when: manual
  
 run_docker_tag:
   image: docker:latest
