@@ -715,7 +715,7 @@ class World(object):
         src:Entity,
         dest:Entity,
         attr_pairs:Iterable[Tuple[Attr, Attr]],
-):
+    ):
         """
         Check if *src* and *dest* attributes in *attr_pairs* are a combination of
         persistent and trigger or non-persistent and non-trigger.
