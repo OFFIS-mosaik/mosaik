@@ -114,7 +114,8 @@ run_docker_production:
     - docker info
    only:
      - master
-   
+
+# Release the newly tagged version of mosaik on pypi.
 pypi:
   stage: release
   variables:
@@ -158,7 +159,9 @@ build_docker_tag:
     - if: $CI_COMMIT_TAG
       when: manual
  
-run_docker_tag:
+# Pulls and runs (and immediately stops) the docker container that has been created with this tag.
+# Tests if the container is available and can be started
+run_docker:
   image: docker:latest
   stage: run_docker
   services:
