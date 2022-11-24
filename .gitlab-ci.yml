@@ -154,7 +154,7 @@ pypi_release:
   extends: .pypi
   stage: release
   variables:
-    REPOSITORY_URL: https://test.pypi.org/legacy/
+    REPOSITORY_URL: https://upload.pypi.org/legacy/
 
 # Build a docker container with the new mosaik version and publish it in the GitLab docker regitry
 build_docker_tag:
