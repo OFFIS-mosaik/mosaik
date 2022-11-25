@@ -11,48 +11,22 @@ variables:
   VERSION_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
 
 stages:
- - install_dependencies
  - unit_tests
  - benchmarks
  - build_docker
  - run_docker
+ - pre_release
  - release
  - Trigger-cross-projects 
-
-Job_install_dependencies:
-    stage: install_dependencies
-    before_script:
-      - python -V
-      - apt-get update -q -y 
-    script:
-     - pip install -U virtualenv
-     - virtualenv venv
-     - source venv/bin/activate
-     - pip install -r requirements.txt
-     - rm -rf dist
-     - rm -rf build
-     - python setup.py bdist_wheel sdist
-     - pip install .
-    artifacts:
-     paths:
-      - venv/
-      - venv/bin/
-      - venv/bin/bash/
-      - dist/
-      - build/
-     expire_in: 60 minutes
-    except:
-        - tags
 
 Job_unit_tests:
     image: fkrull/multi-python
     stage: unit_tests
     script:
       - tox
-    except:
-      - tags 
-    needs:
-      - Job_install_dependencies
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
+    needs: []
 
 Job_benchmarks:
     image: fkrull/multi-python
@@ -61,7 +35,9 @@ Job_benchmarks:
     script:
       - tox -c tox-benchmark.ini
     rules:
-      - when: manual
+      - if: '$CI_COMMIT_TAG == null'
+        when: manual
+    needs: []
 
 Linting_flake8:
     allow_failure: true
@@ -70,9 +46,11 @@ Linting_flake8:
        - python -m pip install --quiet --upgrade flake8
     script:
        - flake8 --statistics --max-line-length=85 --extend-ignore=E306,E501 --exclude=venv*,docs*,tests*,build*,dist* ./mosaik/
-    when: manual 
-    needs:
-      - Job_install_dependencies
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
+        when: manual
+        allow_failure: true
+    needs: []
      
 build_docker_preproduction:
    image: docker:latest
@@ -137,68 +115,88 @@ run_docker_production:
     - docker info
    only:
      - master
-   
-pypi:
-  stage: release
+
+# Basic job to upload the newly tagged version of mosaik to pypi. The server can be chosen, i.e., the test or production server.
+.pypi:
   variables:
     TWINE_USERNAME: $MOSAIK_PYPI_USER
     TWINE_PASSWORD: $MOSAIK_PYPI_PASSWORD
   before_script:
-      - echo 'version name is = '
-      - echo ${CI_COMMIT_TAG}
-      - echo ${CI_COMMIT_REF_NAME}
+    - echo 'version name is = '
+    - echo ${CI_COMMIT_TAG}
+    - echo ${CI_COMMIT_REF_NAME}
   script:
-      - pip install -U twine wheel setuptools
-      - rm -rf dist
-      - rm -rf build
-      - python setup.py check sdist bdist  # This will fail if your credentials are wrong.
-      - ls
-      - rm -rf dist
-      - rm -rf build
-      - ls
-      - python setup.py sdist bdist_wheel
-      - twine check dist/*
-      - echo $PYPI_USER
-      - twine upload --repository-url https://upload.pypi.org/legacy/ --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
-  only:
-     - tags
-  
+    - pip install -U twine wheel setuptools
+    - rm -rf dist
+    - rm -rf build
+    - python setup.py check sdist bdist  # This will fail if your credentials are wrong.
+    - ls
+    - rm -rf dist
+    - rm -rf build
+    - ls
+    - python setup.py sdist bdist_wheel
+    - twine check dist/*
+    - echo $PYPI_USER
+    - twine upload --repository-url "$REPOSITORY_URL" --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  needs: []
+
+# Release the newly tagged version of mosaik on the test instance of pypi.
+pypi_test:
+  extends: .pypi
+  stage: pre_release
+  variables:
+    REPOSITORY_URL: https://test.pypi.org/legacy/
+
+# Release the newly tagged version of mosaik on pypi.
+pypi_release:
+  extends: .pypi
+  stage: release
+  variables:
+    REPOSITORY_URL: https://upload.pypi.org/legacy/
+
+# Build a docker container with the new mosaik version and publish it in the GitLab docker regitry
 build_docker_tag:
-   image: docker:latest
-   stage: build_docker
-   services:
+  image: docker:latest
+  stage: build_docker
+  services:
     - docker:dind
-   before_script:
+  before_script:
     - docker --version
     - docker info
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-   script:
+  script:
     - docker build --pull -t $VERSION_IMAGE .
     - docker push $VERSION_IMAGE
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
  
-run_docker_tag:
-   image: docker:latest
-   stage: run_docker
-   services:
+# Pulls and runs (and immediately stops) the docker container that has been created with this tag.
+# Tests if the container is available and can be started
+run_docker:
+  image: docker:latest
+  stage: run_docker
+  services:
     - docker:dind
-   before_script:
+  before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-   script:
+  script:
     - docker pull $VERSION_IMAGE
     - docker tag $VERSION_IMAGE myimage
     - docker run --name $DOCKER_CONTAINER myimage
     - docker stop $DOCKER_CONTAINER
-   after_script:
+  after_script:
     - docker info
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
      
 mosaik-demo:
-   stage: Trigger-cross-projects
-   trigger: 
+  stage: Trigger-cross-projects
+  trigger: 
     project: mosaik/examples/mosaik-demo
     branch: master  
-   only:
-     - tags
+  rules:
+    - if: $CI_COMMIT_TAG
