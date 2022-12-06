@@ -224,7 +224,7 @@ We have to give mosaik the command how to start our Java simulator. This is done
     # Sim config. and other parameters
     SIM_CONFIG = {
         'JExampleSim': {
-            'cmd': 'java -cp JExampleSim.jar de.offis.mosaik.api.JExampleSim %(addr)s',
+            'cmd': 'java -cp JExampleSim.jar de.offis.mosaik.api.utils.generics.SimulationStarter %(addr)s',
         },
         'Collector': {
             'cmd': 'python collector.py %(addr)s',
