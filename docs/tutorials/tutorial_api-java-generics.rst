@@ -8,6 +8,8 @@ Additionally to the basic mosaik Java API, another API based on the basic one ca
 that contains some quality of life changes, for example automatic meta-model generation based on your model,
 automatic model instantiation, input parsing via generics and automatic gathering of data for mosaik.
 
+.. note:: When to use basic java api and when to use this api? If you want to use the flexibility from python, for example using all inputs. If you want to have a more type strict java-like experience, use this api instead.
+
 This tutorial is also based on the Python tutorial :doc:`Python tutorial</tutorials/examplesim>` for the simple model and shows how to use the most features of this API.
 
 Getting the Java API
@@ -289,3 +291,10 @@ our Python-example.
     You can find the source code used in this tutorial in the
     `mosaik-source-files <https://gitlab.com/mosaik/mosaik>`_ in the folder
     ``docs/tutorial/code``.
+
+ParserHelper class
+==================
+
+As last note, the functions used to parse the mosaik data into models and creating the metamodel are available via the ParserHelper class.
+Even if you don't want to use one of the simulators, this class has some QoL methods you may want to use.
+Check the inbuilt java-docs of the library to learn more about the methods available and how to use them.
