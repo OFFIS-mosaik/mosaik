@@ -177,6 +177,10 @@ time at which it wants to do its next step. For event-based and hybrid
 simulators a next (self-)step is optional. If there is no next self-step, the
 return value is None/null.
 
+.. note::
+   The *max_advance* value is not necessarily used and is only for special use cases where simulators can advance in time without expecting new inputs from other simulators, e.g. for the integration of a communication simulation.
+
+
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 51-63
 
