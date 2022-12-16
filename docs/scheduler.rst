@@ -197,14 +197,15 @@ simulators. Note that the simulator will not necessarily be stepped at
 provides the connected output attribute(s).
 
 As time-based simulators (or hybrid ones without any triggering input) only
-decide themselves when they are stepped, max_advance is always equal to the
+decide themselves when they are stepped, *max_advance* is always equal to the
 end of the simulation for those. But of course they will most likely miss some
 updates of the input data if their step size is too large and not synchronized
 with their input providers. In order not to miss any input update, you can
 change the type of the simulator to *hybrid*. Then the simulator will be
 stepped on each update.
 
-TODO: Add info for rt-simulations
+.. note::
+   The *max_advance* value is not necessarily appropriate for real-time simulations as it does not consider eventual steps which are scheduled via the asynchronous *set_event()* method.
 
 
 How data flows through mosaik
