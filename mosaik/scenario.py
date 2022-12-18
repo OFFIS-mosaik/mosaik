@@ -595,42 +595,62 @@ class World(object):
                                     f'{sorted(cycle)}.')
 
     def cache_trigger_cycles(self):
+        # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
+        # For every simulation go through all cycles
         for sim in self.sims.values():
             for cycle in cycles:
+                # If the cycle contains the current simultion 
+                # (i.e., the current simulation is one node in the cycle)
                 if sim.sid in cycle:
                     edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
                     cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
                                    for src_id, dest_id in edge_ids]
+                    # Create the dictionary to hold the information about the trigger cycle.
+                    # This object is filled with information about the cycle in the following.
                     trigger_cycle = {'sids': sorted(cycle)}
-                    min_cycle_length = sum(
-                        [edge['time_shifted'] for edge in cycle_edges])
-                    trigger_cycle['min_length'] = min_cycle_length
-                    ind_sim = cycle.index(sim.sid)
-                    out_edge = cycle_edges[ind_sim]
-                    suc_sid = edge_ids[ind_sim][1]
+                    # If connections between simulators are time-shifted, the cycle needs more time
+                    # for a trigger round. If no edge is timeshifted, the minimum length is 0.
+                    trigger_cycle['min_length'] = sum([edge['time_shifted'] for edge in cycle_edges])
+                    index_sim = cycle.index(sim.sid)
+                    out_edge = cycle_edges[index_sim]
+                    successor_sid = edge_ids[index_sim][1]
                     activators = []
                     for src_eid, dest_eid, attrs in out_edge['dataflows']:
                         dest_model = \
                             networkx.get_node_attributes(self.entity_graph,
                                                          'type')[
-                                FULL_ID % (suc_sid, dest_eid)]
+                                FULL_ID % (successor_sid, dest_eid)]
                         dest_trigger = \
-                        self.sims[suc_sid].meta['models'][dest_model][
+                        self.sims[successor_sid].meta['models'][dest_model][
                             'trigger']
-                        for src_attr, dest_attr in attrs:
-                            if dest_attr in dest_trigger:
-                                activators.append((src_eid, src_attr))
+                        activators.extend(self.collect_activators(attrs, dest_trigger, src_eid))
                     trigger_cycle['activators'] = activators
-                    in_edge = (cycle_edges[ind_sim - 1] if ind_sim != 0
+                    in_edge = (cycle_edges[index_sim - 1] if index_sim != 0
                                else cycle_edges[-1])
                     trigger_cycle['in_edge'] = in_edge
                     in_edge['loop_closing'] = True
                     trigger_cycle['time'] = -1
                     trigger_cycle['count'] = 0
+                    # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
 
+    def collect_activators(self, attributes: tuple, destination_triggers: set, src_eid: str) -> list:
+        """
+        TODO: Better documentation. What is going on here?
+        
+        ... From the given attributes that trigger ... 
+        """
+        activators = []
+        for src_attr, dest_attr in attributes:
+            if dest_attr in destination_triggers:
+                activators.append((src_eid, src_attr))
+        return activators
+
     def cache_dependencies(self):
+        """
+        Loops through all simulations and adds predecessors and successors to the simulations.
+        """
         for sid, sim in self.sims.items():
             sim.predecessors = {}
             for pre_sid in self.df_graph.predecessors(sid):
