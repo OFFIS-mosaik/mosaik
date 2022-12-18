@@ -149,18 +149,11 @@ def start_inproc(
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     except (AttributeError, ImportError, KeyError, ValueError) as err:
-        if sys.version_info.major <= 3 and sys.version_info.minor < 6:
-            detail_msgs = {
-                ValueError: 'Malformed Python class name: Expected "module:Class"',
-                ImportError: 'Could not import module: %s' % err.args[0],
-                AttributeError: 'Class not found in module',
-            }
-        else:
-            detail_msgs = {
-                ValueError: 'Malformed Python class name: Expected "module:Class"',
-                ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
-                AttributeError: 'Class not found in module',
-            }
+        detail_msgs = {
+            ValueError: 'Malformed Python class name: Expected "module:Class"',
+            ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
+            AttributeError: 'Class not found in module',
+        }
         details = detail_msgs[type(err)]
         origerr = err.args[0]
         raise ScenarioError('Simulator "%s" could not be started: %s --> %s' %
