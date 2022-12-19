@@ -596,8 +596,8 @@ class World(object):
 
     def cache_trigger_cycles(self):
         """
-        For all simulations, if they are part of a cycle, add information
-        about trggers in the cycle(s) to the simulation object
+        For all simulators, if they are part of a cycle, add information
+        about trggers in the cycle(s) to the simulator object
         """
         # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
