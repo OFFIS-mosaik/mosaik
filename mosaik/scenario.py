@@ -612,30 +612,31 @@ class World(object):
                     # If connections between simulators are time-shifted, the cycle needs more time
                     # for a trigger round. If no edge is timeshifted, the minimum length is 0.
                     trigger_cycle['min_length'] = sum([edge['time_shifted'] for edge in cycle_edges])
+                    # Get the index of the current simulation in the cycle
                     index_sim = cycle.index(sim.sid)
-                    out_edge = cycle_edges[index_sim]
+                    # Get both the ingoing and the outgoing edge
+                    outgoing_edge = cycle_edges[index_sim]
+                    # TODO: This line has been: ingoing_edge = (cycle_edges[index_sim - 1] if index_sim != 0 else cycle_edges[-1])
+                    # I argue that the if-statement is not needed, as index_sim - 1 in case of 0 is -1
+                    ingoing_edge = cycle_edges[index_sim - 1] # or use cycle_edges[(ind_sim - 1) % len(cycle_edges)]
                     successor_sid = edge_ids[index_sim][1]
-                    activators = []
-                    for src_eid, dest_eid, attrs in out_edge['dataflows']:
-                        dest_model = \
-                            networkx.get_node_attributes(self.entity_graph,
-                                                         'type')[
-                                FULL_ID % (successor_sid, dest_eid)]
-                        dest_trigger = \
-                        self.sims[successor_sid].meta['models'][dest_model][
-                            'trigger']
-                        activators.extend(self.collect_activators(attrs, dest_trigger, src_eid))
-                    trigger_cycle['activators'] = activators
-                    in_edge = (cycle_edges[index_sim - 1] if index_sim != 0
-                               else cycle_edges[-1])
-                    trigger_cycle['in_edge'] = in_edge
-                    in_edge['loop_closing'] = True
+                    trigger_cycle['activators'] = self.collect_activators_from_dataflows(outgoing_edge, successor_sid)
+                    trigger_cycle['in_edge'] = ingoing_edge
+                    ingoing_edge['loop_closing'] = True
                     trigger_cycle['time'] = -1
                     trigger_cycle['count'] = 0
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
 
-    def collect_activators(self, attributes: tuple, destination_triggers: set, src_eid: str) -> list:
+    def collect_activators_from_dataflows(self, out_edge, successor_sid):
+        activators = []
+        for src_eid, dest_eid, attrs in out_edge['dataflows']:
+            dest_model = networkx.get_node_attributes(self.entity_graph,'type')[FULL_ID % (successor_sid, dest_eid)]
+            dest_trigger = self.sims[successor_sid].meta['models'][dest_model]['trigger']
+            activators.extend(self.collect_activators_from_attributes(attrs, dest_trigger, src_eid))
+        return activators
+
+    def collect_activators_from_attributes(self, attributes: tuple, destination_triggers: set, src_eid: str) -> list:
         """
         TODO: Better documentation. What is going on here?
         
