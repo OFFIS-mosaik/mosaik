@@ -601,23 +601,15 @@ class World(object):
         """
         # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
-        # For every simulation go through all cycles
+        # For every simulation go through all cycles in which the simulator is a node
         for sim in self.sims.values():
             for cycle in cycles:
-                # If the current simulation is one node in the cycle
                 if sim.sid in cycle:
-                    index_of_sim = cycle.index(sim.sid)
-                    
-                    # Combine the ids of the cycle elements to get the edge ids and edges
-                    edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
-                    cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
-                                   for src_id, dest_id in edge_ids]
-
-                    # Get both the ingoing and the outgoing edge of the current simulator
-                    ingoing_edge = cycle_edges[(
-                        index_of_sim - 1) % len(cycle_edges)]
-                    outgoing_edge = cycle_edges[index_of_sim]
-                    successor_sid = edge_ids[index_of_sim][1]
+                    index_of_simulator = cycle.index(sim.sid)
+                    successor_sid, cycle_edges = self.get_cycle_info(
+                        cycle, index_of_simulator)
+                    ingoing_edge, outgoing_edge = self.get_in_out_edges(
+                        index_of_simulator, cycle_edges)
 
                     # Create and fill dict with info about the cycle
                     trigger_cycle = {'sids': sorted(cycle)}
@@ -633,6 +625,25 @@ class World(object):
                     trigger_cycle['count'] = 0
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
+
+    def get_cycle_info(self, cycle: list, index_of_simulator: int) -> tuple:
+        """
+        Returns the sid of the successor and all the edges from the cycle.
+        """
+        # Combine the ids of the cycle elements to get the edge ids and edges
+        edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
+        successor_sid = edge_ids[index_of_simulator][1]
+        cycle_edges = [self.df_graph.get_edge_data(
+            src_id, dest_id) for src_id, dest_id in edge_ids]
+        return successor_sid, cycle_edges
+
+    def get_in_out_edges(self, index_of_simulator: int, cycle_edges: list) -> tuple:
+        """
+        Returns the ingoing and outgoing edge in the cycle from the given simulator
+        """
+        ingoing_edge = cycle_edges[(index_of_simulator - 1) % len(cycle_edges)]
+        outgoing_edge = cycle_edges[index_of_simulator]
+        return ingoing_edge, outgoing_edge
 
     def collect_successor_activators_from_edge(self, outgoing_edge: dict, successor_sid: str) -> list:
         """
