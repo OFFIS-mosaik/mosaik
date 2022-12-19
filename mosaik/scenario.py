@@ -595,52 +595,66 @@ class World(object):
                                     f'{sorted(cycle)}.')
 
     def cache_trigger_cycles(self):
+        """
+        For all simulations, if they are part of a cycle, add information
+        about trggers in the cycle(s) to the simulation object
+        """
         # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
         # For every simulation go through all cycles
         for sim in self.sims.values():
             for cycle in cycles:
-                # If the cycle contains the current simultion 
-                # (i.e., the current simulation is one node in the cycle)
+                # If the current simulation is one node in the cycle
                 if sim.sid in cycle:
+                    index_of_sim = cycle.index(sim.sid)
+                    
+                    # Combine the ids of the cycle elements to get the edge ids and edges
                     edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
                     cycle_edges = [self.df_graph.get_edge_data(src_id, dest_id)
                                    for src_id, dest_id in edge_ids]
-                    # Create the dictionary to hold the information about the trigger cycle.
-                    # This object is filled with information about the cycle in the following.
+
+                    # Get both the ingoing and the outgoing edge of the current simulator
+                    ingoing_edge = cycle_edges[(
+                        index_of_sim - 1) % len(cycle_edges)]
+                    outgoing_edge = cycle_edges[index_of_sim]
+                    successor_sid = edge_ids[index_of_sim][1]
+
+                    # Create and fill dict with info about the cycle
                     trigger_cycle = {'sids': sorted(cycle)}
                     # If connections between simulators are time-shifted, the cycle needs more time
                     # for a trigger round. If no edge is timeshifted, the minimum length is 0.
-                    trigger_cycle['min_length'] = sum([edge['time_shifted'] for edge in cycle_edges])
-                    # Get the index of the current simulation in the cycle
-                    index_sim = cycle.index(sim.sid)
-                    # Get both the ingoing and the outgoing edge
-                    outgoing_edge = cycle_edges[index_sim]
-                    # TODO: This line has been: ingoing_edge = (cycle_edges[index_sim - 1] if index_sim != 0 else cycle_edges[-1])
-                    # I argue that the if-statement is not needed, as index_sim - 1 in case of 0 is -1
-                    ingoing_edge = cycle_edges[index_sim - 1] # or use cycle_edges[(ind_sim - 1) % len(cycle_edges)]
-                    successor_sid = edge_ids[index_sim][1]
-                    trigger_cycle['activators'] = self.collect_activators_from_dataflows(outgoing_edge, successor_sid)
+                    trigger_cycle['min_length'] = sum(
+                        [edge['time_shifted'] for edge in cycle_edges])
+                    trigger_cycle['activators'] = self.collect_successor_activators_from_edge(
+                        outgoing_edge, successor_sid)
                     trigger_cycle['in_edge'] = ingoing_edge
-                    ingoing_edge['loop_closing'] = True
+                    trigger_cycle['in_edge']['loop_closing'] = True
                     trigger_cycle['time'] = -1
                     trigger_cycle['count'] = 0
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
 
-    def collect_activators_from_dataflows(self, out_edge, successor_sid):
+    def collect_successor_activators_from_edge(self, outgoing_edge: dict, successor_sid: str) -> list:
+        """
+        Collects all attributes that trigger a model at the destination simulator of the given edge.
+        """
         activators = []
-        for src_eid, dest_eid, attrs in out_edge['dataflows']:
-            dest_model = networkx.get_node_attributes(self.entity_graph,'type')[FULL_ID % (successor_sid, dest_eid)]
-            dest_trigger = self.sims[successor_sid].meta['models'][dest_model]['trigger']
-            activators.extend(self.collect_activators_from_attributes(attrs, dest_trigger, src_eid))
+        # Go through all outgoing edges from the current simulator
+        for src_eid, destination_eid, attrs in outgoing_edge['dataflows']:
+            # Determine the destination model from the outgoing edge of the current simulator and the attributes
+            # that trigger this model
+            destination_model = networkx.get_node_attributes(self.entity_graph, 'type')[
+                FULL_ID % (successor_sid, destination_eid)]
+            destination_triggers = self.sims[successor_sid].meta['models'][destination_model]['trigger']
+            activators.extend(self.collect_activators_from_attributes(
+                attrs, destination_triggers, src_eid))
         return activators
 
     def collect_activators_from_attributes(self, attributes: tuple, destination_triggers: set, src_eid: str) -> list:
         """
-        TODO: Better documentation. What is going on here?
-        
-        ... From the given attributes that trigger ... 
+        From the given attributes from the source model filter those that trigger the desination model
+        and return a list of tuples with the id of the source model and the attribute from the source
+        that triggers the destination model.
         """
         activators = []
         for src_attr, dest_attr in attributes:
