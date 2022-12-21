@@ -593,26 +593,33 @@ class World(object):
         a loop. If no such loop breaker is present, the cycle is unresolved
         and an error is raised.
         """
-        loop_breaker = [self.df_graph[src_id][dest_id]['weak'] or
-                            self.df_graph[src_id][dest_id]['time_shifted'] for
-                            src_id, dest_id in sim_pairs]
+        loop_breaker = [
+            self.df_graph[src_id][dest_id]["weak"]
+            or self.df_graph[src_id][dest_id]["time_shifted"]
+            for src_id, dest_id in sim_pairs
+        ]
         if not any(loop_breaker):
-            raise ScenarioError('Scenario has unresolved cyclic '
-                                    f'dependencies: {sorted(cycle)}. Use options '
-                                    '"time-shifted" or "weak" for resolution.')
+            raise ScenarioError(
+                "Scenario has unresolved cyclic "
+                f"dependencies: {sorted(cycle)}. Use options "
+                '"time-shifted" or "weak" for resolution.'
+            )
 
     def _detect_too_many_weak_connections(self, cycle, sim_pairs):
         """
         Searches for cycles with more than one weak connection and raises
         an error if such a connection is found.
         """
-        is_weak = [self.df_graph[src_id][dest_id]['weak']
-                       for src_id, dest_id in sim_pairs]
+        is_weak = [
+            self.df_graph[src_id][dest_id]["weak"] for src_id, dest_id in sim_pairs
+        ]
         if sum(is_weak) > 1:
-            raise ScenarioError('Maximum one weak connection is allowed in'
-                                    ' an elementary cycle, but there are '
-                                    f'actually {sum(is_weak)} in '
-                                    f'{sorted(cycle)}.')
+            raise ScenarioError(
+                "Maximum one weak connection is allowed in"
+                " an elementary cycle, but there are "
+                f"actually {sum(is_weak)} in "
+                f"{sorted(cycle)}."
+            )
 
     def cache_trigger_cycles(self):
         """
@@ -627,43 +634,53 @@ class World(object):
                 if sim.sid in cycle:
                     index_of_simulator = cycle.index(sim.sid)
                     successor_sid, cycle_edges = self._get_cycle_info(
-                        cycle, index_of_simulator)
+                        cycle, index_of_simulator
+                    )
                     ingoing_edge, outgoing_edge = self._get_in_out_edges(
-                        index_of_simulator, cycle_edges)
+                        index_of_simulator, cycle_edges
+                    )
 
                     # Create and fill dict with info about the cycle
-                    trigger_cycle = {'sids': sorted(cycle)}
-                    # If connections between simulators are time-shifted, the cycle needs more time
-                    # for a trigger round. If no edge is timeshifted, the minimum length is 0.
-                    trigger_cycle['min_length'] = sum(
-                        [edge['time_shifted'] for edge in cycle_edges])
-                    trigger_cycle['activators'] = self._collect_successor_activators_from_edge(
-                        outgoing_edge, successor_sid)
-                    trigger_cycle['in_edge'] = ingoing_edge
-                    trigger_cycle['in_edge']['loop_closing'] = True
-                    trigger_cycle['time'] = -1
-                    trigger_cycle['count'] = 0
+                    trigger_cycle = {"sids": sorted(cycle)}
+                    # If connections between simulators are time-shifted, the cycle 
+                    # needs more time for a trigger round. If no edge is timeshifted,
+                    # the minimum length is 0.
+                    trigger_cycle["min_length"] = sum(
+                        [edge["time_shifted"] for edge in cycle_edges]
+                    )
+                    trigger_cycle[
+                        "activators"
+                    ] = self._collect_successor_activators_from_edge(
+                        outgoing_edge, successor_sid
+                    )
+                    trigger_cycle["in_edge"] = ingoing_edge
+                    trigger_cycle["in_edge"]["loop_closing"] = True
+                    trigger_cycle["time"] = -1
+                    trigger_cycle["count"] = 0
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
 
-    def _get_cycle_info(self, 
-        cycle: list, 
+    def _get_cycle_info(
+        self,
+        cycle: list,
         index_of_simulator: int,
-        ) -> tuple[str, list]:
+    ) -> tuple[str, list]:
         """
         Returns the sid of the successor and all the edges from the cycle.
         """
         # Combine the ids of the cycle elements to get the edge ids and edges
         edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
         successor_sid = edge_ids[index_of_simulator][1]
-        cycle_edges = [self.df_graph.get_edge_data(
-            src_id, dest_id) for src_id, dest_id in edge_ids]
+        cycle_edges = [
+            self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
+        ]
         return successor_sid, cycle_edges
 
-    def _get_in_out_edges(self, 
-        index_of_simulator: int, 
+    def _get_in_out_edges(
+        self,
+        index_of_simulator: int,
         cycle_edges: list,
-        ) -> tuple[dict, dict]:
+    ) -> tuple[dict, dict]:
         """
         Returns the ingoing and outgoing edge in the cycle from the given simulator
         """
@@ -671,34 +688,43 @@ class World(object):
         outgoing_edge = cycle_edges[index_of_simulator]
         return ingoing_edge, outgoing_edge
 
-    def _collect_successor_activators_from_edge(self, 
-        outgoing_edge: dict, 
+    def _collect_successor_activators_from_edge(
+        self,
+        outgoing_edge: dict,
         successor_sid: str,
-        ) -> list:
+    ) -> list:
         """
-        Collects all attributes that trigger a model at the destination simulator of the given edge.
+        Collects all attributes that trigger a model at the destination simulator of the
+        given edge.
         """
         activators = []
         # Go through all outgoing edges from the current simulator
-        for src_eid, destination_eid, attrs in outgoing_edge['dataflows']:
-            # Determine the destination model from the outgoing edge of the current simulator and the attributes
-            # that trigger this model
-            destination_model = networkx.get_node_attributes(self.entity_graph, 'type')[
-                FULL_ID % (successor_sid, destination_eid)]
-            destination_triggers = self.sims[successor_sid].meta['models'][destination_model]['trigger']
-            activators.extend(self._collect_activators_from_attributes(
-                attrs, destination_triggers, src_eid))
+        for src_eid, destination_eid, attrs in outgoing_edge["dataflows"]:
+            # Determine the destination model from the outgoing edge of the current
+            # simulator and the attributes that trigger this model
+            destination_model = networkx.get_node_attributes(self.entity_graph, "type")[
+                FULL_ID % (successor_sid, destination_eid)
+            ]
+            destination_triggers = self.sims[successor_sid].meta["models"][
+                destination_model
+            ]["trigger"]
+            activators.extend(
+                self._collect_activators_from_attributes(
+                    attrs, destination_triggers, src_eid
+                )
+            )
         return activators
 
-    def _collect_activators_from_attributes(self,
+    def _collect_activators_from_attributes(
+        self,
         attributes: tuple,
-        destination_triggers: set, 
+        destination_triggers: set,
         src_eid: str,
-        ) -> list:
+    ) -> list:
         """
-        From the given attributes from the source model filter those that trigger the desination model
-        and return a list of tuples with the id of the source model and the attribute from the source
-        that triggers the destination model.
+        From the given attributes from the source model filter those that trigger the 
+        desination model and return a list of tuples with the id of the source model and
+        the attribute from the source that triggers the destination model.
         """
         activators = []
         for src_attr, dest_attr in attributes:
@@ -708,7 +734,8 @@ class World(object):
 
     def cache_dependencies(self):
         """
-        Loops through all simulations and adds predecessors and successors to the simulations.
+        Loops through all simulations and adds predecessors and successors to the 
+        simulations.
         """
         for sid, sim in self.sims.items():
             sim.predecessors = {}
@@ -735,7 +762,7 @@ class World(object):
 
     def cache_triggering_ancestors(self):
         """
-        Collects the ancestors of each simulator and stores them in the 
+        Collects the ancestors of each simulator and stores them in the
         respective simulator object.
         """
         for sim in self.sims.values():
@@ -746,22 +773,24 @@ class World(object):
                 is_immediate_connection: bool = not distance
                 triggering_ancestors.append((ancestors_sid, is_immediate_connection))
 
-    def _get_shortest_distance_from_edges(self, 
+    def _get_shortest_distance_from_edges(
+        self,
         simulator: simmanager.SimProxy,
         ancestors_sid: str,
-        ) -> int:
+    ) -> int:
         """
-        Returns the minimum distance of all edges on the paths from the 
+        Returns the minimum distance of all edges on the paths from the
         ancestors to the given simulator.
         """
-        paths = networkx.all_simple_edge_paths(self.trigger_graph,
-                                                       ancestors_sid, simulator.sid)
+        paths = networkx.all_simple_edge_paths(
+            self.trigger_graph, ancestors_sid, simulator.sid
+        )
         distances = []
         for edges in paths:
             distance = 0
             for edge in edges:
                 edge = self.df_graph[edge[0]][edge[1]]
-                distance += edge['time_shifted'] or edge['weak']
+                distance += edge["time_shifted"] or edge["weak"]
             distances.append(distance)
         distance = min(distances)
         return distance
