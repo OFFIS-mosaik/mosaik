@@ -494,6 +494,12 @@ class SimProxy:
     edge.."""
     triggering_ancestors: Iterable[Tuple[SimId, bool]]
     """
+    Simulator -> list of attribute and "is immediate connection"
+    TODO: attribute as string?
+    """
+    triggering_ancestor_attributes: Dict[SimId, Iterable[Tuple[str, bool]]]
+
+    """
     An iterable of this sim's ancestors that can trigger a step of this
     simulator. The second component specifies whether the connecting is weak or
     time-shifted (False) or immediate (True).
