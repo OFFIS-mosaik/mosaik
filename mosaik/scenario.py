@@ -159,7 +159,7 @@ class World(object):
     *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
     starting/stopping external simulator processes.
 
-    If *debug* is set to ``True``, an execution graph will be created
+    If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
     """
