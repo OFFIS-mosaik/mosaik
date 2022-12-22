@@ -30,15 +30,16 @@ import copy
 from time import sleep
 
 
-logger = logging.getLogger('test_simulator')
+logger = logging.getLogger("test_simulator")
 
 
 sim_meta = {
-    'models': {
-        'A': {
-            'public': True,
-            'params': [],
-            'attrs': ['val_in', 'val_out'],
+    "models": {
+        "A": {
+            "public": True,
+            "params": [],
+            "attrs": ["val_in", "val_out", "trigger_in"],
+            "trigger": ["trigger_in"],
         },
     },
 }
