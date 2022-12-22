@@ -587,7 +587,11 @@ class World(object):
             self._detect_missing_loop_breakers(cycle, sim_pairs)
             self._detect_too_many_weak_connections(cycle, sim_pairs)
 
-    def _detect_missing_loop_breakers(self, cycle, sim_pairs):
+    def _detect_missing_loop_breakers(
+        self, 
+        cycle: List, 
+        sim_pairs: List,
+    ):
         """
         Searches for loop breakers, i.e. weak or time_shifted connections in
         a loop. If no such loop breaker is present, the cycle is unresolved
@@ -605,7 +609,10 @@ class World(object):
                 '"time-shifted" or "weak" for resolution.'
             )
 
-    def _detect_too_many_weak_connections(self, cycle, sim_pairs):
+    def _detect_too_many_weak_connections(self, 
+        cycle: List, 
+        sim_pairs: List,
+    ):
         """
         Searches for cycles with more than one weak connection and raises
         an error if such a connection is found.
@@ -628,7 +635,7 @@ class World(object):
         """
         # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
-        # For every simulation go through all cycles in which the simulator is a node
+        # For every simulator go through all cycles in which the simulator is a node
         for sim in self.sims.values():
             for cycle in cycles:
                 if sim.sid in cycle:
@@ -662,9 +669,9 @@ class World(object):
 
     def _get_cycle_info(
         self,
-        cycle: list,
+        cycle: List,
         index_of_simulator: int,
-    ) -> tuple[str, list]:
+    ) -> Tuple[str, List]:
         """
         Returns the sid of the successor and all the edges from the cycle.
         """
@@ -679,8 +686,8 @@ class World(object):
     def _get_in_out_edges(
         self,
         index_of_simulator: int,
-        cycle_edges: list,
-    ) -> tuple[dict, dict]:
+        cycle_edges: List,
+    ) -> Tuple[Dict, Dict]:
         """
         Returns the ingoing and outgoing edge in the cycle from the given simulator
         """
@@ -690,12 +697,12 @@ class World(object):
 
     def _collect_successor_activators_from_edge(
         self,
-        outgoing_edge: dict,
+        outgoing_edge: Dict,
         successor_sid: str,
-    ) -> list:
+    ) -> List:
         """
-        Collects all attributes that trigger a model at the destination simulator of the
-        given edge.
+        Collects all attributes that trigger the destination simulator of the given
+        edge.
         """
         activators = []
         # Go through all outgoing edges from the current simulator
@@ -717,10 +724,10 @@ class World(object):
 
     def _collect_activators_from_attributes(
         self,
-        attributes: tuple,
+        attributes: Iterable,
         destination_triggers: set,
         src_eid: str,
-    ) -> list:
+    ) -> List:
         """
         From the given attributes from the source model filter those that trigger the 
         desination model and return a list of tuples with the id of the source model and
@@ -770,7 +777,7 @@ class World(object):
             ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
             for ancestors_sid in ancestors:
                 distance = self._get_shortest_distance_from_edges(sim, ancestors_sid)
-                is_immediate_connection: bool = not distance
+                is_immediate_connection: bool = distance == 0
                 triggering_ancestors.append((ancestors_sid, is_immediate_connection))
 
     def _get_shortest_distance_from_edges(
@@ -792,8 +799,7 @@ class World(object):
                 edge = self.df_graph[edge[0]][edge[1]]
                 distance += edge["time_shifted"] or edge["weak"]
             distances.append(distance)
-        distance = min(distances)
-        return distance
+        return min(distances)
 
     def create_simulator_ranking(self):
         """
