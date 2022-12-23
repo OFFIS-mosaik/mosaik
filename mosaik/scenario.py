@@ -23,8 +23,20 @@ from mosaik import util
 from mosaik.exceptions import ScenarioError, SimulationError
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, TypedDict, Union
+    from typing import (
+        Any,
+        Dict,
+        Iterable,
+        List,
+        Literal,
+        Optional,
+        Tuple,
+        TypedDict,
+        Union,
+        Set,
+    )
     from simpy.events import Event
 
 
@@ -723,7 +735,7 @@ class World(object):
     def _collect_activators_from_attributes(
         self,
         attributes: Iterable,
-        destination_triggers: set,
+        destination_triggers: Set,
         src_eid: str,
     ) -> List:
         """
