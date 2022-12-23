@@ -538,7 +538,7 @@ def treat_cycling_output(
     within the same time step has been reached. Also adjust the progress
     of *sim* if the cycle has been activated and could cause an earlier
     step then deduced in get_max_advance before."""
-    for cycle in sim.trigger_cycles_dataclass:
+    for cycle in sim.trigger_cycles:
         max_iterations = world.max_loop_iterations
         for src_eid, src_attr in cycle.activators:
             if src_attr in data.get(src_eid, {}):
@@ -549,7 +549,8 @@ def treat_cycling_output(
                             f"Loop {cycle.sids} reached maximal iteration "
                             f"count of {max_iterations}. "
                             "Adjust `max_loop_iterations` in the scenario "
-                            "if needed.")
+                            "if needed."
+                        )
                 else:
                     cycle.time = output_time
                     cycle.count = 1

@@ -527,6 +527,8 @@ class SimProxy:
     """The SimPy process for this simulator."""
     wait_events: Event
     """The event (usually an AllOf event) this simulator is waiting for."""
+    trigger_cycles: List[TriggerCycle]
+    """Triggering cycles in a simulation"""
 
     def __init__(self, name: str, sid: SimId, meta: Meta, world: World):
         self.name = name
@@ -573,7 +575,6 @@ class SimProxy:
         self.interruptable = False
         self.is_in_step = False
         self.trigger_cycles = []
-        self.trigger_cycles_dataclass = []
         self.rank = None  # topological rank
 
     def stop(self):
@@ -960,11 +961,18 @@ class TimedInputBuffer:
 @dataclass
 class TriggerCycle:
     """
-    Some doc
+    Stores the information of triggering cycles of a simulator
     """
+
     sids: List
     activators: List
+    """List of all attributes that trigger the destination simulator if the given edge"""
     min_length: int
+    """
+    If connections between simulators are time-shifted, the cycle needs more time for
+    a trigger round. If no edge is timeshifted, the minimum length is 0.
+    """
     in_edge: Dict
+    """The edge that is going into the simulator"""
     time: int
     count: int
