@@ -648,24 +648,40 @@ class World(object):
                     )
 
                     # Create and fill dict with info about the cycle
+                    sids: List = {"sids": sorted(cycle)}
                     trigger_cycle = {"sids": sorted(cycle)}
                     # If connections between simulators are time-shifted, the cycle 
                     # needs more time for a trigger round. If no edge is timeshifted,
                     # the minimum length is 0.
+                    min_length: int = sum(
+                        [edge["time_shifted"] for edge in cycle_edges]
+                    )
                     trigger_cycle["min_length"] = sum(
                         [edge["time_shifted"] for edge in cycle_edges]
+                    )
+
+                    activators: List = self._collect_successor_activators_from_edge(
+                        outgoing_edge, successor_sid
                     )
                     trigger_cycle[
                         "activators"
                     ] = self._collect_successor_activators_from_edge(
                         outgoing_edge, successor_sid
                     )
+
+                    ingoing_edge["loop_closing"] = True
+                    time = -1
+                    count = 0
+
                     trigger_cycle["in_edge"] = ingoing_edge
                     trigger_cycle["in_edge"]["loop_closing"] = True
                     trigger_cycle["time"] = -1
                     trigger_cycle["count"] = 0
+
+                    trigger_cycle_dataclass = simmanager.TriggerCycle(sids, activators, min_length, ingoing_edge, time, count)
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
+                    sim.trigger_cycles_dataclass.append(trigger_cycle_dataclass)
 
     def _get_cycle_info(
         self,

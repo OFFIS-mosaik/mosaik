@@ -21,6 +21,7 @@ import shlex
 import subprocess
 import sys
 from loguru import logger
+from dataclasses import dataclass
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -565,6 +566,7 @@ class SimProxy:
         self.interruptable = False
         self.is_in_step = False
         self.trigger_cycles = []
+        self.trigger_cycles_dataclass = []
         self.rank = None  # topological rank
 
     def stop(self):
@@ -947,3 +949,15 @@ class TimedInputBuffer:
 
     def __bool__(self):
         return bool(len(self.input_queue))
+
+@dataclass
+class TriggerCycle:
+    """
+    Some doc
+    """
+    sids: List
+    activators: List
+    min_length: int
+    in_edge: Dict
+    time: int
+    count: int

@@ -326,8 +326,8 @@ def test_treat_cycling_output(world, count):
         world.sims[dest].meta['models'] = {'dummy_type': {'trigger': ['in']}}
     world.cache_trigger_cycles()
 
-    sim.trigger_cycles[0]['time'] = 1
-    sim.trigger_cycles[0]['count'] = count
+    sim.trigger_cycles_dataclass[0].time = 1
+    sim.trigger_cycles_dataclass[0].count = count
 
     sim.last_step = output_time = 1
     data = {'1': {'x': 1}}
