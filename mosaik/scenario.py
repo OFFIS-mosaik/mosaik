@@ -371,6 +371,9 @@ class World(object):
 
         pred_waiting = async_requests
 
+        # Here's the error. The doc states: 
+        # "Adding an edge that already exists updates the edge data."
+        # And with that, the trigger is set to False with the second connection
         self.df_graph.add_edge(src.sid, dest.sid,
                                async_requests=async_requests,
                                time_shifted=time_shifted,
@@ -531,8 +534,15 @@ class World(object):
 
         self.detect_unresolved_cycles()
 
-        trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
-                         if w['trigger']]
+        # TODO Bug and difficult to understand (or the dataflow graph is already filled wrong)
+        # The problem is that already the df graph is filled wrong
+        # with a new connection, there remains one edge, which is added with a new 
+        # dataflow. The new dataflow is correct, but th "triggering" is stored per 
+        # edge, not per dataflow.
+        # So ... moove the triggering to the dataflow or create a new edge for every
+        # "dataflow"?
+        trigger_edges = [(sim_1, sim_2) for (sim_1, sim_2, edge) in self.df_graph.edges.data(True)
+                         if edge['trigger']]
         self.trigger_graph.add_edges_from(trigger_edges)
 
         self.cache_trigger_cycles()
