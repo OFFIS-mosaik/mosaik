@@ -111,6 +111,7 @@ def sim_process(
                 break
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
+            max_advance_per_attribute = get_max_advance_per_attribute(world, sim, until)
             progress = yield from step(world, sim, input_data, max_advance)
             rt_check(rt_factor, rt_start, rt_strict, sim)
             progress = yield from get_outputs(world, sim, progress)
@@ -401,6 +402,30 @@ def get_max_advance(world: World, sim: SimProxy, until: int) -> int:
 
     return max_advance
 
+# TODO Rename back, this is just for testing
+def get_max_advance_per_attribute(world: World, sim: SimProxy, until: int) -> int:
+    """
+    Checks how far *sim* can safely advance its internal time during next step
+    without causing a causality error.
+    """
+    ancs_next_steps = []
+    for ancestor_sim_id, trigger_attributes in sim.triggering_ancestors_attributes.items():
+        for attribute_id, not_shifted_or_weak in trigger_attributes:
+            anc_sim = world.sims[ancestor_sim_id]
+            if anc_sim.next_steps:
+                ancs_next_steps.append(anc_sim.next_steps[0] - not_shifted_or_weak)
+
+    if ancs_next_steps:
+        max_advance = min(ancs_next_steps)
+    else:
+        max_advance = until
+
+    if len(sim.next_steps) >= 2:
+        tmp = heappop(sim.next_steps)
+        max_advance = min(sim.next_steps[0] - 1, max_advance)
+        heappush(sim.next_steps, tmp)
+
+    return max_advance
 
 def step(
     world: World,

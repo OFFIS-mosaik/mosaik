@@ -787,6 +787,7 @@ class World(object):
             triggering_ancestors_attributes = sim.triggering_ancestors_attributes = {}
             ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
             for ancestors_sid in ancestors:
+                trigger_attributes = []
                 paths = networkx.all_simple_edge_paths(
                     self.trigger_graph, ancestors_sid, sim.sid
                 )
@@ -801,10 +802,8 @@ class World(object):
                             sim, ancestors_sid
                         )
                         is_immediate_connection: bool = not distance
-                        triggering_ancestors_attributes[ancestors_sid] = (
-                            trigger_attribute,
-                            is_immediate_connection,
-                        )
+                        trigger_attributes.append((trigger_attribute, is_immediate_connection))
+                    triggering_ancestors_attributes[ancestors_sid] = trigger_attributes
 
 
     def cache_triggering_ancestors(self):
