@@ -499,6 +499,11 @@ class SimProxy:
     simulator. The second component specifies whether the connecting is weak or
     time-shifted (False) or immediate (True).
     """
+    triggering_ancestor_attributes: Dict[SimId, Iterable[Tuple[str, bool]]]
+    """
+    Simulator -> list of attribute and "is immediate connection"
+    TODO: attribute as string?
+    """
 
     input_buffer: Dict
     """Inputs received via `set_data`."""

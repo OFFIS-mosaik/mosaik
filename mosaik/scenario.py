@@ -539,6 +539,7 @@ class World(object):
         self.cache_dependencies()
         self.cache_related_sims()
         self.cache_triggering_ancestors()
+        self.cache_triggering_ancestor_attributes()
         self.create_simulator_ranking()
 
         logger.info('Starting simulation.')
@@ -776,6 +777,35 @@ class World(object):
         all_sims = self.sims.values()
         for sim in all_sims:
             sim.related_sims = [isim for isim in all_sims if isim != sim]
+
+    def cache_triggering_ancestor_attributes(self):
+        """
+        Collects the ancestor simulators with the triggering attribute of each simulator
+        and stores them in the respective simulator object.
+        """
+        for sim in self.sims.values():
+            triggering_ancestors_attributes = sim.triggering_ancestors_attributes = {}
+            ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
+            for ancestors_sid in ancestors:
+                paths = networkx.all_simple_edge_paths(
+                    self.trigger_graph, ancestors_sid, sim.sid
+                )
+                for edges in paths:
+                    for edge in edges:
+                        # TODO Make this more stable, understandable, etc.
+                        # I guess this is not the right and stable way to get the info
+                        # TODO Check if this is actually the info that we need
+                        edge_graph = self.df_graph[edge[0]][edge[1]]
+                        trigger_attribute = edge_graph["dataflows"][0][2][0][1]
+                        distance = self._get_shortest_distance_from_edges(
+                            sim, ancestors_sid
+                        )
+                        is_immediate_connection: bool = not distance
+                        triggering_ancestors_attributes[ancestors_sid] = (
+                            trigger_attribute,
+                            is_immediate_connection,
+                        )
+
 
     def cache_triggering_ancestors(self):
         """
