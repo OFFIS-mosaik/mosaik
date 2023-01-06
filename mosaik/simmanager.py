@@ -964,8 +964,8 @@ class TriggerCycle:
     Stores the information of triggering cycles of a simulator
     """
 
-    sids: List
-    activators: List
+    sids: List[SimId]
+    activators: List[Tuple[str, str]]
     """List of all attributes that trigger the destination simulator if the given edge"""
     min_length: int
     """
