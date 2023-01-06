@@ -9,7 +9,7 @@ work.
 .. note::
 
    For the sake of readability, some concepts are simplified in the following
-   sections. For example, the snippet ``connect(A, B)`` means we'e connecting
+   sections. For example, the snippet ``connect(A, B)`` means we're connecting
    some entities of a simulator *A* to some entities of simulator *B*;
    *simulator* and *entity* are used as if they were the same concept;
    *A.step()* means, that mosaik calls the *step()* function of
@@ -66,13 +66,13 @@ Mosaik provides two ways for this. The first is via time-shifted connections:
    connect(A, B, 'state')
    connect(B, A, 'schedule', time_shifted=True)
 
-This tells mosaik how to resolve the cycle and throw an error if you
+This tells mosaik how to resolve the cycle and throws an error if you
 accidentally flip both lines.
 
 Theoretically, we could be done here. But we aren't. The data-flows in the
 example above are passive, meaning that *A* and *B* compute data hoping that
 someone will use them. This abstraction works reasonably well for normal
-simulation models, but control mechanism usually have an *active* roll. They
+simulation models, but control mechanism usually have an *active* role. They
 actively decide whether or not to send commands to the entities they control.
 
 Accordingly, mosaik provides ways for control mechanisms and monitoring tools
