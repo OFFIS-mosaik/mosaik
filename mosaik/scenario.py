@@ -665,7 +665,9 @@ class World(object):
                     min_length: int = sum(
                         [edge["time_shifted"] for edge in cycle_edges]
                     )
-                    activators: List = self._collect_successor_activators_from_edge(
+                    activators: List[
+                        Tuple[str, str]
+                    ] = self._collect_successor_activators_from_edge(
                         outgoing_edge, successor_sid
                     )
                     ingoing_edge["loop_closing"] = True
@@ -709,7 +711,7 @@ class World(object):
         self,
         outgoing_edge: Dict,
         successor_sid: str,
-    ) -> List:
+    ) -> List[Tuple[str, str]]:
         """
         Collects all attributes that trigger the destination simulator of the given
         edge.
@@ -737,7 +739,7 @@ class World(object):
         attributes: Iterable,
         destination_triggers: Set,
         src_eid: str,
-    ) -> List:
+    ) -> List[Tuple[str, str]]:
         """
         From the given attributes from the source model filter those that trigger the 
         desination model and return a list of tuples with the id of the source model and
