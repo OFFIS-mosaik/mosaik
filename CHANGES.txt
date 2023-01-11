@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.1.1 - 2022-01-11
+------------------
+
+- [FIX] Fix compatibilty with mosaik 2 simulators (https://gitlab.com/mosaik/mosaik/-/issues/152)
+
 3.1.0 - 2022-11-23
 ------------------
 - [NEW] Add progress bar to visualize simulation progress (https://gitlab.com/mosaik/mosaik/-/merge_requests/58)
