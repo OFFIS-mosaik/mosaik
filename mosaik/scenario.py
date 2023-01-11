@@ -675,7 +675,7 @@ class World(object):
                         sids=sids,
                         activators=activators,
                         min_length=min_length,
-                        ingoing_edge=ingoing_edge,
+                        in_edge=ingoing_edge,
                         time=-1,
                         count=0,
                     )
