@@ -658,7 +658,7 @@ class World(object):
                     ingoing_edge, outgoing_edge = self._get_in_out_edges(
                         index_of_simulator, cycle_edges
                     )
-                    sids: List = {"sids": sorted(cycle)}
+                    sids: List[SimId] = sorted(cycle)
                     # If connections between simulators are time-shifted, the cycle
                     # needs more time for a trigger round. If no edge is timeshifted,
                     # the minimum length is 0.
@@ -683,7 +683,7 @@ class World(object):
         self,
         cycle: List,
         index_of_simulator: int,
-    ) -> Tuple[str, List]:
+    ) -> Tuple[SimId, List[DataflowEdge]]:
         """
         Returns the sid of the successor and all the edges from the cycle.
         """
