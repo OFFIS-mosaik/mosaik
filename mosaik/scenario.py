@@ -696,7 +696,7 @@ class World(object):
         cycle_edges = [
             self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
         ]
-        return successor_sid, cycle_edges
+        return successor_sid, cycle_edges # type: ignore
 
     def _get_in_out_edges(
         self,
@@ -727,9 +727,9 @@ class World(object):
             destination_model = networkx.get_node_attributes(self.entity_graph, "type")[
                 FULL_ID % (successor_sid, destination_eid)
             ]
-            destination_triggers = self.sims[successor_sid].meta["models"][
-                destination_model
-            ]["trigger"]
+            destination_triggers: Iterable[Attr] = self.sims[successor_sid].meta[
+                "models"
+            ][destination_model]["trigger"]
             activators.extend(
                 self._collect_activators_from_attributes(
                     attrs, destination_triggers, src_eid
@@ -740,7 +740,7 @@ class World(object):
     def _collect_activators_from_attributes(
         self,
         attributes: Iterable,
-        destination_triggers: Set,
+        destination_triggers: Iterable[Attr],
         src_eid: str,
     ) -> List[Tuple[str, str]]:
         """
