@@ -671,10 +671,13 @@ class World(object):
                         outgoing_edge, successor_sid
                     )
                     ingoing_edge["loop_closing"] = True
-                    time = -1
-                    count = 0
                     trigger_cycle = simmanager.TriggerCycle(
-                        sids, activators, min_length, ingoing_edge, time, count
+                        sids=sids,
+                        activators=activators,
+                        min_length=min_length,
+                        ingoing_edge=ingoing_edge,
+                        time=-1,
+                        count=0,
                     )
                     # Store the trigger cycle in the simulation object
                     sim.trigger_cycles.append(trigger_cycle)
