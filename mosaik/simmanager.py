@@ -432,7 +432,7 @@ def type_check(meta, sim_name, sim_id):
         """
     if 'type' not in meta:
         sim_type = meta['type'] = 'time-based'
-        meta['old-api'] = True
+        meta['old_api'] = True
         logger.warning('DEPRECATION: Simulator {sim_name}\'s meta doesn\'t '
                        'contain a type. \'{sim_type}\' is set as default. '
                        'This might cause an error in future releases.',
