@@ -601,8 +601,8 @@ class World(object):
 
     def _detect_missing_loop_breakers(
         self, 
-        cycle: List, 
-        sim_pairs: List,
+        cycle: List[SimId], 
+        sim_pairs: List[Tuple[SimId, SimId]],
     ):
         """
         Searches for loop breakers, i.e. weak or time_shifted connections in
@@ -622,8 +622,8 @@ class World(object):
             )
 
     def _detect_too_many_weak_connections(self, 
-        cycle: List, 
-        sim_pairs: List,
+        cycle: List[SimId], 
+        sim_pairs: List[Tuple[SimId, SimId]],
     ):
         """
         Searches for cycles with more than one weak connection and raises
@@ -684,7 +684,7 @@ class World(object):
 
     def _get_cycle_info(
         self,
-        cycle: List,
+        cycle: List[SimId],
         index_of_simulator: int,
     ) -> Tuple[SimId, List[DataflowEdge]]:
         """
@@ -701,8 +701,8 @@ class World(object):
     def _get_in_out_edges(
         self,
         index_of_simulator: int,
-        cycle_edges: List,
-    ) -> Tuple[Dict, Dict]:
+        cycle_edges: List[DataflowEdge],
+    ) -> Tuple[DataflowEdge, DataflowEdge]:
         """
         Returns the ingoing and outgoing edge in the cycle from the given simulator
         """
@@ -712,8 +712,8 @@ class World(object):
 
     def _collect_successor_activators_from_edge(
         self,
-        outgoing_edge: Dict,
-        successor_sid: str,
+        outgoing_edge: DataflowEdge,
+        successor_sid: SimId,
     ) -> List[Tuple[str, str]]:
         """
         Collects all attributes that trigger the destination simulator of the given
