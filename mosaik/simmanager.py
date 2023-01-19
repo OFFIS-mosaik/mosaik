@@ -965,7 +965,7 @@ class TriggerCycle:
     If connections between simulators are time-shifted, the cycle needs more time for
     a trigger round. If no edge is timeshifted, the minimum length is 0.
     """
-    in_edge: Dict
+    in_edge: DataflowEdge
     """The edge that is going into the simulator"""
     time: int
     count: int

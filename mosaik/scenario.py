@@ -121,16 +121,18 @@ if TYPE_CHECKING:
 
     # The events can be unset. By splitting them into their own class, we
     # can make them optional.
-    class DataflowEgdeEvents(TypedDict, total=False):
+    class DataflowEgdeOptionals(TypedDict, total=False):
         wait_event: Event
         """Event on which destination simulator is waiting for its inputs."""
         wait_lazy: Event
         """Event on which source simulator is waiting in case of lazy stepping."""
         wait_async: Event
         """Event on which source simulator is waiting to support async requests."""
+        loop_closing: bool
+        """Mark ingoing edges that they close a loop."""
         
 
-    class DataflowEdge(DataflowEgdeEvents):
+    class DataflowEdge(DataflowEgdeOptionals):
         """The information associated with an edge in the dataflow graph."""
         async_requests: bool
         """Whether there can be async requests along this edge."""
