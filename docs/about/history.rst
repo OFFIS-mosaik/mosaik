@@ -5,6 +5,11 @@ The history of mosaik
 Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
+3.1.1 - 2022-01-11
+------------------
+
+- [FIX] Fix compatibilty with mosaik 2 simulators (https://gitlab.com/mosaik/mosaik/-/issues/152)
+
 3.1.0 - 2022-11-23
 ------------------
 - [NEW] Add progress bar to visualize simulation progress (https://gitlab.com/mosaik/mosaik/-/merge_requests/58)
