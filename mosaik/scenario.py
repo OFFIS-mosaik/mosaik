@@ -128,9 +128,6 @@ if TYPE_CHECKING:
         """Event on which source simulator is waiting in case of lazy stepping."""
         wait_async: Event
         """Event on which source simulator is waiting to support async requests."""
-        loop_closing: bool
-        """Mark ingoing edges that they close a loop."""
-        
 
     class DataflowEdge(DataflowEgdeOptionals):
         """The information associated with an edge in the dataflow graph."""
@@ -672,7 +669,6 @@ class World(object):
                     ] = self._collect_successor_activators_from_edge(
                         outgoing_edge, successor_sid
                     )
-                    ingoing_edge["loop_closing"] = True
                     trigger_cycle = simmanager.TriggerCycle(
                         sids=sids,
                         activators=activators,
