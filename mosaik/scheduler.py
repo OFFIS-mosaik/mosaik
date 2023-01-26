@@ -540,21 +540,22 @@ def treat_cycling_output(
     step then deduced in get_max_advance before."""
     for cycle in sim.trigger_cycles:
         max_iterations = world.max_loop_iterations
-        for src_eid, src_attr in cycle['activators']:
+        for src_eid, src_attr in cycle.activators:
             if src_attr in data.get(src_eid, {}):
-                if sim.last_step == cycle['time']:
-                    cycle['count'] += 1
-                    if cycle['count'] > max_iterations:
+                if sim.last_step == cycle.time:
+                    cycle.count += 1
+                    if cycle.count > max_iterations:
                         raise SimulationError(
-                            f"Loop {cycle['sids']} reached maximal iteration "
+                            f"Loop {cycle.sids} reached maximal iteration "
                             f"count of {max_iterations}. "
                             "Adjust `max_loop_iterations` in the scenario "
-                            "if needed.")
+                            "if needed."
+                        )
                 else:
-                    cycle['time'] = output_time
-                    cycle['count'] = 1
+                    cycle.time = output_time
+                    cycle.count = 1
                 # Check if output time could cause an earlier next step:
-                cycle_progress = output_time + cycle['min_length']
+                cycle_progress = output_time + cycle.min_length
                 if cycle_progress < progress:
                     progress = cycle_progress
                 break

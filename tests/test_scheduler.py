@@ -308,11 +308,15 @@ def test_get_outputs_buffered(world):
     assert world.sims[1].timed_input_buffer.input_queue == []
 
 
-@pytest.mark.parametrize('world', ['event-based'], indirect=True)
-@pytest.mark.parametrize("count", [
-    0,
-    pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))])
-def test_treat_cycling_output(world, count):
+@pytest.mark.parametrize("world", ["event-based"], indirect=True)
+@pytest.mark.parametrize(
+    "count",
+    [0, pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))],
+)
+def test_treat_cycling_output(
+    world: scenario.World, 
+    count: int,
+):
     """
     Tests if progress is adjusted when a triggering cycle could cause
     an earlier step than predicted by get_max_advance function, or if an error
@@ -321,17 +325,19 @@ def test_treat_cycling_output(world, count):
     sim = world.sims[4]
 
     for src, dest in [(4, 5), (5, 4)]:
-        world.df_graph[src][dest]['dataflows'] = [('1', '0', [('x', 'in')])]
-        world.entity_graph.add_node(f'{dest}.0', sim=None, type='dummy_type')
-        world.sims[dest].meta['models'] = {'dummy_type': {'trigger': ['in']}}
+        world.df_graph[src][dest]["dataflows"] = [("1", "0", [("x", "in")])]
+        world.entity_graph.add_node(f"{dest}.0", sim=None, type="dummy_type")
+        world.sims[dest].meta["models"] = {"dummy_type": {"trigger": ["in"]}}
     world.cache_trigger_cycles()
 
-    sim.trigger_cycles[0]['time'] = 1
-    sim.trigger_cycles[0]['count'] = count
+    sim.trigger_cycles[0].time = 1
+    sim.trigger_cycles[0].count = count
 
     sim.last_step = output_time = 1
-    data = {'1': {'x': 1}}
-    assert scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
+    data = {"1": {"x": 1}}
+    assert (
+        scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
+    )
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)

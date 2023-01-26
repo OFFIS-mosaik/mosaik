@@ -21,6 +21,7 @@ import shlex
 import subprocess
 import sys
 from loguru import logger
+from dataclasses import dataclass
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -519,6 +520,8 @@ class SimProxy:
     """The SimPy process for this simulator."""
     wait_events: Event
     """The event (usually an AllOf event) this simulator is waiting for."""
+    trigger_cycles: List[TriggerCycle]
+    """Triggering cycles in a simulation"""
 
     def __init__(self, name: str, sid: SimId, meta: Meta, world: World):
         self.name = name
@@ -947,3 +950,22 @@ class TimedInputBuffer:
 
     def __bool__(self):
         return bool(len(self.input_queue))
+
+@dataclass
+class TriggerCycle:
+    """
+    Stores the information of triggering cycles of a simulator
+    """
+
+    sids: List[SimId]
+    activators: List[Tuple[str, str]]
+    """List of all attributes that trigger the destination simulator if the given edge"""
+    min_length: int
+    """
+    If connections between simulators are time-shifted, the cycle needs more time for
+    a trigger round. If no edge is timeshifted, the minimum length is 0.
+    """
+    in_edge: DataflowEdge
+    """The edge that is going into the simulator"""
+    time: int
+    count: int
