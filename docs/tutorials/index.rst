@@ -61,3 +61,10 @@ Java API tutorial
    :maxdepth: 1
 
    tutorial_api-java
+
+Java Generics API tutorial
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorial_api-java-generics
