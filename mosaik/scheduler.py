@@ -14,7 +14,7 @@ from mosaik.simmanager import FULL_ID, SimProxy
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Any, Dict, Generator, Iterable, Iterator, Optional
+    from typing import Any, Dict, Generator, Iterable, Optional
     from mosaik.scenario import World, InputData, OutputData, SimId
     from simpy.events import Event
 
@@ -28,7 +28,7 @@ def run(
     rt_factor: Optional[float] = None,
     rt_strict: bool = False,
     lazy_stepping: bool = True,
-) -> Iterator[Event]:
+) -> Generator[Event, Any, None]:
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -51,7 +51,7 @@ def run(
 
     setup_done_events = []
     for sim in world.sims.values():
-        if sim.meta['api_version'] >= (2, 2):
+        if sim.meta['api_version'] >= (2, 2):  # type: ignore
             # setup_done() was added in API version 2.2:
             sim.tqdm.set_postfix_str('setup')
             setup_done_events.append(sim.proxy.setup_done())
@@ -75,7 +75,7 @@ def sim_process(
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
-) -> Iterator[Event]:
+) -> Generator[Event, Any, None]:
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -606,6 +606,7 @@ def prune_dataflow_cache(world: World):
     """
     Prunes the dataflow cache.
     """
+    assert world._df_cache
     min_cache_time = min(s.last_step for s in world.sims.values())
     for i in range(world._df_cache_min_time, min_cache_time):
         try:
@@ -686,9 +687,10 @@ def clear_wait_events(sim: SimProxy):
             edge.pop('wait_event').succeed()
 
     for _, edge in sim.successors.values():
-        for wait_type in ['wait_lazy', 'wait_async']:
-            if wait_type in edge:
-                edge.pop(wait_type).succeed()
+        if 'wait_lazy' in edge:
+            edge.pop('wait_lazy').succeed()
+        if 'wait_async' in edge:
+            edge.pop('wait_async').succeed()
 
 
 def clear_wait_events_dependencies(sim: SimProxy):
@@ -701,6 +703,7 @@ def clear_wait_events_dependencies(sim: SimProxy):
             edge.pop('wait_event').succeed()
 
     for _, edge in sim.predecessors.values():
-        for wait_type in ['wait_lazy', 'wait_async']:
-            if wait_type in edge:
-                edge.pop(wait_type).succeed()
+        if 'wait_lazy' in edge:
+            edge.pop('wait_lazy').succeed()
+        if 'wait_async' in edge:
+            edge.pop('wait_async').succeed()

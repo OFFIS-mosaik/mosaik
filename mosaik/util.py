@@ -1,17 +1,31 @@
+from __future__ import annotations
 """
 This module contains some utility functions and classes.
 
 """
 import random
 import sys
+from typing import Any, Callable, Generator, Optional, TypeVar, TYPE_CHECKING
 from loguru import logger
 
 from simpy.io.network import RemoteException
 
 from mosaik.exceptions import SimulationError
+if TYPE_CHECKING:
+    from mosaik.scenario import World
+
+import simpy.events
+
+T = TypeVar('T')
 
 
-def sync_process(generator, world, *, errback=None, ignore_errors=False):
+def sync_process(
+    generator: Generator[simpy.events.Event, Any, T],
+    world: World,
+    *,
+    errback: Optional[Callable[[], None]] = None,
+    ignore_errors: bool = False
+) -> T:
     """
     Synchronously execute a SimPy process defined by the generator object
     *generator*.
@@ -31,7 +45,7 @@ def sync_process(generator, world, *, errback=None, ignore_errors=False):
 
         if ignore_errors:
             # Avoid endless recursions when called from "world.shutdown()"
-            return
+            return  # type: ignore
 
         logger.exception(exc)
 
@@ -51,7 +65,7 @@ def sync_call(sim, funcname, args, kwargs):
     """
     # We have to start a SimPy process to make the "create()" call
     # behave like it was synchronous.
-    def proc():
+    def proc() -> Generator[simpy.events.Event, Any, Any]:
         try:
             func = getattr(sim.proxy, funcname)
             ret = yield func(*args, **kwargs)

@@ -32,11 +32,23 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, OrderedDict, Tuple, Union
+    from typing import (
+        Any,
+        Callable,
+        Dict,
+        Iterable,
+        List,
+        Literal,
+        Optional,
+        OrderedDict,
+        Tuple,
+        Union,
+    )
     from simpy.events import Event, Process
     from mosaik.scenario import Meta, OutputData, SimId, World, DataflowEdge
+    from tqdm import tqdm
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -152,8 +164,12 @@ def start_inproc(
     except (AttributeError, ImportError, KeyError, ValueError) as err:
         detail_msgs = {
             ValueError: 'Malformed Python class name: Expected "module:Class"',
-            ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
+            ModuleNotFoundError: f'Could not import module: {err.args[0]}',
             AttributeError: 'Class not found in module',
+            KeyError:
+                'Key "python" not found in simulator config (this should not happen, '
+                'report as mosaik bug).',
+            ImportError: f'Could not import module {err.args[0]}',
         }
         details = detail_msgs[type(err)]
         origerr = err.args[0]
@@ -284,16 +300,17 @@ def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
     This method is a SimPy process used by :func:`start_proc()` and
     :func:`start_connect()`.
     """
-    start_timeout = world.env.timeout(world.config['start_timeout'])
+    start_timeout: int = world.env.timeout(world.config['start_timeout'])
 
-    def greeter():
+    def greeter() -> Generator[Event, Any, SimProxy]:
         if proc:
             # Wait for connection from "sim_name"
             accept_con = world.srv_sock.accept()
             results = yield accept_con | start_timeout
             if start_timeout in results:
-                raise SimulationError('Simulator "%s" did not connect to '
-                                      'mosaik in time.' % sim_name)
+                raise SimulationError(
+                    f'Simulator "{sim_name}" did not connect to mosaik in time.'
+                )
             else:
                 sock = results[accept_con]
         else:
@@ -309,7 +326,7 @@ def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
 
         # Make init() API call and wait for sim_name's meta data.
         init = rpc_con.remote.init(sim_id, time_resolution=time_resolution,
-                                   **sim_params)
+                                   **sim_params)  # type: ignore
         try:
             results = yield init | start_timeout
         except ConnectionError as e:
@@ -325,17 +342,19 @@ def make_proxy(world, sim_name, sim_config, sim_id, time_resolution,
         return RemoteProcess(sim_name, sim_id, meta, proc, rpc_con, world)
 
     # Add a error callback that waits for "proc" to stop if "proc" is not None:
-    def terminate():
-        try:
-            # See if it terminates on its own ...
-            proc.wait(timeout=1)
-        except subprocess.TimeoutExpired:
-            # ... or kill it ...
-            proc.terminate()
-            proc.wait(timeout=1)
+    callback: Optional[Callable] = None
+    if proc:
+        def terminate():
+            try:
+                # See if it terminates on its own ...
+                proc.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                # ... or kill it ...
+                proc.terminate()
+                proc.wait(timeout=1)
+        callback = terminate
 
-    cb = None if proc is None else terminate
-    return sync_process(greeter(), world, errback=cb)
+    return sync_process(greeter(), world, errback=callback)
 
 
 def validate_api_version(
@@ -480,10 +499,10 @@ class SimProxy:
     waiting for dependencies which might trigger earlier steps for this
     simulator."""
 
-    predecessors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    predecessors: Dict[SimId, Tuple[SimProxy, DataflowEdge]]
     """This simulator's predecessors in the dataflow graph and the corresponding
     edges."""
-    successors: Dict[Any, Tuple[SimProxy, DataflowEdge]]
+    successors: Dict[SimId, Tuple[SimProxy, DataflowEdge]]
     """This simulator's successors in the dataflow graph and the corresponding
     edge.."""
     triggering_ancestors: Iterable[Tuple[SimId, bool]]
@@ -522,6 +541,12 @@ class SimProxy:
     """The event (usually an AllOf event) this simulator is waiting for."""
     trigger_cycles: List[TriggerCycle]
     """Triggering cycles in a simulation"""
+
+    rank: int
+    """Rank of this simulator in the topological sort of all simulators."""
+
+    tqdm: tqdm
+    """This simulators tqdm instance for nice progress bars."""
 
     def __init__(self, name: str, sid: SimId, meta: Meta, world: World):
         self.name = name
@@ -568,7 +593,7 @@ class SimProxy:
         self.interruptable = False
         self.is_in_step = False
         self.trigger_cycles = []
-        self.rank = None  # topological rank
+        self.rank = None  # type: ignore
 
     def stop(self):
         """
@@ -691,7 +716,7 @@ class MosaikRemote:
 
     @JSON_RPC.Descriptor
     class rpc(JSON_RPC.Accessor):
-        parent = None
+        parent = None  # type: ignore
 
     def __init__(self, world, sim_id):
         self.world = world

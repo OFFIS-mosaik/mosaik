@@ -143,8 +143,8 @@ if TYPE_CHECKING:
         pred_waiting: bool
         """Whether the source simulator of this edge has to wait for the destination
         simulator."""
-        cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-        dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+        cached_connections: List[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+        dataflows: List[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
 
 class World(object):
     """
@@ -188,6 +188,8 @@ class World(object):
     sims: Dict[SimId, simmanager.SimProxy]
     """A dictionary of already started simulators instances."""
 
+    df_graph: networkx.DiGraph[SimId, DataflowEdge]
+
     def __init__(
         self,
         sim_config: SimConfig,
@@ -208,7 +210,7 @@ class World(object):
         self.time_resolution = time_resolution
         """An optional global *time_resolution* (in seconds) for the scenario, 
         which tells the simulators what the integer time step means in seconds.
-         Its default value is 1., meaning one integer step corresponds to one 
+        Its default value is 1., meaning one integer step corresponds to one 
         second simulated time."""
 
         self.max_loop_iterations = max_loop_iterations
@@ -370,12 +372,15 @@ class World(object):
 
         pred_waiting = async_requests
 
-        self.df_graph.add_edge(src.sid, dest.sid,
-                               async_requests=async_requests,
-                               time_shifted=time_shifted,
-                               weak=weak,
-                               trigger=trigger,
-                               pred_waiting=pred_waiting)
+        self.df_graph.add_edge(
+            src.sid,
+            dest.sid,
+            async_requests=async_requests,
+            time_shifted=time_shifted,
+            weak=weak,
+            trigger=trigger,
+            pred_waiting=pred_waiting
+        )
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, expanded_attrs))
@@ -896,7 +901,7 @@ class World(object):
         Classifies the connection by analyzing the model's meta data with
         enabled cache, i.e. if it triggers a step of the destination, how the
         data is cached, and if it's persistent and need's to be saved in the
-         input_memory.
+        input_memory.
         """
         entities = [src, dest]
         emeta = [e.sim.meta['models'][e.type] for e in entities]
