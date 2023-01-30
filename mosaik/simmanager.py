@@ -578,6 +578,20 @@ class SimProxy:
         """
         raise NotImplementedError
 
+    def schedule_step(self, time: int):
+        """Schedule a step for this simulator at the given time. This will wake this
+        simulator and if the new step is earlier than previously scheduled steps, the
+        sim_process will be interrupted with an 'Earlier step' message."""
+        if time in self.next_steps:
+            return
+
+        is_earlier = self.next_steps and time < self.next_steps[0]
+        hq.heappush(self.next_steps, time)
+        if not self.has_next_step.triggered:
+            self.has_next_step.succeed()
+        elif is_earlier and self.interruptable:
+            self.sim_proc.interrupt('Earlier step')
+
     def _get_proxy(self, methods):
         raise NotImplementedError
 

@@ -137,7 +137,7 @@ if TYPE_CHECKING:
         """Whether dataflow along this edge is time shifted."""
         weak: bool
         """Whether this edge is weak (used for same-time loops)."""
-        trigger: bool
+        trigger: Set[Tuple[EntityId, Attr]]
         """Whether any of the destination simulator's inputs used by this edge are
         trigger inputs."""
         pred_waiting: bool
@@ -370,12 +370,32 @@ class World(object):
 
         pred_waiting = async_requests
 
-        self.df_graph.add_edge(src.sid, dest.sid,
-                               async_requests=async_requests,
-                               time_shifted=time_shifted,
-                               weak=weak,
-                               trigger=trigger,
-                               pred_waiting=pred_waiting)
+        trigger = set()
+        for attr_pair in expanded_attrs:
+            if (
+                attr_pair[1] in dest.sim.meta['models'][dest.type]['trigger']
+                or (dest.sim.meta['models'][dest.type]['any_inputs'] 
+                    and dest.sim.meta['type'] == 'event-based')
+            ):
+                trigger.add((src.eid, attr_pair[0]))
+
+        try:
+            edge = self.df_graph[src.sid][dest.sid]
+            edge['trigger'].update(trigger)
+            edge['weak'] = edge['weak'] and weak
+            edge['time_shifted'] = edge['time_shifted'] and time_shifted
+            edge['async_requests'] = edge['async_requests'] or async_requests
+            edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
+        except KeyError:
+            self.df_graph.add_edge(
+                src.sid,
+                dest.sid,
+                async_requests=async_requests,
+                time_shifted=time_shifted,
+                weak=weak,
+                trigger=trigger,
+                pred_waiting=pred_waiting
+            )
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
         dfs.append((src.eid, dest.eid, expanded_attrs))
