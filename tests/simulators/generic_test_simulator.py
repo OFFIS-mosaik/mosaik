@@ -38,7 +38,7 @@ sim_meta = {
         'A': {
             'public': True,
             'params': [],
-            'attrs': ['val_in', 'val_out'],
+            'attrs': ['val_in', 'trigger_in', 'val_out'],
         },
     },
 }
