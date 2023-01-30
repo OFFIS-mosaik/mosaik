@@ -12,23 +12,38 @@ def world_fixture(request):
     if request.param == 'time-based':
         time_shifted = True
         weak = False
-        trigger = False
+        trigger = set()
     else:
         time_shifted = False
         weak = True
-        trigger = True
+        trigger = set([('1', 'x')]) # TODO: Is this correct?
     world = scenario.World({})
-    world.sims = {i: simmanager.LocalProcess('', i,
-        {'models': {}, 'type': request.param}, SimulatorMock(request.param),
-        world) for i in range(6)}
-    world.df_graph.add_edges_from([(0, 2), (1, 2), (2, 3), (4, 5)],
-                                  async_requests=False, pred_waiting=False,
-                                  time_shifted=False, weak=False,
-                                  trigger=trigger)
-    world.df_graph.add_edges_from([(5, 4)], async_requests=False,
-                                  pred_waiting=False,
-                                  time_shifted=time_shifted, weak=weak,
-                                  trigger=trigger)
+    world.sims = {
+        i: simmanager.LocalProcess(
+            '',
+            i,
+            {'models': {}, 'type': request.param},
+            SimulatorMock(request.param),
+            world,
+        )
+        for i in range(6)
+    }
+    world.df_graph.add_edges_from(
+        [(0, 2), (1, 2), (2, 3), (4, 5)],
+        async_requests=False,
+        pred_waiting=False,
+        time_shifted=False,
+        weak=False,
+        trigger=trigger
+    )
+    world.df_graph.add_edges_from(
+        [(5, 4)],
+        async_requests=False,
+        pred_waiting=False,
+        time_shifted=time_shifted,
+        weak=weak,
+        trigger=trigger
+    )
     world.cache_dependencies()
     world.cache_related_sims()
     world.df_graph[0][2]['wait_event'] = world.env.event()

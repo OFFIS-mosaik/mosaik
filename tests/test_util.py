@@ -1,5 +1,7 @@
 import collections
 import random
+from typing import Any, Generator
+import simpy.events
 
 from simpy.io.network import RemoteException
 import pytest
@@ -52,7 +54,7 @@ def test_sync_process_errback():
         test_list = []
         cb = lambda: test_list.append('got called')  # flake8: noqa
 
-        def gen():
+        def gen() -> Generator[simpy.events.Event, Any, None]:
             raise ConnectionError()
             yield world.env.event()
 
@@ -65,7 +67,7 @@ def test_sync_process_errback():
 def test_sync_process_ignore_errors():
     world = scenario.World({})
 
-    def gen():
+    def gen() -> Generator[simpy.events.Event, Any, None]:
         raise ConnectionError()
         yield world.env.event()
 
