@@ -20,8 +20,12 @@ import os
 import shlex
 import subprocess
 import sys
+import platform
 from loguru import logger
 from dataclasses import dataclass
+
+if 'Windows' in platform.system():
+    from subprocess import CREATE_NEW_CONSOLE
 
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
@@ -185,7 +189,7 @@ def start_inproc(
 def start_proc(
     world: World,
     sim_name: str,
-    sim_config: Dict[Literal['cmd', 'cwd', 'env'], str],
+    sim_config: Dict[Literal['cmd', 'cwd', 'env', 'new_console'], Any],
     sim_id: SimId,
     time_resolution: float,
     sim_params: Dict[str, Any]
@@ -216,11 +220,22 @@ def start_proc(
     env = dict(os.environ)
     env.update(sim_config.get('env', {}))  # type: ignore
 
+    # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+    creationflags = 0
+    new_console = sim_config['new_console'] if 'new_console' in sim_config else False
+    if new_console:
+        if 'Windows' in platform.system():
+            creationflags = CREATE_NEW_CONSOLE
+        else:
+            logger.warning('Simulator "{sim_name}" could not be started in a new console: '
+                           'Only available on Windows', sim_name=sim_name)
+
     kwargs = {
         'bufsize': 1,
         'cwd': cwd,
         'universal_newlines': True,
         'env': env,  # pass the new env dict to the sub process
+        'creationflags': creationflags,
     }
     try:
         proc = subprocess.Popen(cmd, **kwargs)
