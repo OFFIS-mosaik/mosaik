@@ -138,8 +138,8 @@ if TYPE_CHECKING:
         weak: bool
         """Whether this edge is weak (used for same-time loops)."""
         trigger: Set[Tuple[EntityId, Attr]]
-        """Whether any of the destination simulator's inputs used by this edge are
-        trigger inputs."""
+        """Those pairs of entities and attributes of the source simulator that can
+        trigger a step of the destination simulator."""
         pred_waiting: bool
         """Whether the source simulator of this edge has to wait for the destination
         simulator."""
@@ -371,13 +371,9 @@ class World(object):
         pred_waiting = async_requests
 
         trigger = set()
-        for attr_pair in expanded_attrs:
-            if (
-                attr_pair[1] in dest.sim.meta['models'][dest.type]['trigger']
-                or (dest.sim.meta['models'][dest.type]['any_inputs'] 
-                    and dest.sim.meta['type'] == 'event-based')
-            ):
-                trigger.add((src.eid, attr_pair[0]))
+        for src_attr, dest_attr in expanded_attrs:
+            if (dest.triggered_by(dest_attr)):
+                trigger.add((src.eid, src_attr))
 
         try:
             edge = self.df_graph[src.sid][dest.sid]
@@ -684,14 +680,9 @@ class World(object):
                     min_length: int = sum(
                         [edge["time_shifted"] for edge in cycle_edges]
                     )
-                    activators: List[
-                        Tuple[str, str]
-                    ] = self._collect_successor_activators_from_edge(
-                        outgoing_edge, successor_sid
-                    )
                     trigger_cycle = simmanager.TriggerCycle(
                         sids=sids,
-                        activators=activators,
+                        activators=outgoing_edge["trigger"],
                         min_length=min_length,
                         in_edge=ingoing_edge,
                         time=-1,
@@ -727,50 +718,6 @@ class World(object):
         ingoing_edge = cycle_edges[(index_of_simulator - 1) % len(cycle_edges)]
         outgoing_edge = cycle_edges[index_of_simulator]
         return ingoing_edge, outgoing_edge
-
-    def _collect_successor_activators_from_edge(
-        self,
-        outgoing_edge: DataflowEdge,
-        successor_sid: SimId,
-    ) -> List[Tuple[str, str]]:
-        """
-        Collects all attributes that trigger the destination simulator of the given
-        edge.
-        """
-        activators = []
-        # Go through all outgoing edges from the current simulator
-        for src_eid, destination_eid, attrs in outgoing_edge["dataflows"]:
-            # Determine the destination model from the outgoing edge of the current
-            # simulator and the attributes that trigger this model
-            destination_model = networkx.get_node_attributes(self.entity_graph, "type")[
-                FULL_ID % (successor_sid, destination_eid)
-            ]
-            destination_triggers: Iterable[Attr] = self.sims[successor_sid].meta[
-                "models"
-            ][destination_model]["trigger"]
-            activators.extend(
-                self._collect_activators_from_attributes(
-                    attrs, destination_triggers, src_eid
-                )
-            )
-        return activators
-
-    def _collect_activators_from_attributes(
-        self,
-        attributes: Iterable,
-        destination_triggers: Iterable[Attr],
-        src_eid: str,
-    ) -> List[Tuple[str, str]]:
-        """
-        From the given attributes from the source model filter those that trigger the 
-        desination model and return a list of tuples with the id of the source model and
-        the attribute from the source that triggers the destination model.
-        """
-        activators = []
-        for src_attr, dest_attr in attributes:
-            if dest_attr in destination_triggers:
-                activators.append((src_eid, src_attr))
-        return activators
 
     def cache_dependencies(self):
         """
@@ -880,26 +827,27 @@ class World(object):
         return attr_errors
 
     def _check_attributes_values(self,
-        src:Entity,
-        dest:Entity,
-        attr_pairs:Iterable[Tuple[Attr, Attr]],
+        src: Entity,
+        dest: Entity,
+        attr_pairs: Iterable[Tuple[Attr, Attr]],
     ):
         """
         Check if *src* and *dest* attributes in *attr_pairs* are a combination of
         persistent and trigger or non-persistent and non-trigger.
 
         """
-        entities = [src, dest]
-        emeta = [e.sim.meta['models'][e.type] for e in entities]
-        non_persistent = set(emeta[0]['attrs']).difference(emeta[0]['persistent'])
-        non_trigger = set(emeta[1]['attrs']).difference(emeta[1]['trigger'])
         for attr_pair in attr_pairs:
-            if (attr_pair[1] in emeta[1]['trigger']) and (attr_pair[0] in emeta[0]['persistent']):
-                logger.warning('A connection between persistent and trigger attributes is not recommended.'
-                               'This might cause problems in the simulation!')
-            elif (attr_pair[1] in non_trigger) and (attr_pair[0] in non_persistent):
-                logger.warning('A connection between non-persistent and non-trigger attributes is not recommended. '
-                               'This might cause problems in the simulation!')
+            src_attr, dest_attr = attr_pair
+            if dest.triggered_by(dest_attr) and src.is_persistent(src_attr):
+                logger.warning(
+                    'A connection between persistent and trigger attributes is not '
+                    'recommended. This might cause problems in the simulation!'
+                )
+            elif not dest.triggered_by(dest_attr) and not src.is_persistent(src_attr):
+                logger.warning(
+                    'A connection between non-persistent and non-trigger attributes is '
+                    'not recommended. This might cause problems in the simulation!'
+                )
 
     def _classify_connections_with_cache(self,
         src: Entity,
@@ -918,9 +866,6 @@ class World(object):
         data is cached, and if it's persistent and need's to be saved in the
          input_memory.
         """
-        entities = [src, dest]
-        emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1]['any_inputs']]
         any_trigger = False
         cached = []
         time_buffered = []
@@ -928,12 +873,11 @@ class World(object):
         persistent = []
 
         for attr_pair in attr_pairs:
-            trigger = (attr_pair[1] in emeta[1]['trigger'] or (
-                any_inputs[1] and dest.sim.meta['type'] == 'event-based'))
-            if trigger:
+            src_attr, dest_attr = attr_pair
+            if dest.triggered_by(dest_attr):
                 any_trigger = True
 
-            is_persistent = attr_pair[0] in emeta[0]['persistent']
+            is_persistent = src.is_persistent(src_attr)
             if is_persistent:
                 persistent.append(attr_pair)
             if src.sim.meta['type'] != 'time-based':
@@ -960,17 +904,13 @@ class World(object):
         disabled cache, i.e. if it triggers a step of the destination, if the
         attributes are persistent and need to be saved in the input_memory.
         """
-        entities = [src, dest]
-        emeta = [e.sim.meta['models'][e.type] for e in entities]
-        any_inputs = [False, emeta[1]['any_inputs']]
         trigger = False
         persistent = []
         for attr_pair in attr_pairs:
-            if (attr_pair[1] in emeta[1]['trigger'] or (
-                    any_inputs[1] and dest.sim.meta['type'] == 'event-based')):
+            src_attr, dest_attr = attr_pair
+            if dest.triggered_by(dest_attr):
                 trigger = True
-            is_persistent = attr_pair[0] in emeta[0]['persistent']
-            if is_persistent:
+            if src.is_persistent(src_attr):
                 persistent.append(attr_pair)
         memorized = persistent
 
@@ -1154,6 +1094,19 @@ class Entity(object):
         Full, globally unique entity id ``sid.eid``.
         """
         return FULL_ID % (self.sid, self.eid)
+
+    @property
+    def model_description(self) -> ModelDescription:
+        return self.sim.meta['models'][self.type]
+
+    def triggered_by(self, attr: Attr) -> bool:
+        return (attr in self.model_description["trigger"]) or (
+            self.sim.meta["type"] == "event-based"
+            and self.model_description["any_inputs"]
+        )
+
+    def is_persistent(self, attr: Attr) -> bool:
+        return (attr in self.model_description["persistent"])
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, ', '.join([

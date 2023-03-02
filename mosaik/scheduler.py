@@ -10,7 +10,7 @@ from time import perf_counter
 from simpy.exceptions import Interrupt
 
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
-from mosaik.simmanager import FULL_ID, SimProxy
+from mosaik.simmanager import FULL_ID, SimProxy, EARLIER_STEP
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -103,7 +103,7 @@ def sim_process(
                     yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
                 except Interrupt as i:
-                    assert i.cause == 'Earlier step'
+                    assert i.cause == EARLIER_STEP
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
