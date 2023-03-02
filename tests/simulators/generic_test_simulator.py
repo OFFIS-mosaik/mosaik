@@ -38,7 +38,7 @@ sim_meta = {
         'A': {
             'public': True,
             'params': [],
-            'attrs': ['val_in', 'trigger_in', 'val_out', 'val_out_2'],
+            'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
 }
@@ -71,7 +71,7 @@ class TestSim(mosaik_api.Simulator):
             self.meta['models']['A']['trigger'] = trigger
 
         if step_type == 'hybrid':
-            self.meta['models']['A']['persistent'] = ['val_out', 'val_out_2']
+            self.meta['models']['A']['persistent'] = ['val_out']
 
         self.events = {float(key): val for key, val in events.items()}
         if events:
@@ -100,7 +100,7 @@ class TestSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         if self.output_timing is None:
-            data = {eid: {'val_out': self.time, 'val_out_2': self.time}
+            data = {eid: {'val_out': self.time}
                     for eid in self.entities}
         else:
             try:
@@ -116,7 +116,7 @@ class TestSim(mosaik_api.Simulator):
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
-                        **{eid: {'val_out': self.time, 'val_out_2': self.time}
+                        **{eid: {'val_out': self.time}
                            for eid in self.entities}}
             else:
                 data = {}
