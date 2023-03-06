@@ -54,28 +54,39 @@ def run(
         if sim.meta['api_version'] >= (2, 2):
             # setup_done() was added in API version 2.2:
             sim.tqdm.set_postfix_str('setup')
+            # Send a setup_done event to all simulators
             setup_done_events.append(sim.proxy.setup_done())
 
+    # Wait for all answers to be here
     yield env.all_of(setup_done_events)
 
+    # Start simulator processes
     processes = []
     for sim in world.sims.values():
+        # Alternative with asyncio
+        sim_process = sim_process(world, sim, until, rt_factor,
+                                          rt_strict, lazy_stepping)
+        process = asyncio.event_loop.create_task(sim_process)
+
+        # Add this process to the event loop of simpy
         process = env.process(sim_process(world, sim, until, rt_factor,
                                           rt_strict, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
-    yield env.all_of(processes)
+    # Wait for all processes to be done
+    await asyncio.event_loop.gather_tasks(processes)
+    #yield env.all_of(processes)
 
 
-def sim_process(
+async def sim_process(
     world: World,
     sim: SimProxy,
     until: int,
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
-) -> Iterator[Event]:
+) -> Iterator[Event]: # TODO change event to sth from asyncio or nothing, as they always return futures
     """
     SimPy simulation process for a certain simulator *sim*.
     """
@@ -87,7 +98,8 @@ def sim_process(
         while keep_running():
             warn_if_successors_terminated(world, sim)
             try:
-                yield from has_next_step(world, sim)
+                await has_next_step(world, sim)
+                # yield from has_next_step(world, sim)
             except WakeUpException:
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
@@ -98,9 +110,11 @@ def sim_process(
             sim.interruptable = True
             while True:
                 try:
-                    yield from rt_sleep(rt_factor, rt_start, sim, world)
+                    await rt_sleep(rt_factor, rt_start, sim, world)
+                    #yield from rt_sleep(rt_factor, rt_start, sim, world)
                     sim.tqdm.set_postfix_str('waiting')
-                    yield wait_for_dependencies(world, sim, lazy_stepping)
+                    await wait_for_dependencies(world, sim, lazy_stepping)
+                    # yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
                 except Interrupt as i:
                     assert i.cause == EARLIER_STEP
