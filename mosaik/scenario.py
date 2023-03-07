@@ -8,6 +8,7 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 (*entities*). The method :meth:`World.run()` finally starts the simulation.
 """
 from __future__ import annotations
+import asyncio
 
 from collections import defaultdict
 import itertools
@@ -121,12 +122,12 @@ if TYPE_CHECKING:
 
     # The events can be unset. By splitting them into their own class, we
     # can make them optional.
-    class DataflowEgdeOptionals(TypedDict, total=False):
-        wait_event: Event
+    class DataflowEgdeOptionals(TypedDict):
+        wait_event: asyncio.Event
         """Event on which destination simulator is waiting for its inputs."""
-        wait_lazy: Event
+        wait_lazy: asyncio.Event
         """Event on which source simulator is waiting in case of lazy stepping."""
-        wait_async: Event
+        wait_async: asyncio.Event
         """Event on which source simulator is waiting to support async requests."""
 
     class DataflowEdge(DataflowEgdeOptionals):
@@ -383,6 +384,12 @@ class World(object):
             edge['async_requests'] = edge['async_requests'] or async_requests
             edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
         except KeyError:
+            wait_event = asyncio.Event()
+            wait_event.set()
+            wait_lazy = asyncio.Event()
+            wait_lazy.set()
+            wait_async = asyncio.Event()
+            wait_async.set()
             self.df_graph.add_edge(
                 src.sid,
                 dest.sid,
@@ -391,6 +398,9 @@ class World(object):
                 weak=weak,
                 trigger=trigger,
                 pred_waiting=pred_waiting
+                wait_event=wait_event,
+                wait_lazy=wait_lazy,
+                wait_async=wait_async,
             )
 
         dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
@@ -586,9 +596,9 @@ class World(object):
             dbg.enable()
         success = False
         try:
-            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
-                                            lazy_stepping),
-                              self)
+            asyncio.run(scheduler.run(
+                self, until, rt_factor, rt_strict, lazy_stepping
+            ))
             success = True
         except KeyboardInterrupt:
             logger.info('Simulation canceled. Terminating ...')
@@ -1000,8 +1010,7 @@ class ModelMock(object):
         """
         self._check_params(**model_params)
 
-        entities = util.sync_call(self._sim, 'create', [num, self._name],
-                                  model_params)
+        entities = asyncio.run(self._sim.proxy.create(num, self._name, **model_params))
         assert len(entities) == num, (
                 '%d entities were requested but %d were created.' %
                 (num, len(entities)))

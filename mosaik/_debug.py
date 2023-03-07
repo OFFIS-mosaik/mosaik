@@ -17,9 +17,9 @@ def enable():
     scheduler execution.
     """
 
-    def wrapped_step(world, sim, inputs, max_advance):
+    async def wrapped_step(world, sim, inputs, max_advance):
         pre_step(world, sim, inputs)
-        ret = yield from _originals['step'](world, sim, inputs, max_advance)
+        ret = await _originals['step'](world, sim, inputs, max_advance)
         post_step(world, sim)
         return ret
 

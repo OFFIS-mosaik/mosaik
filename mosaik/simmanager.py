@@ -10,6 +10,7 @@ already running simulators and manage access to them.
 from __future__ import annotations
 
 from ast import literal_eval
+from functools import wraps
 from itertools import count
 
 import collections
@@ -26,6 +27,7 @@ from dataclasses import dataclass
 from simpy.io import select as backend
 from simpy.io.packet import PacketUTF8 as Packet
 from simpy.io.json import JSON as JSON_RPC  # JSON is actually an object
+import asyncio
 from mosaik import _version
 import mosaik_api
 
@@ -471,7 +473,7 @@ class SimProxy:
     """This simulator's immediate next step once it has been determined. The
     step is removed from the `next_steps` heap at that point and the
     `has_next_step` event is triggered."""
-    has_next_step: Event
+    has_next_step: asyncio.Event
     """An event that is triggered once this simulator's next step has been
     determined."""
     next_self_step: Optional[int]
@@ -517,9 +519,9 @@ class SimProxy:
     """The newest data returned by this simulator."""
     related_sims: Iterable[SimProxy]
     """Simulators related to this simulator. (Currently all other simulators.)"""
-    sim_proc: Process
+    sim_proc: asyncio.Task
     """The SimPy process for this simulator."""
-    wait_events: Event
+    wait_events: List[asyncio.Event]
     """The event (usually an AllOf event) this simulator is waiting for."""
     trigger_cycles: List[TriggerCycle]
     """Triggering cycles in a simulation"""
@@ -564,7 +566,7 @@ class SimProxy:
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
         self.sim_proc = None  # type: ignore  # will be set in Mosaik's init
-        self.has_next_step = None  # type: ignore
+        self.has_next_step = asyncio.Event()
         self.wait_events = None  # type: ignore
         self.interruptable = False
         self.is_in_step = False
@@ -588,10 +590,9 @@ class SimProxy:
 
         is_earlier = self.next_steps and time < self.next_steps[0]
         hq.heappush(self.next_steps, time)
-        if not self.has_next_step.triggered:
-            self.has_next_step.succeed()
-        elif is_earlier and self.interruptable:
-            self.sim_proc.interrupt(EARLIER_STEP)
+        self.has_next_step.set()
+        if is_earlier and self.interruptable:
+            self.sim_proc.cancel(EARLIER_STEP)
 
     def _get_proxy(self, methods):
         raise NotImplementedError
@@ -637,25 +638,32 @@ class LocalProcess(SimProxy):
 
         super().__init__(name, sid, meta, world)
 
-    def stop(self):
+    async def stop(self):
         """
         Yield a triggered event but do nothing else.
         """
         self._inst.finalize()
-        yield self._world.env.event().succeed()
+        event = asyncio.Event()
+        event.set()
+        await event.wait()
 
     def _get_proxy(self, methods):
         """
         Return a proxy for the local simulator.
         """
         proxy_dict = {
-            name: mosaik_api.get_wrapper(getattr(self._inst, name),
-                                         self._world.env)
+            name: asyncify(getattr(self._inst, name))
             for name in methods
         }
         Proxy = type('Proxy', (), proxy_dict)
         return Proxy
 
+
+def asyncify(f):
+    @wraps(f)
+    async def async_f(*args, **kwargs):
+        return f(*args, **kwargs)
+    return async_f
 
 class RemoteProcess(SimProxy):
     """

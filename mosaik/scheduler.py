@@ -7,28 +7,27 @@ from heapq import heappush, heappop, heapreplace
 from loguru import logger
 import networkx as nx
 from time import perf_counter
-from simpy.exceptions import Interrupt
+import asyncio
 
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
 from mosaik.simmanager import FULL_ID, SimProxy, EARLIER_STEP
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Any, Dict, Generator, Iterable, Iterator, Optional
+    from typing import Dict, List, Optional
     from mosaik.scenario import World, InputData, OutputData, SimId
-    from simpy.events import Event
 
 
 SENTINEL = object()
 
 
-def run(
+async def run(
     world: World,
     until: int,
     rt_factor: Optional[float] = None,
     rt_strict: bool = False,
     lazy_stepping: bool = True,
-) -> Iterator[Event]:
+):
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
     the simulation time *until* has been reached.
@@ -49,7 +48,7 @@ def run(
 
     env = world.env
 
-    setup_done_events = []
+    setup_done_events: List[asyncio.Task] = []
     for sim in world.sims.values():
         if sim.meta['api_version'] >= (2, 2):
             # setup_done() was added in API version 2.2:
@@ -58,25 +57,20 @@ def run(
             setup_done_events.append(sim.proxy.setup_done())
 
     # Wait for all answers to be here
-    yield env.all_of(setup_done_events)
+    await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
-    processes = []
+    processes: List[asyncio.Task] = []
     for sim in world.sims.values():
-        # Alternative with asyncio
-        sim_process = sim_process(world, sim, until, rt_factor,
-                                          rt_strict, lazy_stepping)
-        process = asyncio.event_loop.create_task(sim_process)
+        process = asyncio.create_task(
+            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping)
+        )
 
-        # Add this process to the event loop of simpy
-        process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, lazy_stepping))
         sim.sim_proc = process
         processes.append(process)
 
     # Wait for all processes to be done
-    await asyncio.event_loop.gather_tasks(processes)
-    #yield env.all_of(processes)
+    await asyncio.gather(*processes)
 
 
 async def sim_process(
@@ -86,9 +80,9 @@ async def sim_process(
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
-) -> Iterator[Event]: # TODO change event to sth from asyncio or nothing, as they always return futures
+):
     """
-    SimPy simulation process for a certain simulator *sim*.
+    Coroutine running the simulator *sim*.
     """
     sim.rt_start = rt_start = perf_counter()
 
@@ -99,7 +93,6 @@ async def sim_process(
             warn_if_successors_terminated(world, sim)
             try:
                 await has_next_step(world, sim)
-                # yield from has_next_step(world, sim)
             except WakeUpException:
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
@@ -111,13 +104,15 @@ async def sim_process(
             while True:
                 try:
                     await rt_sleep(rt_factor, rt_start, sim, world)
-                    #yield from rt_sleep(rt_factor, rt_start, sim, world)
                     sim.tqdm.set_postfix_str('waiting')
                     await wait_for_dependencies(world, sim, lazy_stepping)
-                    # yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
-                except Interrupt as i:
-                    assert i.cause == EARLIER_STEP
+                except asyncio.CancelledError as e:
+                    # The __context__ incantation is necessary because the original
+                    # CancelledError is burried, for some reason.
+                    while len(e.args) == 0:
+                        e = e.__context__
+                    assert e.args[0] == EARLIER_STEP
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
@@ -125,9 +120,9 @@ async def sim_process(
                 break
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
-            progress = yield from step(world, sim, input_data, max_advance)
+            progress = await step(world, sim, input_data, max_advance)
             rt_check(rt_factor, rt_start, rt_strict, sim)
-            progress = yield from get_outputs(world, sim, progress)
+            progress = await get_outputs(world, sim, progress)
             notify_dependencies(world, sim, progress)
             if world._df_cache:
                 prune_dataflow_cache(world)
@@ -141,10 +136,12 @@ async def sim_process(
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
         for suc_sid in world.trigger_graph.successors(sim.sid):
-            if not world.sims[suc_sid].sim_proc.triggered:
-                evt = world.sims[suc_sid].has_next_step
-                if not evt.triggered:
-                    world.sims[suc_sid].sim_proc.interrupt('Stopped simulator')
+            if not world.sims[suc_sid].sim_proc.done():
+                # TODO: There might be a more elegant way of doing this instead of
+                # setting has_next_step without actually providing a new step.
+                # (Currently, the missing step is checked for in the has_next_step
+                # coroutine and a WakeUpException is raised there.)
+                world.sims[suc_sid].has_next_step.set()
 
     except ConnectionError as e:
         raise SimulationError('Simulator "%s" closed its connection.' %
@@ -187,12 +184,13 @@ def get_keep_running_func(
         # Unless we are running in real-time mode, then we have to wait until
         # the total wall-clock time has passed.
         if not rt_factor:
-            pre_procs = [world.sims[pre_sid].sim_proc for pre_sid in
-                         world.trigger_graph.predecessors(sim.sid)]
+            pre_processes = [
+                world.sims[pre_sid].sim_proc 
+                for pre_sid in world.trigger_graph.predecessors(sim.sid)
+            ]
 
             def check_trigger():
-                return sim.next_steps or not all(process.triggered
-                                                 for process in pre_procs)
+                return sim.next_steps or not all(p.done() for p in pre_processes)
         else:
             pre_sims = [world.sims[pre_sid] for pre_sid in
                          nx.ancestors(world.trigger_graph, sim.sid)]
@@ -219,50 +217,60 @@ def warn_if_successors_terminated(world: World, sim: SimProxy):
     processes = [world.sims[suc_sid].sim_proc 
                  for suc_sid in sim.successors]
 
-    if should_warn and all(process.triggered for process in processes):
+    if should_warn and all(process.done() for process in processes):
         logger.warning(f"Simulator {sim.sid}'s output is not used anymore put it "
                        f"is still running.")
 
 
-def has_next_step(world: World, sim: SimProxy) -> Iterable[Event]:
+async def has_next_step(world: World, sim: SimProxy):
     """
-    Return an :class:`~simpy.events.Event` that is triggered when *sim*
-    has a next step.
+    This coroutine checks and potentially waits for this simulator's next step.
 
-    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    If a predecessor terminates, we will be awoken as well, and throw a WakeUpException.
     """
-    sim.has_next_step = world.env.event()
+    sim.has_next_step.clear()
 
     if sim.next_steps:
-        sim.has_next_step.succeed()
+        sim.has_next_step.set()
         sim.tqdm.set_postfix_str('no step')
-        yield sim.has_next_step
+        # TODO: I think this returns immediately. It might be better to find a way to
+        # return control to the event loop so that other simulators can get some
+        # progress in.
+        await sim.has_next_step.wait()
     else:
         try:
             if world.rt_factor:
                 rt_passed = perf_counter() - sim.rt_start
-                timeout = world.env.timeout(max((world.rt_factor * world.until)
-                                                - rt_passed, 0.1*world.rt_factor))
+                timeout = max(
+                    (world.rt_factor * world.until) - rt_passed, 
+                    0.1 * world.rt_factor
+                )
                 sim.tqdm.set_postfix_str('no step')
-                results = yield sim.has_next_step | timeout
-                if timeout in results:
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(sim.has_next_step.wait()), timeout
+                    )
+                except asyncio.TimeoutError:
                     raise NoStepException
             else:
                 check_and_resolve_deadlocks(sim)
                 sim.tqdm.set_postfix_str('no step')
-                yield sim.has_next_step
-        except Interrupt:
-            raise WakeUpException
+                await sim.has_next_step.wait()
+                # If has_next_step is triggered but there is still no new step, this
+                # means that a predecessor has terminated. We return control to
+                # sim_process so that it can check whether we can terminate as well.
+                if not sim.next_steps:
+                    raise WakeUpException
         except NoStepException:
             raise NoStepException
 
 
-def rt_sleep(
+async def rt_sleep(
     rt_factor: Optional[float],
     rt_start: float,
     sim: SimProxy,
     world: World
-) -> Iterable[Event]:
+):
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
@@ -271,23 +279,23 @@ def rt_sleep(
         sleep = (rt_factor * sim.next_steps[0]) - rt_passed
         if sleep > 0:
             sim.tqdm.set_postfix_str('sleeping')
-            yield world.env.timeout(sleep)
+            await asyncio.sleep(sleep)
 
 
-def wait_for_dependencies(
+async def wait_for_dependencies(
     world: World,
     sim: SimProxy,
     lazy_stepping: bool
-) -> Event:
+):
     """
-    Return an event (:class:`simpy.events.AllOf`) that is triggered when
-    all dependencies can provide input data for *sim*.
+    Wait until all simulators that can provide input for this simulator have run for
+    this step.
 
     Also notify any simulator that is already waiting to perform its next step.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    events = []
+    events: List[asyncio.Event] = []
     next_step = sim.next_steps[0]
 
     # Check if all predecessors have stepped far enough
@@ -295,12 +303,12 @@ def wait_for_dependencies(
     for pre_sim, edge in sim.predecessors.values():
         # Wait for dep_sim if it hasn't progressed until actual time step:
         if pre_sim.progress + edge['time_shifted'] <= next_step:
-            evt = world.env.event()
+            evt = edge['wait_event']
+            evt.clear()
             events.append(evt)
-            edge['wait_event'] = evt
             # To avoid deadlocks:
-            if 'wait_lazy' in edge:
-                edge.pop('wait_lazy').succeed()
+            if not edge['wait_lazy'].is_set():
+                edge['wait_lazy'].set()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
@@ -308,23 +316,22 @@ def wait_for_dependencies(
     if not world.rt_factor:
         for suc_sim, edge in sim.successors.values():
             if edge['pred_waiting'] and suc_sim.progress < next_step:
-                evt = world.env.event()
+                evt = edge['wait_async']
+                evt.clear()
                 events.append(evt)
-                edge['wait_async'] = evt
             elif lazy_stepping:
-                if 'wait_lazy' in edge:
+                if not edge['wait_lazy'].is_set():
                     events.append(edge['wait_lazy'])
                 elif suc_sim.next_steps and suc_sim.progress < next_step:
-                    evt = world.env.event()
+                    evt = edge['wait_lazy']
+                    evt.clear()
                     events.append(evt)
-                    edge['wait_lazy'] = evt
-    wait_events = world.env.all_of(events)
-    sim.wait_events = wait_events
+    sim.wait_events = events
 
     if events:
         check_and_resolve_deadlocks(sim, waiting=True)
 
-    return wait_events
+    await asyncio.gather(*(evt.wait() for evt in events))
 
 
 def get_input_data(world: World, sim: SimProxy) -> InputData:
@@ -416,12 +423,12 @@ def get_max_advance(world: World, sim: SimProxy, until: int) -> int:
     return max_advance
 
 
-def step(
+async def step(
     world: World,
     sim: SimProxy,
     inputs: InputData,
     max_advance: int
-) -> Generator[Event, int, int]:
+) -> int:
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -442,9 +449,9 @@ def step(
     sim.tqdm.set_postfix_str('stepping')
     sim.is_in_step = True
     if 'old_api' in sim.meta and sim.meta['old_api']:
-        next_step = yield sim.proxy.step(current_step, inputs)
+        next_step = await sim.proxy.step(current_step, inputs)
     else:
-        next_step = yield sim.proxy.step(current_step, inputs, max_advance)
+        next_step = await sim.proxy.step(current_step, inputs, max_advance)
     sim.is_in_step = False
 
     if next_step is not None:
@@ -495,10 +502,9 @@ def rt_check(
                                , rt_factor=rt_factor, delta=delta)
 
 
-def get_outputs(world: World, sim: SimProxy, progress: int) -> Generator[Any, OutputData, int]:
+async def get_outputs(world: World, sim: SimProxy, progress: int) -> int:
     """
-    Get all required output data from a simulator *sim*.
-    Yield an event that is triggered when all output data is received.
+    Wait for all required output data from a simulator *sim*.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
@@ -506,7 +512,7 @@ def get_outputs(world: World, sim: SimProxy, progress: int) -> Generator[Any, Ou
     outattr = world._df_outattr[sid]
     if outattr:
         sim.tqdm.set_postfix_str('get_data')
-        data = yield sim.proxy.get_data(outattr)
+        data = await sim.proxy.get_data(outattr)
 
         if sim.meta['type'] == 'time-based' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid
@@ -585,7 +591,7 @@ def notify_dependencies(world: World, sim: SimProxy, progress: int):
 
     # Notify simulators waiting for inputs from us.
     for dest_sim, edge in sim.successors.values():
-        if 'wait_event' in edge:
+        if not edge['wait_event'].is_set():
             weak_or_shifted = edge['time_shifted'] or edge['weak']
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
                 edge.pop('wait_event').succeed()
@@ -598,11 +604,11 @@ def notify_dependencies(world: World, sim: SimProxy, progress: int):
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, edge in sim.predecessors.values():
-        if 'wait_async' in edge and pre_sim.next_steps[0] <= progress:
-            edge.pop('wait_async').succeed()
-        elif 'wait_lazy' in edge:
+        if not edge['wait_async'].is_set() and pre_sim.next_steps[0] <= progress:
+            edge['wait_async'].set()
+        elif not edge['wait_lazy'].is_set():
             if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
-                edge.pop('wait_lazy').succeed()
+                edge['wait_lazy'].set()
 
 
 def prune_dataflow_cache(world: World):
@@ -648,10 +654,10 @@ def check_and_resolve_deadlocks(
             # isim hasn't executed `has_next_step` yet and will perform
             # a deadlock check again if necessary.
             break
-        elif isim.sim_proc.triggered or not isim.has_next_step.triggered:
+        elif isim.sim_proc.done() or not isim.has_next_step.is_set():
             # isim has finished already or has no next step
             continue
-        elif not isim.wait_events or isim.wait_events.triggered:
+        elif not isim.wait_events or all(evt.is_set() for evt in isim.wait_events):
             # isim hasn't executed `wait_for_dependencies` yet and will
             # perform a deadlock check again if necessary or is not waiting.
             break
@@ -674,10 +680,10 @@ def check_and_resolve_deadlocks(
     # us for async. requests or lazily:
     if not sim.next_steps:
         for pre_sim, edge in sim.predecessors.values():
-            if 'wait_async' in edge:
-                edge.pop('wait_async').succeed()
-            if 'wait_lazy' in edge:
-                edge.pop('wait_lazy').succeed()
+            if not edge['wait_async'].is_set():
+                edge['wait_async'].set()
+            if not edge['wait_lazy'].is_set():
+                edge['wait_lazy'].set()
 
 
 def clear_wait_events(sim: SimProxy):
@@ -685,13 +691,13 @@ def clear_wait_events(sim: SimProxy):
     Clear/succeed all wait events *sim* is waiting for.
     """
     for _, edge in sim.predecessors.values():
-        if 'wait_event' in edge:
-            edge.pop('wait_event').succeed()
+        if not edge['wait_event'].is_set():
+            edge['wait_event'].set()
 
     for _, edge in sim.successors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
-            if wait_type in edge:
-                edge.pop(wait_type).succeed()
+            if not edge[wait_type].is_set():
+                edge[wait_type].set()
 
 
 def clear_wait_events_dependencies(sim: SimProxy):
@@ -700,10 +706,10 @@ def clear_wait_events_dependencies(sim: SimProxy):
     *sim*.
     """
     for _, edge in sim.successors.values():
-        if 'wait_event' in edge:
-            edge.pop('wait_event').succeed()
+        if not edge['wait_event'].is_set():
+            edge['wait_event'].set()
 
     for _, edge in sim.predecessors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
-            if wait_type in edge:
-                edge.pop(wait_type).succeed()
+            if not edge[wait_type].is_set():
+                edge[wait_type].set()
