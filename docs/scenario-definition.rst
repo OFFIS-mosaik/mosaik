@@ -229,7 +229,7 @@ i.e. event-based or hybrid simulator. The following illustration explains the
 connection between simulators in more detail:
 
 
-.. figure:: /_static/connect_simulators.*
+.. figure:: /_static/connect_attr_simulator.*
    :width: 600
    :align: center
    :alt: connect simulators
