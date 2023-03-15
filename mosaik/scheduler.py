@@ -10,7 +10,7 @@ from time import perf_counter
 from simpy.exceptions import Interrupt
 
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
-from mosaik.simmanager import FULL_ID, SimProxy
+from mosaik.simmanager import FULL_ID, SimProxy, EARLIER_STEP
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -103,7 +103,7 @@ def sim_process(
                     yield wait_for_dependencies(world, sim, lazy_stepping)
                     break
                 except Interrupt as i:
-                    assert i.cause == 'Earlier step'
+                    assert i.cause == EARLIER_STEP
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
@@ -575,23 +575,12 @@ def notify_dependencies(world: World, sim: SimProxy, progress: int):
             weak_or_shifted = edge['time_shifted'] or edge['weak']
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
                 edge.pop('wait_event').succeed()
-        if edge['trigger']:
-            dest_input_time = sim.output_time + edge['time_shifted']
-            dataflows = edge['dataflows']
-            for eid, _, attrs in dataflows:
-                data_eid = sim.data.get(eid, {})
-                for attr, _ in attrs:
-                    if (
-                        attr in data_eid
-                        and dest_input_time not in dest_sim.next_steps
-                    ):
-                        earlier_step = (dest_sim.next_steps 
-                                and dest_input_time < dest_sim.next_steps[0])
-                        heappush(dest_sim.next_steps, dest_input_time)
-                        if not dest_sim.has_next_step.triggered:
-                            dest_sim.has_next_step.succeed()
-                        elif earlier_step and dest_sim.interruptable:
-                            dest_sim.sim_proc.interrupt('Earlier step')
+        for eid, attr in edge['trigger']:
+            data_eid = sim.data.get(eid, {})
+            if attr in data_eid:
+                dest_input_time = sim.output_time + edge['time_shifted']
+                dest_sim.schedule_step(dest_input_time)
+                break  # Further triggering attributes would only schedule the same event
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, edge in sim.predecessors.values():

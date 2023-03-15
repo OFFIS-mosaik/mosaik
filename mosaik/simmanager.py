@@ -32,7 +32,7 @@ import mosaik_api
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.util import sync_process
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Set
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, OrderedDict, Tuple, Union
     from simpy.events import Event, Process
@@ -44,6 +44,7 @@ API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
+EARLIER_STEP = 'Earlier step'
 
 def start(
     world: World,
@@ -578,6 +579,20 @@ class SimProxy:
         """
         raise NotImplementedError
 
+    def schedule_step(self, time: int):
+        """Schedule a step for this simulator at the given time. This will wake this
+        simulator and if the new step is earlier than previously scheduled steps, the
+        sim_process will be interrupted with an 'Earlier step' message."""
+        if time in self.next_steps:
+            return
+
+        is_earlier = self.next_steps and time < self.next_steps[0]
+        hq.heappush(self.next_steps, time)
+        if not self.has_next_step.triggered:
+            self.has_next_step.succeed()
+        elif is_earlier and self.interruptable:
+            self.sim_proc.interrupt(EARLIER_STEP)
+
     def _get_proxy(self, methods):
         raise NotImplementedError
 
@@ -838,34 +853,22 @@ class MosaikRemote:
         Schedules an event/step at simulation time *event_time*.
         """
         sim = self.world.sims[self.sim_id]
-        """
-        if not sim.set_events:
-            # TODO: The error is not raised at simulation level and just causes the
-            # function not being executed
-            print("Error: Simulator '%s' tried to set an event, but "
-                  "hasn't set set_events to True." % self.sim_sid)
-            #raise SimulationError("Simulator '%s' tried to set an event, but "
-            #                     "hasn't set set_events to True." % self.sim_sid)
-        """
         if not self.world.rt_factor:
-            raise SimulationError('Simulator "%s" tried to set an event in '
-                                  'non-real-time mode.' % self.sim_id)
+            raise SimulationError(
+                f"Simulator '{self.sim_id}' tried to set an event in non-real-time "
+                "mode."
+            )
         if event_time < self.world.until:
             sim.progress = min(event_time, sim.progress)
-            earlier_step = sim.next_steps and event_time < sim.next_steps[0]
-            hq.heappush(sim.next_steps, event_time)
-
-
-            if sim.has_next_step and not sim.has_next_step.triggered:
-                sim.has_next_step.succeed()
-            # We interrupt the simulator if the new step is smaller than
-            # next_step, unless it is already executing a step:
-            elif sim.interruptable and earlier_step:
-                sim.sim_proc.interrupt('Earlier step')
+            sim.schedule_step(event_time)
         else:
-            logger.warning("Event set at {event_time} by {sim_id} is after "
-                           "simulation end {until} and will be ignored.",
-                           event_time=event_time, sim_id=sim.sid, until=self.world.until)
+            logger.warning(
+                "Event set at {event_time} by {sim_id} is after simulation end {until} "
+                "and will be ignored.",
+                event_time=event_time,
+                sim_id=sim.sid,
+                until=self.world.until,
+            )
 
     def _assert_async_requests(self, dfg, src_sid, dest_sid):
         """
@@ -958,7 +961,7 @@ class TriggerCycle:
     """
 
     sids: List[SimId]
-    activators: List[Tuple[str, str]]
+    activators: Set[Tuple[str, str]]
     """List of all attributes that trigger the destination simulator if the given edge"""
     min_length: int
     """

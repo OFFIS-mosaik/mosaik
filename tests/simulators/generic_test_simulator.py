@@ -38,7 +38,7 @@ sim_meta = {
         'A': {
             'public': True,
             'params': [],
-            'attrs': ['val_in', 'val_out'],
+            'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
 }
@@ -100,7 +100,8 @@ class TestSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         if self.output_timing is None:
-            data = {eid: {'val_out': self.time} for eid in self.entities}
+            data = {eid: {'val_out': self.time}
+                    for eid in self.entities}
         else:
             try:
                 current_output_timing = self.output_timing[self.time]
@@ -115,7 +116,8 @@ class TestSim(mosaik_api.Simulator):
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
-                        **{eid: {'val_out': self.time} for eid in self.entities}}
+                        **{eid: {'val_out': self.time}
+                           for eid in self.entities}}
             else:
                 data = {}
         return data
