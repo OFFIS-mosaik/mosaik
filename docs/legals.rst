@@ -37,7 +37,7 @@ DE 811582102
 
 **Responsible in the sense of press law**
 
-| Dr. Christoph Mayer (Director)
+| Dr. Ing. Jürgen Meister (Director)
 | OFFIS e.V.
 | Escherweg 2
 | 26121 Oldenburg
