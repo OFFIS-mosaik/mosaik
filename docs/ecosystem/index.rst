@@ -1,5 +1,5 @@
 ================
-Mosaik ecosystem
+mosaik ecosystem
 ================
 
 Mosaik as a co-simulation tool organizes the data exchange between simulators
