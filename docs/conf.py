@@ -199,7 +199,7 @@ latex_documents = [
 ]
 
 # Build with XeLaTeX to use unicode characters
-latex_engine = 'xelatex'
+latex_engine = 'lualatex'
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
