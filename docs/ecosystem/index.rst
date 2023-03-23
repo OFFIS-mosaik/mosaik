@@ -41,14 +41,16 @@ of the |mosaik| :ref:`external_components` we know here.
 |mosaik| mosaik-core
 ====================
 
-The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the high-level API implementations.
+The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the high-level API implementations are
+provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 - `mosaik <https://gitlab.com/mosaik/mosaik>`_
-- `mosaik API for Python <https://gitlab.com/mosaik/mosaik-api-python>`_
-- `mosaik API for Java <https://gitlab.com/mosaik/mosaik-api-java>`_
-  :doc:`Java tutorial </tutorials/tutorial_api-java>`)
-- `mosaik API for Matlab <https://gitlab.com/mosaik/matlab-mosaik-toolbox>`_
-- `mosaik API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`_
+- `API for Python <https://gitlab.com/mosaik/mosaik-api-python>`_
+- `API for Java <https://gitlab.com/mosaik/mosaik-api-java>`_
+- `generics for Java API <https://gitlab.com/mosaik/api/mosaik-api-java-generics>`_
+-  :doc:`Java tutorial </tutorials/tutorial_api-java>`
+- `API for Matlab <https://gitlab.com/mosaik/matlab-mosaik-toolbox>`_
+- `API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`_
 
 .. _mosaik_components:
 
@@ -66,7 +68,7 @@ The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the hi
       analysis library.
 
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
-      contains a model for simulation of heatpumps.
+      contains different models for simulation of heatpumps.
 
 - `data <https://gitlab.com/mosaik/components/data>`_ related components:
 
@@ -81,13 +83,22 @@ The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the hi
     - `mosaik-hdf5 <https://gitlab.com/mosaik/components/data/mosaik-hdf5>`_ allows
       to write simulation results to a HDF5 file for further analysis.
 
-    - `InfluxDB adapter <https://gitlab.com/mosaik/components/data/mosaik-influxdb>`_
+    - `InfluxDB adapter <https://gitlab.com/mosaik/components/data/mosaik-influxdb>`_ to store simulation
+      results into InfluxDB 1 time series database.
 
-    - `ZeroMQ adapter <https://gitlab.com/mosaik/components/data/mosaik-zmq>`_
-      :doc:`Odysseus-adapter </tutorials/odysseus>`
+    - `InfluxDB 2 adapter <https://gitlab.com/mosaik/components/data/mosaik-influxdb2>`_ to store simulation
+      results into InfluxDB 2 time series database.
 
-- `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_
-- `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_
+    - `ZeroMQ adapter <https://gitlab.com/mosaik/components/data/mosaik-zmq>`_ to connect components
+      with the messaging library ZeroMQ.
+
+    - :doc:`Odysseus-adapter </tutorials/odysseus>` to write results to the data stream management system
+      `Odysseus <https://odysseus.informatik.uni-oldenburg.de/>`_ to mosaik.
+
+- `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_ allows to couple Functional Mockup Units (FMU),
+  which are based on the `FMI standard <https://fmi-standard.org>`_.
+- `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_ is a
+  basic communication suite using delays.
 
 .. _mosaik_examples:
 
@@ -100,8 +111,8 @@ The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the hi
 - The `DES demo <https://gitlab.com/mosaik/examples/des_demos>`_ is a simple example
   scenario showing the new mosaik 3.0 DES features
 
-- `COmmunication SIMulation for Agents <https://gitlab.com/mosaik/examples/cosima>`_ is an example scenario with
-  integrated communication simulation based on OMNeT++.
+- `COmmunication SIMulation for Agents (cosima) <https://gitlab.com/mosaik/examples/cosima>`_ is an example scenario
+  with integrated communication simulation based on OMNeT++.
 
 .. _mosaik_tools:
 
@@ -109,7 +120,8 @@ The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the hi
 =====================
 
 - `icons for the energy domain <https://gitlab.com/mosaik/tools/energy-icons>`_
-- `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_
+- `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_ is a visualization component, which is
+  not maintained anymore.
 
 .. _external_components:
 
