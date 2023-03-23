@@ -44,4 +44,4 @@ located in the |mosaik| ``mosaik-tools``-library.
    Odysseus-adapter <odysseus>
 
 
-.. |mosaik| image:: /_static/favicon.ico
+.. |mosaik| image:: /_static/favicon.png
