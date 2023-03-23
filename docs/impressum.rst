@@ -34,7 +34,7 @@ DE 811582102
 
 **Verantwortlich im Sinne der Presse**
 
-| Dr. Christoph Mayer (Bereichsleiter)
+| Dr. Ing. Jürgen Meister (Bereichsleiter)
 | OFFIS e.V.
 | Escherweg 2
 | 26121 Oldenburg
