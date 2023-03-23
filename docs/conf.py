@@ -195,8 +195,11 @@ latex_elements = {
 # documentclass [howto/manual]).
 latex_documents = [
     ('index', 'mosaik.tex', 'mosaik Documentation',
-     'Stefan Scherfke', 'manual'),
+     'Mosaik Development Team', 'manual'),
 ]
+
+# Build with XeLaTeX to use unicode characters
+latex_engine = 'lualatex'
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
@@ -225,7 +228,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'mosaik', 'mosaik Documentation',
-     ['Stefan Scherfke'], 1)
+     ['Mosaik Development Team'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -239,7 +242,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'mosaik', 'mosaik Documentation',
-     'Stefan Scherfke', 'mosaik', 'One line description of project.',
+     'Mosaik Development Team', 'mosaik', 'One line description of project.',
      'Miscellaneous'),
 ]
 
