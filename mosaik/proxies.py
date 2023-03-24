@@ -15,14 +15,13 @@ from mosaik.exceptions import ScenarioError, SimulationError
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
-    from mosaik.scenario import Meta
+    from mosaik.scenario import Meta, SimId, OutputData, InputData
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
 API_VERSION = '%s.%s' % (API_MAJOR, API_MINOR)  # Current version of the API
 
 
-# TODO: Improve type annotations of the mosaik methods.
 class APIProxy(ABC):
     """
     This is a proxy for a mosaik simulator that provides asynchronous access to its
@@ -39,14 +38,13 @@ class APIProxy(ABC):
         self._old_api = False
         self._api_compliant = True
 
-    async def init(self, sid, *, time_resolution, **kwargs):
+    async def init(self, sid, *, time_resolution: float, **kwargs) -> None:
         if self._api_compliant:
             kwargs["time_resolution"] = time_resolution
 
-        meta = await self._send("init", (sid,), kwargs)
+        meta: Meta = await self._send("init", (sid,), kwargs)
         meta = deepcopy(meta)
 
-        # TODO: Move entire meta expansion and checking here
         if 'type' not in meta:
             self._old_api = True
 
@@ -64,7 +62,7 @@ class APIProxy(ABC):
             props.setdefault('any_inputs', False)
         self.meta = meta
 
-    def _check_model_and_meth_names(self, sid, meta):
+    def _check_model_and_meth_names(self, sid: SimId, meta: Meta) -> None:
         """
         Check if there are any overlaps in model names and reserved API
         methods as well as in them and extra API methods.
@@ -88,21 +86,26 @@ class APIProxy(ABC):
                 f'{", ".join(illegal_meths)}'
             )
 
-    async def create(self, num, model, **kwargs):
+    async def create(self, num: int, model: str, **kwargs):
         return await self._send("create", (num, model), kwargs)
 
-    async def setup_done(self):
+    async def setup_done(self) -> None:
         # setup_done() was added in API version 2.2
         if self.meta['api_version'] >= (2, 2):
             return await self._send("setup_done", (), {})
 
-    async def step(self, time, inputs, max_advance):
+    async def step(
+        self,
+        time: int,
+        inputs: InputData,
+        max_advance: int
+    ) -> Optional[int]:
         if self._api_compliant and not self._old_api:
             return await self._send("step", (time, inputs, max_advance), {})
         else:
             return await self._send("step", (time, inputs), {})
 
-    async def get_data(self, outputs):
+    async def get_data(self, outputs) -> OutputData:
         return await self._send("get_data", (outputs,), {})
 
     @abstractmethod
@@ -114,7 +117,6 @@ class APIProxy(ABC):
         raise NotImplementedError()
 
 
-# TODO: Consider overwriting each method individually for performance?
 class LocalProxy(APIProxy):
     """
     Proxy for a local simulator. This mainly wraps each mosaik method in a coroutine.
@@ -150,12 +152,15 @@ class LocalProxy(APIProxy):
     async def stop(self):
         return await self._send("finalize", (), {})
 
+
 REQUEST = 0
 SUCCESS = 1
 FAILURE = 2
 
+
 class RemoteException(BaseException):
     pass
+
 
 class RemoteProxy(APIProxy):
     _reader: asyncio.StreamReader
@@ -210,7 +215,6 @@ class RemoteProxy(APIProxy):
             await self.stop()
 
     async def _send(self, func_name: str, args, kwargs):
-        logger.info(f"Sending {func_name}(*{args}, **{kwargs})")
         msg_id = next(self._outgoing_msg_counter)
         self._writer.write(encode([REQUEST, msg_id, [func_name, args, kwargs]]))
         await self._writer.drain()
@@ -286,11 +290,13 @@ def expand_meta(meta: Meta, sim_name: str):
             trigger = attrs
         trigger = set(trigger)
         non_trigger = set(model_meta.get('non-trigger', []))
-        if any(i in trigger for i in non_trigger):
+        overlap = trigger & non_trigger
+        if overlap:
             raise ScenarioError(
                 "Triggering and non-triggering attributes must not overlap, but "
-                f"actually do for model {model} of simulator {sim_name}."
-            )  # TODO: Add listing of overlapping attrs
+                f"the following are listed in both for model {model} of simulator "
+                f"{sim_name}: {', '.join(overlap)}."
+            )
         if trigger and non_trigger:
             if trigger.union(non_trigger) != attrs:
                 raise ScenarioError(

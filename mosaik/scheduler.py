@@ -3,7 +3,7 @@ This module is responsible for performing the simulation of a scenario.
 """
 from __future__ import annotations
 
-from heapq import heappush, heappop, heapreplace
+from heapq import heappush, heappop
 from loguru import logger
 import networkx as nx
 from time import perf_counter
@@ -81,6 +81,7 @@ async def sim_process(
     """
     Coroutine running the simulator *sim*.
     """
+    sim.started = True
     sim.rt_start = rt_start = perf_counter()
 
     try:
@@ -89,7 +90,7 @@ async def sim_process(
         while keep_running():
             warn_if_successors_terminated(world, sim)
             try:
-                await has_next_step(world, sim)
+                await wait_for_next_step(world, sim)
             except WakeUpException:
                 # We've been woken up by a terminating predecessor.
                 # Check if we can also stop or need to keep running.
@@ -134,10 +135,6 @@ async def sim_process(
         # process left which might provide data.
         for suc_sid in world.trigger_graph.successors(sim.sid):
             if not world.sims[suc_sid].sim_proc.done():
-                # TODO: There might be a more elegant way of doing this instead of
-                # setting has_next_step without actually providing a new step.
-                # (Currently, the missing step is checked for in the has_next_step
-                # coroutine and a WakeUpException is raised there.)
                 world.sims[suc_sid].has_next_step.set()
 
     except ConnectionError as e:
@@ -160,10 +157,16 @@ def get_keep_running_func(
     the condition for when to stop differs.
     """
     check_functions = []
-    no_set_events = not (rt_factor
-        and (sim.proxy.meta.get('set_events', False)
-             or any([world.sims[anc_sid].proxy.meta.get('set_events', False)
-                     for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)])))
+    no_set_events = not (
+        rt_factor
+        and (
+            sim.proxy.meta.get('set_events', False)
+            or any([
+                world.sims[anc_sid].proxy.meta.get('set_events', False)
+                for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)
+            ])
+        )
+    )
     if no_set_events:
         if world.trigger_graph.in_degree(sim.sid) == 0:
             def check_time():
@@ -174,7 +177,6 @@ def get_keep_running_func(
 
         check_functions.append(check_time)
 
-
     if sim.type != 'time-based':
         # If we are not self-stepped we can stop if all predecessors have
         # stopped and there's no step left.
@@ -182,15 +184,17 @@ def get_keep_running_func(
         # the total wall-clock time has passed.
         if not rt_factor:
             pre_processes = [
-                world.sims[pre_sid].sim_proc 
+                world.sims[pre_sid].sim_proc
                 for pre_sid in world.trigger_graph.predecessors(sim.sid)
             ]
 
             def check_trigger():
                 return sim.next_steps or not all(p.done() for p in pre_processes)
         else:
-            pre_sims = [world.sims[pre_sid] for pre_sid in
-                         nx.ancestors(world.trigger_graph, sim.sid)]
+            pre_sims = [
+                world.sims[pre_sid]
+                for pre_sid in nx.ancestors(world.trigger_graph, sim.sid)
+            ]
 
             def check_trigger():
                 return (sim.next_steps
@@ -211,15 +215,17 @@ def warn_if_successors_terminated(world: World, sim: SimRunner):
     else:
         should_warn = world.df_graph.out_degree(sim.sid) > 0
 
-    processes = [world.sims[suc_sid].sim_proc 
-                 for suc_sid in sim.successors]
+    processes = [
+        world.sims[suc_sid].sim_proc
+        for suc_sid in sim.successors
+    ]
 
     if should_warn and all(process.done() for process in processes):
         logger.warning(f"Simulator {sim.sid}'s output is not used anymore put it "
                        f"is still running.")
 
 
-async def has_next_step(world: World, sim: SimRunner):
+async def wait_for_next_step(world: World, sim: SimRunner) -> None:
     """
     This coroutine checks and potentially waits for this simulator's next step.
 
@@ -230,16 +236,13 @@ async def has_next_step(world: World, sim: SimRunner):
     if sim.next_steps:
         sim.has_next_step.set()
         sim.tqdm.set_postfix_str('no step')
-        # TODO: I think this returns immediately. It might be better to find a way to
-        # return control to the event loop so that other simulators can get some
-        # progress in.
         await sim.has_next_step.wait()
     else:
         try:
             if world.rt_factor:
                 rt_passed = perf_counter() - sim.rt_start
                 timeout = max(
-                    (world.rt_factor * world.until) - rt_passed, 
+                    (world.rt_factor * world.until) - rt_passed,
                     0.1 * world.rt_factor
                 )
                 sim.tqdm.set_postfix_str('no step')
@@ -267,7 +270,7 @@ async def rt_sleep(
     rt_start: float,
     sim: SimRunner,
     world: World
-):
+) -> None:
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
@@ -283,7 +286,7 @@ async def wait_for_dependencies(
     world: World,
     sim: SimRunner,
     lazy_stepping: bool
-):
+) -> None:
     """
     Wait until all simulators that can provide input for this simulator have run for
     this step.
@@ -438,9 +441,10 @@ async def step(
     """
     current_step = heappop(sim.next_steps)
     if current_step < sim.progress - 1:
-        raise SimulationError(f'Simulator {sim.sid} is trying to perform a step'
-                              f'at time {current_step}, but it has already progressed to'
-                              f'time {sim.progress}.')
+        raise SimulationError(
+            f'Simulator {sim.sid} is trying to perform a step at time {current_step}, '
+            f'but it has already progressed to time {sim.progress}.'
+        )
     sim.last_step = current_step
 
     sim.tqdm.set_postfix_str('stepping')
@@ -472,7 +476,6 @@ async def step(
             return max_advance + 1
 
 
-
 def rt_check(
     rt_factor: Optional[float],
     rt_start: float,
@@ -487,12 +490,16 @@ def rt_check(
         delta = rt_passed - (rt_factor * sim.last_step)
         if delta > 0:
             if rt_strict:
-                raise RuntimeError('Simulation too slow for real-time factor '
-                                   '%s' % rt_factor)
+                raise RuntimeError(
+                    f'Simulation too slow for real-time factor {rt_factor}'
+                )
             else:
-                logger.warning('Simulation too slow for real-time factor '
-                               '{rt_factor} - {delta}s behind time.'
-                               , rt_factor=rt_factor, delta=delta)
+                logger.warning(
+                    'Simulation too slow for real-time factor {rt_factor} - {delta}s '
+                    'behind time.',
+                    rt_factor=rt_factor,
+                    delta=delta
+                )
 
 
 async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
@@ -514,7 +521,7 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
                 world._df_cache[i][sim.sid] = data
             sim.output_time = sim.last_step
         else:
-            output_time: int 
+            output_time: int
             output_time = sim.output_time = data.get('time', sim.last_step)  # type: ignore
             if sim.last_step > output_time:
                 raise SimulationError(
@@ -576,7 +583,7 @@ def treat_cycling_output(
     return progress
 
 
-def notify_dependencies(world: World, sim: SimRunner, progress: int):
+def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
     """
     Notify all simulators waiting for us.
     """
@@ -587,7 +594,7 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int):
         if not edge['wait_event'].is_set():
             weak_or_shifted = edge['time_shifted'] or edge['weak']
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
-                edge.pop('wait_event').succeed()
+                edge['wait_event'].set()
         for eid, attr in edge['trigger']:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
@@ -636,16 +643,17 @@ def check_and_resolve_deadlocks(
     sim: SimRunner,
     waiting: bool = False,
     end: bool = False
-):
+) -> None:
     """
     Checks for deadlocks which can occur when all simulators are either waiting
     for a next step or for dependencies, or have finished already.
     """
     waiting_sims = [] if not waiting else [sim]
     for isim in sim.related_sims:
-        if not isim.has_next_step:
-            # isim hasn't executed `has_next_step` yet and will perform
-            # a deadlock check again if necessary.
+        if not isim.started:
+            # isim hasn't done anything yet. If there are deadlocks
+            # during start-up, we will notice this during the last
+            # simulators first call to check_and_resolve_deadlocks.
             break
         elif isim.sim_proc.done() or not isim.has_next_step.is_set():
             # isim has finished already or has no next step
@@ -679,7 +687,7 @@ def check_and_resolve_deadlocks(
                 edge['wait_lazy'].set()
 
 
-def clear_wait_events(sim: SimRunner):
+def clear_wait_events(sim: SimRunner) -> None:
     """
     Clear/succeed all wait events *sim* is waiting for.
     """
@@ -693,7 +701,7 @@ def clear_wait_events(sim: SimRunner):
                 edge[wait_type].set()
 
 
-def clear_wait_events_dependencies(sim: SimRunner):
+def clear_wait_events_dependencies(sim: SimRunner) -> None:
     """
     Clear/succeed all wait events over which other simulators are waiting for
     *sim*.

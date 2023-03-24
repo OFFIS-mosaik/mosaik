@@ -184,7 +184,7 @@ async def test_has_next_step(world, next_steps_empty, monkeypatch):
 
     monkeypatch.setattr(scheduler, 'check_and_resolve_deadlocks', dummy_check)
 
-    stalled = await does_coroutine_stall(scheduler.has_next_step(world, sim))
+    stalled = await does_coroutine_stall(scheduler.wait_for_next_step(world, sim))
     assert stalled == next_steps_empty
     assert sim.has_next_step.is_set() == (not next_steps_empty)
 
@@ -210,7 +210,6 @@ async def test_wait_for_dependencies(world, weak, number_waiting):
     )
     assert len(test_sim.wait_events) == number_waiting
     assert stalled
-    #assert not all(e.is_set() for e in test_sim.wait_events)
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
@@ -228,7 +227,6 @@ def test_wait_for_dependencies_all_done(world):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 @pytest.mark.parametrize("progress,number_waiting", [(0, 1), (1, 0)])
-@pytest.mark.xfail
 async def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     """
     Shifted dependency has not/has stepped far enough. Waiting is/is not
@@ -246,7 +244,6 @@ async def test_wait_for_dependencies_shifted(world, progress, number_waiting):
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 @pytest.mark.parametrize("lazy_stepping", [True, False])
-@pytest.mark.xfail
 def test_wait_for_dependencies_lazy(world, lazy_stepping):
     """
     Test waiting for dependencies and triggering them.

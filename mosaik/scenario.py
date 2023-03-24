@@ -213,6 +213,12 @@ class World(object):
         else:
             self.loop = asyncio.new_event_loop()
 
+        # When simulators are started using `cmd`, they will connect
+        # back to mosaik using a TCP connection. Here we start the
+        # server that accepts these connections. Whenever an external
+        # simulator connects, the (reader, writer) pair is written to
+        # the incoming_connections_queue so that the function starting
+        # the simulator can .get() the connection information.
         self.incoming_connections_queue = asyncio.Queue()
         async def connected_cb(reader, writer):
             await self.incoming_connections_queue.put((reader, writer))
@@ -403,7 +409,7 @@ class World(object):
                 time_shifted=time_shifted,
                 weak=weak,
                 trigger=trigger,
-                pred_waiting=pred_waiting
+                pred_waiting=pred_waiting,
                 wait_event=wait_event,
                 wait_lazy=wait_lazy,
                 wait_async=wait_async,

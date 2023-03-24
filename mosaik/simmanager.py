@@ -34,6 +34,7 @@ from typing import (
     Set,
     Tuple,
     TYPE_CHECKING,
+    Union,
 )
 
 import mosaik_api
@@ -295,6 +296,7 @@ class SimRunner:
     rt_start: float
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
+    started: bool
 
     next_steps: List[int]
     """The scheduled next steps this simulator will take, organized as a heap.
@@ -369,9 +371,9 @@ class SimRunner:
         self._world = world
         self.proxy = proxy
 
-
         self.type = proxy.meta.get('type', 'time-based')
         # Simulation state
+        self.started = False
         self.last_step = -1
         if self.type != 'event-based':
             self.next_steps = [0]
@@ -423,14 +425,17 @@ class MosaikRemote:
     def sim(self):
         return self.world.sims[self.sid]
 
-    async def get_progress(self):
+    async def get_progress(self) -> float:
         """
         Return the current simulation progress from
         :attr:`~mosaik.scenario.World.sim_progress`.
         """
         return self.world.sim_progress
 
-    async def get_related_entities(self, entities=None):
+    async def get_related_entities(
+        self,
+        entities=None
+    ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
         Return information about the related entities of *entities*.
 
@@ -488,7 +493,7 @@ class MosaikRemote:
                 for eid in entities
             }
 
-    async def get_data(self, attrs):
+    async def get_data(self, attrs) -> Dict[str, Any]:
         """
         Return the data for the requested attributes *attrs*.
 
