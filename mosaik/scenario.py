@@ -22,6 +22,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Set,
     Tuple,
     TypedDict,
     Union,
@@ -177,6 +178,7 @@ class World(object):
     _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
     """Cache for faster dataflow. (Used if `cache=True` is set during World creation."""
     loop: asyncio.AbstractEventLoop
+    incoming_connections_queue: asyncio.Queue[Tuple[asyncio.StreamReader, asyncio.StreamWriter]]
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
 

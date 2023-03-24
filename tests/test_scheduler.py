@@ -1,5 +1,6 @@
 import asyncio
 from heapq import heappush
+from typing import Iterable
 
 from tqdm import tqdm
 from mosaik import exceptions, scenario, scheduler, simmanager
@@ -9,15 +10,12 @@ from mosaik.proxies import LocalProxy
 from tests.mocks.simulator_mock import SimulatorMock
 
 
-def single_step_coro(coro):
-    loop = asyncio.new_event_loop()
-    loop.create_task(coro)
-    loop.call_soon(loop.stop)
-    loop.run_forever()
-    loop.close()
-
-
 async def does_coroutine_stall(coro):
+    """
+    Executes the given coroutine until it first passes control back to
+    the event loop (or until it's done otherwise). Returns whether
+    control is ever passed back to the event loop.
+    """
     task = asyncio.create_task(coro)
     async def canceller():
         if not task.done():
@@ -189,10 +187,11 @@ async def test_has_next_step(world, next_steps_empty, monkeypatch):
     assert sim.has_next_step.is_set() == (not next_steps_empty)
 
 
-def count_all_and_unset_wait_events(sim):
-    all_events = len(sim.wait_events)
-    unset_events = sum(1 for e in sim.wait_events if not e.is_set())
-    return (all_events, unset_events)
+def any_unset(events: Iterable[asyncio.Event]) -> bool:
+    """
+    Returns whether any of the events of the given iterable is unset.
+    """
+    return any(not e.is_set() for e in events)
 
 
 @pytest.mark.asyncio
@@ -212,16 +211,20 @@ async def test_wait_for_dependencies(world, weak, number_waiting):
     assert stalled
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_wait_for_dependencies_all_done(world):
+async def test_wait_for_dependencies_all_done(world):
     """
     All dependencies already stepped far enough. No waiting required.
     """
     heappush(world.sims[2].next_steps, 0)
     for dep_sid in [0, 1]:
         world.sims[dep_sid].progress = 1
-    single_step_coro(scheduler.wait_for_dependencies(world, world.sims[2], True))
-    assert count_all_and_unset_wait_events(world.sims[2]) == (0, 0)
+    stalled = await does_coroutine_stall(
+        scheduler.wait_for_dependencies(world, world.sims[2], True)
+    )
+    assert not stalled
+    assert len(world.sims[2].wait_events) == 0
 
 
 @pytest.mark.asyncio
@@ -234,31 +237,36 @@ async def test_wait_for_dependencies_shifted(world, progress, number_waiting):
     """
     world.sims[5].progress = progress
     # Move this simulators first step to 1
-    world.sims[4].next_steps = [1]
-    stalled = await does_coroutine_stall(scheduler.wait_for_dependencies(world, world.sims[4], False))
-    all_events, unset_events = count_all_and_unset_wait_events(world.sims[4])
+    sim_under_test = world.sims[4]
+    sim_under_test.next_steps = [1]
+    stalled = await does_coroutine_stall(
+        scheduler.wait_for_dependencies(world, sim_under_test, False)
+    )
     assert stalled == bool(number_waiting)
-    assert all_events == number_waiting
-    assert bool(unset_events) == bool(number_waiting)
+    assert len(sim_under_test.wait_events) == number_waiting
+    assert any_unset(sim_under_test.wait_events) == bool(number_waiting)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 @pytest.mark.parametrize("lazy_stepping", [True, False])
-def test_wait_for_dependencies_lazy(world, lazy_stepping):
+async def test_wait_for_dependencies_lazy(world, lazy_stepping):
     """
     Test waiting for dependencies and triggering them.
     """
-    world.sims[1].next_steps = [1]
-    single_step_coro(scheduler.wait_for_dependencies(world, world.sims[1], lazy_stepping))
-    all_events, unset_events = count_all_and_unset_wait_events(world.sims[1])
-    assert all_events == (1 if lazy_stepping else 0)
-    assert bool(unset_events) == lazy_stepping
+    sim_under_test = world.sims[1]
+    sim_under_test.next_steps = [1]
+    stalled = await does_coroutine_stall(
+        scheduler.wait_for_dependencies(world, sim_under_test, lazy_stepping)
+    )
+    assert stalled == lazy_stepping
+    assert len(sim_under_test.wait_events) == (1 if lazy_stepping else 0)
+    assert any_unset(sim_under_test.wait_events) == lazy_stepping
     if lazy_stepping:
         assert 'wait_lazy' in world.df_graph[1][2]
-        single_step_coro(scheduler.wait_for_dependencies(world, world.sims[1], True))
-        all_events, unset_events = count_all_and_unset_wait_events(world.sims[1])
-        assert all_events == 1
-        assert bool(unset_events) == True
+        await does_coroutine_stall(scheduler.wait_for_dependencies(world, sim_under_test, True))
+        assert len(sim_under_test.wait_events) == 1
+        assert any_unset(sim_under_test.wait_events) == True
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
@@ -379,12 +387,13 @@ async def test_get_outputs_buffered(world):
 
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
 @pytest.mark.parametrize(
-    "count",
-    [0, pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))],
+    "too_many_iterations",
+    #[0, pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))],
+    [True, False],
 )
 def test_treat_cycling_output(
     world: scenario.World, 
-    count: int,
+    too_many_iterations: bool,
 ):
     """
     Tests if progress is adjusted when a triggering cycle could cause
@@ -400,13 +409,20 @@ def test_treat_cycling_output(
     world.cache_trigger_cycles()
 
     sim.trigger_cycles[0].time = 1
-    sim.trigger_cycles[0].count = count
+    if too_many_iterations:
+        sim.trigger_cycles[0].count = world.max_loop_iterations
+    else:
+        sim.trigger_cycles[0].count = 0
 
     sim.last_step = output_time = 1
     data = {"1": {"x": 1}}
-    assert (
-        scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
-    )
+    if too_many_iterations:
+        with pytest.raises(exceptions.SimulationError):
+            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2)
+    else:
+        assert (
+            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
+        )
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
