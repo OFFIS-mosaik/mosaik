@@ -11,7 +11,7 @@ from loguru import logger
 
 import mosaik_api
 from mosaik import _version
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import ScenarioError
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
@@ -158,7 +158,7 @@ SUCCESS = 1
 FAILURE = 2
 
 
-class RemoteException(BaseException):
+class RemoteException(Exception):
     pass
 
 
@@ -169,7 +169,8 @@ class RemoteProxy(APIProxy):
     _pending_requests: Dict[int, asyncio.Future]
     _outgoing_msg_counter: Iterator[int]
 
-    def __init__(self,
+    def __init__(
+        self,
         mosaik_remote: MosaikRemote,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
@@ -204,10 +205,10 @@ class RemoteProxy(APIProxy):
                     self._pending_requests.pop(msg_id).set_exception(
                         RemoteException(msg)
                     )
-        except asyncio.exceptions.IncompleteReadError as e:
+        except asyncio.IncompleteReadError as e:
             for request in self._pending_requests.values():
                 request.set_exception(e)
-        except BaseException as e:
+        except Exception as e:
             logger.error(
                 f"Something went wrong in _receive_forever, exception type {type(e)}: "
                 f"{e}"
@@ -231,14 +232,18 @@ class RemoteProxy(APIProxy):
         self._reader_task.cancel()
         # TODO: Maybe set some timeout?
 
+
 encoder = JSONEncoder()
+
 
 def encode(obj) -> bytes:
     # JSONEncoder encodes to string, then encode that string into bytes
     obj_bytes = encoder.encode(obj).encode()
     return len(obj_bytes).to_bytes(4, 'big') + obj_bytes
 
+
 decoder = JSONDecoder()
+
 
 async def decode(reader: asyncio.StreamReader) -> Tuple[int, int, Any]:
     msg_length_bytes = await reader.readexactly(4)

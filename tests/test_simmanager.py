@@ -605,17 +605,14 @@ def test_mosaik_remote(rpc, err):
                 return_exceptions=True,
             )
             assert greeter_exc == None
-            if err == None:
-                assert sim_exc == None
-            else:
-                assert isinstance(sim_exc, err)
-
-        world.loop.run_until_complete(run())
-        # env.process(greeter())
-        # if err is None:
-        #    env.run(env.process(simulator()))
-        # else:
-        #    pytest.raises(err, env.run, env.process(simulator()))
+            if sim_exc:
+                raise sim_exc
+            
+        if err:
+            with pytest.raises(err):
+                world.loop.run_until_complete(run())
+        else:
+            world.loop.run_until_complete(run())
 
     finally:
         world.server.close()

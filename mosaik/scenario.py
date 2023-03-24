@@ -20,19 +20,17 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Literal,
     Optional,
     Set,
     Tuple,
-    TypedDict,
     Union,
     TYPE_CHECKING,
 )
+from typing_extensions import Literal, TypedDict
 
 from mosaik import simmanager
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
-
 
 
 base_config = {
@@ -104,7 +102,7 @@ if TYPE_CHECKING:
     class ConnectModel(ModelOptionals):
         connect: str
         """The `host:port` address for this simulator."""
-    
+
     class CmdModel(ModelOptionals):
         cmd: str
         """The command to start this simulator. String %(python)s will be replaced
@@ -139,6 +137,7 @@ if TYPE_CHECKING:
         simulator."""
         cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
         dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+
 
 class World(object):
     """
@@ -201,9 +200,9 @@ class World(object):
             self.config.update(mosaik_config)
 
         self.time_resolution = time_resolution
-        """An optional global *time_resolution* (in seconds) for the scenario, 
+        """An optional global *time_resolution* (in seconds) for the scenario,
         which tells the simulators what the integer time step means in seconds.
-        Its default value is 1., meaning one integer step corresponds to one 
+        Its default value is 1., meaning one integer step corresponds to one
         second simulated time."""
 
         self.max_loop_iterations = max_loop_iterations
@@ -221,13 +220,16 @@ class World(object):
         # simulator connects, the (reader, writer) pair is written to
         # the incoming_connections_queue so that the function starting
         # the simulator can .get() the connection information.
-        self.incoming_connections_queue = asyncio.Queue()
+        async def setup_queue():
+            return asyncio.Queue()
+        self.incoming_connections_queue = self.loop.run_until_complete(setup_queue())
+
         async def connected_cb(reader, writer):
             await self.incoming_connections_queue.put((reader, writer))
 
         self.server = self.loop.run_until_complete(
             asyncio.start_server(
-                connected_cb, 
+                connected_cb,
                 self.config['addr'][0],
                 self.config['addr'][1],
             )
@@ -275,8 +277,11 @@ class World(object):
         """
         counter = self._sim_ids[sim_name]
         sim_id = '%s-%s' % (sim_name, next(counter))
-        logger.info('Starting "{sim_name}" as "{sim_id}" ...'
-                   , sim_name=sim_name, sim_id=sim_id)
+        logger.info(
+            'Starting "{sim_name}" as "{sim_id}" ...',
+            sim_name=sim_name,
+            sim_id=sim_id,
+        )
         sim = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
@@ -398,12 +403,15 @@ class World(object):
             edge['async_requests'] = edge['async_requests'] or async_requests
             edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
         except KeyError:
-            wait_event = asyncio.Event()
-            wait_event.set()
-            wait_lazy = asyncio.Event()
-            wait_lazy.set()
-            wait_async = asyncio.Event()
-            wait_async.set()
+            async def create_events():
+                wait_event = asyncio.Event()
+                wait_event.set()
+                wait_lazy = asyncio.Event()
+                wait_lazy.set()
+                wait_async = asyncio.Event()
+                wait_async.set()
+                return wait_event, wait_lazy, wait_async
+            wait_event, wait_lazy, wait_async = self.loop.run_until_complete(create_events())
             self.df_graph.add_edge(
                 src.sid,
                 dest.sid,
@@ -466,9 +474,10 @@ class World(object):
         """
         self.sims[sid].next_steps = [time]
 
-    def get_data(self,
+    def get_data(
+        self,
         entity_set: Iterable[Entity],
-        *attributes: Attr
+        *attributes: Attr,
     ) -> Dict[Entity, Dict[Attr, Any]]:
         """
         Get and return the values of all *attributes* for each entity of an
@@ -597,8 +606,10 @@ class World(object):
             bar_format=(
                 None
                 if print_progress != 'individual'
-                else "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}" %
+                else (
+                    "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}" %
                     (" " * (max_sim_id_len - 11), "  " * until_len)
+                )
             ),
             unit='steps',
         )
@@ -606,8 +617,10 @@ class World(object):
             sim.tqdm = tqdm(
                 total=until,
                 desc=sid,
-                bar_format="{desc:>%i} |{bar}| {n_fmt:>%i}/{total_fmt}{postfix:10}" %
-                    (max_sim_id_len, until_len),
+                bar_format=(
+                    "{desc:>%i} |{bar}| {n_fmt:>%i}/{total_fmt}{postfix:10}" %
+                    (max_sim_id_len, until_len)
+                ),
                 leave=False,
                 disable=print_progress != 'individual',
             )
@@ -645,8 +658,8 @@ class World(object):
             self._detect_too_many_weak_connections(cycle, sim_pairs)
 
     def _detect_missing_loop_breakers(
-        self, 
-        cycle: List[SimId], 
+        self,
+        cycle: List[SimId],
         sim_pairs: List[Tuple[SimId, SimId]],
     ):
         """
@@ -666,8 +679,9 @@ class World(object):
                 '"time-shifted" or "weak" for resolution.'
             )
 
-    def _detect_too_many_weak_connections(self, 
-        cycle: List[SimId], 
+    def _detect_too_many_weak_connections(
+        self,
+        cycle: List[SimId],
         sim_pairs: List[Tuple[SimId, SimId]],
     ):
         """
@@ -735,7 +749,7 @@ class World(object):
         cycle_edges = [
             self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
         ]
-        return successor_sid, cycle_edges # type: ignore
+        return successor_sid, cycle_edges  # type: ignore
 
     def _get_in_out_edges(
         self,
@@ -751,7 +765,7 @@ class World(object):
 
     def cache_dependencies(self):
         """
-        Loops through all simulations and adds predecessors and successors to the 
+        Loops through all simulations and adds predecessors and successors to the
         simulations.
         """
         for sid, sim in self.sims.items():
@@ -836,7 +850,8 @@ class World(object):
         self.server.close()
         self.loop.close()
 
-    def _check_attributes(self,
+    def _check_attributes(
+        self,
         src: Entity,
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
@@ -856,7 +871,8 @@ class World(object):
                 attr_errors.append((dest, dest_attr))
         return attr_errors
 
-    def _check_attributes_values(self,
+    def _check_attributes_values(
+        self,
         src: Entity,
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
@@ -883,7 +899,8 @@ class World(object):
                     'simulation!'
                 )
 
-    def _classify_connections_with_cache(self,
+    def _classify_connections_with_cache(
+        self,
         src: Entity,
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
@@ -925,7 +942,8 @@ class World(object):
         return (any_trigger, tuple(cached), tuple(time_buffered),
                 tuple(memorized), tuple(persistent))
 
-    def _classify_connections_without_cache(self,
+    def _classify_connections_without_cache(
+        self,
         src: Entity,
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
@@ -1043,8 +1061,8 @@ class ModelMock(object):
             self._sim.proxy.create(num, self._name, **model_params)
         )
         assert len(entities) == num, (
-                '%d entities were requested but %d were created.' %
-                (num, len(entities)))
+            f'{num} entities were requested but {len(entities)} were created.'
+        )
 
         return self._make_entities(entities, assert_type=self._name)
 
@@ -1089,12 +1107,14 @@ class ModelMock(object):
         """
         if assert_type is not None:
             assert e['type'] == assert_type, (
-                    'Entity "%s" has the wrong type: "%s"; "%s" required.' %
-                    (e['eid'], e['type'], assert_type))
+                f'Entity "{e["eid"]}" has the wrong type: "{e["type"]}"; '
+                f'"{assert_type}" required.'
+            )
         else:
             assert e['type'] in self._sim.proxy.meta['models'], (
-                    'Type "%s" of entity "%s" not found in sim\'s meta data.' %
-                    (e['type'], e['eid']))
+                f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
+                'data.'
+            )
 
 
 class Entity(object):

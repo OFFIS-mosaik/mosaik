@@ -28,7 +28,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Literal,
     Optional,
     OrderedDict,
     Set,
@@ -36,6 +35,7 @@ from typing import (
     TYPE_CHECKING,
     Union,
 )
+from typing_extensions import Literal
 
 import mosaik_api
 
@@ -48,7 +48,6 @@ if TYPE_CHECKING:
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
-EARLIER_STEP = 'Earlier step'
 
 async def start(
     world: World,
@@ -215,7 +214,7 @@ async def start_proc(
         'env': env,  # pass the new env dict to the sub process
     }
     try:
-        proc = subprocess.Popen(cmd, **kwargs)
+        subprocess.Popen(cmd, **kwargs)
     except (FileNotFoundError, NotADirectoryError) as e:
         # This distinction has to be made due to a change in python 3.8.0.
         # It might become unecessary for future releases supporting
@@ -237,6 +236,7 @@ async def start_proc(
         raise SimulationError(
             f'Simulator "{sim_name}" did not connect to mosaik in time.'
         )
+
 
 async def start_connect(
     world: World,
@@ -271,7 +271,6 @@ async def start_connect(
             f'"{sim_config["connect"]}"'
         )
     return RemoteProxy(mosaik_remote, reader, writer)
-
 
 
 class SimRunner:
@@ -353,7 +352,7 @@ class SimRunner:
     related_sims: Iterable[SimRunner]
     """Simulators related to this simulator. (Currently all other simulators.)"""
     sim_proc: asyncio.Task
-    """The SimPy process for this simulator."""
+    """The asyncio.Task for this simulator."""
     wait_events: List[asyncio.Event]
     """The event (usually an AllOf event) this simulator is waiting for."""
     trigger_cycles: List[TriggerCycle]
@@ -404,7 +403,7 @@ class SimRunner:
         hq.heappush(self.next_steps, time)
         self.has_next_step.set()
         if is_earlier and self.interruptable:
-            self.sim_proc.cancel(EARLIER_STEP)
+            self.sim_proc.cancel()
 
     async def stop(self):
         """
@@ -505,7 +504,7 @@ class MosaikRemote:
         respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
-        assert self.sim.is_in_step        
+        assert self.sim.is_in_step
         cache_slice = (
             self.world._df_cache[self.sim.last_step]
             if self.world._df_cache is not None
@@ -666,6 +665,7 @@ class TimedInputBuffer:
 
     def __bool__(self):
         return bool(len(self.input_queue))
+
 
 @dataclass
 class TriggerCycle:

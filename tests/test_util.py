@@ -1,8 +1,6 @@
 import collections
 import pytest
 import random
-from typing import Any, Generator
-import simpy.events
 
 from mosaik import util
 

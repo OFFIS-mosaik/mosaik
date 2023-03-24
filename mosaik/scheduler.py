@@ -10,7 +10,7 @@ from time import perf_counter
 import asyncio
 
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
-from mosaik.simmanager import FULL_ID, SimRunner, EARLIER_STEP
+from mosaik.simmanager import FULL_ID, SimRunner
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -105,12 +105,9 @@ async def sim_process(
                     sim.tqdm.set_postfix_str('waiting')
                     await wait_for_dependencies(world, sim, lazy_stepping)
                     break
-                except asyncio.CancelledError as e:
-                    # The __context__ incantation is necessary because the original
-                    # CancelledError is burried, for some reason.
-                    while len(e.args) == 0:
-                        e = e.__context__
-                    assert e.args[0] == EARLIER_STEP
+                except asyncio.CancelledError:
+                    # We use cancellation as an interrupt.
+                    # TODO: Find a better way to do this.
                     clear_wait_events(sim)
                     continue
             sim.interruptable = False
@@ -454,13 +451,15 @@ async def step(
 
     if next_step is not None:
         if type(next_step) != int:
-            raise SimulationError('next_step must be of type int, but is "%s" '
-                                  'for simulator "%s"' % (
-                                                    type(next_step), sim.sid))
+            raise SimulationError(
+                f'next_step must be of type int, but is "{type(next_step)}" for '
+                f'simulator "{sim.sid}"'
+            )
         if next_step <= sim.last_step:
-            raise SimulationError('next_step must be > last_step, but %s <= %s'
-                                  ' for simulator "%s"' %
-                                  (next_step, sim.last_step, sim.sid))
+            raise SimulationError(
+                f'next_step must be > last_step, but {next_step} <= {sim.last_step} '
+                f'for simulator "{sim.sid}"'
+            )
 
         if next_step not in sim.next_steps and next_step < world.until:
             heappush(sim.next_steps, next_step)
