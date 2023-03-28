@@ -238,7 +238,7 @@ connection between simulators in more detail:
    :align: center
    :alt: connect simulators
 
-   Illustration of the connection between time-based and event-based simulator.
+   Illustration of the connection between time-based, hybrid and event-based simulator.
    The persistent output of *C* is the non-triggered input of *A*,
    and the non-persistent output of *T* is the triggered input of *S*.
    If the dataflow between both simulator is cyclic,
