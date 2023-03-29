@@ -19,11 +19,29 @@ stages:
  - release
  - Trigger-cross-projects 
 
-unit_tests:
+unit_tests_3_7_8_9:
     image: fkrull/multi-python
     stage: tests
     script:
-      - tox
+      - tox -e py37,py38,py39
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
+    needs: []
+
+unit_test_3_10:
+    image: python:3.10
+    stage: tests
+    script:
+      - tox -e py310
+    rules:
+      - if: '$CI_COMMIT_TAG == null'
+    needs: []
+
+unit_test_3_11:
+    image: python:3.11
+    stage: tests
+    script:
+      - tox -e py311
     rules:
       - if: '$CI_COMMIT_TAG == null'
     needs: []
