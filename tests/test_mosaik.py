@@ -99,6 +99,22 @@ def test_call_extra_methods(sim_config):
     assert ret == 23
 
 
+@pytest.mark.parametrize('sim_config', [sim_config['generic'], sim_config['generic_remote']])
+def test_call_two_extra_methods(sim_config):
+    world = scenario.World(sim_config)
+    try:
+        model_a = world.start('A')
+        ret_a1 = model_a.method_a(arg=23)
+        ret_a2 = model_a.method_a(882)
+        ret_b = model_a.method_b(val=42)
+    finally:
+        world.shutdown()
+
+    assert ret_a1 == "method_a(23)"
+    assert ret_a2 == "method_a(882)"
+    assert ret_b == "method_b(42)"
+
+
 def test_rt_sim():
     fixture = importlib.import_module('tests.scenarios.single_self_stepping')
     world = scenario.World(sim_config['local'])

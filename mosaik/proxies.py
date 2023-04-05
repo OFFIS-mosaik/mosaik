@@ -51,9 +51,7 @@ class APIProxy(ABC):
         meta.setdefault("extra_methods", [])
         self._check_model_and_meth_names(sid, meta)
         for method_name in meta["extra_methods"]:
-            async def f(*args, **kwargs):
-                return await self._send(method_name, args, kwargs)
-            setattr(self, method_name, f)
+            self._add_extra_method(method_name)
 
         meta['api_version'] = validate_api_version(meta['api_version'])
         type_check(meta, sid, sid)
@@ -61,6 +59,11 @@ class APIProxy(ABC):
         for props in meta['models'].values():
             props.setdefault('any_inputs', False)
         self.meta = meta
+    
+    def _add_extra_method(self, method_name):
+        async def f(*args, **kwargs):
+            return await self._send(method_name, args, kwargs)
+        setattr(self, method_name, f)
 
     def _check_model_and_meth_names(self, sid: SimId, meta: Meta) -> None:
         """

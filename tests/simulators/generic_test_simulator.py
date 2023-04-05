@@ -41,6 +41,10 @@ sim_meta = {
             'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
+    'extra_methods': [
+        'method_a',
+        'method_b',
+    ]
 }
 
 
@@ -125,6 +129,12 @@ class TestSim(mosaik_api.Simulator):
     def setup_done(self):
         if self.event_setter_wait:
             self.event_setter_wait.succeed()
+
+    def method_a(self, arg):
+        return f"method_a({arg})"
+    
+    def method_b(self, val):
+        return f"method_b({val})"
 
     def event_setter(self, env):
         last_time = 0
