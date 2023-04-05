@@ -253,11 +253,12 @@ async def wait_for_next_step(world: World, sim: SimRunner) -> None:
                 check_and_resolve_deadlocks(sim)
                 sim.tqdm.set_postfix_str('no step')
                 await sim.has_next_step.wait()
-                # If has_next_step is triggered but there is still no new step, this
-                # means that a predecessor has terminated. We return control to
-                # sim_process so that it can check whether we can terminate as well.
-                if not sim.next_steps:
-                    raise WakeUpException
+
+            # If has_next_step is triggered but there is still no new step, this
+            # means that a predecessor has terminated. We return control to
+            # sim_process so that it can check whether we can terminate as well.
+            if not sim.next_steps:
+                raise WakeUpException
         except NoStepException:
             raise NoStepException
 
