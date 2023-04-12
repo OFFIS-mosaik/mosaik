@@ -64,7 +64,7 @@ def test_run(monkeypatch):
     world.df_graph.add_nodes_from([0, 1])
     world.trigger_graph.add_node('dummy')
 
-    def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
+    def dummy_proc(world, sim):
         sim.proc_started = True
         yield world.env.event().succeed()
 
@@ -98,10 +98,10 @@ def test_run(monkeypatch):
             assert sim.proc_started
 
 
-def test_run_illegal_rt_factor():
-    class DummyWorld:
-        until = None
-    pytest.raises(ValueError, next, scheduler.run(DummyWorld(), 10, -1))
+@pytest.mark.parametrize('world', ['time-based'], indirect=True)
+def test_run_illegal_rt_factor(world):
+    with pytest.raises(ValueError):
+        world.run(until=10, rt_factor=-1)
 
 
 def test_sim_process():
@@ -115,15 +115,14 @@ def test_sim_process_error(monkeypatch):
     class Sim:
         sid = 'spam'
 
-    def get_keep_running_func(world, sim, until, rt_factor, rt_start):
+    def get_keep_running_func(world, sim, rt_start):
         raise ConnectionError(1337, 'noob')
 
     monkeypatch.setattr(scheduler, 'get_keep_running_func',
                         get_keep_running_func)
 
-    excinfo = pytest.raises(exceptions.SimulationError, next,
-                            scheduler.sim_process(None, Sim(), None, 1, False,
-                                                  False))
+    with pytest.raises(exceptions.SimulationError) as excinfo:
+        next(scheduler.sim_process(None, Sim()))
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
 

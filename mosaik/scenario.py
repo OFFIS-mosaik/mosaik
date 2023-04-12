@@ -499,8 +499,10 @@ class World(object):
     def run(
         self,
         until: int,
+        *,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
+        rt_eps: float = 0.001,
         print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
     ):
@@ -538,6 +540,17 @@ class World(object):
         if self.srv_sock is None:
             raise RuntimeError('Simulation has already been run and can only '
                                'be run once for a World instance.')
+
+        self.until = until
+        if rt_factor is not None:
+            if rt_factor <= 0:
+                raise ValueError(f'"rt_factor" is {rt_factor} but must be > 0')
+            self.rt_factor = rt_factor * self.time_resolution
+            self.rt_strict = rt_strict
+            self.rt_eps = rt_eps
+        else:
+            self.rt_factor = None
+        self.lazy_stepping = lazy_stepping
 
         # Check if a simulator is not connected to anything:
         for sid, deg in sorted(list(networkx.degree(self.df_graph))):
@@ -586,9 +599,7 @@ class World(object):
             dbg.enable()
         success = False
         try:
-            util.sync_process(scheduler.run(self, until, rt_factor, rt_strict,
-                                            lazy_stepping),
-                              self)
+            util.sync_process(scheduler.run(self), self)
             success = True
         except KeyboardInterrupt:
             logger.info('Simulation canceled. Terminating ...')

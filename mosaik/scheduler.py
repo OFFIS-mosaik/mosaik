@@ -24,10 +24,6 @@ SENTINEL = object()
 
 def run(
     world: World,
-    until: int,
-    rt_factor: Optional[float] = None,
-    rt_strict: bool = False,
-    lazy_stepping: bool = True,
 ) -> Iterator[Event]:
     """
     Run the simulation for a :class:`~mosaik.scenario.World` until
@@ -38,15 +34,6 @@ def run(
     See :meth:`mosaik.scenario.World.run()` for a detailed description of the
     *rt_factor* and *rt_strict* arguments.
     """
-    world.until = until
-
-    if rt_factor is not None and rt_factor <= 0:
-        raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
-    if rt_factor is not None:
-        # Adjust rt_factor to the time_resolution:
-        rt_factor *= world.time_resolution
-    world.rt_factor = rt_factor
-
     env = world.env
 
     setup_done_events = []
@@ -60,8 +47,7 @@ def run(
 
     processes = []
     for sim in world.sims.values():
-        process = env.process(sim_process(world, sim, until, rt_factor,
-                                          rt_strict, lazy_stepping))
+        process = env.process(sim_process(world, sim))
         sim.sim_proc = process
         processes.append(process)
 
@@ -71,10 +57,6 @@ def run(
 def sim_process(
     world: World,
     sim: SimProxy,
-    until: int,
-    rt_factor: Optional[float],
-    rt_strict: bool,
-    lazy_stepping: bool,
 ) -> Iterator[Event]:
     """
     SimPy simulation process for a certain simulator *sim*.
@@ -82,8 +64,7 @@ def sim_process(
     sim.rt_start = rt_start = perf_counter()
 
     try:
-        keep_running = get_keep_running_func(world, sim, until, rt_factor,
-                                             rt_start)
+        keep_running = get_keep_running_func(world, sim, rt_start)
         while keep_running():
             warn_if_successors_terminated(world, sim)
             try:
@@ -98,9 +79,9 @@ def sim_process(
             sim.interruptable = True
             while True:
                 try:
-                    yield from rt_sleep(rt_factor, rt_start, sim, world)
+                    yield from rt_sleep(world, sim, rt_start)
                     sim.tqdm.set_postfix_str('waiting')
-                    yield wait_for_dependencies(world, sim, lazy_stepping)
+                    yield wait_for_dependencies(world, sim, world.lazy_stepping)
                     break
                 except Interrupt as i:
                     assert i.cause == EARLIER_STEP
@@ -110,17 +91,17 @@ def sim_process(
             if sim.next_steps[0] >= world.until:
                 break
             input_data = get_input_data(world, sim)
-            max_advance = get_max_advance(world, sim, until)
+            max_advance = get_max_advance(world, sim, world.until)
             progress = yield from step(world, sim, input_data, max_advance)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
+            rt_check(world, sim, rt_start)
             progress = yield from get_outputs(world, sim, progress)
             notify_dependencies(world, sim, progress)
             if world._df_cache:
                 prune_dataflow_cache(world)
-            world.sim_progress = get_progress(world.sims, until)
-            world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+            world.sim_progress = get_progress(world.sims, world.until)
+            world.tqdm.update(get_avg_progress(world.sims, world.until) - world.tqdm.n)
             sim.tqdm.update(sim.progress + 1 - sim.tqdm.n)
-        sim.progress = until
+        sim.progress = world.until
         clear_wait_events_dependencies(sim)
         check_and_resolve_deadlocks(sim, end=True)
         # Before we stop, we wake up all dependencies who may be waiting for
@@ -140,9 +121,7 @@ def sim_process(
 def get_keep_running_func(
     world: World,
     sim: SimProxy,
-    until: int,
-    rt_factor: Optional[float],
-    rt_start: float
+    rt_start: float,
 ):
     """
     Return a function that the :func:`sim_process()` uses to determine
@@ -152,17 +131,17 @@ def get_keep_running_func(
     the condition for when to stop differs.
     """
     check_functions = []
-    no_set_events = not (rt_factor
+    no_set_events = not (world.rt_factor
         and (sim.meta.get('set_events', False)
              or any([world.sims[anc_sid].meta.get('set_events', False)
                      for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)])))
     if no_set_events:
         if world.trigger_graph.in_degree(sim.sid) == 0:
             def check_time():
-                return sim.progress < until
+                return sim.progress < world.until
         else:
             def check_time():
-                return sim.progress <= until
+                return sim.progress <= world.until
 
         check_functions.append(check_time)
 
@@ -172,7 +151,7 @@ def get_keep_running_func(
         # stopped and there's no step left.
         # Unless we are running in real-time mode, then we have to wait until
         # the total wall-clock time has passed.
-        if not rt_factor:
+        if not world.rt_factor:
             pre_procs = [world.sims[pre_sid].sim_proc for pre_sid in
                          world.trigger_graph.predecessors(sim.sid)]
 
@@ -186,7 +165,7 @@ def get_keep_running_func(
             def check_trigger():
                 return (sim.next_steps
                         or any(pre_sim.next_steps for pre_sim in pre_sims)
-                        or (perf_counter() - rt_start < rt_factor * until))
+                        or (perf_counter() - rt_start < world.rt_factor * world.until))
 
         check_functions.append(check_trigger)
 
@@ -244,17 +223,16 @@ def has_next_step(world: World, sim: SimProxy) -> Iterable[Event]:
 
 
 def rt_sleep(
-    rt_factor: Optional[float],
-    rt_start: float,
+    world: World,
     sim: SimProxy,
-    world: World
+    rt_start: float,
 ) -> Iterable[Event]:
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
-    if rt_factor:
+    if world.rt_factor:
         rt_passed = perf_counter() - rt_start
-        sleep = (rt_factor * sim.next_steps[0]) - rt_passed
+        sleep = (world.rt_factor * sim.next_steps[0]) - rt_passed
         if sleep > 0:
             sim.tqdm.set_postfix_str('sleeping')
             yield world.env.timeout(sleep)
@@ -458,27 +436,27 @@ def step(
             return max_advance + 1
 
 
-
 def rt_check(
-    rt_factor: Optional[float],
+    world: World,
+    sim: SimProxy,
     rt_start: float,
-    rt_strict: bool,
-    sim: SimProxy
 ):
     """
     Check if simulation is fast enough for a given real-time factor.
     """
-    if rt_factor:
+    if world.rt_factor:
         rt_passed = perf_counter() - rt_start
-        delta = rt_passed - (rt_factor * sim.last_step)
-        if delta > 0:
-            if rt_strict:
-                raise RuntimeError('Simulation too slow for real-time factor '
-                                   '%s' % rt_factor)
+        delta = rt_passed - (world.rt_factor * sim.last_step)
+        if delta > world.rt_eps:
+            if world.rt_strict:
+                raise RuntimeError(
+                    f'Simulation too slow for real-time factor {world.rt_factor}'
+                )
             else:
-                logger.warning('Simulation too slow for real-time factor '
-                               '{rt_factor} - {delta}s behind time.'
-                               , rt_factor=rt_factor, delta=delta)
+                logger.warning(
+                    f'Simulation too slow for real-time factor {world.rt_factor}: '
+                    f'it is {delta}s behind time.'
+                )
 
 
 def get_outputs(world: World, sim: SimProxy, progress: int) -> Generator[Any, OutputData, int]:

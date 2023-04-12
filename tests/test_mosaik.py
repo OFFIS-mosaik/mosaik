@@ -125,9 +125,9 @@ def test_rt_sim_too_slow(strict, caplog):
         factor = 0.00001
         if strict:
             pytest.raises(RuntimeError, world.run, until=fixture.UNTIL,
-                          rt_factor=factor, rt_strict=strict)
+                          rt_factor=factor, rt_strict=strict, rt_eps=0)
         else:
-            world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
+            world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict, rt_eps=0)
             assert 'too slow for real-time factor' in caplog.text
     finally:
         world.shutdown()
