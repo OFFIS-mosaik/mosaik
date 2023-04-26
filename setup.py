@@ -20,10 +20,9 @@ setup(
     install_requires=[
         'networkx>=2.5',
         'mosaik-api>=3.0.2',
-        'simpy>=3.0.10,<4.0.0',
-        'mosaik-simpy-io>=0.2.4',
         'loguru>=0.6.0',
         'tqdm>=4.64.1',
+        'typing-extensions>=4.5.0',
     ],
     packages=find_packages(exclude=['tests*']),
     include_package_data=True,
