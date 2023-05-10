@@ -4,18 +4,18 @@ from abc import ABC, abstractmethod
 import asyncio
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from itertools import count
-from json import JSONEncoder, JSONDecoder
 from typing import Any, Dict, Iterator, Optional, Tuple, TYPE_CHECKING, Union
 from loguru import logger
 
 import mosaik_api
+from mosaik_api.connection import Channel, EndOfRequests
+from mosaik_api.types import Meta, SimId, OutputData, InputData
+
 from mosaik import _version
 from mosaik.exceptions import ScenarioError
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
-    from mosaik.scenario import Meta, SimId, OutputData, InputData
 
 API_MAJOR = _version.VERSION_INFO[0]  # Current major version of the sim API
 API_MINOR = _version.VERSION_INFO[1]  # Current minor version of the sim API
@@ -59,7 +59,7 @@ class APIProxy(ABC):
         for props in meta['models'].values():
             props.setdefault('any_inputs', False)
         self.meta = meta
-    
+
     def _add_extra_method(self, method_name):
         async def f(*args, **kwargs):
             return await self._send(method_name, args, kwargs)
@@ -156,103 +156,54 @@ class LocalProxy(APIProxy):
         return await self._send("finalize", (), {})
 
 
-REQUEST = 0
-SUCCESS = 1
-FAILURE = 2
-
-
-class RemoteException(Exception):
-    pass
-
-
 class RemoteProxy(APIProxy):
-    _reader: asyncio.StreamReader
+    _channel: Channel
     _reader_task: asyncio.Task
-    _writer: asyncio.StreamWriter
     _pending_requests: Dict[int, asyncio.Future]
     _outgoing_msg_counter: Iterator[int]
 
     def __init__(
         self,
         mosaik_remote: MosaikRemote,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter,
+        channel: Channel,
     ):
         super().__init__(mosaik_remote)
-        self._reader = reader
-        self._writer = writer
-        self._pending_requests = {}
-        self._outgoing_msg_counter = count()
-
+        self._channel = channel
         self._reader_task = asyncio.get_running_loop().create_task(
-            self._receive_forever()
+            self._handle_remote_requests()
         )
 
-    async def _receive_forever(self):
+    async def _handle_remote_requests(self):
         try:
             while True:
-                msg_type, msg_id, msg = await decode(self._reader)
-                if msg_type == REQUEST:
-                    func_name, args, kwargs = msg
-                    func = getattr(self._mosaik_remote, func_name)
-                    try:
-                        result = await func(*args, **kwargs)
-                        self._writer.write(encode([SUCCESS, msg_id, result]))
-                        await self._writer.drain()
-                    except Exception as e:
-                        self._writer.write(encode([FAILURE, msg_id, str(e)]))
-                        await self._writer.drain()
-                elif msg_type == SUCCESS:
-                    self._pending_requests.pop(msg_id).set_result(msg)
-                elif msg_type == FAILURE:
-                    self._pending_requests.pop(msg_id).set_exception(
-                        RemoteException(msg)
-                    )
-        except asyncio.IncompleteReadError as e:
-            for request in self._pending_requests.values():
-                request.set_exception(e)
+                request = await self._channel.next_request()
+                func_name, args, kwargs = request.content
+                func = getattr(self._mosaik_remote, func_name)
+                try:
+                    result = await func(*args, **kwargs)
+                    await request.set_result(result)
+                except Exception as e:
+                    await request.set_exception(e)
+        except EndOfRequests:
+            pass
         except Exception as e:
             logger.error(
-                f"Something went wrong in _receive_forever, exception type {type(e)}: "
-                f"{e}"
+                f"Something went wrong in _handle_remote_requests, exception type "
+                f"{type(e)}: {e}"
             )
             await self.stop()
 
     async def _send(self, func_name: str, args, kwargs):
-        msg_id = next(self._outgoing_msg_counter)
-        self._writer.write(encode([REQUEST, msg_id, [func_name, args, kwargs]]))
-        await self._writer.drain()
-        result_future = asyncio.get_running_loop().create_future()
-        self._pending_requests[msg_id] = result_future
-        return await result_future
+        return await self._channel.send([func_name, args, kwargs])
 
     async def stop(self):
-        msg_id = next(self._outgoing_msg_counter)
-        self._writer.write(encode([REQUEST, msg_id, ["stop", [], {}]]))
-        await self._writer.drain()
-        self._writer.close()
-        await self._writer.wait_closed()
-        self._reader_task.cancel()
+        try:
+            await self._channel.send(["stop", [], {}])
+        except asyncio.IncompleteReadError:
+            pass
+        self._channel.close()
+        await self._reader_task
         # TODO: Maybe set some timeout?
-
-
-encoder = JSONEncoder()
-
-
-def encode(obj) -> bytes:
-    # JSONEncoder encodes to string, then encode that string into bytes
-    obj_bytes = encoder.encode(obj).encode()
-    return len(obj_bytes).to_bytes(4, 'big') + obj_bytes
-
-
-decoder = JSONDecoder()
-
-
-async def decode(reader: asyncio.StreamReader) -> Tuple[int, int, Any]:
-    msg_length_bytes = await reader.readexactly(4)
-    msg_length = int.from_bytes(msg_length_bytes, 'big')
-    msg_bytes = await reader.readexactly(msg_length)
-    return tuple(decoder.decode(msg_bytes.decode()))
 
 
 def validate_api_version(

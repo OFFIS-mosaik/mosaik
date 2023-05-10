@@ -4,13 +4,15 @@ import sys
 
 from example_sim.mosaik import ExampleSim
 from mosaik_api import __api_version__ as api_version
+import mosaik_api.connection
+from mosaik_api.connection import RemoteException
 
 from mosaik import scenario
 from mosaik import simmanager
 from mosaik import proxies
 from mosaik.exceptions import ScenarioError, SimulationError
 import mosaik
-from mosaik.proxies import APIProxy, LocalProxy, RemoteException
+from mosaik.proxies import APIProxy, LocalProxy
 
 sim_config = {
     "ExampleSimA": {
@@ -180,11 +182,11 @@ def test_start_connect(world: scenario.World):
     """
 
     async def mock_sim_server(reader, writer):
-        await read_message(reader)
-        writer.write(proxies.encode([1, 0, ExampleSim().meta]))
-        await writer.drain()
-        await read_message(reader)
-        writer.close()
+        channel = mosaik_api.connection.Channel(reader, writer)
+        request = await channel.next_request()
+        await request.set_result(ExampleSim().meta)
+        await channel.next_request()
+        channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "localhost", 5556)
@@ -233,11 +235,11 @@ def test_start_connect_stop_timeout(world):
     """
 
     async def mock_sim_server(reader, writer):
-        await read_message(reader)
-        writer.write(proxies.encode([1, 0, ExampleSim().meta]))
-        await writer.drain()
-        await read_message(reader)  # Wait for stop message
-        writer.close()
+        channel = mosaik_api.connection.Channel(reader, writer)
+        request = await channel.next_request()
+        await request.set_result(ExampleSim().meta)
+        await channel.next_request()  # Wait for stop message
+        channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
@@ -422,22 +424,22 @@ async def _rpc_request(reader, writer, func, *args, **kwargs):
         raise RemoteException(result)
 
 
-async def _rpc_get_progress(reader, writer, world):
+async def _rpc_get_progress(channel, world):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
-    progress = await _rpc_request(reader, writer, "get_progress")
+    progress = await channel.send(["get_progress", [], {}])
     assert progress == 23
 
 
-async def _rpc_get_related_entities(reader, writer, world):
+async def _rpc_get_related_entities(channel, world):
     """
     Helper for :func:`test_mosaik_remote()` that checks the
     "get_related_entities()" RPC.
     """
     # No param yields complete entity graph
-    entities = await _rpc_request(reader, writer, "get_related_entities")
+    entities = await channel.send(["get_related_entities", [], {}])
     for edge in entities["edges"]:
         edge[:2] = sorted(edge[:2])
     entities["edges"].sort()
@@ -457,16 +459,14 @@ async def _rpc_get_related_entities(reader, writer, world):
     }
 
     # Single string yields dict with related entities
-    entities = await _rpc_request(reader, writer, "get_related_entities", "X.0")
+    entities = await channel.send(["get_related_entities", ["X.0"], {}])
     assert entities == {
         "X.1": {"sim": "ExampleSim", "type": "A"},
         "X.2": {"sim": "ExampleSim", "type": "A"},
     }
 
     # List of strings yields dicts with related entities grouped by input ids
-    entities = await _rpc_request(
-        reader, writer, "get_related_entities", ["X.1", "X.2"]
-    )
+    entities = await channel.send(["get_related_entities", [["X.1", "X.2"]], {}])
     assert entities == {
         "X.1": {
             "X.0": {"sim": "ExampleSim", "type": "A"},
@@ -480,39 +480,39 @@ async def _rpc_get_related_entities(reader, writer, world):
     }
 
 
-async def _rpc_get_data(reader, writer, world):
+async def _rpc_get_data(channel, world):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
     RPC.
     """
-    data = await _rpc_request(reader, writer, "get_data", {"X.2": ["attr"]})
+    data = await channel.send(["get_data", [{"X.2": ["attr"]}], {}])
     assert data == {"X.2": {"attr": "val"}}
 
 
-async def _rpc_set_data(reader, writer, world):
+async def _rpc_set_data(channel, world):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"X.2": {"val": 23}}})
+    await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
     assert world.sims["X"].input_buffer == {
         "2": {"val": {"src": 23}},
     }
 
-    await _rpc_request(reader, writer, "set_data", {"src": {"X.2": {"val": 42}}})
+    await channel.send(["set_data", [{"src": {"X.2": {"val": 42}}}], {}])
     assert world.sims["X"].input_buffer == {
         "2": {"val": {"src": 42}},
     }
 
 
-async def _rpc_get_data_err1(reader, writer, world):
+async def _rpc_get_data_err1(channel, world):
     """
     Required simulator not connected to us.
     """
     try:
-        await _rpc_request(reader, writer, "get_data", {"Z.2": []})
-    except RemoteException as exception:
-        if _remote_exception_type(exception) == "mosaik.exceptions.ScenarioError":
+        await channel.send(["get_data", [{"Z.2": []}], {}])
+    except mosaik_api.connection.RemoteException as exception:
+        if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
 
@@ -523,29 +523,29 @@ def _remote_exception_type(exception):
     return remote_exception_type
 
 
-async def _rpc_get_data_err2(reader, writer, world):
+async def _rpc_get_data_err2(channel, world):
     """
     Async-requests flag not set for connection.
     """
     try:
-        await _rpc_request(reader, writer, "get_data", {"Y.2": []})
-    except RemoteException as exception:
-        if _remote_exception_type(exception) == "mosaik.exceptions.ScenarioError":
+        await channel.send(["get_data", [{"Y.2": []}], {}])
+    except mosaik_api.connection.RemoteException as exception:
+        if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
 
-async def _rpc_set_data_err1(reader, writer, world):
+async def _rpc_set_data_err1(channel, world):
     """
     Required simulator not connected to us.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"Z.2": {"val": 42}}})
+    await channel.send(["set_data", [{"src": {"Z.2": {"val": 42}}}], {}])
 
 
-async def _rpc_set_data_err2(reader, writer, world):
+async def _rpc_set_data_err2(channel, world):
     """
     Async-requests flag not set for connection.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"Y.2": {"val": 42}}})
+    await channel.send(["set_data", [{"src": {"Y.2": {"val": 42}}}], {}])
 
 
 @pytest.mark.parametrize(
@@ -582,16 +582,15 @@ def test_mosaik_remote(rpc, err):
 
         async def simulator():
             reader, writer = await asyncio.open_connection("localhost", 5555)
+            channel = mosaik_api.connection.Channel(reader, writer)
             try:
-                await rpc(reader, writer, world)
+                await rpc(channel, world)
             finally:
-                writer.close()
+                channel.close()
 
         async def greeter():
-            reader, writer = await world.incoming_connections_queue.get()
-            proxy = proxies.RemoteProxy(
-                simmanager.MosaikRemote(world, "X"), reader, writer
-            )
+            channel = await world.incoming_connections_queue.get()
+            proxy = proxies.RemoteProxy(simmanager.MosaikRemote(world, "X"), channel)
             proxy.meta = {"models": {}}
             sim = simmanager.SimRunner("X", "X", world, proxy)
             sim.last_step = 1
@@ -604,10 +603,10 @@ def test_mosaik_remote(rpc, err):
                 greeter(),
                 return_exceptions=True,
             )
-            assert greeter_exc == None
+            assert greeter_exc is None
             if sim_exc:
                 raise sim_exc
-            
+
         if err:
             with pytest.raises(err):
                 world.loop.run_until_complete(run())

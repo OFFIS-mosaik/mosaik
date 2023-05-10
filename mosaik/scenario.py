@@ -24,9 +24,11 @@ from typing import (
     Set,
     Tuple,
     Union,
-    TYPE_CHECKING,
 )
 from typing_extensions import Literal, TypedDict
+
+from mosaik_api.connection import Channel
+from mosaik_api.types import EntityId, Attr, SimId, FullId, ModelDescription
 
 from mosaik import simmanager
 from mosaik import scheduler
@@ -42,101 +44,56 @@ base_config = {
 FULL_ID = simmanager.FULL_ID
 
 
-if TYPE_CHECKING:
-    Attr = str
-    """An attribute name"""
-    SimId = str
-    """A simulator ID"""
-    EntityId = str
-    """An entity ID"""
-    FullId = str
-    """A full ID of the form "sim_id.entity_id" """
-    InputData = Dict[EntityId, Dict[Attr, Dict[FullId, Any]]]
-    """The format of input data for simulator's step methods."""
-    OutputData = Dict[EntityId, Dict[Attr, Any]]
-    """The format of output data as return by `get_data`"""
+class ModelOptionals(TypedDict, total=False):
+    env: Dict[str, str]
+    """The environment variables to set for this simulator."""
+    cwd: str
+    """The current working directory for this simulator."""
 
-    class ModelDescription(TypedDict):
-        """Description of a single model in `Meta`"""
-        public: bool
-        """Whether the model can be created directly."""
-        params: List[str]
-        """The parameters given during creating of this model."""
-        any_inputs: bool
-        """Whether this model accepts inputs other than those specified in `attrs`."""
-        attrs: List[Attr]
-        """The input and output attributes of this model."""
-        trigger: Iterable[Attr]
-        """The input attributes that trigger a step of the associated simulator.
 
-        (Non-trigger attributes are collected and supplied to the simulator when it
-        steps next.)"""
-        persistent: Iterable[Attr]
-        """The output attributes that are persistent."""
+class PythonModel(ModelOptionals):
+    python: str
+    """The Simulator subclass for this simulator, encoded as a string
+    `module_name:ClassName`."""
 
-    class Meta(TypedDict):
-        """The meta-data for a simulator."""
-        api_version: str
-        """The API version that this simulator supports in the format "major.minor"."""
-        old_api: bool
-        """Whether this simulator uses the old API (without the `max_advance` parameter
-        in `step`. Only used internally. Optional, if unset, treat as `false`."""
-        type: Literal['time-based', 'event-based', 'hybrid']
-        """The simulator's stepping type."""
-        models: Dict[str, ModelDescription]
-        """The descriptions of this simulator's models."""
-        extra_methods: List[str]
-        """The extra methods this simulator supports."""
 
-    class ModelOptionals(TypedDict, total=False):
-        env: Dict[str, str]
-        """The environment variables to set for this simulator."""
-        cwd: str
-        """The current working directory for this simulator."""
+class ConnectModel(ModelOptionals):
+    connect: str
+    """The `host:port` address for this simulator."""
 
-    class PythonModel(ModelOptionals):
-        python: str
-        """The Simulator subclass for this simulator, encoded as a string
-        `module_name:ClassName`."""
 
-    class ConnectModel(ModelOptionals):
-        connect: str
-        """The `host:port` address for this simulator."""
+class CmdModel(ModelOptionals):
+    cmd: str
+    """The command to start this simulator. String %(python)s will be replaced
+    by the python command used to start this scenario, %(addr)s will be replaced
+    by the `host:port` combination to which the simulator should connect."""
 
-    class CmdModel(ModelOptionals):
-        cmd: str
-        """The command to start this simulator. String %(python)s will be replaced
-        by the python command used to start this scenario, %(addr)s will be replaced
-        by the `host:port` combination to which the simulator should connect."""
 
-    SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
 
-    # The events can be unset. By splitting them into their own class, we
-    # can make them optional.
-    class DataflowEgdeOptionals(TypedDict):
-        wait_event: asyncio.Event
-        """Event on which destination simulator is waiting for its inputs."""
-        wait_lazy: asyncio.Event
-        """Event on which source simulator is waiting in case of lazy stepping."""
-        wait_async: asyncio.Event
-        """Event on which source simulator is waiting to support async requests."""
 
-    class DataflowEdge(DataflowEgdeOptionals):
-        """The information associated with an edge in the dataflow graph."""
-        async_requests: bool
-        """Whether there can be async requests along this edge."""
-        time_shifted: bool
-        """Whether dataflow along this edge is time shifted."""
-        weak: bool
-        """Whether this edge is weak (used for same-time loops)."""
-        trigger: Set[Tuple[EntityId, Attr]]
-        """Those pairs of entities and attributes of the source simulator that can
-        trigger a step of the destination simulator."""
-        pred_waiting: bool
-        """Whether the source simulator of this edge has to wait for the destination
-        simulator."""
-        cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-        dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+class DataflowEdge(TypedDict):
+    """The information associated with an edge in the dataflow graph."""
+    async_requests: bool
+    """Whether there can be async requests along this edge."""
+    time_shifted: bool
+    """Whether dataflow along this edge is time shifted."""
+    weak: bool
+    """Whether this edge is weak (used for same-time loops)."""
+    trigger: Set[Tuple[EntityId, Attr]]
+    """Those pairs of entities and attributes of the source simulator that can
+    trigger a step of the destination simulator."""
+    pred_waiting: bool
+    """Whether the source simulator of this edge has to wait for the destination
+    simulator."""
+    cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+    dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+    wait_event: asyncio.Event
+    """Event on which destination simulator is waiting for its inputs."""
+    wait_lazy: asyncio.Event
+    """Event on which source simulator is waiting in case of lazy stepping."""
+    wait_async: asyncio.Event
+    """Event on which source simulator is waiting to support async requests."""
 
 
 class World(object):
@@ -177,7 +134,7 @@ class World(object):
     _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
     """Cache for faster dataflow. (Used if `cache=True` is set during World creation."""
     loop: asyncio.AbstractEventLoop
-    incoming_connections_queue: asyncio.Queue[Tuple[asyncio.StreamReader, asyncio.StreamWriter]]
+    incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
 
@@ -217,15 +174,16 @@ class World(object):
         # When simulators are started using `cmd`, they will connect
         # back to mosaik using a TCP connection. Here we start the
         # server that accepts these connections. Whenever an external
-        # simulator connects, the (reader, writer) pair is written to
-        # the incoming_connections_queue so that the function starting
-        # the simulator can .get() the connection information.
+        # simulator connects, a Channel is created from the 
+        # (reader, writer) pair and written to the 
+        # incoming_connections_queue so that the function starting the
+        # simulator can .get() the connection information.
         async def setup_queue():
             return asyncio.Queue()
         self.incoming_connections_queue = self.loop.run_until_complete(setup_queue())
 
         async def connected_cb(reader, writer):
-            await self.incoming_connections_queue.put((reader, writer))
+            await self.incoming_connections_queue.put(Channel(reader, writer))
 
         self.server = self.loop.run_until_complete(
             asyncio.start_server(
@@ -411,7 +369,9 @@ class World(object):
                 wait_async = asyncio.Event()
                 wait_async.set()
                 return wait_event, wait_lazy, wait_async
-            wait_event, wait_lazy, wait_async = self.loop.run_until_complete(create_events())
+            wait_event, wait_lazy, wait_async = self.loop.run_until_complete(
+                create_events()
+            )
             self.df_graph.add_edge(
                 src.sid,
                 dest.sid,
@@ -885,13 +845,13 @@ class World(object):
         non_persistent = set(src.meta['attrs']).difference(src.meta['persistent'])
         non_trigger = set(dest.meta['attrs']).difference(dest.meta['trigger'])
         for src_attr, dest_attr in attr_pairs:
-            if (dest_attr in dest.meta['trigger']) and (src_attr in src.meta['persistent']):
+            if dest_attr in dest.meta['trigger'] and src_attr in src.meta['persistent']:
                 logger.warning(
                     f'A connection between the persistent attribute {src_attr} of '
                     f'{src.sid} and the trigger attribute {dest_attr} of {dest.sid} is '
                     f'not recommended. This might cause problems in the simulation!'
                 )
-            elif (dest_attr in non_trigger) and (src_attr in non_persistent):
+            elif dest_attr in non_trigger and src_attr in non_persistent:
                 logger.warning(
                     f'A connection between the non-persistent attribute {src_attr} of '
                     f'{src.sid} and the non-trigger attribute {dest_attr} of '
@@ -925,8 +885,13 @@ class World(object):
 
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
-            trigger = (dest_attr in dest.meta['trigger'] or (
-                dest.meta['any_inputs'] and dest.sim.proxy.meta['type'] == 'event-based'))
+            trigger = (
+                dest_attr in dest.meta['trigger']
+                or (
+                    dest.meta['any_inputs']
+                    and dest.sim.proxy.meta['type'] == 'event-based'
+                )
+            )
             if trigger:
                 any_trigger = True
 
@@ -962,8 +927,13 @@ class World(object):
         persistent = []
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
-            if (dest_attr in dest.meta['trigger'] or (
-                    dest.meta['any_inputs'] and dest.sim.proxy.meta['type'] == 'event-based')):
+            if (
+                dest_attr in dest.meta['trigger']
+                or (
+                    dest.meta['any_inputs']
+                    and dest.sim.proxy.meta['type'] == 'event-based'
+                )
+            ):
                 trigger = True
             is_persistent = src_attr in src.meta['persistent']
             if is_persistent:
@@ -1002,6 +972,7 @@ class ModelFactory():
             # wrappers.
             def get_wrapper(sim, meth_name):
                 meth = getattr(sim.proxy, meth_name)
+
                 def wrapper(*args, **kwargs):
                     return world.loop.run_until_complete(
                         meth(*args, **kwargs)

@@ -9,13 +9,15 @@ import networkx as nx
 from time import perf_counter
 import asyncio
 
+from mosaik_api.types import InputData, OutputData, SimId
+
 from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
 from mosaik.simmanager import FULL_ID, SimRunner
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Dict, List, Optional
-    from mosaik.scenario import World, InputData, OutputData, SimId
+    from mosaik.scenario import World
 
 
 SENTINEL = object()
@@ -48,7 +50,6 @@ async def run(
 
     setup_done_events: List[asyncio.Task] = []
     for sim in world.sims.values():
-        # setup_done() was added in API version 2.2:
         sim.tqdm.set_postfix_str('setup')
         # Send a setup_done event to all simulators
         setup_done_events.append(asyncio.create_task(sim.proxy.setup_done()))
@@ -615,6 +616,8 @@ def prune_dataflow_cache(world: World):
     """
     Prunes the dataflow cache.
     """
+    if not world._df_cache:
+        return
     min_cache_time = min(s.last_step for s in world.sims.values())
     for i in range(world._df_cache_min_time, min_cache_time):
         try:

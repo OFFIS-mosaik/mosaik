@@ -38,12 +38,15 @@ from typing import (
 from typing_extensions import Literal
 
 import mosaik_api
+from mosaik_api.connection import Channel
+from mosaik_api.types import Meta, OutputData, SimId
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import LocalProxy, APIProxy, RemoteProxy
 
 if TYPE_CHECKING:
-    from mosaik.scenario import Meta, OutputData, SimId, World, DataflowEdge
+    import tqdm
+    from mosaik.scenario import World, DataflowEdge
 
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
@@ -227,11 +230,11 @@ async def start_proc(
                             % (sim_name, eout)) from None
 
     try:
-        (reader, writer) = await asyncio.wait_for(
+        channel = await asyncio.wait_for(
             world.incoming_connections_queue.get(),
             world.config['start_timeout'],
         )
-        return RemoteProxy(mosaik_remote, reader, writer)
+        return RemoteProxy(mosaik_remote, channel)
     except asyncio.TimeoutError:
         raise SimulationError(
             f'Simulator "{sim_name}" did not connect to mosaik in time.'
@@ -270,7 +273,7 @@ async def start_connect(
             f'Simulator "{sim_name}" could not be started: Could not connect to '
             f'"{sim_config["connect"]}"'
         )
-    return RemoteProxy(mosaik_remote, reader, writer)
+    return RemoteProxy(mosaik_remote, Channel(reader, writer))
 
 
 class SimRunner:
@@ -357,6 +360,8 @@ class SimRunner:
     """The event (usually an AllOf event) this simulator is waiting for."""
     trigger_cycles: List[TriggerCycle]
     """Triggering cycles in a simulation"""
+
+    tqdm: tqdm.tqdm
 
     def __init__(
         self,
