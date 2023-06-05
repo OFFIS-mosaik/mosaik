@@ -10,22 +10,22 @@ You can use mosaik with Jupyter notebooks to have an interactive experience and 
 
 **Step 3 - Virtual Environment:** Create a virtual environment with the requirements installed. See the following screenshots for an example on how to create a virtual environment.
 
-.. image:: _static/tutorials/Jupyter.1-kernel.png
+.. image:: _static/tutorials/jupyter/1-kernel.png
    :width: 100%
    :align: center
    :alt: Choosing the kernel
 
-.. image:: _static/tutorials/Jupyter.2-venv.png
+.. image:: _static/tutorials/jupyter/2-venv.png
    :width: 100%
    :align: center
    :alt: Choosing to create a virtual environment
 
-.. image:: _static/tutorials/Jupyter.3-python.png
+.. image:: _static/tutorials/jupyter/3-python.png
    :width: 100%
    :align: center
    :alt: Choosing the Python interpreter
 
-.. image:: _static/tutorials/Jupyter.4-requirements.png
+.. image:: _static/tutorials/jupyter/4-requirements.png
    :width: 100%
    :align: center
    :alt: Choose to install the requirements
