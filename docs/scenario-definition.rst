@@ -220,6 +220,29 @@ If the name of the source attributes equals that of the destination attribute,
 you can alternatively just pass a single string (e.g., ``connect(a, b,
 'attr')``).
 
+The output of a time-based simulator is persistent because it's constantly stepped
+at a fixed point in time (i.e. every second or 15 minutes),
+and should be connected to a simulator that takes similar (non-trigger) attributes as input,
+i.e. a time-based or hybrid simulator. By default, all attributes are non-trigger,
+and you must specify whether it's a trigger (i.e. event-based)
+or some values should be trigger inputs (i.e. hybrid).
+An event-based simulator produces non-persistent output, because it's only stepped
+when it's triggered by an event and therefore
+should be connected to a simulator that depends on trigger inputs,
+i.e. event-based or hybrid simulator. The following illustration explains the
+connection between simulators in more detail:
+
+.. figure:: /_static/connect_attr_simulator.*
+   :width: 600
+   :align: center
+   :alt: connect simulators
+
+   Illustration of the connection between time-based, hybrid and event-based simulator.
+   The persistent output of *C* is the non-triggered input of *A*,
+   and the non-persistent output of *T* is the triggered input of *S*.
+   If the dataflow between both simulator is cyclic,
+   the output of *A* and *S* is the input of *C* and *T*, respectively.
+
 You can only connect entities that belong to different simulators with each
 other (that's why we created two instances of the *ExampleSim*).
 
