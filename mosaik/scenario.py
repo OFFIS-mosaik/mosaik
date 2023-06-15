@@ -18,6 +18,7 @@ from tqdm import tqdm
 from typing import (
     Any,
     Dict,
+    FrozenSet,
     Iterable,
     List,
     Optional,
@@ -28,9 +29,11 @@ from typing import (
 from typing_extensions import Literal, TypedDict
 
 from mosaik_api.connection import Channel
-from mosaik_api.types import EntityId, Attr, SimId, FullId, ModelDescription
+from mosaik_api.types import EntityId, Attr, ModelName, SimId, FullId, ModelDescription
 
 from mosaik import simmanager
+from mosaik.proxies import Proxy
+from mosaik.simmanager import SimRunner
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
 
@@ -240,13 +243,13 @@ class World(object):
             sim_name=sim_name,
             sim_id=sim_id,
         )
-        sim = self.loop.run_until_complete(
+        proxy = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
-        self.sims[sim_id] = sim
+        self.sims[sim_id] = SimRunner(sim_id, self, proxy)
         self.df_graph.add_node(sim_id)
         self.trigger_graph.add_node(sim_id)
-        return ModelFactory(self, sim)
+        return ModelFactory(self, sim_id, proxy)
 
     def connect(
         self,
@@ -402,14 +405,17 @@ class World(object):
         if outattr:
             self._df_outattr[src.sid][src.eid].extend(outattr)
 
+        # TODO: Move creation of SimRunners into World.run
         for src_attr, dest_attr in time_buffered:
-            src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
+            src_runner = self.sims[src.sid]
+            src_runner.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (dest.sid, dest.eid, dest_attr))
 
         if weak:
             for src_attr, dest_attr in persistent:
                 try:
-                    dest.sim.input_buffer.setdefault(dest.eid, {}).setdefault(
+                    dest_runner = self.sims[dest.sid]
+                    dest_runner.input_buffer.setdefault(dest.eid, {}).setdefault(
                         dest_attr, {})[
                         FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
                 except KeyError:
@@ -425,7 +431,8 @@ class World(object):
                 init_val = initial_data[src_attr]
             else:
                 init_val = None
-            dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
+            dest_runner = self.sims[dest.sid]
+            dest_runner.input_memory.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
     def set_initial_event(self, sid: SimId, time: int = 0):
@@ -461,7 +468,7 @@ class World(object):
 
         async def request_data():
             requests = {
-                sid: asyncio.create_task(self.sims[sid].proxy.get_data(outputs))
+                sid: asyncio.create_task(self.sims[sid].get_data(outputs))
                 for sid, outputs in outputs_by_sim.items()
             }
             try:
@@ -825,9 +832,9 @@ class World(object):
         """
         attr_errors = []
         for src_attr, dest_attr in attr_pairs:
-            if src_attr not in src.meta['attrs']:
+            if src_attr not in src.model_mock.output_attrs:
                 attr_errors.append((src, src_attr))
-            if not (dest.meta['any_inputs'] or dest_attr in dest.meta['attrs']):
+            if not (dest.model_mock.any_inputs or dest_attr in dest.model_mock.input_attrs):
                 attr_errors.append((dest, dest_attr))
         return attr_errors
 
@@ -842,16 +849,20 @@ class World(object):
         persistent and trigger or non-persistent and non-trigger.
 
         """
-        non_persistent = set(src.meta['attrs']).difference(src.meta['persistent'])
-        non_trigger = set(dest.meta['attrs']).difference(dest.meta['trigger'])
         for src_attr, dest_attr in attr_pairs:
-            if dest_attr in dest.meta['trigger'] and src_attr in src.meta['persistent']:
+            if (
+                dest_attr in dest.model_mock.event_inputs
+                and src_attr in src.model_mock.measurement_outputs
+            ):
                 logger.warning(
                     f'A connection between the persistent attribute {src_attr} of '
                     f'{src.sid} and the trigger attribute {dest_attr} of {dest.sid} is '
                     f'not recommended. This might cause problems in the simulation!'
                 )
-            elif dest_attr in non_trigger and src_attr in non_persistent:
+            elif (
+                dest_attr in dest.model_mock.measurement_inputs
+                and src_attr in src.model_mock.event_outputs
+            ):
                 logger.warning(
                     f'A connection between the non-persistent attribute {src_attr} of '
                     f'{src.sid} and the non-trigger attribute {dest_attr} of '
@@ -886,19 +897,19 @@ class World(object):
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
             trigger = (
-                dest_attr in dest.meta['trigger']
+                dest_attr in dest.model_mock.event_inputs
                 or (
-                    dest.meta['any_inputs']
-                    and dest.sim.proxy.meta['type'] == 'event-based'
+                    dest.model_mock.any_inputs
+                    and dest.model_mock._factory.type == 'event-based'
                 )
             )
             if trigger:
                 any_trigger = True
 
-            is_persistent = src_attr in src.meta['persistent']
+            is_persistent = src_attr in src.model_mock.measurement_outputs
             if is_persistent:
                 persistent.append(attr_pair)
-            if src.sim.proxy.meta['type'] != 'time-based':
+            if src.model_mock._factory.type != 'time-based':
                 time_buffered.append(attr_pair)
                 if is_persistent:
                     memorized.append(attr_pair)
@@ -928,19 +939,24 @@ class World(object):
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
             if (
-                dest_attr in dest.meta['trigger']
+                dest_attr in dest.model_mock.event_inputs
                 or (
-                    dest.meta['any_inputs']
-                    and dest.sim.proxy.meta['type'] == 'event-based'
+                    dest.model_mock.any_inputs
+                    and dest.model_mock._factory.type == 'event-based'
                 )
             ):
                 trigger = True
-            is_persistent = src_attr in src.meta['persistent']
+            is_persistent = src_attr in src.model_mock.measurement_outputs
             if is_persistent:
                 persistent.append(attr_pair)
         memorized = persistent
 
         return trigger, tuple(attr_pairs), tuple(memorized), tuple(persistent)
+
+
+MOSAIK_METHODS = set(
+    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
+)
 
 
 class ModelFactory():
@@ -954,42 +970,77 @@ class ModelFactory():
     If you access an attribute that is not a model or if the model is not
     marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
     """
+    type: Literal['event-based', 'time-based', 'hybrid']
+    models: Dict[ModelName, ModelMock]
 
-    def __init__(self, world: World, sim: simmanager.SimRunner):
-        self.meta = sim.proxy.meta
+    def __init__(self, world: World, sid: SimId, proxy: Proxy):
+        self.meta = proxy.meta
         self._world = world
-        self._sim = sim
+        self._proxy = proxy
+        self._sid = sid
 
-        # Create a ModelMock for every public model
-        for model, props in self.meta['models'].items():
-            if props['public']:
-                setattr(self, model, ModelMock(self._world, model, self._sim))
+        if "type" not in proxy.meta:
+            raise ScenarioError(
+                'The simulator is missing a type specification ("time-based", '
+                '"event-based" or "hybrid"). This is required starting from API '
+                'version 3.'
+            )
+        self.type = proxy.meta["type"]
+        if self.type not in ["time-based", "event-based", "hybrid"]:
+            raise ScenarioError(
+                f"The type '{self.type}' is not a valid type. (It should be one of"
+                "'time-based', 'event-based' and 'hybrid'.) Please check for typos "
+                f"in your simulator's init function and meta."
+            )
+
+        self.models = {}
+        for model, props in self.meta["models"].items():
+            if model in MOSAIK_METHODS:
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal model name: {model}. This name "
+                    "is already the name of a mosaik API method."
+                )               
+            self.models[model] = ModelMock(self._world, self, model, self._proxy)
+            # Make public models accessible
+            if props.get("public", True):
+                setattr(self, model, self.models[model])
 
         # Bind extra_methods to this instance:
-        for meth_name in self.meta['extra_methods']:
+        for meth_name in self.meta["extra_methods"]:
             # We need get_wrapper() in order to avoid problems with scoping
             # of the name "meth". Without it, "meth" would be the same for all
             # wrappers.
-            def get_wrapper(sim, meth_name):
-                meth = getattr(sim.proxy, meth_name)
-
+            if meth_name in MOSAIK_METHODS:
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal name for an extra method: "
+                    f'"{meth_name}". This is already the name of a mosaik API method.'
+                )
+            if meth_name in self.models.keys():
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal name for an extra method: "
+                    f'"{meth_name}". This is already the name of a model of this '
+                    "simulator."
+                )
+            def get_wrapper(connection, meth_name):
                 def wrapper(*args, **kwargs):
                     return world.loop.run_until_complete(
-                        meth(*args, **kwargs)
+                        connection.send([meth_name, args, kwargs])
                     )
                 wrapper.__name__ = meth_name
                 return wrapper
 
-            setattr(self, meth_name, get_wrapper(sim, meth_name))
+            setattr(self, meth_name, get_wrapper(proxy, meth_name))
 
     def __getattr__(self, name):
         # Implemented in order to improve error messages.
-        models = self.meta['models']
-        if name in models and not models[name]['public']:
-            raise AttributeError('Model "%s" is not public.' % name)
+        models = self.meta["models"]
+        if name in models:
+            raise AttributeError(f'Model "{name}" is not public.')
         else:
-            raise AttributeError('Model factory for "%s" has no model and no '
-                                 'function "%s".' % (self._sim.sid, name))
+            raise AttributeError(
+                f'Model factory for "{self._sid}" has no model and no function '
+                f'"{name}".'
+            )
 
 
 class ModelMock(object):
@@ -1002,19 +1053,90 @@ class ModelMock(object):
     method to create multiple entities with the same set of parameters at once:
     ``sim.ModelName.create(3, x=23)``.
     """
+    name: ModelName
+    _world: World
+    _factory: ModelFactory
+    _proxy: Proxy
+    params: FrozenSet[str]
+    any_inputs: bool
+    # TODO: Maybe introduce a "UniversalSet" abstraction to deal with
+    # any_inputs in a more unified way?
+    event_inputs: FrozenSet[Attr]
+    measurement_inputs: FrozenSet[Attr]
+    event_outputs: FrozenSet[Attr]
+    measurement_outputs: FrozenSet[Attr]
 
-    def __init__(self, world: World, name: str, sim: simmanager.SimRunner):
+    def __init__(self, world: World, factory: ModelFactory, model: ModelName, proxy: Proxy):
         self._world = world
-        self._name = name
-        self._sim = sim
-        self._sim_id = sim.sid
-        self._params = sim.proxy.meta['models'][name]['params']
+        self._factory = factory
+        self.name = model
+        self._proxy = proxy
+        model_desc = proxy.meta['models'][model]
+        self.params = frozenset(model_desc.get('params', []))
+        self.any_inputs = model_desc.get('any_inputs', False)
+        attrs = frozenset(model_desc.get('attrs', []))
+        if self._factory.type != "hybrid":
+            for special_key in ["trigger", "non-persistent"]:
+                if special_key in model_desc:
+                    raise ScenarioError(
+                        f'The key "{special_key}" in the model description is only '
+                        f'valid for hybrid simulators, but your {self._factory.type} '
+                        f'simulator {self._factory._sid} uses it in its model '
+                        f'"{model}". Remove the key or turn it into a hybrid simulator.'
+                    )
+        for invalid_key, alternative in [
+            ("non-trigger", "trigger"),
+            ("persistent", "non-persistent"),
+        ]:
+            if invalid_key in model_desc:
+                raise ScenarioError(
+                    f'The key "{invalid_key}" is not supported in model '
+                    f'descriptions, but your simulator {self._factory._sid} uses it '
+                    f'in its model "{model}". Specify the "{alternative}" attributes, '
+                    'instead.'
+                )
+            
+        if proxy.meta['type'] == 'event-based':
+            self.event_inputs = attrs
+            self.measurement_inputs = frozenset()
+            self.event_outputs = attrs
+            self.measurement_outputs = frozenset()
+        elif proxy.meta['type'] == 'time-based':
+            self.event_inputs = frozenset()
+            self.measurement_inputs = attrs
+            self.event_outputs = frozenset()
+            self.measurement_outputs = attrs
+        else:
+            self.event_inputs = frozenset(model_desc.get('trigger', []))
+            if not self.event_inputs.issubset(attrs):
+                raise ScenarioError(
+                    'Attributes in "trigger" must be a subset of attributes in '
+                    f'"attrs", but for model "{model}", the following attributes only '
+                    f'appear in "trigger": {", ".join(self.event_inputs - attrs)}.'
+                )
+            self.measurement_inputs = attrs - self.event_inputs
+            self.event_outputs = frozenset(model_desc.get("non-persistent", []))
+            if not self.event_outputs.issubset(attrs):
+                raise ScenarioError(
+                    'Attributes in "non-persistent" must be a subset of attributes in '
+                    f'"attrs", but for model "{model}", the following attributes only '
+                    'appear in "non-persistent": '
+                    f'{", ".join(self.event_outputs - attrs)}.'
+                )
+            self.measurement_outputs = attrs - self.event_outputs
 
+    @property
+    def input_attrs(self) -> FrozenSet[Attr]:
+        return self.event_inputs | self.measurement_inputs
+
+    @property
+    def output_attrs(self) -> FrozenSet[Attr]:
+        return self.event_outputs | self.measurement_outputs
+    
     def __call__(self, **model_params):
         """
         Call :meth:`create()` to instantiate one model.
         """
-        self._check_params(**model_params)
         return self.create(1, **model_params)[0]
 
     def create(self, num: int, **model_params):
@@ -1029,29 +1151,29 @@ class ModelMock(object):
         self._check_params(**model_params)
 
         entities = self._world.loop.run_until_complete(
-            self._sim.proxy.create(num, self._name, **model_params)
+            self._proxy.send(["create", (num, self.name), model_params])
         )
         assert len(entities) == num, (
             f'{num} entities were requested but {len(entities)} were created.'
         )
 
-        return self._make_entities(entities, assert_type=self._name)
+        return self._make_entities(entities, assert_type=self.name)
 
     def _check_params(self, **model_params):
-        expected_params = list(self._params)
-        for param in model_params:
-            if param not in expected_params:
-                raise TypeError("create() got an unexpected keyword argument "
-                                "'%s'" % param)
-            expected_params.remove(param)
+        unexpected_params = set(model_params.keys()).difference(self.params)
+        if unexpected_params:
+            sep = "', '"
+            raise TypeError(
+                "create() got unexpected keyword arguments: '"
+                f"{sep.join(unexpected_params)}'"
+            )
 
     def _make_entities(self, entity_dicts, assert_type=None):
         """
         Recursively create lists of :class:`Entity` instance from a list
         of *entity_dicts*.
         """
-        sim_name = self._sim.name
-        sim_id = self._sim_id
+        sid = self._factory._sid
         entity_graph = self._world.entity_graph
 
         entity_set = []
@@ -1061,20 +1183,20 @@ class ModelMock(object):
             children = e.get('children', [])
             if children:
                 children = self._make_entities(children)
-            entity = Entity(sim_id, e['eid'], sim_name, e['type'], children,
-                            self._sim)
+            model = self._factory.models[e['type']]
+            entity = Entity(sid, e['eid'], self.name, model, children)
 
             entity_set.append(entity)
-            entity_graph.add_node(entity.full_id, sim=sim_name, type=e['type'])
+            entity_graph.add_node(entity.full_id, sid=sid, type=e['type'])
             for rel in e.get('rel', []):
-                entity_graph.add_edge(entity.full_id, FULL_ID % (sim_id, rel))
+                entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
 
         return entity_set
 
     def _assert_model_type(self, assert_type, e):
         """
-        Assert that entity *e* has either type *assert_type* if is not none
-        or else any valid type.
+        Assert that entity *e* has entity type *assert_type* )ifs not none
+ ]       or else any valid type.
         """
         if assert_type is not None:
             assert e['type'] == assert_type, (
@@ -1082,7 +1204,7 @@ class ModelMock(object):
                 f'"{assert_type}" required.'
             )
         else:
-            assert e['type'] in self._sim.proxy.meta['models'], (
+            assert e['type'] in self._proxy.meta['models'], (
                 f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
                 'data.'
             )
@@ -1092,32 +1214,39 @@ class Entity(object):
     """
     An entity represents an instance of a simulation model within mosaik.
     """
-    __slots__ = ['sid', 'eid', 'sim_name', 'type', 'children', 'sim']
+    __slots__ = ['sid', 'eid', 'sim_name', 'model_mock', 'children', 'connection']
     sid: SimId
+    """The ID of the simulator this entity belongs to."""
     eid: EntityId
+    """The entity's ID."""
     sim_name: str
-    type: str
+    """The entity's simulator name."""
+    model_mock: ModelMock
+    """The entity's type (or class)."""
     children: Iterable[Entity]
-    sim: simmanager.SimRunner
+    """An entity set containing subordinate entities."""
 
-    def __init__(self, sid, eid, sim_name, type, children, sim):
+    def __init__(
+        self,
+        sid: SimId,
+        eid: EntityId,
+        sim_name: str,
+        model_mock: ModelMock,
+        children: Iterable[Entity],
+    ):
         self.sid = sid
-        """The ID of the simulator this entity belongs to."""
-
         self.eid = eid
-        """The entity's ID."""
-
         self.sim_name = sim_name
-        """The entity's simulator name."""
-
-        self.type = type
-        """The entity's type (or class)."""
-
+        self.model_mock = model_mock
         self.children = children if children is not None else set()
-        """An entity set containing subordinate entities."""
 
-        self.sim = sim
-        """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
+    @property
+    def type(self) -> ModelName:
+        return self.model_mock.name
+
+    @property
+    def model(self) -> ModelName:
+        return self.model_mock.name
 
     @property
     def full_id(self) -> FullId:
@@ -1127,23 +1256,22 @@ class Entity(object):
         return FULL_ID % (self.sid, self.eid)
 
     def triggered_by(self, attr: Attr) -> bool:
-        return (attr in self.meta["trigger"]) or (
-            self.sim.proxy.meta["type"] == "event-based"
-            and self.meta["any_inputs"]
+        return (attr in self.model_mock.event_inputs) or (
+            self.model_mock._factory.type == "event-based"
+            and self.model_mock.any_inputs
         )
 
     def is_persistent(self, attr: Attr) -> bool:
-        return (attr in self.meta["persistent"])
-
-    @property
-    def meta(self) -> ModelDescription:
-        return self.sim.proxy.meta['models'][self.type]
+        return (attr in self.model_mock.measurement_outputs)
 
     def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type]))
+        return (
+            f"{self.__class__.__name__}(model={self.model!r}, eid={self.eid!r}, "
+            f"sid={self.sid!r})"
+        )
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type,
-            repr(self.children), repr(self.sim)]))
+        return (
+            f"{self.__class__.__name__}(model_mock={self.model_mock!r}, "
+            f"eid={self.eid!r}, sid={self.sid!r}, children={self.children!r})"
+        )

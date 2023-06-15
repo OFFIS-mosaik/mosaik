@@ -5,7 +5,7 @@ from mosaik import scenario
 from mosaik.exceptions import ScenarioError
 import pytest
 
-sim_config = {
+sim_config: scenario.SimConfig = {
     'ExampleSim': {
         'python': 'example_sim.mosaik:ExampleSim',
     },
@@ -25,15 +25,18 @@ def mf(world):
 
 
 def test_entity():
+    class ModelMockMock:
+        name = 'spam'
+        def __repr__(self):
+            return "ModelMockMock"
     sim = object()
-    e = scenario.Entity('0', '1', 'sim', 'spam', [], sim)
+    e = scenario.Entity('0', '1', 'sim', ModelMockMock(), [])
     assert e.sid == '0'
     assert e.eid == '1'
     assert e.sim_name == 'sim'
     assert e.type == 'spam'
-    assert e.sim is sim
-    assert str(e) == "Entity('0', '1', 'sim', spam)"
-    assert repr(e) == "Entity('0', '1', 'sim', spam, [], %r)" % sim
+    assert str(e) == "Entity(model='spam', eid='1', sid='0')"
+    assert repr(e) == "Entity(model_mock=ModelMockMock, eid='1', sid='0', children=[])"
 
 
 def test_world():
@@ -67,9 +70,10 @@ def test_world_start(world):
     """
     fac = world.start('ExampleSim', step_size=2)
     assert isinstance(fac, scenario.ModelFactory)
-    assert world.sims == {'ExampleSim-0': fac._sim}
-    assert fac._sim.proxy.sim.step_size == 2
-    assert fac._sim._world.time_resolution == 1.0
+    assert len(world.sims) == 1
+    assert world.sims['ExampleSim-0']._proxy == fac._proxy
+    assert fac._proxy.sim.step_size == 2
+    assert world.time_resolution == 1.0
     assert 'ExampleSim-0' in world.df_graph
 
     world.start('ExampleSim')
@@ -84,7 +88,8 @@ def test_global_time_resolution():
 
     try:
         fac = world.start('ExampleSim', step_size=2)
-        assert fac._sim._world.time_resolution == 60.0
+        # TODO: Test whether the resolution "reaches" the simulator
+        assert world.time_resolution == 60.0
     finally:
         world.shutdown()
 
@@ -173,19 +178,19 @@ def test_world_connect_wrong_attr_names(world):
                         ('val', 'val_in'))
     assert str(err.value) == (
         'At least one attribute does not exist: '
-        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val")
+        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val")
     err = pytest.raises(ScenarioError, world.connect, a, b,
                         ('val_out', 'val'))
     assert str(err.value) == (
         'At least one attribute does not exist: '
-        "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).val")
+        "Entity(model='B', eid='0.0', sid='ExampleSim-1').val")
     err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
                         'onoes')
     assert str(err.value) == (
         'At least one attribute does not exist: '
-        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).val, "
-        "Entity('ExampleSim-0', '0.0', 'ExampleSim', A).onoes, "
-        "Entity('ExampleSim-1', '0.0', 'ExampleSim', B).onoes")
+        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val, "
+        "Entity(model='A', eid='0.0', sid='ExampleSim-0').onoes, "
+        "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes")
     assert list(world.df_graph.edges()) == []
     assert world._df_outattr == {}
 
@@ -229,7 +234,7 @@ def test_world_connect_any_inputs(world):
     """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    b.sim.proxy.meta['models']['B']['any_inputs'] = True
+    b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
     connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
@@ -355,16 +360,13 @@ def test_world_run_twice(world):
 def test_model_factory(world, mf):
     assert 'A' in dir(mf)
     assert 'B' in dir(mf)
-    assert mf.A._name == 'A'
-    assert mf.A._sim_id == mf._sim.sid
-    assert mf.B._name == 'B'
+    assert mf.A.name == 'A'
+    assert mf.B.name == 'B'
 
 
 def test_model_factory_check_params(world, mf):
     einfo = pytest.raises(TypeError, mf.A, spam='eggs')
-    assert str(einfo.value) == "create() got an unexpected keyword argument " \
-                               "'spam'"
-
+    assert str(einfo.value) == "create() got unexpected keyword arguments: 'spam'"
 
 def async_mock(return_value):
     async def f(*args, **kwargs):
@@ -380,7 +382,7 @@ def test_model_factory_hierarchical_entities(world, mf):
             }],
         }]
     }]
-    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    mf.A._proxy.send = async_mock(return_value=ret)
 
     a = mf.A(init_val=1)
     assert len(a.children) == 1
@@ -396,7 +398,7 @@ def test_model_factory_hierarchical_entities(world, mf):
 
 def test_model_factory_wrong_entity_count(world, mf):
     ret = [None, None, None]
-    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    mf.A._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
         mf.A.create(2, init_val=0)
     assert str(err.value) == '2 entities were requested but 3 were created.'
@@ -404,7 +406,7 @@ def test_model_factory_wrong_entity_count(world, mf):
 
 def test_model_factory_wrong_model(world, mf):
     ret = [{'eid': 'spam_0', 'type': 'Spam'}]
-    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    mf.A._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)
     assert str(err.value) == ('Entity "spam_0" has the wrong type: "Spam"; '
@@ -419,7 +421,7 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
             }],
         }]
     }]
-    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    mf.A._proxy.send = async_mock(return_value=ret)
 
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)
@@ -430,14 +432,16 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
 def test_model_factory_private_model(world, mf):
     with pytest.raises(AttributeError) as err:
         getattr(mf, 'C')
-    assert str(err.value) == 'Model "C" is not public.'
+    assert str(err.value) == "Model 'C' is not public."
 
 
 def test_model_factory_unkown_model(world, mf):
     with pytest.raises(AttributeError) as err:
         getattr(mf, 'D')
-    assert str(err.value) == ('Model factory for "ExampleSim-0" has no model '
-                              'and no function "D".')
+    assert (
+        str(err.value)
+        == "Model factory for 'ExampleSim-0' has no model and no function 'D'."
+    )
 
 
 def test_model_mock_entity_graph(world):
@@ -445,7 +449,7 @@ def test_model_mock_entity_graph(world):
     Test if related entities are added to the entity_graph.
     """
 
-    async def create(*args, **kwargs):
+    async def send(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},
             {'eid': '1', 'type': 'A', 'rel': []},
@@ -453,16 +457,15 @@ def test_model_mock_entity_graph(world):
         return entities
 
     fac = world.start('ExampleSim')
-    sp = fac._sim
-    sp.proxy.create = create
-
+    fac._proxy.send = send
+    
     assert world.entity_graph.adj == {}
     fac.A.create(2)
     assert world.entity_graph.adj == {
         'ExampleSim-0.0': {'ExampleSim-0.1': {}},
         'ExampleSim-0.1': {'ExampleSim-0.0': {}},
     }
-    assert world.entity_graph.nodes['ExampleSim-0.0']['sim'] == 'ExampleSim'
-    assert world.entity_graph.nodes['ExampleSim-0.1']['sim'] == 'ExampleSim'
+    assert world.entity_graph.nodes['ExampleSim-0.0']['sid'] == 'ExampleSim-0'
+    assert world.entity_graph.nodes['ExampleSim-0.1']['sid'] == 'ExampleSim-0'
     assert world.entity_graph.nodes['ExampleSim-0.0']['type'] == 'A'
     assert world.entity_graph.nodes['ExampleSim-0.1']['type'] == 'A'

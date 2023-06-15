@@ -76,7 +76,7 @@ class TestSim(mosaik_api.Simulator):
             self.meta['models']['A']['trigger'] = trigger
 
         if step_type == 'hybrid':
-            self.meta['models']['A']['persistent'] = ['val_out']
+            self.meta['models']['A']['non-persistent'] = []
 
         self.events = {float(key): val for key, val in events.items()}
         if events:

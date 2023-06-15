@@ -10,9 +10,12 @@ class SimulatorMock(mosaik_api.Simulator):
         self.type = stype
         self.finalized = False
         self.meta['type'] = stype
-        self.meta['old_api'] = True
 
-    def step(self, time, inputs):
+    def init(self, sid, time_resolution=None):
+        self.time_resolution = time_resolution
+        return self.meta
+
+    def step(self, time, inputs, max_advance=None):
         if self.type == 'time-based':
             return 1
         else:

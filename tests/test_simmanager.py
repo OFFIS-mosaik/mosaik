@@ -1,4 +1,5 @@
 import asyncio
+from loguru import logger
 import pytest
 import sys
 
@@ -12,7 +13,8 @@ from mosaik import simmanager
 from mosaik import proxies
 from mosaik.exceptions import ScenarioError, SimulationError
 import mosaik
-from mosaik.proxies import APIProxy, LocalProxy
+from mosaik.proxies import BaseProxy, LocalProxy
+
 
 sim_config = {
     "ExampleSimA": {
@@ -51,11 +53,13 @@ def test_start(world, monkeypatch):
     """
 
     class Proxy(object):
-        meta = {"api_version": api_version, "models": {}}
-
         @classmethod
         async def init(cls, *args, **kwargs):
-            return cls.meta
+            return list(map(int, api_version.split('.')))
+        
+        @classmethod
+        async def send(cls, request):
+            return None
 
     async def start(*args, **kwargs):
         return Proxy
@@ -68,64 +72,58 @@ def test_start(world, monkeypatch):
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == Proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
-    Proxy.meta["api_version"] = api_version
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == Proxy
 
     # The api_version has to re-initialized
-    Proxy.meta["api_version"] = api_version
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == Proxy
 
 
 def test_start_wrong_api_version(world, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
-    monkeypatch.setattr(mosaik.proxies, "API_MAJOR", 1000)
-    monkeypatch.setattr(mosaik.proxies, "API_MINOR", 5)
     with pytest.raises(ScenarioError) as exc_info:
         world.loop.run_until_complete(
-            simmanager.start(world, "ExampleSimA", "0", 1.0, {})
+            simmanager.start(world, "MetaMock", "MetaMock-0", 1.0, {"meta": {"api_version": "1000.0"}})
         )
 
-    assert str(exc_info.value) in (
-        f'Simulator "ExampleSimA" could not be started: Invalid version '
-        '"{api_version}": Version must be between 1000.0 and 1000.5'
+    assert str(exc_info.value) == (
+        "There was an error during the initialization of MetaMock-0: The API version "
+        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
+        "mosaik package is available to be used in your scenario?"
     )
 
 
 def test_start_in_process(world):
     """
     Test starting an in-proc simulator."""
-    sp = world.loop.run_until_complete(
+    connection = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "ExampleSim-0", 1.0, {"step_size": 2})
     )
-    assert sp.sid == "ExampleSim-0"
-    assert sp.type
-    assert isinstance(sp.proxy, LocalProxy)
-    assert isinstance(sp.proxy.sim, ExampleSim)
-    assert sp.proxy.sim.step_size == 2
+    assert isinstance(connection, LocalProxy)
+    assert isinstance(connection.sim, ExampleSim)
+    assert connection.sim.step_size == 2
 
 
 @pytest.mark.cmd_process
 def test_start_external_process(world):
     """
     Test starting a simulator as external process."""
-    sp = world.loop.run_until_complete(
+    proxy = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "ExampleSim-0", 1.0, {})
     )
-    assert sp.sid == "ExampleSim-0"
-    assert "api_version" in sp.proxy.meta and "models" in sp.proxy.meta
-    world.loop.run_until_complete(sp.stop())
+    assert "api_version" in proxy.meta and "models" in proxy.meta
+    world.loop.run_until_complete(proxy.stop())
 
 
 def test_start_proc_timeout_accept(world, caplog):
@@ -191,13 +189,12 @@ def test_start_connect(world: scenario.World):
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "localhost", 5556)
     )
-    sim = world.loop.run_until_complete(
+    proxy = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
     )
-    assert sim.sid == "ExampleSim-0"
-    assert "api_version" in sim.proxy.meta and "models" in sim.proxy.meta
+    assert "api_version" in proxy.meta and "models" in proxy.meta
     server.close()
-    world.loop.run_until_complete(sim.stop())
+    world.loop.run_until_complete(proxy.stop())
 
 
 def test_start_connect_timeout_init(world, caplog):
@@ -206,12 +203,11 @@ def test_start_connect_timeout_init(world, caplog):
     """
     world.config["start_timeout"] = 0.1
 
+    writer_for_closing = None
     async def mock_sim_server(reader, writer):
+        nonlocal writer_for_closing
+        writer_for_closing = writer
         await read_message(reader)
-        import time
-
-        time.sleep(0.15)
-        writer.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
@@ -245,13 +241,12 @@ def test_start_connect_stop_timeout(world):
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
 
-    sim = world.loop.run_until_complete(
+    proxy = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
     )
-    sim._stop_timeout = 0.01
-    assert sim.sid == "ExampleSim-0"
-    assert "api_version" in sim.proxy.meta and "models" in sim.proxy.meta
-    world.loop.run_until_complete(sim.stop())
+    proxy._stop_timeout = 0.01
+    assert "api_version" in proxy.meta and "models" in proxy.meta
+    world.loop.run_until_complete(proxy.stop())
     server.close()
 
 
@@ -334,37 +329,6 @@ def test_start_init_error(caplog):
         world.shutdown()
 
 
-@pytest.mark.parametrize(
-    ["version", "result"],
-    [
-        ("3.0", (3, 0)),
-        (3.0, (3, 0)),
-    ],
-)
-def test_validate_api_version(version, result):
-    assert proxies.validate_api_version(version) == result
-
-
-@pytest.mark.parametrize(
-    "version",
-    [
-        "1",
-        "1.2",
-        "2",
-        "2,1",
-        2,
-        2.11,
-        "3.99",
-        "4.1",
-        "3a",
-    ],
-)
-def test_validate_api_version_wrong_version(version):
-    with pytest.raises(ScenarioError) as se:
-        proxies.validate_api_version(version)
-    assert "Version" in str(se.value)
-
-
 def test_sim_proxy_illegal_model_names(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {"step": {}}})
@@ -378,28 +342,30 @@ def test_sim_proxy_illegal_extra_methods(world):
 
 
 def test_sim_proxy_stop_impl(world):
-    class Test(APIProxy):
+    class Test(BaseProxy):
+        def init(self):
+            raise NotImplementedError()
+
         def stop(self):
             raise NotImplementedError()
 
-        async def _send(self, *args, **kwargs):
+        async def send(self, *args, **kwargs):
             raise NotImplementedError()
 
-        meta = {"models": {}}
+        meta = {"type": "time-based", "models": {}}
 
-    sim = simmanager.SimRunner("spam", "id", world, Test(None))
+    sim = simmanager.SimRunner("id", world, Test())
     with pytest.raises(NotImplementedError):
         world.loop.run_until_complete(sim.stop())
 
 
 def test_local_process(world):
     es = ExampleSim()
-    proxy = LocalProxy(None, es)
+    proxy = LocalProxy(es, None)
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
-    sim = simmanager.SimRunner("ExampleSim", "ExampleSim-0", world, proxy)
-    assert sim.name == "ExampleSim"
+    sim = simmanager.SimRunner("ExampleSim-0", world, proxy)
     assert sim.sid == "ExampleSim-0"
-    assert sim.proxy.sim is es
+    assert sim._proxy.sim is es
     assert sim.last_step == -1
     assert sim.next_steps == [0]
 
@@ -409,19 +375,9 @@ def test_local_process_finalized(world):
     Test that ``finalize()`` is called for local processes (issue #23).
     """
     simulator = world.start("SimulatorMock")
-    assert simulator._sim.proxy.sim.finalized is False
+    assert simulator._proxy.sim.finalized is False
     world.run(until=1)
-    assert simulator._sim.proxy.sim.finalized is True
-
-
-async def _rpc_request(reader, writer, func, *args, **kwargs):
-    writer.write(proxies.encode([proxies.REQUEST, 0, [func, args, kwargs]]))
-    await writer.drain()
-    msg_type, _, result = await proxies.decode(reader)
-    if msg_type == proxies.SUCCESS:
-        return result
-    else:
-        raise RemoteException(result)
+    assert simulator._proxy.sim.finalized is True
 
 
 async def _rpc_get_progress(channel, world):
@@ -590,9 +546,9 @@ def test_mosaik_remote(rpc, err):
 
         async def greeter():
             channel = await world.incoming_connections_queue.get()
-            proxy = proxies.RemoteProxy(simmanager.MosaikRemote(world, "X"), channel)
-            proxy.meta = {"models": {}}
-            sim = simmanager.SimRunner("X", "X", world, proxy)
+            proxy = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
+            proxy._meta = {"type": "time-based", "models": {}}
+            sim = simmanager.SimRunner("X", world, proxy)
             sim.last_step = 1
             sim.is_in_step = True
             world.sims["X"] = sim
@@ -614,7 +570,9 @@ def test_mosaik_remote(rpc, err):
             world.loop.run_until_complete(run())
 
     finally:
+        world.loop.run_until_complete(world.sims["X"].stop())
         world.server.close()
+        world.loop.close()
 
 
 def test_timed_input_buffer():
@@ -634,9 +592,9 @@ def test_timed_input_buffer():
 def test_global_time_resolution(world):
     # Default time resolution set to 1.0
     simulator = world.start("SimulatorMock")
-    assert simulator._sim._world.time_resolution == 1.0
+    assert simulator._proxy.sim.time_resolution == 1.0
 
     # Set global time resolution to 60.0
     world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
-    assert simulator_2._sim._world.time_resolution == 60.0
+    assert simulator_2._proxy.sim.time_resolution == 60.0

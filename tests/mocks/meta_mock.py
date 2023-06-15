@@ -12,11 +12,11 @@ class MetaMock(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(meta={})
     
-    def init(self, sid, meta):
+    def init(self, sid, meta, time_resolution=1.0):
         self.meta.update(meta)
         return self.meta
 
-    def step(self, time, inputs):
+    def step(self, time, inputs, max_advance=None):
         raise NotImplementedError()
 
     def get_data(self, attrs):

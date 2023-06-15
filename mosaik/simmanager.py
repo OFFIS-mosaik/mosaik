@@ -39,10 +39,11 @@ from typing_extensions import Literal
 
 import mosaik_api
 from mosaik_api.connection import Channel
-from mosaik_api.types import Meta, OutputData, SimId
+from mosaik_api.types import CreateResult, Meta, ModelName, OutputData, OutputRequest, SimId, Time, InputData
 
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.proxies import LocalProxy, APIProxy, RemoteProxy
+from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
+from mosaik.adapters import init_and_get_adapter
 
 if TYPE_CHECKING:
     import tqdm
@@ -58,7 +59,7 @@ async def start(
     sim_id: SimId,
     time_resolution: float,
     sim_params: Dict[str, Any],
-):
+) -> Proxy:
     """
     Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
@@ -120,11 +121,11 @@ async def start(
         if sim_type in sim_config:
             proxy = await starter(world, sim_name, sim_config, MosaikRemote(world, sim_id))
             try:
-                await asyncio.wait_for(
-                    proxy.init(sim_id, time_resolution=time_resolution, **sim_params),
+                proxy = await asyncio.wait_for(
+                    init_and_get_adapter(proxy, sim_id, {"time_resolution": time_resolution, **sim_params}),
                     world.config['start_timeout']
                 )
-                return SimRunner(sim_name, sim_id, world, proxy)
+                return proxy
             except asyncio.IncompleteReadError:
                 raise SystemExit(
                     f'Simulator "{sim_name}" closed its connection during the init() '
@@ -145,7 +146,7 @@ async def start_inproc(
     sim_name: str,
     sim_config: Dict[Literal['python', 'env'], str],
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
@@ -164,6 +165,10 @@ async def start_inproc(
             ValueError: 'Malformed Python class name: Expected "module:Class"',
             ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
             AttributeError: 'Class not found in module',
+            ImportError: f"Error importing the requested class: {err.args[0]}",
+            KeyError:
+                "'python' key not found in sim_config. "
+                "(This is an error in mosaik, please report it.)",
         }
         details = detail_msgs[type(err)]
         origerr = err.args[0]
@@ -175,7 +180,7 @@ async def start_inproc(
         raise ScenarioError("Mosaik 3 requires mosaik_api's version also "
                             "to be >=3.")
 
-    return LocalProxy(mosaik_remote, sim)
+    return LocalProxy(sim, mosaik_remote)
 
 
 async def start_proc(
@@ -183,7 +188,7 @@ async def start_proc(
     sim_name: str,
     sim_config: Dict[Literal['cmd', 'cwd', 'env', 'posix'], str],
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
@@ -200,7 +205,7 @@ async def start_proc(
     cmd = sim_config['cmd'] % replacements
     if 'posix' in sim_config.keys():
         posix = sim_config.pop('posix')
-        cmd = shlex.split(cmd, posix=posix)
+        cmd = shlex.split(cmd, posix=bool(posix))
     else:
         cmd = shlex.split(cmd, posix=(os.name != 'nt'))
     cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
@@ -234,7 +239,7 @@ async def start_proc(
             world.incoming_connections_queue.get(),
             world.config['start_timeout'],
         )
-        return RemoteProxy(mosaik_remote, channel)
+        return RemoteProxy(channel, mosaik_remote)
     except asyncio.TimeoutError:
         raise SimulationError(
             f'Simulator "{sim_name}" did not connect to mosaik in time.'
@@ -246,7 +251,7 @@ async def start_connect(
     sim_name: str,
     sim_config,
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
@@ -273,7 +278,7 @@ async def start_connect(
             f'Simulator "{sim_name}" could not be started: Could not connect to '
             f'"{sim_config["connect"]}"'
         )
-    return RemoteProxy(mosaik_remote, Channel(reader, writer))
+    return RemoteProxy(Channel(reader, writer), mosaik_remote)
 
 
 class SimRunner:
@@ -284,15 +289,12 @@ class SimRunner:
     simulator.
     """
 
-    name: str
-    """The name of this simulator (in the SIM_CONFIG)."""
     sid: SimId
     """This simulator's ID."""
-    meta: Meta
-    """This simulator's meta."""
     type: Literal['time-based', 'event-based', 'hybrid']
+    supports_set_events: bool
 
-    proxy: APIProxy
+    _proxy: Proxy
     """The actual proxy for this simulator."""
 
     rt_start: float
@@ -357,25 +359,28 @@ class SimRunner:
     sim_proc: asyncio.Task
     """The asyncio.Task for this simulator."""
     wait_events: List[asyncio.Event]
-    """The event (usually an AllOf event) this simulator is waiting for."""
+    """The list of all events for which this simulator is waiting"""
     trigger_cycles: List[TriggerCycle]
     """Triggering cycles in a simulation"""
+    rank: int
+    """The topological rank of the simulator in the graph of all
+    simulators with their non-weak, non-time-shifted connections.
+    """
 
     tqdm: tqdm.tqdm
 
     def __init__(
         self,
-        name: str,
         sid: SimId,
         world: World,
-        proxy: APIProxy,
+        connection: Proxy,
     ):
-        self.name = name
         self.sid = sid
         self._world = world
-        self.proxy = proxy
+        self._proxy = connection
 
-        self.type = proxy.meta.get('type', 'time-based')
+        self.type = connection.meta['type']
+        self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
         self.last_step = -1
@@ -385,17 +390,17 @@ class SimRunner:
             self.next_steps = []
         self.next_self_step = None
         self.progress = 0
-        self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
+        self.input_buffer = {}
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
-        self.sim_proc = None  # type: ignore  # will be set in Mosaik's init
+        self.sim_proc = None  # type: ignore  # will be set in World.run
         self.has_next_step = asyncio.Event()
         self.wait_events = []
         self.interruptable = False
         self.is_in_step = False
         self.trigger_cycles = []
-        self.rank = None  # topological rank
+        self.rank = None  # type: ignore  # will be set in World.run
 
     def schedule_step(self, time: int):
         """Schedule a step for this simulator at the given time. This will wake this
@@ -410,11 +415,20 @@ class SimRunner:
         if is_earlier and self.interruptable:
             self.sim_proc.cancel()
 
+    async def setup_done(self):
+        return await self._proxy.send(["setup_done", (), {}])
+
+    async def step(self, time: Time, inputs: InputData, max_advance: Time) -> Optional[Time]:
+        return await self._proxy.send(["step", (time, inputs, max_advance), {}])
+
+    async def get_data(self, outputs: OutputRequest) -> OutputData:
+        return await self._proxy.send(["get_data", (outputs,), {}])
+
     async def stop(self):
         """
         Stop the simulator behind the proxy.
         """
-        await self.proxy.stop()
+        await self._proxy.stop()
 
 
 class MosaikRemote:
@@ -517,8 +531,7 @@ class MosaikRemote:
         )
 
         data = {}
-        missing = collections.defaultdict(
-            lambda: collections.defaultdict(list))
+        missing = collections.defaultdict(lambda: collections.defaultdict(list))
         dfg = self.world.df_graph
         dest_sid = self.sim.sid
         # Try to get data from cache
@@ -538,7 +551,7 @@ class MosaikRemote:
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
             assert (dep.progress > self.sim.last_step >= dep.last_step)
-            dep_data = await dep.proxy.get_data(attrs)
+            dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
                 # to update the dict in that case.
@@ -628,7 +641,7 @@ class StarterCollection(object):
     # Singleton instance of the starter collection.
     __instance = None
 
-    def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, APIProxy]]]:
+    def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:
             # Create collection with default starters (i.e., starters defined
             # my mosaik core).

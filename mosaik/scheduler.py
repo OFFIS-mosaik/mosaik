@@ -52,7 +52,7 @@ async def run(
     for sim in world.sims.values():
         sim.tqdm.set_postfix_str('setup')
         # Send a setup_done event to all simulators
-        setup_done_events.append(asyncio.create_task(sim.proxy.setup_done()))
+        setup_done_events.append(asyncio.create_task(sim.setup_done()))
 
     # Wait for all answers to be here
     await asyncio.gather(*setup_done_events)
@@ -158,9 +158,9 @@ def get_keep_running_func(
     no_set_events = not (
         rt_factor
         and (
-            sim.proxy.meta.get('set_events', False)
+            sim.supports_set_events
             or any([
-                world.sims[anc_sid].proxy.meta.get('set_events', False)
+                world.sims[anc_sid].supports_set_events
                 for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)
             ])
         )
@@ -448,7 +448,7 @@ async def step(
 
     sim.tqdm.set_postfix_str('stepping')
     sim.is_in_step = True
-    next_step = await sim.proxy.step(current_step, inputs, max_advance)
+    next_step = await sim.step(current_step, inputs, max_advance)
     sim.is_in_step = False
 
     if next_step is not None:
@@ -469,6 +469,7 @@ async def step(
         sim.next_self_step = next_step
 
     if sim.type == 'time-based':
+        assert next_step, "A time-based simulator must always return a next step"
         return next_step
     else:
         if sim.next_steps:
@@ -513,7 +514,7 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
     outattr = world._df_outattr[sid]
     if outattr:
         sim.tqdm.set_postfix_str('get_data')
-        data = await sim.proxy.get_data(outattr)
+        data = await sim.get_data(outattr)
 
         if sim.type == 'time-based' and world._df_cache is not None:
             # Create a cache entry for every point in time the data is valid

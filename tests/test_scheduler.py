@@ -1,10 +1,11 @@
 import asyncio
 from heapq import heappush
+import pytest
+from tqdm import tqdm
 from typing import Iterable
 
-from tqdm import tqdm
 from mosaik import exceptions, scenario, scheduler, simmanager
-import pytest
+from mosaik.adapters import V3ToV2Adapter, init_and_get_adapter
 from mosaik.proxies import LocalProxy
 
 from tests.mocks.simulator_mock import SimulatorMock
@@ -36,10 +37,9 @@ def world_fixture(request):
         trigger = set([('1', 'x')]) # TODO: Is this correct?
     world = scenario.World({})
     for i in range(6):
-        proxy = LocalProxy(simmanager.MosaikRemote(world, i), SimulatorMock(request.param))
-        world.loop.run_until_complete(proxy.init(i, time_resolution=1.0))
+        proxy = LocalProxy(SimulatorMock(request.param), simmanager.MosaikRemote(world, i))
+        proxy = world.loop.run_until_complete(init_and_get_adapter(proxy, i, {"time_resolution": 1.0}))
         world.sims[i] = simmanager.SimRunner(
-                '',
                 i,
                 world,
                 proxy,
@@ -96,32 +96,26 @@ def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
     world.df_graph.add_nodes_from([0, 1])
-    world.trigger_graph.add_node('dummy')
+    world.trigger_graph.add_nodes_from([0, 1])
 
     async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True
 
-    class Sim:
-        class proxy:
-            @classmethod
-            async def setup_done(cls):
-                return None
+    class proxy:
+        @classmethod
+        async def send(cls, *args, **kwargs):
+            return None
 
-            @classmethod
-            async def stop(cls):
-                return
+        @classmethod
+        async def stop(cls):
+            return None
 
-        proc_started = False
         meta = {
-            'api_version': (2, 2),
+            'api_version': '2.2',
+            'type': 'time-based'
         }
-        sid = 'dummy'
-        next_steps = []
-
-        async def stop(self):
-            pass
-
-    world.sims = {i: Sim() for i in range(2)}
+        
+    world.sims = {i: simmanager.SimRunner(i, world, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
@@ -329,7 +323,7 @@ async def test_step(world):
     inputs = {}
     sim = world.sims[0]
     sim.tqdm = tqdm(disable=True)
-    sim.proxy._old_api = True
+    #sim.proxy._old_api = True
     heappush(sim.next_steps, 0)
     assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
 
@@ -405,7 +399,6 @@ def test_treat_cycling_output(
     for src, dest in [(4, 5), (5, 4)]:
         world.df_graph[src][dest]["dataflows"] = [("1", "0", [("x", "in")])]
         world.entity_graph.add_node(f"{dest}.0", sim=None, type="dummy_type")
-        world.sims[dest].proxy.meta["models"] = {"dummy_type": {"trigger": ["in"]}}
     world.cache_trigger_cycles()
 
     sim.trigger_cycles[0].time = 1
