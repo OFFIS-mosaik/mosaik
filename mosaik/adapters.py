@@ -103,9 +103,12 @@ class V3ToV2Adapter(Adapter):
     - ``step`` is now supplied with ``max_advance`` (as an arg)
     """
     async def send(self, request):
-        match request:
-            case ("step", args, kwargs):
+        try:
+            func_name, args, kwargs = request
+            if func_name == "step":
                 request = ("step", args[0:2], kwargs)
+        except:
+            pass
         return await self._out.send(request)
 
     @property
@@ -119,8 +122,11 @@ class V2ToV1Adapter(Adapter):
     - ``setup_done`` function was added to simulators
     """
     async def send(self, request):
-        match request:
-            case ("setup_done", _, _):
+        try:
+            func_name, args, kwargs = request
+            if func_name == "setup_done":
                 return None
+        except:
+            pass
 
         return await self._out.send(request)

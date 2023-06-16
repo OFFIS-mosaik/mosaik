@@ -173,6 +173,7 @@ class World(object):
             self.loop = asyncio_loop
         else:
             self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
         # When simulators are started using `cmd`, they will connect
         # back to mosaik using a TCP connection. Here we start the

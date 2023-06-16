@@ -149,7 +149,7 @@ class RemoteProxy(BaseProxy):
         super().__init__()
         self._channel = channel
         self._mosaik_remote = mosaik_remote
-        self._reader_task = asyncio.get_running_loop().create_task(
+        self._reader_task = asyncio.create_task(
             self._handle_remote_requests()
         )
 

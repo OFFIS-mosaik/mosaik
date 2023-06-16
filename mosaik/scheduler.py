@@ -52,7 +52,7 @@ async def run(
     for sim in world.sims.values():
         sim.tqdm.set_postfix_str('setup')
         # Send a setup_done event to all simulators
-        setup_done_events.append(asyncio.create_task(sim.setup_done()))
+        setup_done_events.append(world.loop.create_task(sim.setup_done()))
 
     # Wait for all answers to be here
     await asyncio.gather(*setup_done_events)
@@ -60,7 +60,7 @@ async def run(
     # Start simulator processes
     processes: List[asyncio.Task] = []
     for sim in world.sims.values():
-        process = asyncio.create_task(
+        process = world.loop.create_task(
             sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping)
         )
 
