@@ -131,10 +131,29 @@ class World(object):
     """The time until which this simulation will run."""
     rt_factor: Optional[float]
     """The number of real-time seconds corresponding to one mosaik step."""
+
+    time_resolution: float
+    """The number of seconds that correspond to one mosaik time step in
+    this situation. The default value is 1.0, meaning that one integer
+    step corresponds to one second simulated time.
+    """
+    max_loop_iterations: int
+    """The number of iterations allowed for same-time loops within one
+    time step. This is checked to prevent accidental infinite loops.
+    Increase this value if your same-time loops require many iterations
+    to converge.
+    """
+
     sim_progress: float
     """The progress of the entire simulation (in percent)."""
     _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
-    """Cache for faster dataflow. (Used if `cache=True` is set during World creation."""
+    """Cache for faster dataflow. It is used if `cache=True` is set during
+    World creation. The four levels of indices are:
+    - the time step at which the data is valid
+    - the SimId of the source simulator
+    - the EntityId of the source simulator
+    - the source attribute.
+    """
     loop: asyncio.AbstractEventLoop
     incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
@@ -158,15 +177,9 @@ class World(object):
         if mosaik_config:
             self.config.update(mosaik_config)
 
-        self.time_resolution = time_resolution
-        """An optional global *time_resolution* (in seconds) for the scenario,
-        which tells the simulators what the integer time step means in seconds.
-        Its default value is 1., meaning one integer step corresponds to one
-        second simulated time."""
-
-        self.max_loop_iterations = max_loop_iterations
-
         self.sims = {}
+        self.time_resolution = time_resolution
+        self.max_loop_iterations = max_loop_iterations
 
         if asyncio_loop:
             self.loop = asyncio_loop
@@ -199,10 +212,9 @@ class World(object):
         self.df_graph = networkx.DiGraph()
         """The directed data-flow :func:`graph <networkx.DiGraph>` for this
         scenario."""
-
-        self.trigger_graph = networkx.DiGraph()
-        """The directed :func:`graph <networkx.DiGraph>` from all triggering
-        connections for this scenario."""
+        self._trigger_graph = networkx.subgraph_view(self.df_graph,
+            filter_edge=lambda s, t: bool(self.df_graph[s][t]["trigger"])
+        )
 
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
@@ -248,7 +260,6 @@ class World(object):
         )
         self.sims[sim_id] = SimRunner(sim_id, self, proxy)
         self.df_graph.add_node(sim_id)
-        self.trigger_graph.add_node(sim_id)
         return ModelFactory(self, sim_id, proxy)
 
     def connect(
@@ -325,10 +336,10 @@ class World(object):
         self._check_attributes_values(src, dest, expanded_attrs)
 
         if self._df_cache is not None:
-            trigger, cached, time_buffered, memorized, persistent = \
+            cached, time_buffered, memorized, persistent = \
                 self._classify_connections_with_cache(src, dest, expanded_attrs)
         else:
-            trigger, time_buffered, memorized, persistent = \
+            time_buffered, memorized, persistent = \
                 self._classify_connections_without_cache(src, dest, expanded_attrs)
             cached = []
 
@@ -535,9 +546,9 @@ class World(object):
 
         self.create_simulator_ranking()
 
-        trigger_edges = [(s, t, d) for (s, t, d) in self.df_graph.edges.data(True)
-                         if d['trigger']]
-        self.trigger_graph.add_edges_from(trigger_edges)
+        #non_trigger_edges = [(s, t) for (s, t, d) in trigger_graph.edges.data(True)
+        #                 if d['trigger']]
+        #trigger_graph.remove_edges_from(non_trigger_edges)
 
         self.cache_trigger_cycles()
         self.cache_dependencies()
@@ -600,9 +611,9 @@ class World(object):
         about trggers in the cycle(s) to the simulator object
         """
         # Get the cycles from the networkx package
-        cycles = list(networkx.simple_cycles(self.trigger_graph))
+        cycles = list(networkx.simple_cycles(self._trigger_graph))
         # For every simulator go through all cycles in which the simulator is a node
-        for cycle_count, cycle in enumerate(networkx.simple_cycles(self.trigger_graph)):
+        for cycle_count, cycle in enumerate(networkx.simple_cycles(self._trigger_graph)):
             if cycle_count == 1000:
                 logger.warning(
                     "Your simulation has many cycles of simulators that can trigger "
@@ -679,10 +690,11 @@ class World(object):
 
             suc_sim.predecessors[pre_sim] = PredecessorInfo(
                 time_shift=edge["time_shifted"],
-                wait_event=asyncio.Event(),
-                wait_lazy=asyncio.Event(),
+                wait_event=wait_event,
+                wait_lazy=wait_lazy,
                 wait_async=wait_async,
                 cached_connections=edge['cached_connections'],
+                triggering=bool(edge["trigger"]),
             )
 
             pre_sim.successors[suc_sim] = SuccessorInfo(
@@ -712,10 +724,10 @@ class World(object):
         """
         for sim in self.sims.values():
             triggering_ancestors = sim.triggering_ancestors = []
-            ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
+            ancestors = list(networkx.ancestors(self._trigger_graph, sim.sid))
             for ancestors_sid in ancestors:
                 distance = networkx.shortest_path_length(
-                    self.trigger_graph, ancestors_sid, sim.sid,
+                    self._trigger_graph, ancestors_sid, sim.sid,
                     weight=lambda src, tgt, edge: edge["time_shifted"] or edge["weak"]
                 )
                 is_immediate_connection: bool = distance == 0
@@ -727,17 +739,19 @@ class World(object):
         """
         Deduce a simulator ranking from a topological sort of the df_graph.
         """
-        graph_tmp = self.df_graph.copy()
-        graph_tmp.remove_edges_from([
-            (s, t) for (s, t, d) in graph_tmp.edges.data(True)
-            if d['time_shifted'] or d['weak']
-        ])
+        immediate_graph = networkx.subgraph_view(
+            self.df_graph,
+            filter_edge=lambda s, t: (
+                not self.df_graph[s][t]['time_shifted']
+                and not self.df_graph[s][t]['weak']
+            )
+        )
         try:
-            for rank, sid in enumerate(networkx.topological_sort(graph_tmp)):
+            for rank, sid in enumerate(networkx.topological_sort(immediate_graph)):
                 self.sims[sid].rank = rank
         except networkx.NetworkXUnfeasible as e:
             # Find a cycle as a counter-example.
-            cycle = next(networkx.simple_cycles(graph_tmp))
+            cycle = next(networkx.simple_cycles(immediate_graph))
             raise ScenarioError(
                 "Your scenario contains cycles that are not broken up using "
                 "time-shifted or weak connections. mosaik is unable to determine which "
@@ -817,7 +831,6 @@ class World(object):
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
     ) -> Tuple[
-        bool,
         Iterable[Tuple[Attr, Attr]],
         Iterable[Tuple[Attr, Attr]],
         Iterable[Tuple[Attr, Attr]],
@@ -829,7 +842,6 @@ class World(object):
         data is cached, and if it's persistent and need's to be saved in the
          input_memory.
         """
-        any_trigger = False
         cached = []
         time_buffered = []
         memorized = []
@@ -837,16 +849,6 @@ class World(object):
 
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
-            trigger = (
-                dest_attr in dest.model_mock.event_inputs
-                or (
-                    dest.model_mock.any_inputs
-                    and dest.model_mock._factory.type == 'event-based'
-                )
-            )
-            if trigger:
-                any_trigger = True
-
             is_persistent = src_attr in src.model_mock.measurement_outputs
             if is_persistent:
                 persistent.append(attr_pair)
@@ -856,7 +858,7 @@ class World(object):
                     memorized.append(attr_pair)
             else:
                 cached.append(attr_pair)
-        return (any_trigger, tuple(cached), tuple(time_buffered),
+        return (tuple(cached), tuple(time_buffered),
                 tuple(memorized), tuple(persistent))
 
     def _classify_connections_without_cache(
@@ -865,7 +867,6 @@ class World(object):
         dest: Entity,
         attr_pairs: Iterable[Tuple[Attr, Attr]],
     ) -> Tuple[
-        bool,
         Iterable[Tuple[Attr, Attr]],
         Iterable[Tuple[Attr, Attr]],
         Iterable[Tuple[Attr, Attr]],
@@ -875,24 +876,15 @@ class World(object):
         disabled cache, i.e. if it triggers a step of the destination, if the
         attributes are persistent and need to be saved in the input_memory.
         """
-        trigger = False
         persistent = []
         for attr_pair in attr_pairs:
             src_attr, dest_attr = attr_pair
-            if (
-                dest_attr in dest.model_mock.event_inputs
-                or (
-                    dest.model_mock.any_inputs
-                    and dest.model_mock._factory.type == 'event-based'
-                )
-            ):
-                trigger = True
             is_persistent = src_attr in src.model_mock.measurement_outputs
             if is_persistent:
                 persistent.append(attr_pair)
         memorized = persistent
 
-        return trigger, tuple(attr_pairs), tuple(memorized), tuple(persistent)
+        return tuple(attr_pairs), tuple(memorized), tuple(persistent)
 
 
 MOSAIK_METHODS = set(

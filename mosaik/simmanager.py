@@ -284,6 +284,7 @@ async def start_connect(
 @dataclass
 class PredecessorInfo:
     time_shift: int
+    triggering: bool
 
     wait_event: asyncio.Event
     wait_lazy: asyncio.Event

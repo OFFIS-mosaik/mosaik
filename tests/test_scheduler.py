@@ -72,14 +72,9 @@ def world_fixture(request):
     )
     world.cache_dependencies()
     world.cache_related_sims()
-    #world.df_graph[0][2]['wait_event'].clear()
     world.sims[0].successors[world.sims[2]].wait_event.clear()
     world.until = 4
     world.rt_factor = None
-    if request.param == 'time-based':
-        world.trigger_graph.add_nodes_from(range(6))
-    else:
-        world.trigger_graph = world.df_graph
     world.cache_triggering_ancestors()
     yield world
     world.shutdown()
@@ -88,8 +83,7 @@ def world_fixture(request):
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
-    world.df_graph.add_nodes_from([0, 1])
-    world.trigger_graph.add_nodes_from([0, 1])
+    world.df_graph.add_nodes_from([0, 1], trigger=True)
 
     async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True

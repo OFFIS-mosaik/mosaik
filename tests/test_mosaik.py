@@ -6,13 +6,14 @@ import importlib
 import glob
 import os
 import time
+from typing import Dict
 
 import networkx as nx
 import pytest
 
 from mosaik import scenario
 
-sim_config = {
+sim_config: Dict[str, scenario.SimConfig] = {
     'local': {
         **{char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'},
         'MAS': {'python': 'example_mas.mosaik:ExampleMas'}

@@ -131,9 +131,9 @@ async def sim_process(
         # Before we stop, we wake up all dependencies who may be waiting for
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
-        for suc_sid in world.trigger_graph.successors(sim.sid):
-            if not world.sims[suc_sid].task.done():
-                world.sims[suc_sid].has_next_step.set()
+        for suc_sim, info in sim.successors.items():
+            if info.trigger and not suc_sim.task.done():
+                suc_sim.has_next_step.set()
 
     except ConnectionError as e:
         raise SimulationError('Simulator "%s" closed its connection.' %
@@ -181,17 +181,15 @@ def get_keep_running_func(
         # the total wall-clock time has passed.
         if not rt_factor:
             pre_processes = [
-                world.sims[pre_sid].task
-                for pre_sid in world.trigger_graph.predecessors(sim.sid)
+                pre_sim.task
+                for pre_sim, info in sim.predecessors.items()
+                if info.triggering
             ]
 
             def check_trigger():
                 return sim.next_steps or not all(p.done() for p in pre_processes)
         else:
-            pre_sims = [
-                world.sims[pre_sid]
-                for pre_sid in nx.ancestors(world.trigger_graph, sim.sid)
-            ]
+            pre_sims = [pre_sim for pre_sim, _ in sim.triggering_ancestors]
 
             def check_trigger():
                 return (sim.next_steps
