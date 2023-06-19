@@ -301,8 +301,7 @@ async def wait_for_dependencies(
             evt.clear()
             events.append(evt)
             # To avoid deadlocks:
-            if not info.wait_lazy.is_set():
-                info.wait_lazy.set()
+            info.wait_lazy.set()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
@@ -587,10 +586,9 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
 
     # Notify simulators waiting for inputs from us.
     for dest_sim, info in sim.successors.items():
-        if not info.wait_event.is_set():
-            weak_or_shifted = info.time_shift or info.is_weak
-            if dest_sim.next_steps[0] - weak_or_shifted < progress:
-                info.wait_event.set()
+        weak_or_shifted = info.time_shift or info.is_weak
+        if dest_sim.next_steps and dest_sim.next_steps[0] - weak_or_shifted < progress:
+            info.wait_event.set()
         for eid, attr in info.trigger:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
@@ -600,11 +598,10 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
 
     # Notify simulators waiting for async. requests from us.
     for pre_sim, info in sim.predecessors.items():
-        if not info.wait_async.is_set() and pre_sim.next_steps[0] <= progress:
+        if pre_sim.next_steps and pre_sim.next_steps[0] <= progress:
             info.wait_async.set()
-        elif not info.wait_lazy.is_set():
-            if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
-                info.wait_lazy.set()
+        elif not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
+            info.wait_lazy.set()
 
 
 def prune_dataflow_cache(world: World):
@@ -679,10 +676,8 @@ def check_and_resolve_deadlocks(
     # us for async. requests or lazily:
     if not sim.next_steps:
         for pre_sim, info in sim.predecessors.items():
-            if not info.wait_async.is_set():
-                info.wait_async.set()
-            if not info.wait_lazy.is_set():
-                info.wait_lazy.set()
+            info.wait_async.set()
+            info.wait_lazy.set()
 
 
 def clear_wait_events(sim: SimRunner) -> None:
@@ -690,8 +685,7 @@ def clear_wait_events(sim: SimRunner) -> None:
     Clear/succeed all wait events *sim* is waiting for.
     """
     for info in sim.predecessors.values():
-        if not info.wait_event.is_set():
-            info.wait_event.set()
+        info.wait_event.set()
 
     for info in sim.successors.values():
         info.wait_lazy.set()
@@ -704,8 +698,7 @@ def clear_wait_events_dependencies(sim: SimRunner) -> None:
     *sim*.
     """
     for info in sim.successors.values():
-        if not info.wait_event.is_set():
-            info.wait_event.set()
+        info.wait_event.set()
 
     for info in sim.predecessors.values():
         info.wait_lazy.set()
