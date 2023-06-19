@@ -64,7 +64,7 @@ async def run(
             sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping)
         )
 
-        sim.sim_proc = process
+        sim.task = process
         processes.append(process)
 
     # Wait for all processes to be done
@@ -132,7 +132,7 @@ async def sim_process(
         # us. They can then decide whether to also stop of if there's another
         # process left which might provide data.
         for suc_sid in world.trigger_graph.successors(sim.sid):
-            if not world.sims[suc_sid].sim_proc.done():
+            if not world.sims[suc_sid].task.done():
                 world.sims[suc_sid].has_next_step.set()
 
     except ConnectionError as e:
@@ -159,14 +159,13 @@ def get_keep_running_func(
         rt_factor
         and (
             sim.supports_set_events
-            or any([
-                world.sims[anc_sid].supports_set_events
-                for anc_sid in nx.ancestors(world.trigger_graph, sim.sid)
-            ])
+            or any(
+                anc_sim.supports_set_events for anc_sim, _ in sim.triggering_ancestors
+            )
         )
     )
     if no_set_events:
-        if world.trigger_graph.in_degree(sim.sid) == 0:
+        if not sim.triggering_ancestors:
             def check_time():
                 return sim.progress < until
         else:
@@ -182,7 +181,7 @@ def get_keep_running_func(
         # the total wall-clock time has passed.
         if not rt_factor:
             pre_processes = [
-                world.sims[pre_sid].sim_proc
+                world.sims[pre_sid].task
                 for pre_sid in world.trigger_graph.predecessors(sim.sid)
             ]
 
@@ -211,16 +210,12 @@ def warn_if_successors_terminated(world: World, sim: SimRunner):
     if 'warn_if_successors_terminated' in world.config:
         should_warn = world.config['warn_if_successors_terminated']
     else:
-        should_warn = world.df_graph.out_degree(sim.sid) > 0
+        should_warn = bool(sim.successors)
 
-    processes = [
-        world.sims[suc_sid].sim_proc
-        for suc_sid in sim.successors
-    ]
-
-    if should_warn and all(process.done() for process in processes):
-        logger.warning(f"Simulator {sim.sid}'s output is not used anymore put it "
-                       f"is still running.")
+    if should_warn and all(suc_sim.task.done() for suc_sim in sim.successors):
+        logger.warning(
+            f"Simulator {sim.sid}'s output is not used anymore put it is still running."
+        )
 
 
 async def wait_for_next_step(world: World, sim: SimRunner) -> None:
@@ -299,7 +294,7 @@ async def wait_for_dependencies(
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
-    for pre_sim, edge in sim.predecessors.values():
+    for pre_sim, edge in sim.predecessors.items():
         # Wait for dep_sim if it hasn't progressed until actual time step:
         if pre_sim.progress + edge['time_shifted'] <= next_step:
             evt = edge['wait_event']
@@ -313,7 +308,7 @@ async def wait_for_dependencies(
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
-        for suc_sim, edge in sim.successors.values():
+        for suc_sim, edge in sim.successors.items():
             if edge['pred_waiting'] and suc_sim.progress < next_step:
                 evt = edge['wait_async']
                 evt.clear()
@@ -362,18 +357,18 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
     if world._df_cache is not None:
-        for src_sid, (_, edge) in sim.predecessors.items():
+        for src_sim, edge in sim.predecessors.items():
             t = sim.next_steps[0] - edge['time_shifted']
             cache_slice = world._df_cache[t]
             dataflows = edge['cached_connections']
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
-                    v = cache_slice.get(src_sid, {}).get(src_eid, {})\
+                    v = cache_slice.get(src_sim.sid, {}).get(src_eid, {})\
                         .get(src_attr, SENTINEL)
                     if v is not SENTINEL:
                         vals = input_data.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
-                        vals[FULL_ID % (src_sid, src_eid)] = v
+                        vals[FULL_ID % (src_sim.sid, src_eid)] = v
 
     recursive_update(input_memory, input_data)
 
@@ -404,8 +399,7 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
     without causing a causality error.
     """
     ancs_next_steps = []
-    for anc_sid, immediate in sim.triggering_ancestors:
-        anc_sim = world.sims[anc_sid]
+    for anc_sim, immediate in sim.triggering_ancestors:
         if anc_sim.next_steps:
             ancs_next_steps.append(anc_sim.next_steps[0] - immediate)
 
@@ -592,7 +586,7 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
     sim.progress = progress
 
     # Notify simulators waiting for inputs from us.
-    for dest_sim, edge in sim.successors.values():
+    for dest_sim, edge in sim.successors.items():
         if not edge['wait_event'].is_set():
             weak_or_shifted = edge['time_shifted'] or edge['weak']
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
@@ -605,7 +599,7 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
                 break  # Further triggering attributes would only schedule the same event
 
     # Notify simulators waiting for async. requests from us.
-    for pre_sim, edge in sim.predecessors.values():
+    for pre_sim, edge in sim.predecessors.items():
         if not edge['wait_async'].is_set() and pre_sim.next_steps[0] <= progress:
             edge['wait_async'].set()
         elif not edge['wait_lazy'].is_set():
@@ -659,7 +653,7 @@ def check_and_resolve_deadlocks(
             # during start-up, we will notice this during the last
             # simulators first call to check_and_resolve_deadlocks.
             break
-        elif isim.sim_proc.done() or not isim.has_next_step.is_set():
+        elif isim.task.done() or not isim.has_next_step.is_set():
             # isim has finished already or has no next step
             continue
         elif not isim.wait_events or all(evt.is_set() for evt in isim.wait_events):
@@ -684,7 +678,7 @@ def check_and_resolve_deadlocks(
     # If we have no next step, we have to check if a predecessor is waiting for
     # us for async. requests or lazily:
     if not sim.next_steps:
-        for pre_sim, edge in sim.predecessors.values():
+        for pre_sim, edge in sim.predecessors.items():
             if not edge['wait_async'].is_set():
                 edge['wait_async'].set()
             if not edge['wait_lazy'].is_set():
@@ -695,11 +689,11 @@ def clear_wait_events(sim: SimRunner) -> None:
     """
     Clear/succeed all wait events *sim* is waiting for.
     """
-    for _, edge in sim.predecessors.values():
+    for edge in sim.predecessors.values():
         if not edge['wait_event'].is_set():
             edge['wait_event'].set()
 
-    for _, edge in sim.successors.values():
+    for edge in sim.successors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
             if not edge[wait_type].is_set():
                 edge[wait_type].set()
@@ -710,11 +704,11 @@ def clear_wait_events_dependencies(sim: SimRunner) -> None:
     Clear/succeed all wait events over which other simulators are waiting for
     *sim*.
     """
-    for _, edge in sim.successors.values():
+    for edge in sim.successors.values():
         if not edge['wait_event'].is_set():
             edge['wait_event'].set()
 
-    for _, edge in sim.predecessors.values():
+    for edge in sim.predecessors.values():
         for wait_type in ['wait_lazy', 'wait_async']:
             if not edge[wait_type].is_set():
                 edge[wait_type].set()

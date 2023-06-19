@@ -48,7 +48,7 @@ def world_fixture(request):
         def done(self):
             return False
     for sim in world.sims.values():
-        sim.sim_proc = DummyTask()
+        sim.task = DummyTask()
     def mk_set_event():
         event = asyncio.Event()
         event.set()

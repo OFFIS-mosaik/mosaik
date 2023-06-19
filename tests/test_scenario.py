@@ -162,10 +162,12 @@ def test_world_connect_cycle(world):
     world.connect(b, a, ('val_in', 'val_out'))
     with pytest.raises(ScenarioError) as err:
         world.run(1)
-    assert str(err.value) == ('Scenario has unresolved cyclic dependencies: '
-                              '[\'ExampleSim-0\', \'ExampleSim-1\']. Use '
-                              'options "time-shifted" or "weak" for '
-                              'resolution.')
+    assert (
+        "Your scenario contains cycles that are not broken up using time-shifted or "
+        "weak connections. mosaik is unable to determine which simulator to run first "
+        "in these cases. Here is an example of one such cycle:"
+        in str(err.value)
+    )
 
 
 def test_world_connect_wrong_attr_names(world):

@@ -39,7 +39,7 @@ from typing_extensions import Literal
 
 import mosaik_api
 from mosaik_api.connection import Channel
-from mosaik_api.types import CreateResult, Meta, ModelName, OutputData, OutputRequest, SimId, Time, InputData
+from mosaik_api.types import CreateResult, Meta, ModelName, OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
@@ -320,13 +320,13 @@ class SimRunner:
     waiting for dependencies which might trigger earlier steps for this
     simulator."""
 
-    predecessors: Dict[Any, Tuple[SimRunner, DataflowEdge]]
-    """This simulator's predecessors in the dataflow graph and the corresponding
-    edges."""
-    successors: Dict[Any, Tuple[SimRunner, DataflowEdge]]
-    """This simulator's successors in the dataflow graph and the corresponding
-    edge.."""
-    triggering_ancestors: Iterable[Tuple[SimId, bool]]
+    predecessors: Dict[SimRunner, DataflowEdge]
+    """This simulator's predecessors in the dataflow graph and the
+    corresponding edges."""
+    successors: Dict[SimRunner, DataflowEdge]
+    """This simulator's successors in the dataflow graph and the
+    corresponding edges."""
+    triggering_ancestors: Iterable[Tuple[SimRunner, bool]]
     """
     An iterable of this sim's ancestors that can trigger a step of this
     simulator. The second component specifies whether the connecting is weak or
@@ -356,7 +356,7 @@ class SimRunner:
     """The newest data returned by this simulator."""
     related_sims: Iterable[SimRunner]
     """Simulators related to this simulator. (Currently all other simulators.)"""
-    sim_proc: asyncio.Task
+    task: asyncio.Task
     """The asyncio.Task for this simulator."""
     wait_events: List[asyncio.Event]
     """The list of all events for which this simulator is waiting"""
@@ -394,7 +394,7 @@ class SimRunner:
         self.input_memory = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
-        self.sim_proc = None  # type: ignore  # will be set in World.run
+        self.task = None  # type: ignore  # will be set in World.run
         self.has_next_step = asyncio.Event()
         self.wait_events = []
         self.interruptable = False
@@ -413,7 +413,7 @@ class SimRunner:
         hq.heappush(self.next_steps, time)
         self.has_next_step.set()
         if is_earlier and self.interruptable:
-            self.sim_proc.cancel()
+            self.task.cancel()
 
     async def setup_done(self):
         return await self._proxy.send(["setup_done", (), {}])
@@ -692,7 +692,7 @@ class TriggerCycle:
     """
 
     sids: List[SimId]
-    activators: Set[Tuple[str, str]]
+    activators: Set[Tuple[EntityId, Attr]]
     """List of all attributes that trigger the destination simulator if the given edge"""
     min_length: int
     """

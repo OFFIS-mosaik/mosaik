@@ -551,17 +551,16 @@ class World(object):
             if deg == 0:
                 logger.warning('{sim_id} has no connections.', sim_id=sid)
 
-        self.detect_unresolved_cycles()
+        self.create_simulator_ranking()
 
-        trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
-                         if w['trigger']]
+        trigger_edges = [(s, t, d) for (s, t, d) in self.df_graph.edges.data(True)
+                         if d['trigger']]
         self.trigger_graph.add_edges_from(trigger_edges)
 
         self.cache_trigger_cycles()
         self.cache_dependencies()
         self.cache_related_sims()
         self.cache_triggering_ancestors()
-        self.create_simulator_ranking()
 
         logger.info('Starting simulation.')
         # 11 is the length of "Total: 100%"
@@ -613,60 +612,6 @@ class World(object):
             if success:
                 logger.info('Simulation finished successfully.')
 
-    def detect_unresolved_cycles(self):
-        """
-        Searches for unresolved cycles, i.e. cycles that do not have a weak or
-        time_shifted connection or have more than one weak connection. Raises
-        an error if an unresolved cycle is found.
-        """
-        cycles = list(networkx.simple_cycles(self.df_graph))
-        for cycle in cycles:
-            sim_pairs = list(zip(cycle, cycle[1:] + [cycle[0]]))
-            self._detect_missing_loop_breakers(cycle, sim_pairs)
-            self._detect_too_many_weak_connections(cycle, sim_pairs)
-
-    def _detect_missing_loop_breakers(
-        self,
-        cycle: List[SimId],
-        sim_pairs: List[Tuple[SimId, SimId]],
-    ):
-        """
-        Searches for loop breakers, i.e. weak or time_shifted connections in
-        a loop. If no such loop breaker is present, the cycle is unresolved
-        and an error is raised.
-        """
-        loop_breaker = [
-            self.df_graph[src_id][dest_id]["weak"]
-            or self.df_graph[src_id][dest_id]["time_shifted"]
-            for src_id, dest_id in sim_pairs
-        ]
-        if not any(loop_breaker):
-            raise ScenarioError(
-                "Scenario has unresolved cyclic "
-                f"dependencies: {sorted(cycle)}. Use options "
-                '"time-shifted" or "weak" for resolution.'
-            )
-
-    def _detect_too_many_weak_connections(
-        self,
-        cycle: List[SimId],
-        sim_pairs: List[Tuple[SimId, SimId]],
-    ):
-        """
-        Searches for cycles with more than one weak connection and raises
-        an error if such a connection is found.
-        """
-        is_weak = [
-            self.df_graph[src_id][dest_id]["weak"] for src_id, dest_id in sim_pairs
-        ]
-        if sum(is_weak) > 1:
-            raise ScenarioError(
-                "Maximum one weak connection is allowed in"
-                " an elementary cycle, but there are "
-                f"actually {sum(is_weak)} in "
-                f"{sorted(cycle)}."
-            )
-
     def cache_trigger_cycles(self):
         """
         For all simulators, if they are part of a cycle, add information
@@ -675,33 +620,37 @@ class World(object):
         # Get the cycles from the networkx package
         cycles = list(networkx.simple_cycles(self.trigger_graph))
         # For every simulator go through all cycles in which the simulator is a node
-        for sim in self.sims.values():
-            for cycle in cycles:
-                if sim.sid in cycle:
-                    index_of_simulator = cycle.index(sim.sid)
-                    successor_sid, cycle_edges = self._get_cycle_info(
-                        cycle, index_of_simulator
-                    )
-                    ingoing_edge, outgoing_edge = self._get_in_out_edges(
-                        index_of_simulator, cycle_edges
-                    )
-                    sids: List[SimId] = sorted(cycle)
-                    # If connections between simulators are time-shifted, the cycle
-                    # needs more time for a trigger round. If no edge is timeshifted,
-                    # the minimum length is 0.
-                    min_length: int = sum(
-                        [edge["time_shifted"] for edge in cycle_edges]
-                    )
-                    trigger_cycle = simmanager.TriggerCycle(
-                        sids=sids,
-                        activators=outgoing_edge["trigger"],
-                        min_length=min_length,
-                        in_edge=ingoing_edge,
-                        time=-1,
-                        count=0,
-                    )
-                    # Store the trigger cycle in the simulation object
-                    sim.trigger_cycles.append(trigger_cycle)
+        for cycle_count, cycle in enumerate(networkx.simple_cycles(self.trigger_graph)):
+            if cycle_count == 1000:
+                logger.warning(
+                    "Your simulation has many cycles of simulators that can trigger "
+                    "each other. This can make scenario setup very slow. Usually, "
+                    "it is better to create multiple entities in the same simulator "
+                    "instead of many simulators with one entity."
+                )
+            for index_of_simulator, sid in enumerate(cycle):
+                successor_sid, cycle_edges = self._get_cycle_info(
+                    cycle, index_of_simulator
+                )
+                ingoing_edge, outgoing_edge = self._get_in_out_edges(
+                    index_of_simulator, cycle_edges
+                )
+                # If connections between simulators are time-shifted, the cycle
+                # needs more time for a trigger round. If no edge is time-shifted,
+                # the minimum length is 0.
+                min_length: int = sum(
+                    [edge["time_shifted"] for edge in cycle_edges]
+                )
+                trigger_cycle = simmanager.TriggerCycle(
+                    sids=cycle,
+                    activators=outgoing_edge["trigger"],
+                    min_length=min_length,
+                    in_edge=ingoing_edge,
+                    time=-1,
+                    count=0,
+                )
+                # Store the trigger cycle in the simulation object
+                self.sims[sid].trigger_cycles.append(trigger_cycle)
 
     def _get_cycle_info(
         self,
@@ -717,7 +666,7 @@ class World(object):
         cycle_edges = [
             self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
         ]
-        return successor_sid, cycle_edges  # type: ignore
+        return successor_sid, cycle_edges
 
     def _get_in_out_edges(
         self,
@@ -741,13 +690,13 @@ class World(object):
             for pre_sid in self.df_graph.predecessors(sid):
                 pre_sim = self.sims[pre_sid]
                 edge = self.df_graph[pre_sid][sid]
-                sim.predecessors[pre_sid] = (pre_sim, edge)
+                sim.predecessors[pre_sim] = edge
 
             sim.successors = {}
             for suc_sid in self.df_graph.successors(sid):
                 suc_sim = self.sims[suc_sid]
                 edge = self.df_graph[sid][suc_sid]
-                sim.successors[suc_sid] = (suc_sim, edge)
+                sim.successors[suc_sim] = edge
 
     def cache_related_sims(self):
         """
@@ -768,42 +717,36 @@ class World(object):
             triggering_ancestors = sim.triggering_ancestors = []
             ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
             for ancestors_sid in ancestors:
-                distance = self._get_shortest_distance_from_edges(sim, ancestors_sid)
+                distance = networkx.shortest_path_length(
+                    self.trigger_graph, ancestors_sid, sim.sid,
+                    weight=lambda src, tgt, edge: edge["time_shifted"] or edge["weak"]
+                )
                 is_immediate_connection: bool = distance == 0
-                triggering_ancestors.append((ancestors_sid, is_immediate_connection))
-
-    def _get_shortest_distance_from_edges(
-        self,
-        simulator: simmanager.SimRunner,
-        ancestors_sid: str,
-    ) -> int:
-        """
-        Returns the minimum distance of all edges on the paths from the
-        ancestors to the given simulator.
-        """
-        paths = networkx.all_simple_edge_paths(
-            self.trigger_graph, ancestors_sid, simulator.sid
-        )
-        distances = []
-        for edges in paths:
-            distance = 0
-            for edge in edges:
-                edge = self.df_graph[edge[0]][edge[1]]
-                distance += edge["time_shifted"] or edge["weak"]
-            distances.append(distance)
-        return min(distances)
+                triggering_ancestors.append(
+                    (self.sims[ancestors_sid], is_immediate_connection)
+                )
 
     def create_simulator_ranking(self):
         """
         Deduce a simulator ranking from a topological sort of the df_graph.
         """
         graph_tmp = self.df_graph.copy()
-        loop_edges = [(u, v) for (u, v, w) in graph_tmp.edges.data(True) if
-                      w['time_shifted'] or w['weak']]
-        graph_tmp.remove_edges_from(loop_edges)
-        topo_sort = list(networkx.topological_sort(graph_tmp))
-        for rank, sid in enumerate(topo_sort):
-            self.sims[sid].rank = rank
+        graph_tmp.remove_edges_from([
+            (s, t) for (s, t, d) in graph_tmp.edges.data(True)
+            if d['time_shifted'] or d['weak']
+        ])
+        try:
+            for rank, sid in enumerate(networkx.topological_sort(graph_tmp)):
+                self.sims[sid].rank = rank
+        except networkx.NetworkXUnfeasible as e:
+            # Find a cycle as a counter-example.
+            cycle = next(networkx.simple_cycles(graph_tmp))
+            raise ScenarioError(
+                "Your scenario contains cycles that are not broken up using "
+                "time-shifted or weak connections. mosaik is unable to determine which "
+                "simulator to run first in these cases. Here is an example of one such "
+                f"cycle: {cycle}."
+            ) from e
 
     def shutdown(self):
         """
