@@ -49,10 +49,6 @@ def world_fixture(request):
             return False
     for sim in world.sims.values():
         sim.task = DummyTask()
-    def mk_set_event():
-        event = asyncio.Event()
-        event.set()
-        return event
     for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
         world.df_graph.add_edge(
             src,
@@ -62,9 +58,7 @@ def world_fixture(request):
             time_shifted=False,
             weak=False,
             trigger=trigger,
-            wait_event=mk_set_event(),
-            wait_lazy=mk_set_event(),
-            wait_async=mk_set_event(),
+            cached_connections=[],
         )
     world.df_graph.add_edge(
         5,
@@ -74,13 +68,12 @@ def world_fixture(request):
         time_shifted=time_shifted,
         weak=weak,
         trigger=trigger,
-        wait_lazy=mk_set_event(),
-        wait_event=mk_set_event(),
-        wait_async=mk_set_event(),
+        cached_connections=[],
     )
     world.cache_dependencies()
     world.cache_related_sims()
-    world.df_graph[0][2]['wait_event'].clear()
+    #world.df_graph[0][2]['wait_event'].clear()
+    world.sims[0].successors[world.sims[2]].wait_event.clear()
     world.until = 4
     world.rt_factor = None
     if request.param == 'time-based':
@@ -257,7 +250,7 @@ async def test_wait_for_dependencies_lazy(world, lazy_stepping):
     assert len(sim_under_test.wait_events) == (1 if lazy_stepping else 0)
     assert any_unset(sim_under_test.wait_events) == lazy_stepping
     if lazy_stepping:
-        assert 'wait_lazy' in world.df_graph[1][2]
+        assert not world.sims[1].successors[world.sims[2]].wait_lazy.is_set()
         await does_coroutine_stall(scheduler.wait_for_dependencies(world, sim_under_test, True))
         assert len(sim_under_test.wait_events) == 1
         assert any_unset(sim_under_test.wait_events) == True
@@ -276,6 +269,7 @@ def test_get_input_data(world):
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
+    world.cache_dependencies()
     data = scheduler.get_input_data(world, world.sims[2])
     assert data == {'0': {
         'in': {'0.1': 0, '1.2': 4, '3': 5},
@@ -293,6 +287,7 @@ def test_get_input_data_shifted(world):
         5: {'1': {'z': 7}}
     }}
     world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
+    world.cache_dependencies()
     data = scheduler.get_input_data(world, world.sims[4])
     assert data == {'0': {'in': {'5.1': 7}}}
 
@@ -425,8 +420,9 @@ def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait)
     sim = world.sims[0]
     sim.progress = 0
 
-    world.df_graph[0][2]['wait_event'].clear()
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
+    world.cache_dependencies()
+    world.sims[0].successors[world.sims[2]].wait_event.clear()
     sim.data = {'1': {'x': 1}}
     sim.output_time = output_time
 
@@ -444,8 +440,8 @@ def test_notify_dependencies_trigger(world):
     sim = world.sims[0]
     sim.progress = 0
 
-    world.df_graph[0][2]['wait_event'].set()
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
+    world.cache_dependencies()
     sim.data = {'1': {'x': 1}}
     sim.output_time = 1
 
@@ -476,7 +472,9 @@ def test_prune_dataflow_cache(world):
 async def test_get_outputs_shifted(world):
     world._df_cache[1] = {'spam': 'eggs'}
     world._df_outattr[5][0] = ['x', 'y']
-    world.df_graph[5][4]['wait_event'].clear()
+    world.cache_dependencies()
+    checked_event = world.sims[5].successors[world.sims[4]].wait_event
+    checked_event.clear()
     sim = world.sims[5]
     sim.type = 'time-based'
     sim.progress = 1
@@ -487,7 +485,7 @@ async def test_get_outputs_shifted(world):
     await scheduler.get_outputs(world, sim, progress=2)
     scheduler.notify_dependencies(world, sim, progress=2)
     scheduler.prune_dataflow_cache(world)
-    assert world.df_graph[5][4]['wait_event'].is_set()
+    assert checked_event.is_set()
     assert world._df_cache == {
         1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
     }

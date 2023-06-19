@@ -294,30 +294,30 @@ async def wait_for_dependencies(
 
     # Check if all predecessors have stepped far enough
     # to provide the required input data for us:
-    for pre_sim, edge in sim.predecessors.items():
+    for pre_sim, info in sim.predecessors.items():
         # Wait for dep_sim if it hasn't progressed until actual time step:
-        if pre_sim.progress + edge['time_shifted'] <= next_step:
-            evt = edge['wait_event']
+        if pre_sim.progress + info.time_shift <= next_step:
+            evt = info.wait_event
             evt.clear()
             events.append(evt)
             # To avoid deadlocks:
-            if not edge['wait_lazy'].is_set():
-                edge['wait_lazy'].set()
+            if not info.wait_lazy.is_set():
+                info.wait_lazy.set()
 
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
     if not world.rt_factor:
-        for suc_sim, edge in sim.successors.items():
-            if edge['pred_waiting'] and suc_sim.progress < next_step:
-                evt = edge['wait_async']
+        for suc_sim, info in sim.successors.items():
+            if info.pred_waiting and suc_sim.progress < next_step:
+                evt = info.wait_async
                 evt.clear()
                 events.append(evt)
             elif lazy_stepping:
-                if not edge['wait_lazy'].is_set():
-                    events.append(edge['wait_lazy'])
+                if not info.wait_lazy.is_set():
+                    events.append(info.wait_lazy)
                 elif suc_sim.next_steps and suc_sim.progress < next_step:
-                    evt = edge['wait_lazy']
+                    evt = info.wait_lazy
                     evt.clear()
                     events.append(evt)
     sim.wait_events = events
@@ -357,10 +357,10 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
     if world._df_cache is not None:
-        for src_sim, edge in sim.predecessors.items():
-            t = sim.next_steps[0] - edge['time_shifted']
+        for src_sim, info in sim.predecessors.items():
+            t = sim.next_steps[0] - info.time_shift
             cache_slice = world._df_cache[t]
-            dataflows = edge['cached_connections']
+            dataflows = info.cached_connections
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
                     v = cache_slice.get(src_sim.sid, {}).get(src_eid, {})\
@@ -586,25 +586,25 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
     sim.progress = progress
 
     # Notify simulators waiting for inputs from us.
-    for dest_sim, edge in sim.successors.items():
-        if not edge['wait_event'].is_set():
-            weak_or_shifted = edge['time_shifted'] or edge['weak']
+    for dest_sim, info in sim.successors.items():
+        if not info.wait_event.is_set():
+            weak_or_shifted = info.time_shift or info.is_weak
             if dest_sim.next_steps[0] - weak_or_shifted < progress:
-                edge['wait_event'].set()
-        for eid, attr in edge['trigger']:
+                info.wait_event.set()
+        for eid, attr in info.trigger:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
-                dest_input_time = sim.output_time + edge['time_shifted']
+                dest_input_time = sim.output_time + info.time_shift
                 dest_sim.schedule_step(dest_input_time)
                 break  # Further triggering attributes would only schedule the same event
 
     # Notify simulators waiting for async. requests from us.
-    for pre_sim, edge in sim.predecessors.items():
-        if not edge['wait_async'].is_set() and pre_sim.next_steps[0] <= progress:
-            edge['wait_async'].set()
-        elif not edge['wait_lazy'].is_set():
+    for pre_sim, info in sim.predecessors.items():
+        if not info.wait_async.is_set() and pre_sim.next_steps[0] <= progress:
+            info.wait_async.set()
+        elif not info.wait_lazy.is_set():
             if not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
-                edge['wait_lazy'].set()
+                info.wait_lazy.set()
 
 
 def prune_dataflow_cache(world: World):
@@ -678,25 +678,24 @@ def check_and_resolve_deadlocks(
     # If we have no next step, we have to check if a predecessor is waiting for
     # us for async. requests or lazily:
     if not sim.next_steps:
-        for pre_sim, edge in sim.predecessors.items():
-            if not edge['wait_async'].is_set():
-                edge['wait_async'].set()
-            if not edge['wait_lazy'].is_set():
-                edge['wait_lazy'].set()
+        for pre_sim, info in sim.predecessors.items():
+            if not info.wait_async.is_set():
+                info.wait_async.set()
+            if not info.wait_lazy.is_set():
+                info.wait_lazy.set()
 
 
 def clear_wait_events(sim: SimRunner) -> None:
     """
     Clear/succeed all wait events *sim* is waiting for.
     """
-    for edge in sim.predecessors.values():
-        if not edge['wait_event'].is_set():
-            edge['wait_event'].set()
+    for info in sim.predecessors.values():
+        if not info.wait_event.is_set():
+            info.wait_event.set()
 
-    for edge in sim.successors.values():
-        for wait_type in ['wait_lazy', 'wait_async']:
-            if not edge[wait_type].is_set():
-                edge[wait_type].set()
+    for info in sim.successors.values():
+        info.wait_lazy.set()
+        info.wait_async.set()
 
 
 def clear_wait_events_dependencies(sim: SimRunner) -> None:
@@ -704,11 +703,10 @@ def clear_wait_events_dependencies(sim: SimRunner) -> None:
     Clear/succeed all wait events over which other simulators are waiting for
     *sim*.
     """
-    for edge in sim.successors.values():
-        if not edge['wait_event'].is_set():
-            edge['wait_event'].set()
+    for info in sim.successors.values():
+        if not info.wait_event.is_set():
+            info.wait_event.set()
 
-    for edge in sim.predecessors.values():
-        for wait_type in ['wait_lazy', 'wait_async']:
-            if not edge[wait_type].is_set():
-                edge[wait_type].set()
+    for info in sim.predecessors.values():
+        info.wait_lazy.set()
+        info.wait_async.set()

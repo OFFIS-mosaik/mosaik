@@ -281,6 +281,30 @@ async def start_connect(
     return RemoteProxy(Channel(reader, writer), mosaik_remote)
 
 
+@dataclass
+class PredecessorInfo:
+    time_shift: int
+
+    wait_event: asyncio.Event
+    wait_lazy: asyncio.Event
+    wait_async: asyncio.Event
+
+    cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+
+
+@dataclass
+class SuccessorInfo:
+    time_shift: int
+    is_weak: bool
+    pred_waiting: bool
+
+    trigger: Set[Tuple[EntityId, Attr]]
+    
+    wait_event: asyncio.Event
+    wait_lazy: asyncio.Event
+    wait_async: asyncio.Event
+
+
 class SimRunner:
     """
     Handler for an external simulator.
@@ -320,10 +344,10 @@ class SimRunner:
     waiting for dependencies which might trigger earlier steps for this
     simulator."""
 
-    predecessors: Dict[SimRunner, DataflowEdge]
+    predecessors: Dict[SimRunner, PredecessorInfo]
     """This simulator's predecessors in the dataflow graph and the
     corresponding edges."""
-    successors: Dict[SimRunner, DataflowEdge]
+    successors: Dict[SimRunner, SuccessorInfo]
     """This simulator's successors in the dataflow graph and the
     corresponding edges."""
     triggering_ancestors: Iterable[Tuple[SimRunner, bool]]
@@ -401,6 +425,9 @@ class SimRunner:
         self.is_in_step = False
         self.trigger_cycles = []
         self.rank = None  # type: ignore  # will be set in World.run
+
+        self.predecessors = {}
+        self.successors = {}
 
     def schedule_step(self, time: int):
         """Schedule a step for this simulator at the given time. This will wake this

@@ -33,7 +33,7 @@ from mosaik_api.types import EntityId, Attr, ModelName, SimId, FullId, ModelDesc
 
 from mosaik import simmanager
 from mosaik.proxies import Proxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import PredecessorInfo, SimRunner, SuccessorInfo
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
 
@@ -90,7 +90,6 @@ class DataflowEdge(TypedDict):
     """Whether the source simulator of this edge has to wait for the destination
     simulator."""
     cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-    dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
     wait_event: asyncio.Event
     """Event on which destination simulator is waiting for its inputs."""
     wait_lazy: asyncio.Event
@@ -365,17 +364,6 @@ class World(object):
             edge['async_requests'] = edge['async_requests'] or async_requests
             edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
         except KeyError:
-            async def create_events():
-                wait_event = asyncio.Event()
-                wait_event.set()
-                wait_lazy = asyncio.Event()
-                wait_lazy.set()
-                wait_async = asyncio.Event()
-                wait_async.set()
-                return wait_event, wait_lazy, wait_async
-            wait_event, wait_lazy, wait_async = self.loop.run_until_complete(
-                create_events()
-            )
             self.df_graph.add_edge(
                 src.sid,
                 dest.sid,
@@ -384,13 +372,7 @@ class World(object):
                 weak=weak,
                 trigger=trigger,
                 pred_waiting=pred_waiting,
-                wait_event=wait_event,
-                wait_lazy=wait_lazy,
-                wait_async=wait_async,
             )
-
-        dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-        dfs.append((src.eid, dest.eid, expanded_attrs))
 
         cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
             'cached_connections', [])
@@ -685,18 +667,33 @@ class World(object):
         Loops through all simulations and adds predecessors and successors to the
         simulations.
         """
-        for sid, sim in self.sims.items():
-            sim.predecessors = {}
-            for pre_sid in self.df_graph.predecessors(sid):
-                pre_sim = self.sims[pre_sid]
-                edge = self.df_graph[pre_sid][sid]
-                sim.predecessors[pre_sim] = edge
+        for pre_sid, suc_sid, edge in self.df_graph.edges(data=True):
+            pre_sim = self.sims[pre_sid]
+            suc_sim = self.sims[suc_sid]
+            wait_event = asyncio.Event()
+            wait_event.set()
+            wait_lazy = asyncio.Event()
+            wait_lazy.set()
+            wait_async = asyncio.Event()
+            wait_async.set()
 
-            sim.successors = {}
-            for suc_sid in self.df_graph.successors(sid):
-                suc_sim = self.sims[suc_sid]
-                edge = self.df_graph[sid][suc_sid]
-                sim.successors[suc_sim] = edge
+            suc_sim.predecessors[pre_sim] = PredecessorInfo(
+                time_shift=edge["time_shifted"],
+                wait_event=asyncio.Event(),
+                wait_lazy=asyncio.Event(),
+                wait_async=wait_async,
+                cached_connections=edge['cached_connections'],
+            )
+
+            pre_sim.successors[suc_sim] = SuccessorInfo(
+                time_shift=edge["time_shifted"],
+                is_weak=edge["weak"],
+                pred_waiting=edge["pred_waiting"],
+                trigger=edge["trigger"],
+                wait_event=wait_event,
+                wait_lazy=wait_lazy,
+                wait_async=wait_async,
+            )
 
     def cache_related_sims(self):
         """
