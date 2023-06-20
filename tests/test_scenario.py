@@ -111,7 +111,6 @@ def test_world_connect(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': set(),
@@ -126,11 +125,9 @@ def test_world_connect(world):
         'ExampleSim-0.' + a[1].eid: {'ExampleSim-1.' + b[1].eid: {}},
         'ExampleSim-1.' + b[1].eid: {'ExampleSim-0.' + a[1].eid: {}},
     }
-    assert world._df_outattr == {
-        'ExampleSim-0': {
-            '0.0': ['val_out', 'dummy_out'],
-            '0.1': ['val_out', 'dummy_out']
-        },
+    assert world.sims['ExampleSim-0'].output_request == {
+        '0.0': ['val_out', 'dummy_out'],
+        '0.1': ['val_out', 'dummy_out'],
     }
 
 
@@ -144,7 +141,6 @@ def test_world_connect_same_simulator(world):
     assert str(err.value) == ('Cannot connect entities sharing the same '
                               'simulator.')
     assert list(world.df_graph.edges()) == []
-    assert dict(world._df_outattr) == {}
 
 
 def test_world_connect_cycle(world):
@@ -190,7 +186,6 @@ def test_world_connect_wrong_attr_names(world):
         "Entity(model='A', eid='0.0', sid='ExampleSim-0').onoes, "
         "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes")
     assert list(world.df_graph.edges()) == []
-    assert world._df_outattr == {}
 
 
 def test_world_connect_no_attrs(world):
@@ -205,7 +200,6 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': set(),
@@ -218,7 +212,6 @@ def test_world_connect_no_attrs(world):
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
-    assert world._df_outattr == {}
 
 
 def test_world_connect_any_inputs(world):
@@ -236,7 +229,6 @@ def test_world_connect_any_inputs(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': set(),
@@ -249,8 +241,8 @@ def test_world_connect_any_inputs(world):
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
-    assert world._df_outattr == {
-        'ExampleSim-0': {'0.0': ['val_out']},
+    assert world.sims['ExampleSim-0'].output_request == {
+        '0.0': ['val_out'],
     }
 
 
@@ -263,7 +255,6 @@ def test_world_connect_async_requests(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': True,
-                'pred_waiting': True,
                 'time_shifted': False,
                 'weak': False,
                 'trigger': set(),
@@ -284,7 +275,6 @@ def test_world_connect_time_shifted(world):
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'pred_waiting': False,
                 'time_shifted': True,
                 'weak': False,
                 'trigger': set(),
@@ -294,13 +284,9 @@ def test_world_connect_time_shifted(world):
         'ExampleSim-1': {},
     }
 
-    assert world._df_cache == {
-        -1: {
-            'ExampleSim-0': {
-                a.eid: {
-                    'val_out': 1.0
-                },
-            },
+    assert world.sims['ExampleSim-0'].outputs[-1] == {
+        a.eid: {
+            'val_out': 1.0
         },
     }
 

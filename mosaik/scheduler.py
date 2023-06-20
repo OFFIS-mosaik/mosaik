@@ -120,7 +120,7 @@ async def sim_process(
             rt_check(rt_factor, rt_start, rt_strict, sim)
             progress = await get_outputs(world, sim, progress)
             notify_dependencies(world, sim, progress)
-            if world._df_cache:
+            if world.use_cache:
                 prune_dataflow_cache(world)
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
@@ -353,15 +353,14 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     recursive_union(input_data, input_memory)
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
-    if world._df_cache is not None:
+    if world.use_cache:
         for src_sim, info in sim.predecessors.items():
             t = sim.next_steps[0] - info.time_shift
-            cache_slice = world._df_cache[t]
+            cache_slice = src_sim.outputs[t]
             dataflows = info.cached_connections
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
-                    v = cache_slice.get(src_sim.sid, {}).get(src_eid, {})\
-                        .get(src_attr, SENTINEL)
+                    v = cache_slice.get(src_eid, {}).get(src_attr, SENTINEL)
                     if v is not SENTINEL:
                         vals = input_data.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
@@ -502,16 +501,16 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     sid = sim.sid
-    outattr = world._df_outattr[sid]
+    outattr = sim.output_request
     if outattr:
         sim.tqdm.set_postfix_str('get_data')
         data = await sim.get_data(outattr)
 
-        if sim.type == 'time-based' and world._df_cache is not None:
+        if sim.type == 'time-based' and world.use_cache:
             # Create a cache entry for every point in time the data is valid
             # for.
             for i in range(sim.last_step, progress):
-                world._df_cache[i][sim.sid] = data
+                sim.outputs[i] = data
             sim.output_time = sim.last_step
         else:
             output_time: int
@@ -523,16 +522,11 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
 
             progress = treat_cycling_output(world, sim, data, output_time, progress)
 
-            if world._df_cache is not None:
-                world._df_cache[sim.last_step][sim.sid] = data
-                # TODO: Is it a problem if persistent data are also written?
-                world._df_cache[output_time][sim.sid] = data
-
             for (src_eid, src_attr), destinations in sim.buffered_output.items():
-                for dest_sid, dest_eid, dest_attr in destinations:
-                    val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                    if val is not SENTINEL:
-                        world.sims[dest_sid].timed_input_buffer.add(
+                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
+                if val is not SENTINEL:
+                    for dest_sim, dest_eid, dest_attr in destinations:
+                        dest_sim.timed_input_buffer.add(
                             output_time, sid, src_eid, dest_eid, dest_attr, val)
         sim.data = data
 
@@ -606,14 +600,15 @@ def prune_dataflow_cache(world: World):
     """
     Prunes the dataflow cache.
     """
-    if not world._df_cache:
+    if not world.use_cache:
         return
     min_cache_time = min(s.last_step for s in world.sims.values())
     for i in range(world._df_cache_min_time, min_cache_time):
-        try:
-            del world._df_cache[i]
-        except KeyError:
-            pass
+        for sim in world.sims.values():
+            try:
+                del sim.outputs[i]
+            except KeyError:
+                pass
     world._df_cache_min_time = min_cache_time
 
 

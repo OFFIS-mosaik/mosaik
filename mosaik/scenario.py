@@ -79,16 +79,13 @@ class DataflowEdge(TypedDict):
     """The information associated with an edge in the dataflow graph."""
     async_requests: bool
     """Whether there can be async requests along this edge."""
-    time_shifted: bool
-    """Whether dataflow along this edge is time shifted."""
+    time_shifted: int
+    """How much dataflow along this edge is time shifted."""
     weak: bool
     """Whether this edge is weak (used for same-time loops)."""
     trigger: Set[Tuple[EntityId, Attr]]
     """Those pairs of entities and attributes of the source simulator that can
     trigger a step of the destination simulator."""
-    pred_waiting: bool
-    """Whether the source simulator of this edge has to wait for the destination
-    simulator."""
     cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
     wait_event: asyncio.Event
     """Event on which destination simulator is waiting for its inputs."""
@@ -146,7 +143,8 @@ class World(object):
 
     sim_progress: float
     """The progress of the entire simulation (in percent)."""
-    _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
+    use_cache: bool
+    #use_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
     """Cache for faster dataflow. It is used if `cache=True` is set during
     World creation. The four levels of indices are:
     - the time step at which the data is valid
@@ -231,17 +229,12 @@ class World(object):
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
-        # List of outputs for each simulator and model:
-        # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
-        self._df_outattr = defaultdict(lambda: defaultdict(list))
         if cache:
-            self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
             # Cache for simulation results
-            self._df_cache = defaultdict(dict)
+            self.use_cache = True
             self._df_cache_min_time = 0
         else:
-            self.persistent_outattrs = {}
-            self._df_cache = None
+            self.use_cache = False
 
     def start(self, sim_name: str, **sim_params) -> ModelFactory:
         """
@@ -268,7 +261,7 @@ class World(object):
         dest: Entity,
         *attr_pairs: Union[str, Tuple[str, str]],
         async_requests: bool = False,
-        time_shifted: bool = False,
+        time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False
     ):
@@ -301,7 +294,7 @@ class World(object):
         initial_data specifying a dict with the data sent to the destination
         simulator at the first step (e.g. *{‘src_attr’: value}*).
         """
-        if src.sid == dest.sid:
+        if src.sid == dest.sid and not (time_shifted or weak):
             raise ScenarioError('Cannot connect entities sharing the same '
                                 'simulator.')
         if async_requests:
@@ -335,14 +328,75 @@ class World(object):
         # Check dataflow connection (non-)persistent --> (non-)trigger
         self._check_attributes_values(src, dest, expanded_attrs)
 
-        if self._df_cache is not None:
-            cached, time_buffered, memorized, persistent = \
-                self._classify_connections_with_cache(src, dest, expanded_attrs)
-        else:
-            time_buffered, memorized, persistent = \
-                self._classify_connections_without_cache(src, dest, expanded_attrs)
-            cached = []
+        persistent = [
+            attr_pair for attr_pair in expanded_attrs if src.is_persistent(attr_pair[0])
+        ]
 
+        if not self.use_cache or src.model_mock._factory.type != 'time-based':
+            time_buffered = expanded_attrs
+            memorized = persistent
+            cached = []
+        else:
+            time_buffered = []
+            memorized = []
+            cached = expanded_attrs
+            
+
+        trigger = set()
+        for src_attr, dest_attr in expanded_attrs:
+            if (dest.triggered_by(dest_attr)):
+                trigger.add((src.eid, src_attr))
+
+        try:
+            edge = self.df_graph[src.sid][dest.sid]
+            edge['trigger'].update(trigger)
+            if not edge['weak'] == weak:
+                raise ScenarioError(
+                    f"There is already a connection between the simulators {src.sid} "
+                    f"and {dest.sid} with weak={edge['weak']}. Further connections "
+                    f"must specify the same value, but you gave weak={weak}."
+                )
+            edge['time_shifted'] = edge['time_shifted'] and time_shifted
+            if not edge['time_shifted'] == int(time_shifted):
+                raise ScenarioError(
+                    f"There is already a connection between the simulators {src.sid} "
+                    f"and {dest.sid} with time_shifted={edge['time_shifted']}. Further "
+                    f"connections must specify the same value, but you gave "
+                    f"time_shifted={time_shifted}."
+                )
+            edge['async_requests'] = edge['async_requests'] or async_requests
+            if cached:
+                edge['cached_connections'].append((src.eid, dest.eid, cached))
+        except KeyError:
+            self.df_graph.add_edge(
+                src.sid,
+                dest.sid,
+                async_requests=async_requests,
+                time_shifted=int(time_shifted),
+                weak=weak,
+                trigger=trigger,
+                cached_connections=(
+                    [(src.eid, dest.eid, cached)] if cached else []
+                ),
+            )
+
+        # Add relation in entity_graph
+        self.entity_graph.add_edge(src.full_id, dest.full_id)
+
+        # Cache the attribute names which we need output data for after a
+        # simulation step to reduce the number of df graph queries.
+        outattr = [a[0] for a in expanded_attrs]
+        if outattr:
+            self.sims[src.sid].output_request.setdefault(src.eid, []).extend(outattr)
+
+        # TODO: Move creation of SimRunners into World.run
+        for src_attr, dest_attr in time_buffered:
+            src_runner = self.sims[src.sid]
+            src_runner.buffered_output.setdefault((src.eid, src_attr), []).append(
+                (self.sims[dest.sid], dest.eid, dest_attr))
+
+        # Setting of initial data
+        
         if time_shifted:
             if type(initial_data) is not dict or initial_data == {}:
                 raise ScenarioError('Time shifted connections have to be '
@@ -355,55 +409,9 @@ class World(object):
                     raise ScenarioError('Incorrect attr "%s" in "initial_data".'
                                         % attr)
 
-                if self._df_cache is not None:
-                    self._df_cache[-1].setdefault(src.sid, {})
-                    self._df_cache[-1][src.sid].setdefault(src.eid, {})
-                    self._df_cache[-1][src.sid][src.eid][attr] = val
-
-        pred_waiting = async_requests
-
-        trigger = set()
-        for src_attr, dest_attr in expanded_attrs:
-            if (dest.triggered_by(dest_attr)):
-                trigger.add((src.eid, src_attr))
-
-        try:
-            edge = self.df_graph[src.sid][dest.sid]
-            edge['trigger'].update(trigger)
-            edge['weak'] = edge['weak'] and weak
-            edge['time_shifted'] = edge['time_shifted'] and time_shifted
-            edge['async_requests'] = edge['async_requests'] or async_requests
-            edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
-        except KeyError:
-            self.df_graph.add_edge(
-                src.sid,
-                dest.sid,
-                async_requests=async_requests,
-                time_shifted=time_shifted,
-                weak=weak,
-                trigger=trigger,
-                pred_waiting=pred_waiting,
-            )
-
-        cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
-            'cached_connections', [])
-        if cached:
-            cached_connections.append((src.eid, dest.eid, cached))
-
-        # Add relation in entity_graph
-        self.entity_graph.add_edge(src.full_id, dest.full_id)
-
-        # Cache the attribute names which we need output data for after a
-        # simulation step to reduce the number of df graph queries.
-        outattr = [a[0] for a in expanded_attrs]
-        if outattr:
-            self._df_outattr[src.sid][src.eid].extend(outattr)
-
-        # TODO: Move creation of SimRunners into World.run
-        for src_attr, dest_attr in time_buffered:
-            src_runner = self.sims[src.sid]
-            src_runner.buffered_output.setdefault((src.eid, src_attr), []).append(
-                (dest.sid, dest.eid, dest_attr))
+                if self.use_cache:
+                    src_sim = self.sims[src.sid]
+                    src_sim.outputs[-1].setdefault(src.eid, {})[attr] = val
 
         if weak:
             for src_attr, dest_attr in persistent:
@@ -544,11 +552,10 @@ class World(object):
             if deg == 0:
                 logger.warning('{sim_id} has no connections.', sim_id=sid)
 
+        # Creating the topological ranking will ensure that there are no
+        # cycles in the dataflow graph that are not resolved using
+        # time-shifted or weak connections.
         self.create_simulator_ranking()
-
-        #non_trigger_edges = [(s, t) for (s, t, d) in trigger_graph.edges.data(True)
-        #                 if d['trigger']]
-        #trigger_graph.remove_edges_from(non_trigger_edges)
 
         self.cache_trigger_cycles()
         self.cache_dependencies()
@@ -700,7 +707,7 @@ class World(object):
             pre_sim.successors[suc_sim] = SuccessorInfo(
                 time_shift=edge["time_shifted"],
                 is_weak=edge["weak"],
-                pred_waiting=edge["pred_waiting"],
+                pred_waiting=edge["async_requests"],
                 trigger=edge["trigger"],
                 wait_event=wait_event,
                 wait_lazy=wait_lazy,
@@ -824,67 +831,6 @@ class World(object):
                     f'{dest.sid} is not recommended. This might cause problems in the '
                     'simulation!'
                 )
-
-    def _classify_connections_with_cache(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ) -> Tuple[
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-    ]:
-        """
-        Classifies the connection by analyzing the model's meta data with
-        enabled cache, i.e. if it triggers a step of the destination, how the
-        data is cached, and if it's persistent and need's to be saved in the
-         input_memory.
-        """
-        cached = []
-        time_buffered = []
-        memorized = []
-        persistent = []
-
-        for attr_pair in attr_pairs:
-            src_attr, dest_attr = attr_pair
-            is_persistent = src_attr in src.model_mock.measurement_outputs
-            if is_persistent:
-                persistent.append(attr_pair)
-            if src.model_mock._factory.type != 'time-based':
-                time_buffered.append(attr_pair)
-                if is_persistent:
-                    memorized.append(attr_pair)
-            else:
-                cached.append(attr_pair)
-        return (tuple(cached), tuple(time_buffered),
-                tuple(memorized), tuple(persistent))
-
-    def _classify_connections_without_cache(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ) -> Tuple[
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-    ]:
-        """
-        Classifies the connection by analyzing the model's meta data with
-        disabled cache, i.e. if it triggers a step of the destination, if the
-        attributes are persistent and need to be saved in the input_memory.
-        """
-        persistent = []
-        for attr_pair in attr_pairs:
-            src_attr, dest_attr = attr_pair
-            is_persistent = src_attr in src.model_mock.measurement_outputs
-            if is_persistent:
-                persistent.append(attr_pair)
-        memorized = persistent
-
-        return tuple(attr_pairs), tuple(memorized), tuple(persistent)
 
 
 MOSAIK_METHODS = set(

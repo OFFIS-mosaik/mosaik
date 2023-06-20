@@ -256,10 +256,8 @@ def test_get_input_data(world):
     Simple test for get_input_data().
     """
     heappush(world.sims[2].next_steps, 0)
-    world._df_cache = {0: {
-        0: {'1': {'x': 0, 'y': 1}},
-        1: {'2': {'x': 2, 'z': 4}},
-    }}
+    world.sims[0].outputs[0] = {'1': {'x': 0, 'y': 1}}
+    world.sims[1].outputs[0] = {'2': {'x': 2, 'z': 4}}
     world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
@@ -277,9 +275,7 @@ def test_get_input_data_shifted(world):
     Getting input data transmitted via a shifted connection.
     """
     heappush(world.sims[4].next_steps, 0)
-    world._df_cache = {-1: {
-        5: {'1': {'z': 7}}
-    }}
+    world.sims[5].outputs[-1] = {'1': {'z': 7}}
     world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
     world.cache_dependencies()
     data = scheduler.get_input_data(world, world.sims[4])
@@ -326,26 +322,28 @@ async def test_step(world):
                          [('time-based', True),
                           ('event-based', False)], indirect=['world'])
 async def test_get_outputs(world, cache_t1):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_outattr[0][0] = ['x', 'y']
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims[0]
+    sim.output_request = {0: ['x', 'y']}
     sim.last_step = 0 
     sim.output_time = -1
     sim.tqdm = tqdm(disable=True)
 
     await scheduler.get_outputs(world, sim, progress=2)
 
-    expected_cache = {
-        0: {
-            0: {'0': {'x': 0, 'y': 1}},
-            'spam': 'eggs',
-        },
-    }
     if cache_t1:
-        expected_cache[1] = {0: {'0': {'x': 0, 'y': 1}}}
+        expected_outputs = {
+            0: {
+                '0': {'x': 0, 'y': 1},
+            },
+            1: {
+                '0': {'x': 0, 'y': 1},
+            }
+        }
+    else:
+        expected_outputs = {}
 
-    assert world._df_cache == expected_cache
+    assert sim.outputs == expected_outputs
 
     assert sim.output_time == 0
 
@@ -356,11 +354,11 @@ async def test_get_outputs_buffered(world):
     sim = world.sims[0]
     sim.last_step = 0
     sim.tqdm = tqdm(disable=True)
-    world._df_outattr[0][0] = ['x', 'y', 'z']
+    sim.output_request = {0: ['x', 'y', 'z']}
     sim.buffered_output.setdefault(('0', 'x'), []).append((2, '0', 'in'))
     sim.buffered_output = {
-        ('0', 'x'): [(2, '0', 'in')],
-        ('0', 'z'): [(1, '0', 'in')],
+        ('0', 'x'): [(world.sims[2], '0', 'in')],
+        ('0', 'z'): [(world.sims[1], '0', 'in')],
     }
 
     await scheduler.get_outputs(world, sim, progress=0)
@@ -449,14 +447,15 @@ def test_notify_dependencies_trigger(world):
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_prune_dataflow_cache(world):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_cache[1] = {'foo': 'bar'}
+    world._df_cache = True
+    world.sims[0].outputs[0] = {'spam': 'eggs'}
+    world.sims[0].outputs[1] = {'foo': 'bar'}
     for s in world.sims.values():
         s.last_step = 1
         s.tqdm = tqdm(disable=True)
     scheduler.prune_dataflow_cache(world)
 
-    assert world._df_cache == {
+    assert world.sims[0].outputs == {
         1: {'foo': 'bar'},
     }
 
@@ -464,12 +463,11 @@ def test_prune_dataflow_cache(world):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 async def test_get_outputs_shifted(world):
-    world._df_cache[1] = {'spam': 'eggs'}
-    world._df_outattr[5][0] = ['x', 'y']
+    sim = world.sims[5]
+    sim.output_request = {0: ['x', 'y']}
     world.cache_dependencies()
     checked_event = world.sims[5].successors[world.sims[4]].wait_event
     checked_event.clear()
-    sim = world.sims[5]
     sim.type = 'time-based'
     sim.progress = 1
     sim.last_step = 1
@@ -480,8 +478,8 @@ async def test_get_outputs_shifted(world):
     scheduler.notify_dependencies(world, sim, progress=2)
     scheduler.prune_dataflow_cache(world)
     assert checked_event.is_set()
-    assert world._df_cache == {
-        1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
+    assert sim.outputs[1] == {
+        '0': {'x': 0, 'y': 1},
     }
 
 

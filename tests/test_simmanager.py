@@ -519,6 +519,7 @@ async def _rpc_set_data_err2(channel, world):
 )
 def test_mosaik_remote(rpc, err):
     world = scenario.World({})
+    world.use_cache = True
 
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
@@ -530,11 +531,6 @@ def test_mosaik_remote(rpc, err):
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim="ExampleSim", type="A")
         world.sim_progress = 23
-        world._df_cache = {
-            1: {
-                "X": {"2": {"attr": "val"}},
-            },
-        }
 
         async def simulator():
             reader, writer = await asyncio.open_connection("localhost", 5555)
@@ -552,6 +548,9 @@ def test_mosaik_remote(rpc, err):
             sim.last_step = 1
             sim.is_in_step = True
             world.sims["X"] = sim
+            world.sims["X"].outputs[1] = {
+                "2": {"attr": "val"},
+            }
 
         async def run():
             sim_exc, greeter_exc = await asyncio.gather(

@@ -358,12 +358,21 @@ class SimRunner:
     time-shifted (False) or immediate (True).
     """
 
+    output_request: OutputRequest
+
     input_buffer: Dict
     """Inputs received via `set_data`."""
     input_memory: Dict
     """Memory of previous inputs for persistent attributes."""
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
+
+    buffered_output: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, EntityId, Attr]]]
+    """This lists those connections that use the timed_input_buffer.
+    The keys are the entity-attribute pairs of this simulator with
+    the corresponding list of simulator-entity-attribute triples
+    describing the destinations for that data.
+    """
 
     progress: int
     """This simulator's progress in mosaik time.
@@ -392,6 +401,7 @@ class SimRunner:
     simulators with their non-weak, non-time-shifted connections.
     """
 
+    outputs: Dict[Time, OutputData]
     tqdm: tqdm.tqdm
 
     def __init__(
@@ -429,6 +439,10 @@ class SimRunner:
 
         self.predecessors = {}
         self.successors = {}
+
+        self.output_request = {}
+
+        self.outputs = collections.defaultdict(dict)
 
     def schedule_step(self, time: int):
         """Schedule a step for this simulator at the given time. This will wake this
@@ -552,11 +566,6 @@ class MosaikRemote:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
         assert self.sim.is_in_step
-        cache_slice = (
-            self.world._df_cache[self.sim.last_step]
-            if self.world._df_cache is not None
-            else {}
-        )
 
         data = {}
         missing = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -567,11 +576,15 @@ class MosaikRemote:
             sid, eid = full_id.split(FULL_ID_SEP, 1)
             # Check if async_requests are enabled.
             self._assert_async_requests(dfg, sid, dest_sid)
+            if self.world.use_cache:
+                cache_slice = self.world.sims[sid].outputs.get(self.sim.last_step, {})
+            else:
+                cache_slice = {}
 
             data[full_id] = {}
             for attr in attr_names:
                 try:
-                    data[full_id][attr] = cache_slice[sid][eid][attr]
+                    data[full_id][attr] = cache_slice[eid][attr]
                 except KeyError:
                     missing[sid][eid].append(attr)
 
