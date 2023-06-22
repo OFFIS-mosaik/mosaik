@@ -451,12 +451,12 @@ async def _rpc_set_data(channel, world):
     RPC.
     """
     await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
-    assert world.sims["X"].input_buffer == {
+    assert world.sims["X"].set_data_inputs == {
         "2": {"val": {"src": 23}},
     }
 
     await channel.send(["set_data", [{"src": {"X.2": {"val": 42}}}], {}])
-    assert world.sims["X"].input_buffer == {
+    assert world.sims["X"].set_data_inputs == {
         "2": {"val": {"src": 42}},
     }
 

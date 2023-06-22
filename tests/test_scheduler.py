@@ -258,7 +258,7 @@ def test_get_input_data(world):
     heappush(world.sims[2].next_steps, 0)
     world.sims[0].outputs[0] = {'1': {'x': 0, 'y': 1}}
     world.sims[1].outputs[0] = {'2': {'x': 2, 'z': 4}}
-    world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
+    world.sims[2].set_data_inputs = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
     world.cache_dependencies()
@@ -308,7 +308,6 @@ async def test_step(world):
     inputs = {}
     sim = world.sims[0]
     sim.tqdm = tqdm(disable=True)
-    #sim.proxy._old_api = True
     heappush(sim.next_steps, 0)
     assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
 
@@ -318,10 +317,11 @@ async def test_step(world):
 
 # TODO: Test also for output_time if 'time' is indicated by event-based sims
 @pytest.mark.asyncio
-@pytest.mark.parametrize('world, cache_t1',
+@pytest.mark.parametrize('world, cache',
                          [('time-based', True),
                           ('event-based', False)], indirect=['world'])
-async def test_get_outputs(world, cache_t1):
+async def test_get_outputs(world, cache):
+    world.use_cache = cache
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims[0]
     sim.output_request = {0: ['x', 'y']}
@@ -331,7 +331,7 @@ async def test_get_outputs(world, cache_t1):
 
     await scheduler.get_outputs(world, sim, progress=2)
 
-    if cache_t1:
+    if cache:
         expected_outputs = {
             0: {
                 '0': {'x': 0, 'y': 1},
@@ -341,9 +341,10 @@ async def test_get_outputs(world, cache_t1):
             }
         }
     else:
-        expected_outputs = {}
+        expected_outputs = { 0: {}, 1: {} }
 
-    assert sim.outputs == expected_outputs
+    assert sim.get_output_for(0) == expected_outputs[0]
+    assert sim.get_output_for(1) == expected_outputs[1]
 
     assert sim.output_time == 0
 
@@ -355,10 +356,9 @@ async def test_get_outputs_buffered(world):
     sim.last_step = 0
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ['x', 'y', 'z']}
-    sim.buffered_output.setdefault(('0', 'x'), []).append((2, '0', 'in'))
     sim.buffered_output = {
-        ('0', 'x'): [(world.sims[2], '0', 'in')],
-        ('0', 'z'): [(world.sims[1], '0', 'in')],
+        ('0', 'x'): [(world.sims[2], 0, '0', 'in')],
+        ('0', 'z'): [(world.sims[1], 0, '0', 'in')],
     }
 
     await scheduler.get_outputs(world, sim, progress=0)

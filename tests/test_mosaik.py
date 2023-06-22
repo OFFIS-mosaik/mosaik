@@ -68,6 +68,7 @@ def test_mosaik(scenario_name, cache):
                                            create_using=nx.DiGraph(), data=())
         
         # TODO: Check different behavior for INPUTS with or without cache
+        #if False:
         if hasattr(scenario_desc, 'INPUTS_WITH_CACHE') and cache:
             for node, inputs in scenario_desc.INPUTS_WITH_CACHE.items():
                 expected_graph.add_node(node, inputs=inputs)
@@ -79,7 +80,7 @@ def test_mosaik(scenario_name, cache):
 
         for node, data in world.execution_graph.nodes.items():
             assert data['inputs'] == expected_graph.nodes[node].get(
-                'inputs', {})
+                'inputs', {}), f"Inputs for {node}"
 
         for sim in world.sims.values():
             assert sim.last_step < scenario_desc.UNTIL

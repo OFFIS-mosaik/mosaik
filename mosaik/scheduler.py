@@ -347,26 +347,27 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_memory = sim.input_memory
-    input_data = sim.input_buffer
-    sim.input_buffer = {}
-    recursive_union(input_data, input_memory)
+    input_data = sim.set_data_inputs
+    sim.set_data_inputs = {}
+    recursive_union(input_data, sim.persistent_inputs)
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
     if world.use_cache:
         for src_sim, info in sim.predecessors.items():
             t = sim.next_steps[0] - info.time_shift
-            cache_slice = src_sim.outputs[t]
-            dataflows = info.cached_connections
+            cache_slice = src_sim.get_output_for(t)
+            dataflows = info.pulled_inputs
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
-                    v = cache_slice.get(src_eid, {}).get(src_attr, SENTINEL)
-                    if v is not SENTINEL:
-                        vals = input_data.setdefault(dest_eid, {}) \
+                    try:
+                        val = cache_slice[src_eid][src_attr]
+                        input_vals = input_data.setdefault(dest_eid, {}) \
                             .setdefault(dest_attr, {})
-                        vals[FULL_ID % (src_sim.sid, src_eid)] = v
+                        input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
+                    except KeyError:
+                        pass
 
-    recursive_update(input_memory, input_data)
+    recursive_update(sim.persistent_inputs, input_data)
 
     return input_data
 
@@ -506,28 +507,30 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
         sim.tqdm.set_postfix_str('get_data')
         data = await sim.get_data(outattr)
 
-        if sim.type == 'time-based' and world.use_cache:
-            # Create a cache entry for every point in time the data is valid
-            # for.
-            for i in range(sim.last_step, progress):
-                sim.outputs[i] = data
-            sim.output_time = sim.last_step
-        else:
-            output_time: int
-            output_time = sim.output_time = data.get('time', sim.last_step)  # type: ignore
-            if sim.last_step > output_time:
-                raise SimulationError(
-                    'Output time (%s) is not >= time (%s) for simulator "%s"'
-                    % (output_time, sim.last_step, sim.sid))
+        output_time: int
+        output_time = sim.output_time = data.get('time', sim.last_step)  # type: ignore
+        if sim.last_step > output_time:
+            raise SimulationError(
+                'Output time (%s) is not >= time (%s) for simulator "%s"'
+                % (output_time, sim.last_step, sim.sid))
 
-            progress = treat_cycling_output(world, sim, data, output_time, progress)
+        # Fill output cache. This will repeat some data that is also
+        # pushed forward below, but it is faster to just save everything
+        # than filter out this data here.
+        if world.use_cache:
+            sim.outputs[output_time] = data
 
-            for (src_eid, src_attr), destinations in sim.buffered_output.items():
-                val = data.get(src_eid, {}).get(src_attr, SENTINEL)
-                if val is not SENTINEL:
-                    for dest_sim, dest_eid, dest_attr in destinations:
-                        dest_sim.timed_input_buffer.add(
-                            output_time, sid, src_eid, dest_eid, dest_attr, val)
+        progress = treat_cycling_output(world, sim, data, output_time, progress)
+
+        # Push forward certain data
+        for (src_eid, src_attr), destinations in sim.buffered_output.items():
+            try:
+                val = data[src_eid][src_attr]
+                for dest_sim, time_shift, dest_eid, dest_attr in destinations:
+                    dest_sim.timed_input_buffer.add(
+                        output_time + time_shift, sid, src_eid, dest_eid, dest_attr, val)
+            except KeyError:
+                pass
         sim.data = data
 
     return progress

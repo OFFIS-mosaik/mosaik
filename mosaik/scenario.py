@@ -224,6 +224,12 @@ class World(object):
 
         self._debug = False
         if debug:
+            logger.warning(
+                "You are running your simulation in debug mode. This can lead to "
+                "significant slow-downs, as it will create a graph of the entire "
+                "execution. Only use this mode if you intend to analyze the execution "
+                "graph afterwards."
+            )
             self._debug = True
             self.execution_graph = networkx.DiGraph()
 
@@ -318,7 +324,7 @@ class World(object):
                                         f'simulators {src.sid} and {dest.sid}')
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        expanded_attrs = tuple((a, a) if isinstance(a, str) else a for a in attr_pairs)
+        expanded_attrs = set((a, a) if isinstance(a, str) else a for a in attr_pairs)
 
         missing_attrs = self._check_attributes(src, dest, expanded_attrs)
         if missing_attrs:
@@ -328,18 +334,18 @@ class World(object):
         # Check dataflow connection (non-)persistent --> (non-)trigger
         self._check_attributes_values(src, dest, expanded_attrs)
 
-        persistent = [
+        persistent = set(
             attr_pair for attr_pair in expanded_attrs if src.is_persistent(attr_pair[0])
-        ]
+        )
 
-        if not self.use_cache or src.model_mock._factory.type != 'time-based':
-            time_buffered = expanded_attrs
-            memorized = persistent
-            cached = []
+        if self.use_cache: # and src.model_mock._factory.type == 'time-based':
+            pushed = expanded_attrs - persistent
+            memorized = set()
+            pulled = persistent
         else:
-            time_buffered = []
-            memorized = []
-            cached = expanded_attrs
+            pushed = expanded_attrs
+            memorized = persistent
+            pulled = set()
             
 
         trigger = set()
@@ -365,8 +371,8 @@ class World(object):
                     f"time_shifted={time_shifted}."
                 )
             edge['async_requests'] = edge['async_requests'] or async_requests
-            if cached:
-                edge['cached_connections'].append((src.eid, dest.eid, cached))
+            if pulled:
+                edge['cached_connections'].append((src.eid, dest.eid, pulled))
         except KeyError:
             self.df_graph.add_edge(
                 src.sid,
@@ -376,7 +382,7 @@ class World(object):
                 weak=weak,
                 trigger=trigger,
                 cached_connections=(
-                    [(src.eid, dest.eid, cached)] if cached else []
+                    [(src.eid, dest.eid, pulled)] if pulled else []
                 ),
             )
 
@@ -385,15 +391,15 @@ class World(object):
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
-        outattr = [a[0] for a in expanded_attrs]
+        outattr = sorted(a[0] for a in expanded_attrs)
         if outattr:
             self.sims[src.sid].output_request.setdefault(src.eid, []).extend(outattr)
 
         # TODO: Move creation of SimRunners into World.run
-        for src_attr, dest_attr in time_buffered:
+        for src_attr, dest_attr in pushed:
             src_runner = self.sims[src.sid]
             src_runner.buffered_output.setdefault((src.eid, src_attr), []).append(
-                (self.sims[dest.sid], dest.eid, dest_attr))
+                (self.sims[dest.sid], int(time_shifted), dest.eid, dest_attr))
 
         # Setting of initial data
         
@@ -417,7 +423,7 @@ class World(object):
             for src_attr, dest_attr in persistent:
                 try:
                     dest_runner = self.sims[dest.sid]
-                    dest_runner.input_buffer.setdefault(dest.eid, {}).setdefault(
+                    dest_runner.set_data_inputs.setdefault(dest.eid, {}).setdefault(
                         dest_attr, {})[
                         FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
                 except KeyError:
@@ -434,7 +440,7 @@ class World(object):
             else:
                 init_val = None
             dest_runner = self.sims[dest.sid]
-            dest_runner.input_memory.setdefault(dest.eid, {}).setdefault(
+            dest_runner.persistent_inputs.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
     def set_initial_event(self, sid: SimId, time: int = 0):
@@ -700,7 +706,7 @@ class World(object):
                 wait_event=wait_event,
                 wait_lazy=wait_lazy,
                 wait_async=wait_async,
-                cached_connections=edge['cached_connections'],
+                pulled_inputs=edge['cached_connections'],
                 triggering=bool(edge["trigger"]),
             )
 

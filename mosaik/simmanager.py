@@ -290,7 +290,7 @@ class PredecessorInfo:
     wait_lazy: asyncio.Event
     wait_async: asyncio.Event
 
-    cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+    pulled_inputs: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
 
 
 @dataclass
@@ -360,14 +360,14 @@ class SimRunner:
 
     output_request: OutputRequest
 
-    input_buffer: Dict
+    set_data_inputs: Dict
     """Inputs received via `set_data`."""
-    input_memory: Dict
+    persistent_inputs: Dict
     """Memory of previous inputs for persistent attributes."""
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
 
-    buffered_output: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, EntityId, Attr]]]
+    buffered_output: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, int, EntityId, Attr]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-entity-attribute triples
@@ -425,8 +425,8 @@ class SimRunner:
             self.next_steps = []
         self.next_self_step = None
         self.progress = 0
-        self.input_buffer = {}
-        self.input_memory = {}
+        self.set_data_inputs = {}
+        self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.buffered_output = {}
         self.task = None  # type: ignore  # will be set in World.run
@@ -465,6 +465,14 @@ class SimRunner:
 
     async def get_data(self, outputs: OutputRequest) -> OutputData:
         return await self._proxy.send(["get_data", (outputs,), {}])
+
+    def get_output_for(self, time: Time):
+        for data_time, value in reversed(self.outputs.items()):
+            if data_time <= time:
+                return value
+
+        return {}
+        raise KeyError(f"no output for time {time}")
 
     async def stop(self):
         """
@@ -577,7 +585,7 @@ class MosaikRemote:
             # Check if async_requests are enabled.
             self._assert_async_requests(dfg, sid, dest_sid)
             if self.world.use_cache:
-                cache_slice = self.world.sims[sid].outputs.get(self.sim.last_step, {})
+                cache_slice = self.world.sims[sid].get_output_for(self.sim.last_step)
             else:
                 cache_slice = {}
 
@@ -615,7 +623,7 @@ class MosaikRemote:
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
                 self._assert_async_requests(dfg, sid, dest_sid)
-                inputs = sims[sid].input_buffer.setdefault(eid, {})
+                inputs = sims[sid].set_data_inputs.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
 

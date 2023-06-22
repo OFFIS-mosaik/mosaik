@@ -103,15 +103,15 @@ def test_world_connect(world):
         world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
     connections = [
-        (str(a[0].eid), str(b[0].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
-        (str(a[1].eid), str(b[1].eid), (('val_out', 'val_in'), ('dummy_out', 'dummy_in'))),
+        (str(a[0].eid), str(b[0].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
+        (str(a[1].eid), str(b[1].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
      ]
 
     assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'time_shifted': False,
+                'time_shifted': 0,
                 'weak': False,
                 'trigger': set(),
                 'cached_connections': connections,
@@ -126,8 +126,8 @@ def test_world_connect(world):
         'ExampleSim-1.' + b[1].eid: {'ExampleSim-0.' + a[1].eid: {}},
     }
     assert world.sims['ExampleSim-0'].output_request == {
-        '0.0': ['val_out', 'dummy_out'],
-        '0.1': ['val_out', 'dummy_out'],
+        '0.0': ['dummy_out', 'val_out'],
+        '0.1': ['dummy_out', 'val_out'],
     }
 
 
@@ -184,7 +184,8 @@ def test_world_connect_wrong_attr_names(world):
         'At least one attribute does not exist: '
         "Entity(model='A', eid='0.0', sid='ExampleSim-0').val, "
         "Entity(model='A', eid='0.0', sid='ExampleSim-0').onoes, "
-        "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes")
+        "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes"
+    )
     assert list(world.df_graph.edges()) == []
 
 
@@ -224,12 +225,12 @@ def test_world_connect_any_inputs(world):
     b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
-    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
     assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'time_shifted': False,
+                'time_shifted': 0,
                 'weak': False,
                 'trigger': set(),
                 'cached_connections': connections,
@@ -270,12 +271,12 @@ def test_world_connect_time_shifted(world):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
+    connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
     assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
             'ExampleSim-1': {
                 'async_requests': False,
-                'time_shifted': True,
+                'time_shifted': 1,
                 'weak': False,
                 'trigger': set(),
                 'cached_connections': connections,
