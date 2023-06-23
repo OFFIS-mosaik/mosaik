@@ -11,7 +11,7 @@ import asyncio
 
 from mosaik_api.types import InputData, OutputData, SimId
 
-from mosaik.exceptions import (SimulationError, WakeUpException, NoStepException)
+from mosaik.exceptions import (ScenarioError, SimulationError, WakeUpException, NoStepException)
 from mosaik.simmanager import FULL_ID, SimRunner
 
 from typing import TYPE_CHECKING
@@ -361,11 +361,20 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
                 for src_attr, dest_attr in attrs:
                     try:
                         val = cache_slice[src_eid][src_attr]
-                        input_vals = input_data.setdefault(dest_eid, {}) \
-                            .setdefault(dest_attr, {})
-                        input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
                     except KeyError:
-                        pass
+                        logger.warning(
+                            f"Simulator {src_sim.sid}'s entity {src_eid} did not "
+                            f"produce output on its persistent attribute {src_attr} "
+                            "during its last step. However, this value is now required "
+                            f"by simulator {sim.sid}. This usually results from "
+                            "attributes that are marked persistent despite working "
+                            "like events. This will be an error in future versions of "
+                            "mosaik."
+                        )
+                        val = None
+                    input_vals = input_data.setdefault(dest_eid, {}) \
+                        .setdefault(dest_attr, {})
+                    input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
 
     recursive_update(sim.persistent_inputs, input_data)
 

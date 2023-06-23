@@ -67,14 +67,8 @@ def test_mosaik(scenario_name, cache):
         expected_graph = nx.parse_edgelist(scenario_desc.EXECUTION_GRAPH.split('\n'),
                                            create_using=nx.DiGraph(), data=())
         
-        # TODO: Check different behavior for INPUTS with or without cache
-        #if False:
-        if hasattr(scenario_desc, 'INPUTS_WITH_CACHE') and cache:
-            for node, inputs in scenario_desc.INPUTS_WITH_CACHE.items():
-                expected_graph.add_node(node, inputs=inputs)
-        else:
-            for node, inputs in scenario_desc.INPUTS.items():
-                expected_graph.add_node(node, inputs=inputs)
+        for node, inputs in scenario_desc.INPUTS.items():
+            expected_graph.add_node(node, inputs=inputs)
 
         assert world.execution_graph.adj == expected_graph.adj
 

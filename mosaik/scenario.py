@@ -265,7 +265,7 @@ class World(object):
         self,
         src: Entity,
         dest: Entity,
-        *attr_pairs: Union[str, Tuple[str, str]],
+        *attr_pairs: Union[str, Tuple[str, str]],  # type: ignore
         async_requests: bool = False,
         time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
@@ -315,6 +315,9 @@ class World(object):
                                 'are incongruous methods for handling of cyclic '
                                 'data-flow. Choose one!')
 
+        src_sim = self.sims[src.sid]
+        dest_sim = self.sims[dest.sid]
+        
         if self.df_graph.has_edge(src.sid, dest.sid):
             for ctype in ['time_shifted', 'async_requests', 'weak']:
                 if eval(ctype) != self.df_graph[src.sid][dest.sid][ctype]:
@@ -324,32 +327,34 @@ class World(object):
                                         f'simulators {src.sid} and {dest.sid}')
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        expanded_attrs = set((a, a) if isinstance(a, str) else a for a in attr_pairs)
+        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+            (a, a) if isinstance(a, str) else a for a in attr_pairs
+        )
 
-        missing_attrs = self._check_attributes(src, dest, expanded_attrs)
+        missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
             raise ScenarioError('At least one attribute does not exist: %s' %
                                 ', '.join('%s.%s' % x for x in missing_attrs))
 
         # Check dataflow connection (non-)persistent --> (non-)trigger
-        self._check_attributes_values(src, dest, expanded_attrs)
+        self._check_attributes_values(src, dest, attr_pairs)
 
         persistent = set(
-            attr_pair for attr_pair in expanded_attrs if src.is_persistent(attr_pair[0])
+            attr_pair for attr_pair in attr_pairs if src.is_persistent(attr_pair[0])
         )
 
-        if self.use_cache: # and src.model_mock._factory.type == 'time-based':
-            pushed = expanded_attrs - persistent
+        if self.use_cache:
+            pushed = attr_pairs - persistent
             memorized = set()
             pulled = persistent
         else:
-            pushed = expanded_attrs
+            pushed = attr_pairs
             memorized = persistent
             pulled = set()
             
 
         trigger = set()
-        for src_attr, dest_attr in expanded_attrs:
+        for src_attr, dest_attr in attr_pairs:
             if (dest.triggered_by(dest_attr)):
                 trigger.add((src.eid, src_attr))
 
@@ -391,14 +396,13 @@ class World(object):
 
         # Cache the attribute names which we need output data for after a
         # simulation step to reduce the number of df graph queries.
-        outattr = sorted(a[0] for a in expanded_attrs)
+        outattr = sorted(a[0] for a in attr_pairs)
         if outattr:
             self.sims[src.sid].output_request.setdefault(src.eid, []).extend(outattr)
 
         # TODO: Move creation of SimRunners into World.run
         for src_attr, dest_attr in pushed:
-            src_runner = self.sims[src.sid]
-            src_runner.buffered_output.setdefault((src.eid, src_attr), []).append(
+            src_sim.buffered_output.setdefault((src.eid, src_attr), []).append(
                 (self.sims[dest.sid], int(time_shifted), dest.eid, dest_attr))
 
         # Setting of initial data
@@ -408,7 +412,7 @@ class World(object):
                 raise ScenarioError('Time shifted connections have to be '
                                     'set with default inputs for the first step.')
             # list for assertion of correct assignment:
-            check_attrs = [a[0] for a in expanded_attrs]
+            check_attrs = [a[0] for a in attr_pairs]
             # Set default values for first data exchange:
             for attr, val in initial_data.items():
                 if attr not in check_attrs:
@@ -416,14 +420,13 @@ class World(object):
                                         % attr)
 
                 if self.use_cache:
-                    src_sim = self.sims[src.sid]
                     src_sim.outputs[-1].setdefault(src.eid, {})[attr] = val
 
         if weak:
             for src_attr, dest_attr in persistent:
                 try:
-                    dest_runner = self.sims[dest.sid]
-                    dest_runner.set_data_inputs.setdefault(dest.eid, {}).setdefault(
+                    src_sim.outputs[0].setdefault(src.eid, {})[src_attr] = initial_data[src_attr]
+                    dest_sim.set_data_inputs.setdefault(dest.eid, {}).setdefault(
                         dest_attr, {})[
                         FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
                 except KeyError:
@@ -439,8 +442,7 @@ class World(object):
                 init_val = initial_data[src_attr]
             else:
                 init_val = None
-            dest_runner = self.sims[dest.sid]
-            dest_runner.persistent_inputs.setdefault(dest.eid, {}).setdefault(
+            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
     def set_initial_event(self, sid: SimId, time: int = 0):
@@ -804,7 +806,7 @@ class World(object):
                 attr_errors.append((src, src_attr))
             if not (dest.model_mock.any_inputs or dest_attr in dest.model_mock.input_attrs):
                 attr_errors.append((dest, dest_attr))
-        return attr_errors
+        return sorted(attr_errors, key=lambda port: (port[0].sid, port[0].eid, port[1]))
 
     def _check_attributes_values(
         self,

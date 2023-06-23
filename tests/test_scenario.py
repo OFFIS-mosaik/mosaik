@@ -182,8 +182,8 @@ def test_world_connect_wrong_attr_names(world):
                         'onoes')
     assert str(err.value) == (
         'At least one attribute does not exist: '
-        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val, "
         "Entity(model='A', eid='0.0', sid='ExampleSim-0').onoes, "
+        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val, "
         "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes"
     )
     assert list(world.df_graph.edges()) == []
