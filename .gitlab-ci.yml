@@ -20,7 +20,8 @@ stages:
  - Trigger-cross-projects 
 
 unit_tests:
-    image: fkrull/multi-python
+    image: dmanthing/multi-python
+
     stage: tests
     script:
       - tox
@@ -29,7 +30,7 @@ unit_tests:
     needs: []
 
 benchmarks:
-    image: fkrull/multi-python
+    image: dmanthing/multi-python
     stage: benchmarks
     allow_failure: true
     script:
