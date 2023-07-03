@@ -21,7 +21,7 @@ sim_config = {
         "cwd": ".",
     },
     "ExampleSimC": {
-        "connect": "localhost:5556",
+        "connect": "127.0.0.1:5556",
     },
     "ExampleSimD": {},
     "Fail": {
@@ -187,7 +187,7 @@ def test_start_connect(world: scenario.World):
         writer.close()
 
     server = world.loop.run_until_complete(
-        asyncio.start_server(mock_sim_server, "localhost", 5556)
+        asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     sim = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
@@ -581,7 +581,7 @@ def test_mosaik_remote(rpc, err):
         }
 
         async def simulator():
-            reader, writer = await asyncio.open_connection("localhost", 5555)
+            reader, writer = await asyncio.open_connection("127.0.0.1", 5555)
             try:
                 await rpc(reader, writer, world)
             finally:
