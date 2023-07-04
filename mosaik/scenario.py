@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+import collections
 import itertools
 from loguru import logger
 import networkx
@@ -87,12 +88,6 @@ class DataflowEdge(TypedDict):
     """Those pairs of entities and attributes of the source simulator that can
     trigger a step of the destination simulator."""
     cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-    wait_event: asyncio.Event
-    """Event on which destination simulator is waiting for its inputs."""
-    wait_lazy: asyncio.Event
-    """Event on which source simulator is waiting in case of lazy stepping."""
-    wait_async: asyncio.Event
-    """Event on which source simulator is waiting to support async requests."""
 
 
 class World(object):
@@ -144,14 +139,6 @@ class World(object):
     sim_progress: float
     """The progress of the entire simulation (in percent)."""
     use_cache: bool
-    #use_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
-    """Cache for faster dataflow. It is used if `cache=True` is set during
-    World creation. The four levels of indices are:
-    - the time step at which the data is valid
-    - the SimId of the source simulator
-    - the EntityId of the source simulator
-    - the source attribute.
-    """
     loop: asyncio.AbstractEventLoop
     incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
@@ -235,12 +222,7 @@ class World(object):
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
-        if cache:
-            # Cache for simulation results
-            self.use_cache = True
-            self._df_cache_min_time = 0
-        else:
-            self.use_cache = False
+        self.use_cache = cache
 
     def start(self, sim_name: str, **sim_params) -> ModelFactory:
         """
@@ -257,7 +239,9 @@ class World(object):
         proxy = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
-        self.sims[sim_id] = SimRunner(sim_id, self, proxy)
+        self.sims[sim_id] = SimRunner(sim_id, proxy)
+        if self.use_cache:
+            self.sims[sim_id].outputs = {} # collections.defaultdict(dict)
         self.df_graph.add_node(sim_id)
         return ModelFactory(self, sim_id, proxy)
 
@@ -344,14 +328,12 @@ class World(object):
         )
 
         if self.use_cache:
-            pushed = attr_pairs - persistent
-            memorized = set()
             pulled = persistent
         else:
-            pushed = attr_pairs
-            memorized = persistent
             pulled = set()
-            
+
+        pushed = attr_pairs - pulled
+        memorized = persistent - pulled
 
         trigger = set()
         for src_attr, dest_attr in attr_pairs:
@@ -398,12 +380,12 @@ class World(object):
         # simulation step to reduce the number of df graph queries.
         outattr = sorted(a[0] for a in attr_pairs)
         if outattr:
-            self.sims[src.sid].output_request.setdefault(src.eid, []).extend(outattr)
+            src_sim.output_request.setdefault(src.eid, []).extend(outattr)
 
         # TODO: Move creation of SimRunners into World.run
         for src_attr, dest_attr in pushed:
-            src_sim.buffered_output.setdefault((src.eid, src_attr), []).append(
-                (self.sims[dest.sid], int(time_shifted), dest.eid, dest_attr))
+            src_sim.output_to_push.setdefault((src.eid, src_attr), []).append(
+                (dest_sim, int(time_shifted), dest.eid, dest_attr))
 
         # Setting of initial data
         
@@ -419,16 +401,19 @@ class World(object):
                     raise ScenarioError('Incorrect attr "%s" in "initial_data".'
                                         % attr)
 
-                if self.use_cache:
-                    src_sim.outputs[-1].setdefault(src.eid, {})[attr] = val
+                if src_sim.outputs is not None:
+                    (src_sim.outputs
+                        .setdefault(-time_shifted, {})
+                        .setdefault(src.eid, {})[attr]
+                    ) = val
 
-        if weak:
+        if weak and src_sim.outputs is not None:
             for src_attr, dest_attr in persistent:
                 try:
-                    src_sim.outputs[0].setdefault(src.eid, {})[src_attr] = initial_data[src_attr]
-                    dest_sim.set_data_inputs.setdefault(dest.eid, {}).setdefault(
-                        dest_attr, {})[
-                        FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
+                    (src_sim.outputs
+                        .setdefault(0, {})
+                        .setdefault(src.eid, {})[src_attr]
+                    ) = initial_data[src_attr]
                 except KeyError:
                     raise ScenarioError('Weak connections of persistent '
                                         'attributes have to be set with '
@@ -565,7 +550,7 @@ class World(object):
         # time-shifted or weak connections.
         self.create_simulator_ranking()
 
-        self.cache_trigger_cycles()
+        self.cache_self_trigger_times()
         self.cache_dependencies()
         self.cache_related_sims()
         self.cache_triggering_ancestors()
@@ -620,46 +605,28 @@ class World(object):
             if success:
                 logger.info('Simulation finished successfully.')
 
-    def cache_trigger_cycles(self):
-        """
-        For all simulators, if they are part of a cycle, add information
-        about trggers in the cycle(s) to the simulator object
-        """
-        # Get the cycles from the networkx package
-        cycles = list(networkx.simple_cycles(self._trigger_graph))
-        # For every simulator go through all cycles in which the simulator is a node
-        for cycle_count, cycle in enumerate(networkx.simple_cycles(self._trigger_graph)):
-            if cycle_count == 1000:
-                logger.warning(
-                    "Your simulation has many cycles of simulators that can trigger "
-                    "each other. This can make scenario setup very slow. Usually, "
-                    "it is better to create multiple entities in the same simulator "
-                    "instead of many simulators with one entity."
+    def cache_self_trigger_times(self):
+        for src_sid, dest_sid, data in self._trigger_graph.edges(data=True):
+            try:
+                distance = networkx.shortest_path_length(
+                    self._trigger_graph, dest_sid, src_sid,
+                    weight=lambda src, tgt, edge: edge["time_shifted"]
                 )
-            for index_of_simulator, sid in enumerate(cycle):
-                successor_sid, cycle_edges = self._get_cycle_info(
-                    cycle, index_of_simulator
-                )
-                ingoing_edge, outgoing_edge = self._get_in_out_edges(
-                    index_of_simulator, cycle_edges
-                )
-                # If connections between simulators are time-shifted, the cycle
-                # needs more time for a trigger round. If no edge is time-shifted,
-                # the minimum length is 0.
-                min_length: int = sum(
-                    [edge["time_shifted"] for edge in cycle_edges]
-                )
-                trigger_cycle = simmanager.TriggerCycle(
-                    sids=cycle,
-                    activators=outgoing_edge["trigger"],
-                    min_length=min_length,
-                    in_edge=ingoing_edge,
-                    time=-1,
-                    count=0,
-                )
-                # Store the trigger cycle in the simulation object
-                self.sims[sid].trigger_cycles.append(trigger_cycle)
-
+                sim = self.sims[src_sid]
+                for port in data['trigger']:
+                    if port in sim.self_trigger_times:
+                        sim.self_trigger_times[port] = min(
+                            distance + data['time_shifted'],
+                            sim.self_trigger_times[port],
+                        )
+                    else:
+                        sim.self_trigger_times[port] = distance + data['time_shifted']
+            except networkx.NetworkXNoPath:
+                # If there is no path, we just don’t add anything to the
+                # self_trigger_times
+                pass
+        
+    
     def _get_cycle_info(
         self,
         cycle: List[SimId],
@@ -705,7 +672,7 @@ class World(object):
 
             suc_sim.predecessors[pre_sim] = PredecessorInfo(
                 time_shift=edge["time_shifted"],
-                wait_event=wait_event,
+                wait_data=wait_event,
                 wait_lazy=wait_lazy,
                 wait_async=wait_async,
                 pulled_inputs=edge['cached_connections'],
@@ -717,7 +684,7 @@ class World(object):
                 is_weak=edge["weak"],
                 pred_waiting=edge["async_requests"],
                 trigger=edge["trigger"],
-                wait_event=wait_event,
+                wait_data=wait_event,
                 wait_lazy=wait_lazy,
                 wait_async=wait_async,
             )

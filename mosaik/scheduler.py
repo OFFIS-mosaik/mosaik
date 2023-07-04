@@ -295,7 +295,7 @@ async def wait_for_dependencies(
     for pre_sim, info in sim.predecessors.items():
         # Wait for dep_sim if it hasn't progressed until actual time step:
         if pre_sim.progress + info.time_shift <= next_step:
-            evt = info.wait_event
+            evt = info.wait_data
             evt.clear()
             events.append(evt)
             # To avoid deadlocks:
@@ -352,11 +352,14 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     recursive_union(input_data, sim.persistent_inputs)
     input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
 
-    if world.use_cache:
+    #if world.use_cache:
+    if True:
         for src_sim, info in sim.predecessors.items():
+            dataflows = info.pulled_inputs
+            if not dataflows:
+                continue
             t = sim.next_steps[0] - info.time_shift
             cache_slice = src_sim.get_output_for(t)
-            dataflows = info.pulled_inputs
             for src_eid, dest_eid, attrs in dataflows:
                 for src_attr, dest_attr in attrs:
                     try:
@@ -526,18 +529,19 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
         # Fill output cache. This will repeat some data that is also
         # pushed forward below, but it is faster to just save everything
         # than filter out this data here.
-        if world.use_cache:
+        if sim.outputs is not None:
             sim.outputs[output_time] = data
 
         progress = treat_cycling_output(world, sim, data, output_time, progress)
 
         # Push forward certain data
-        for (src_eid, src_attr), destinations in sim.buffered_output.items():
+        for (src_eid, src_attr), destinations in sim.output_to_push.items():
             try:
                 val = data[src_eid][src_attr]
                 for dest_sim, time_shift, dest_eid, dest_attr in destinations:
                     dest_sim.timed_input_buffer.add(
-                        output_time + time_shift, sid, src_eid, dest_eid, dest_attr, val)
+                        output_time + time_shift, sid, src_eid, dest_eid, dest_attr, val
+                    )
             except KeyError:
                 pass
         sim.data = data
@@ -557,27 +561,21 @@ def treat_cycling_output(
     within the same time step has been reached. Also adjust the progress
     of *sim* if the cycle has been activated and could cause an earlier
     step then deduced in get_max_advance before."""
-    for cycle in sim.trigger_cycles:
-        max_iterations = world.max_loop_iterations
-        for src_eid, src_attr in cycle.activators:
-            if src_attr in data.get(src_eid, {}):
-                if sim.last_step == cycle.time:
-                    cycle.count += 1
-                    if cycle.count > max_iterations:
-                        raise SimulationError(
-                            f"Loop {cycle.sids} reached maximal iteration "
-                            f"count of {max_iterations}. "
-                            "Adjust `max_loop_iterations` in the scenario "
-                            "if needed."
-                        )
-                else:
-                    cycle.time = output_time
-                    cycle.count = 1
-                # Check if output time could cause an earlier next step:
-                cycle_progress = output_time + cycle.min_length
-                if cycle_progress < progress:
-                    progress = cycle_progress
-                break
+    for (eid, attr), self_trigger_time in sim.self_trigger_times.items():
+        if attr in data.get(eid, {}):
+            progress = min(output_time + self_trigger_time, progress)
+
+    if progress > sim.progress:
+        sim.same_time_steps = 0
+    else:
+        sim.same_time_steps += 1
+        if sim.same_time_steps > world.max_loop_iterations:
+            raise SimulationError(
+                f"Simulator {sim.sid} has performed step {progress} more than "
+                f"{world.max_loop_iterations} times. This might indicate that "
+                "you have run into an infinite loop. If not, you can increase "
+                "max_loop_iterations to get rid of this warning."
+            )
 
     return progress
 
@@ -592,7 +590,7 @@ def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
     for dest_sim, info in sim.successors.items():
         weak_or_shifted = info.time_shift or info.is_weak
         if dest_sim.next_steps and dest_sim.next_steps[0] - weak_or_shifted < progress:
-            info.wait_event.set()
+            info.wait_data.set()
         for eid, attr in info.trigger:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
@@ -615,13 +613,13 @@ def prune_dataflow_cache(world: World):
     if not world.use_cache:
         return
     min_cache_time = min(s.last_step for s in world.sims.values())
-    for i in range(world._df_cache_min_time, min_cache_time):
-        for sim in world.sims.values():
-            try:
-                del sim.outputs[i]
-            except KeyError:
-                pass
-    world._df_cache_min_time = min_cache_time
+    for sim in world.sims.values():
+        if sim.outputs:
+            sim.outputs = {
+                time: cache
+                for time, cache in sim.outputs.items()
+                if time >= min_cache_time
+            }
 
 
 def get_progress(sims: Dict[SimId, SimRunner], until: int) -> float:
@@ -690,7 +688,7 @@ def clear_wait_events(sim: SimRunner) -> None:
     Clear/succeed all wait events *sim* is waiting for.
     """
     for info in sim.predecessors.values():
-        info.wait_event.set()
+        info.wait_data.set()
 
     for info in sim.successors.values():
         info.wait_lazy.set()
@@ -703,7 +701,7 @@ def clear_wait_events_dependencies(sim: SimRunner) -> None:
     *sim*.
     """
     for info in sim.successors.values():
-        info.wait_event.set()
+        info.wait_data.set()
 
     for info in sim.predecessors.values():
         info.wait_lazy.set()

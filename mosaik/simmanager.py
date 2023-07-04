@@ -286,7 +286,7 @@ class PredecessorInfo:
     time_shift: int
     triggering: bool
 
-    wait_event: asyncio.Event
+    wait_data: asyncio.Event
     wait_lazy: asyncio.Event
     wait_async: asyncio.Event
 
@@ -301,7 +301,7 @@ class SuccessorInfo:
 
     trigger: Set[Tuple[EntityId, Attr]]
     
-    wait_event: asyncio.Event
+    wait_data: asyncio.Event
     wait_lazy: asyncio.Event
     wait_async: asyncio.Event
 
@@ -367,12 +367,13 @@ class SimRunner:
     timed_input_buffer: TimedInputBuffer
     """'Usual' inputs. (But also see `world._df_cache`.)"""
 
-    buffered_output: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, int, EntityId, Attr]]]
+    output_to_push: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, int, EntityId, Attr]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-entity-attribute triples
     describing the destinations for that data.
     """
+    self_trigger_times: Dict[Tuple[EntityId, Attr], int]
 
     progress: int
     """This simulator's progress in mosaik time.
@@ -394,24 +395,20 @@ class SimRunner:
     """The asyncio.Task for this simulator."""
     wait_events: List[asyncio.Event]
     """The list of all events for which this simulator is waiting"""
-    trigger_cycles: List[TriggerCycle]
-    """Triggering cycles in a simulation"""
     rank: int
     """The topological rank of the simulator in the graph of all
     simulators with their non-weak, non-time-shifted connections.
     """
 
-    outputs: Dict[Time, OutputData]
+    outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm
 
     def __init__(
         self,
         sid: SimId,
-        world: World,
         connection: Proxy,
     ):
         self.sid = sid
-        self._world = world
         self._proxy = connection
 
         self.type = connection.meta['type']
@@ -428,13 +425,16 @@ class SimRunner:
         self.set_data_inputs = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
-        self.buffered_output = {}
+        self.output_to_push = {}
+
+        self.self_trigger_times = {}
+        self.same_time_steps = 0
+
         self.task = None  # type: ignore  # will be set in World.run
         self.has_next_step = asyncio.Event()
         self.wait_events = []
         self.interruptable = False
         self.is_in_step = False
-        self.trigger_cycles = []
         self.rank = None  # type: ignore  # will be set in World.run
 
         self.predecessors = {}
@@ -442,7 +442,7 @@ class SimRunner:
 
         self.output_request = {}
 
-        self.outputs = collections.defaultdict(dict)
+        self.outputs = None
 
     def schedule_step(self, time: int):
         """Schedule a step for this simulator at the given time. This will wake this
@@ -472,7 +472,6 @@ class SimRunner:
                 return value
 
         return {}
-        raise KeyError(f"no output for time {time}")
 
     async def stop(self):
         """
@@ -732,23 +731,3 @@ class TimedInputBuffer:
 
     def __bool__(self):
         return bool(len(self.input_queue))
-
-
-@dataclass
-class TriggerCycle:
-    """
-    Stores the information of triggering cycles of a simulator
-    """
-
-    sids: List[SimId]
-    activators: Set[Tuple[EntityId, Attr]]
-    """List of all attributes that trigger the destination simulator if the given edge"""
-    min_length: int
-    """
-    If connections between simulators are time-shifted, the cycle needs more time for
-    a trigger round. If no edge is timeshifted, the minimum length is 0.
-    """
-    in_edge: DataflowEdge
-    """The edge that is going into the simulator"""
-    time: int
-    count: int
