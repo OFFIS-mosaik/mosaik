@@ -446,8 +446,15 @@ def plot_execution_graph(
         bbox_inches="tight",
     )
 
-def plot_execution_time_per_simulator(world, folder=STANDARD_FOLDER, hdf5path=None, dpi=STANDARD_DPI, format=STANDARD_FORMAT):
-    '''
+
+def plot_execution_time_per_simulator(
+    world,
+    folder=STANDARD_FOLDER,
+    hdf5path=None,
+    dpi=STANDARD_DPI,
+    format=STANDARD_FORMAT,
+):
+    """
         Creates images visualizing the execution time of each of the different simulators of a mosaik scenario.
 
     :param world: mosaik world object
@@ -456,31 +463,44 @@ def plot_execution_time_per_simulator(world, folder=STANDARD_FOLDER, hdf5path=No
     :param dpi: DPI for created images
     :param format: format for created image
     :return: no return object, but image file will be written to file system
-    '''
+    """
     eg = world.execution_graph
     results = {}
     for node in eg.nodes:
-        execution_time = eg.nodes[node]['t_end'] - eg.nodes[node]['t']
-        sim_id = node.split('-')[0] + '-' + node.split('-')[1]
+        execution_time = eg.nodes[node]["t_end"] - eg.nodes[node]["t"]
+        sim_id = node.split("-")[0] + "-" + node.split("-")[1]
         if not sim_id in results:
             results[sim_id] = []
         results[sim_id].append(execution_time)
 
+    fig = plt.figure()
+    sub_figure = fig.add_subplot()
+    sub_figure.set_title("Execution time")
+    sub_figure.set_ylabel("Execution time [s]")
+    sub_figure.set_xlabel("Simulation time [steps of the simulator]")
+    sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
     for key in results.keys():
-        fig = plt.figure()
-        sub_figure = fig.add_subplot()
-        sub_figure.set_title('Execution time ' + key)
-        sub_figure.set_ylabel('Execution time [s]')
-        sub_figure.set_xlabel('Simulation time [steps of the simulator]')
-        sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
         sub_figure.plot(results[key], label=key)
-        fig.legend()
-        if hdf5path:
-            filename = hdf5path.replace('.hdf5', '_' + key + '.png')
-        else:
-            filename = folder + '/' + str(datetime.datetime.now()).replace(' ', '').replace(':', '').replace('.', '') + \
-                   '_' + key + '.' + format
+    fig.legend()
 
-        fig.savefig(filename, format=format, dpi=dpi, facecolor='white', transparent=True)
-        plt.show()
-        plt.close()
+    if hdf5path:
+        filename = hdf5path.replace(".hdf5", "_" + "all" + ".png")
+    else:
+        filename = (
+            folder
+            + "/"
+            + str(datetime.datetime.now())
+            .replace(" ", "")
+            .replace(":", "")
+            .replace(".", "")
+            + "_"
+            + "all"
+            + "."
+            + format
+        )
+
+    fig.savefig(
+        filename, format=format, dpi=dpi, facecolor="white", transparent=True, bbox_inches="tight"
+    )
+    plt.show()
+    plt.close()
