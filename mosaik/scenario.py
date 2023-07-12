@@ -648,8 +648,7 @@ class World(object):
     def detect_unresolved_cycles(self):
         """
         Searches for unresolved cycles, i.e. cycles that do not have a weak or
-        time_shifted connection or have more than one weak connection. Raises
-        an error if an unresolved cycle is found.
+        time_shifted connection. Raises an error if an unresolved cycle is found.
         """
         cycles = list(networkx.simple_cycles(self.df_graph))
         for cycle in cycles:
