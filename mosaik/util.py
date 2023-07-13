@@ -240,6 +240,7 @@ def plot_df_graph(
 
     plot_df_graph_via_force_atlas(folder, hdf5path, dpi, format, df)
 
+
 def plot_df_graph_via_force_atlas(folder: str, hdf5path: str, dpi, format, df):
     try:
         from fa2 import ForceAtlas2
@@ -361,32 +362,32 @@ def plot_execution_graph(
     rcParams.update({"figure.autolayout": True})
 
     steps_st = {}
-    for isid in world.sims.keys():
-        steps_st[isid] = []
+    for sim_name in world.sims.keys():
+        steps_st[sim_name] = []
 
     for node in all_nodes:
-        # print(node[0])
-        isid, t, n_rep = split_node(node[0])
-        steps_st[isid].append(t + n_rep * 0.1)
+        sim_name, t, n_rep = split_node(node[0])
+        steps_st[sim_name].append(t + n_rep * 0.1)
 
     fig, ax = plt.subplots()
     if title:
         fig.suptitle(title)
 
-    for i, isid in enumerate(world.sims.keys()):
-        ax.plot(steps_st[isid], [i] * len(steps_st[isid]), "o")
+    # Draw the time steps from the simulators
+    colormap = ["black" for x in range(len(world.sims.keys()))]
+    for i, sim_name in enumerate(world.sims.keys()):
+        dot = ax.plot(steps_st[sim_name], [i] * len(steps_st[sim_name]), "o")
+        # Store the color that is used for the dots in this line (for this simulator)
+        colormap[i] = dot[0].get_color()
 
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
     ax.set_yticks(list(range(len(world.sims.keys()))))
     ax.set_yticklabels(list(world.sims.keys()))
 
     all_edges = list(world.execution_graph.edges())
-    # print(all_edges)
-
     y_pos = {}
-    for ii, isid in enumerate(world.sims.keys()):
-        y_pos[isid] = ii
+    for sim_count, sim_name in enumerate(world.sims.keys()):
+        y_pos[sim_name] = sim_count
 
     for edge in all_edges:
         isid_0, t0, n_rep0 = split_node(edge[0])
@@ -400,7 +401,7 @@ def plot_execution_graph(
             "",
             (x_pos1, y_pos1),
             xytext=(x_pos0, y_pos0),
-            arrowprops=dict(facecolor="black", arrowstyle="->"),
+            arrowprops=dict(color=colormap[y_pos0], arrowstyle="->"),
         )
 
     plt.show()
