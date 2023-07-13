@@ -155,16 +155,8 @@ def plot_execution_time(
     if hdf5path:
         filename = hdf5path.replace(".hdf5", "_graph." + format)
     else:
-        filename = (
-            folder
-            + "/"
-            + str(datetime.datetime.now())
-            .replace(" ", "")
-            .replace(":", "")
-            .replace(".", "")
-            + "_executiontime."
-            + format
-        )
+        filename: str = get_filename(folder, "executiontime", format)
+
     fig.savefig(
         filename,
         format=format,
@@ -206,7 +198,8 @@ def plot_df_graph(
 
     fig, ax = plt.subplots()
 
-    # nx.draw_circular https://stackoverflow.com/questions/74189581/axesstack-object-is-not-callable-while-using-networkx-to-plot
+    # Replaced nx.draw_circular with nx.draw_networkx
+    # https://stackoverflow.com/questions/74189581/axesstack-object-is-not-callable-while-using-networkx-to-plot
     nx.draw_networkx(df, edgelist=[], with_labels=True, font_size=6, alpha=0.75)
     plt.draw()
     nx.draw_networkx(
@@ -234,16 +227,8 @@ def plot_df_graph(
     if hdf5path:
         filename = hdf5path.replace(".hdf5", "graph_df_nx." + format)
     else:
-        filename = (
-            folder
-            + "/"
-            + str(datetime.datetime.now())
-            .replace(" ", "")
-            .replace(":", "")
-            .replace(".", "")
-            + "_dataflowGraph."
-            + format
-        )
+        filename: str = get_filename(folder, "dataflowGraph", format)
+
     fig.savefig(
         filename,
         format=format,
@@ -253,6 +238,9 @@ def plot_df_graph(
         bbox_inches="tight",
     )
 
+    plot_df_graph_via_force_atlas(folder, hdf5path, dpi, format, df)
+
+def plot_df_graph_via_force_atlas(folder: str, hdf5path: str, dpi, format, df):
     try:
         from fa2 import ForceAtlas2
     except ImportError:
@@ -314,18 +302,10 @@ def plot_df_graph(
     plt.axis("off")
     plt.show()
     if hdf5path:
-        filename = hdf5path.replace(".hdf5", "graph_df." + format)
+        filename: str = hdf5path.replace(".hdf5", "graph_df." + format)
     else:
-        filename = (
-            folder
-            + "/"
-            + str(datetime.datetime.now())
-            .replace(" ", "")
-            .replace(":", "")
-            .replace(".", "")
-            + "_dataflowGraph_fa2."
-            + format
-        )
+        filename: str = get_filename(folder, "dataflowGraph_fa2", format)
+
     fig.savefig(
         filename,
         format=format,
@@ -425,18 +405,10 @@ def plot_execution_graph(
 
     plt.show()
     if hdf5path:
-        filename = hdf5path.replace(".hdf5", "graph_execution." + format)
+        filename: str = hdf5path.replace(".hdf5", "graph_execution." + format)
     else:
-        filename = (
-            folder
-            + "/"
-            + str(datetime.datetime.now())
-            .replace(" ", "")
-            .replace(":", "")
-            .replace(".", "")
-            + "_executionGraph."
-            + format
-        )
+        filename: str = get_filename(folder, "executionGraph", format)
+
     fig.savefig(
         filename,
         format=format,
@@ -484,23 +456,32 @@ def plot_execution_time_per_simulator(
     fig.legend()
 
     if hdf5path:
-        filename = hdf5path.replace(".hdf5", "_" + "all" + ".png")
+        filename: str = hdf5path.replace(".hdf5", "_" + "all" + ".png")
     else:
-        filename = (
-            folder
-            + "/"
-            + str(datetime.datetime.now())
-            .replace(" ", "")
-            .replace(":", "")
-            .replace(".", "")
-            + "_"
-            + "all"
-            + "."
-            + format
-        )
+        filename: str = get_filename(folder, "execution_time_simulator", format)
 
     fig.savefig(
-        filename, format=format, dpi=dpi, facecolor="white", transparent=True, bbox_inches="tight"
+        filename,
+        format=format,
+        dpi=dpi,
+        facecolor="white",
+        transparent=True,
+        bbox_inches="tight",
     )
     plt.show()
     plt.close()
+
+
+def get_filename(dir: str, type: str, file_format: str) -> str:
+    return (
+        dir
+        + "/"
+        + str(datetime.datetime.now())
+        .replace(" ", "")
+        .replace(":", "")
+        .replace(".", "")
+        + "_"
+        + type
+        + "."
+        + file_format
+    )
