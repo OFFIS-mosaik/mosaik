@@ -4,14 +4,18 @@ Test a complete mosaik simulation using mosaik as a library.
 """
 import importlib
 import glob
+from loguru import logger
 import os
 import time
+from tqdm import tqdm
 from typing import Dict
 
 import networkx as nx
 import pytest
 
 from mosaik import scenario
+
+import example_sim.mosaik
 
 sim_config: Dict[str, scenario.SimConfig] = {
     'local': {
@@ -28,6 +32,7 @@ sim_config: Dict[str, scenario.SimConfig] = {
         'LoopSim': {
             'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
         },
+        'FixedOut': {'python': 'tests.simulators.fixed_output_sim:FixedOutputSim'},
     },
     'generic_remote': {
         char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}
@@ -55,7 +60,13 @@ test_cases = [os.path.basename(file)[0:-3]  # remove ".py" at the end
 @pytest.mark.parametrize('scenario_name', test_cases)
 @pytest.mark.parametrize('cache', [True, False])
 def test_mosaik(scenario_name, cache):
+    logger.remove()
+    logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
     scenario_desc = importlib.import_module(f'tests.scenarios.{scenario_name}')
+    if hasattr(scenario_desc, 'SKIP') and cache in scenario_desc.SKIP:
+        pytest.skip()
+    if hasattr(scenario_desc, 'XFAIL') and cache in scenario_desc.XFAIL:
+        pytest.xfail()
     world = scenario.World(sim_config[scenario_desc.CONFIG], debug=True, cache=cache)
     try:
         scenario_desc.create_scenario(world)
@@ -77,8 +88,8 @@ def test_mosaik(scenario_name, cache):
                 'inputs', {}), f"Inputs for {node}"
 
         for sim in world.sims.values():
-            assert sim.last_step < scenario_desc.UNTIL
-            assert sim.progress >= scenario_desc.UNTIL - 1
+            assert sim.last_step.time < scenario_desc.UNTIL
+            assert sim.progress.value.time >= scenario_desc.UNTIL - 1
     finally:
         world.shutdown()
 

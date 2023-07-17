@@ -40,8 +40,10 @@ from typing_extensions import Literal
 import mosaik_api
 from mosaik_api.connection import Channel
 from mosaik_api.types import CreateResult, Meta, ModelName, OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId
+from mosaik.dense_time import DenseTime
 
 from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
 
@@ -284,25 +286,30 @@ async def start_connect(
 @dataclass
 class PredecessorInfo:
     time_shift: int
+    is_weak: bool
     triggering: bool
 
-    wait_data: asyncio.Event
-    wait_lazy: asyncio.Event
     wait_async: asyncio.Event
 
     pulled_inputs: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+    """Inputs that this simulator pulls from its predecessor using that
+    SimRunner's get_output_for method.
+
+    The structure is an iterable of (src_eid, dest_eid, attrs) triples
+    where attrs is an iterable of the corresponding
+    (src_attr, dets_attr) pairs.
+    """
 
 
 @dataclass
 class SuccessorInfo:
     time_shift: int
     is_weak: bool
+    delay: DenseTime
     pred_waiting: bool
 
     trigger: Set[Tuple[EntityId, Attr]]
     
-    wait_data: asyncio.Event
-    wait_lazy: asyncio.Event
     wait_async: asyncio.Event
 
 
@@ -327,23 +334,13 @@ class SimRunner:
     `perf_counter()`."""
     started: bool
 
-    next_steps: List[int]
+    next_steps: List[DenseTime]
     """The scheduled next steps this simulator will take, organized as a heap.
     Once the immediate next step has been chosen (and the `has_next_step` event
     has been triggered), the step is moved to `next_step` instead."""
-    next_step: Optional[int]
-    """This simulator's immediate next step once it has been determined. The
-    step is removed from the `next_steps` heap at that point and the
-    `has_next_step` event is triggered."""
-    has_next_step: asyncio.Event
-    """An event that is triggered once this simulator's next step has been
-    determined."""
-    next_self_step: Optional[int]
+    newer_step: asyncio.Event
+    next_self_step: Optional[Time]
     """The next self-scheduled step for this simulator."""
-    interruptable: bool
-    """Set when this simulator's next step has been scheduled but it is still
-    waiting for dependencies which might trigger earlier steps for this
-    simulator."""
 
     predecessors: Dict[SimRunner, PredecessorInfo]
     """This simulator's predecessors in the dataflow graph and the
@@ -351,40 +348,40 @@ class SimRunner:
     successors: Dict[SimRunner, SuccessorInfo]
     """This simulator's successors in the dataflow graph and the
     corresponding edges."""
-    triggering_ancestors: Iterable[Tuple[SimRunner, bool]]
-    """
-    An iterable of this sim's ancestors that can trigger a step of this
-    simulator. The second component specifies whether the connecting is weak or
-    time-shifted (False) or immediate (True).
+    triggering_ancestors: Iterable[Tuple[SimRunner, DenseTime]]
+    """An iterable of this sim's ancestors that can trigger a step of
+    this simulator. The second component specifies the least amount of
+    time that output from the ancestor needs to reach us.
     """
 
     output_request: OutputRequest
 
-    set_data_inputs: Dict
+    inputs_from_set_data: Dict
     """Inputs received via `set_data`."""
     persistent_inputs: Dict
     """Memory of previous inputs for persistent attributes."""
     timed_input_buffer: TimedInputBuffer
-    """'Usual' inputs. (But also see `world._df_cache`.)"""
+    """Inputs for this simulator."""
 
     output_to_push: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, int, EntityId, Attr]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
-    the corresponding list of simulator-entity-attribute triples
-    describing the destinations for that data.
+    the corresponding list of simulator-time-entity-attribute triples
+    describing the destinations for that data and the time-shift
+    occuring along the connection.
     """
-    self_trigger_times: Dict[Tuple[EntityId, Attr], int]
 
-    progress: int
+    progress: Progress[DenseTime]
     """This simulator's progress in mosaik time.
 
-    This simulator has done all its work before time `progress`; its next stept will be
-    at time `progress` or later. For time-based simulators, the next step will happen
-    at time `progress`."""
-    last_step: int
+    This simulator has done all its work before time `progress`, so
+    other simulator can rely on this simulator's output until this time.
+    """
+    last_step: DenseTime
     """The most recent step this simulator performed."""
+    current_step: Optional[DenseTime]
 
-    output_time: int
+    output_time: DenseTime
     """The output time associated with `data`. Usually, this will be equal to
     `last_step` but simulators may specify a different time for their output."""
     data: OutputData
@@ -415,25 +412,22 @@ class SimRunner:
         self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
-        self.last_step = -1
+        self.last_step = DenseTime(-1)
+        self.current_step = None
         if self.type != 'event-based':
-            self.next_steps = [0]
+            self.next_steps = [DenseTime(0)]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress = 0
-        self.set_data_inputs = {}
+        self.progress = Progress(DenseTime(0))
+        self.inputs_from_set_data = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
         self.output_to_push = {}
 
-        self.self_trigger_times = {}
-        self.same_time_steps = 0
-
         self.task = None  # type: ignore  # will be set in World.run
-        self.has_next_step = asyncio.Event()
+        self.newer_step = asyncio.Event()
         self.wait_events = []
-        self.interruptable = False
         self.is_in_step = False
         self.rank = None  # type: ignore  # will be set in World.run
 
@@ -444,18 +438,20 @@ class SimRunner:
 
         self.outputs = None
 
-    def schedule_step(self, time: int):
-        """Schedule a step for this simulator at the given time. This will wake this
-        simulator and if the new step is earlier than previously scheduled steps, the
-        sim_process will be interrupted with an 'Earlier step' message."""
-        if time in self.next_steps:
-            return
+    def schedule_step(self, dense_time: DenseTime):
+        """Schedule a step for this simulator at the given time. This
+        will trigger a re-evaluation whether this simulator's next
+        step is settled, provided that the new step is earlier than the
+        old one and the simulator is currently awaiting it's next
+        settled step.
+        """
+        if dense_time in self.next_steps:
+            return dense_time
 
-        is_earlier = self.next_steps and time < self.next_steps[0]
-        hq.heappush(self.next_steps, time)
-        self.has_next_step.set()
-        if is_earlier and self.interruptable:
-            self.task.cancel()
+        is_earlier = not self.next_steps or dense_time < self.next_steps[0]
+        hq.heappush(self.next_steps, dense_time)
+        if is_earlier:
+            self.newer_step.set()
 
     async def setup_done(self):
         return await self._proxy.send(["setup_done", (), {}])
@@ -467,6 +463,7 @@ class SimRunner:
         return await self._proxy.send(["get_data", (outputs,), {}])
 
     def get_output_for(self, time: Time):
+        assert self.outputs is not None
         for data_time, value in reversed(self.outputs.items()):
             if data_time <= time:
                 return value
@@ -478,6 +475,9 @@ class SimRunner:
         Stop the simulator behind the proxy.
         """
         await self._proxy.stop()
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} sid={self.sid!r}>"
 
 
 class MosaikRemote:
@@ -572,7 +572,8 @@ class MosaikRemote:
         respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
-        assert self.sim.is_in_step
+        assert self.sim.is_in_step, "get_data must happen in step"
+        assert self.sim.current_step is not None, "no current step time"
 
         data = {}
         missing = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -598,7 +599,8 @@ class MosaikRemote:
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.progress > self.sim.last_step >= dep.last_step)
+            assert dep.progress.value > self.sim.current_step >= dep.last_step, \
+                "sim progress wrong for async requests"
             dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -622,7 +624,7 @@ class MosaikRemote:
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
                 self._assert_async_requests(dfg, sid, dest_sid)
-                inputs = sims[sid].set_data_inputs.setdefault(eid, {})
+                inputs = sims[sid].inputs_from_set_data.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
 
@@ -637,7 +639,8 @@ class MosaikRemote:
                 "mode."
             )
         if event_time < self.world.until:
-            sim.progress = min(event_time, sim.progress)
+            # TODO: Check whether progress.set is better
+            # sim.progress.progress = min(event_time, sim.progress.progress)
             sim.schedule_step(event_time)
         else:
             logger.warning(

@@ -41,7 +41,6 @@ def world_fixture(request):
         proxy = world.loop.run_until_complete(init_and_get_adapter(proxy, i, {"time_resolution": 1.0}))
         world.sims[i] = simmanager.SimRunner(
                 i,
-                world,
                 proxy,
             )
     class DummyTask:
@@ -72,7 +71,7 @@ def world_fixture(request):
     )
     world.cache_dependencies()
     world.cache_related_sims()
-    world.sims[0].successors[world.sims[2]].wait_event.clear()
+    world.sims[0].successors[world.sims[2]].wait_data.clear()
     world.until = 4
     world.rt_factor = None
     world.cache_triggering_ancestors()
@@ -102,7 +101,7 @@ def test_run(monkeypatch):
             'type': 'time-based'
         }
         
-    world.sims = {i: simmanager.SimRunner(i, world, proxy) for i in range(2)}
+    world.sims = {i: simmanager.SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
@@ -256,8 +255,8 @@ def test_get_input_data(world):
     Simple test for get_input_data().
     """
     heappush(world.sims[2].next_steps, 0)
-    world.sims[0].outputs[0] = {'1': {'x': 0, 'y': 1}}
-    world.sims[1].outputs[0] = {'2': {'x': 2, 'z': 4}}
+    world.sims[0].outputs = {0: {'1': {'x': 0, 'y': 1}}}
+    world.sims[1].outputs = {0: {'2': {'x': 2, 'z': 4}}}
     world.sims[2].set_data_inputs = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
     world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
     world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
@@ -275,7 +274,7 @@ def test_get_input_data_shifted(world):
     Getting input data transmitted via a shifted connection.
     """
     heappush(world.sims[4].next_steps, 0)
-    world.sims[5].outputs[-1] = {'1': {'z': 7}}
+    world.sims[5].outputs = {-1: {'1': {'z': 7}}}
     world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
     world.cache_dependencies()
     data = scheduler.get_input_data(world, world.sims[4])
@@ -324,6 +323,7 @@ async def test_get_outputs(world, cache):
     world.use_cache = cache
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims[0]
+    sim.outputs = {} if cache else None
     sim.output_request = {0: ['x', 'y']}
     sim.last_step = 0 
     sim.output_time = -1
@@ -331,32 +331,36 @@ async def test_get_outputs(world, cache):
 
     await scheduler.get_outputs(world, sim, progress=2)
 
-    if cache:
-        expected_outputs = {
-            0: {
-                '0': {'x': 0, 'y': 1},
-            },
-            1: {
-                '0': {'x': 0, 'y': 1},
-            }
+    expected_output_cache = {
+        0: {
+            '0': {'x': 0, 'y': 1},
+        },
+        1: {
+            '0': {'x': 0, 'y': 1},
         }
-    else:
-        expected_outputs = { 0: {}, 1: {} }
+    }
 
-    assert sim.get_output_for(0) == expected_outputs[0]
-    assert sim.get_output_for(1) == expected_outputs[1]
+    if cache:
+        assert sim.get_output_for(0) == expected_output_cache[0]
+        assert sim.get_output_for(1) == expected_output_cache[1]
+    else:
+        with pytest.raises(AttributeError):
+            sim.get_output_for(0)
+        with pytest.raises(AttributeError):
+            sim.get_output_for(1)
 
     assert sim.output_time == 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-async def test_get_outputs_buffered(world):
+async def test_get_outputs_buffered(world: scenario.World):
     sim = world.sims[0]
+    sim.outputs = {}
     sim.last_step = 0
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ['x', 'y', 'z']}
-    sim.buffered_output = {
+    sim.output_to_push = {
         ('0', 'x'): [(world.sims[2], 0, '0', 'in')],
         ('0', 'z'): [(world.sims[1], 0, '0', 'in')],
     }
@@ -369,12 +373,12 @@ async def test_get_outputs_buffered(world):
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
 @pytest.mark.parametrize(
     "too_many_iterations",
-    #[0, pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))],
     [True, False],
 )
 def test_treat_cycling_output(
     world: scenario.World, 
     too_many_iterations: bool,
+    capsys,
 ):
     """
     Tests if progress is adjusted when a triggering cycle could cause
@@ -383,25 +387,19 @@ def test_treat_cycling_output(
     """
     sim = world.sims[4]
 
-    for src, dest in [(4, 5), (5, 4)]:
-        world.df_graph[src][dest]["dataflows"] = [("1", "0", [("x", "in")])]
-        world.entity_graph.add_node(f"{dest}.0", sim=None, type="dummy_type")
-    world.cache_trigger_cycles()
-
-    sim.trigger_cycles[0].time = 1
+    sim.self_trigger_times[("1", "x")] = 0
     if too_many_iterations:
-        sim.trigger_cycles[0].count = world.max_loop_iterations
-    else:
-        sim.trigger_cycles[0].count = 0
+        sim.same_time_steps = world.max_loop_iterations
 
-    sim.last_step = output_time = 1
+    sim.last_step = sim.progress = output_time = 1
     data = {"1": {"x": 1}}
     if too_many_iterations:
         with pytest.raises(exceptions.SimulationError):
             scheduler.treat_cycling_output(world, sim, data, output_time, progress=2)
     else:
         assert (
-            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
+            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2)
+            == 1
         )
 
 
@@ -414,7 +412,7 @@ def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait)
 
     world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     world.cache_dependencies()
-    world.sims[0].successors[world.sims[2]].wait_event.clear()
+    world.sims[0].successors[world.sims[2]].wait_data.clear()
     sim.data = {'1': {'x': 1}}
     sim.output_time = output_time
 
@@ -448,8 +446,10 @@ def test_notify_dependencies_trigger(world):
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_prune_dataflow_cache(world):
     world._df_cache = True
-    world.sims[0].outputs[0] = {'spam': 'eggs'}
-    world.sims[0].outputs[1] = {'foo': 'bar'}
+    world.sims[0].outputs = {
+        0: {'spam': 'eggs'},
+        1: {'foo': 'bar'},
+    }
     for s in world.sims.values():
         s.last_step = 1
         s.tqdm = tqdm(disable=True)
@@ -464,9 +464,10 @@ def test_prune_dataflow_cache(world):
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 async def test_get_outputs_shifted(world):
     sim = world.sims[5]
+    sim.outputs = {}
     sim.output_request = {0: ['x', 'y']}
     world.cache_dependencies()
-    checked_event = world.sims[5].successors[world.sims[4]].wait_event
+    checked_event = world.sims[5].successors[world.sims[4]].wait_data
     checked_event.clear()
     sim.type = 'time-based'
     sim.progress = 1

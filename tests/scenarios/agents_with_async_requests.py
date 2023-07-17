@@ -6,6 +6,7 @@ Scenario 6
        ⇄ D(3)
 """
 
+# SKIP = [True, False]
 
 def create_scenario(world):
     simulator_a = world.start('A', step_size=2)

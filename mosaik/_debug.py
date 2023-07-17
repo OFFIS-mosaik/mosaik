@@ -46,7 +46,7 @@ def pre_step(world, sim, inputs):
     sims = world.sims
 
     sid = sim.sid
-    next_step = sim.next_steps[0]
+    next_step = sim.current_step.time
     node = '%s-%s'
     node_id = node % (sid, next_step)
 
@@ -91,9 +91,9 @@ def pre_step(world, sim, inputs):
 
     for suc in dfg.successors(sid):
         if dfg[sid][suc]['async_requests'] and sim.last_step >= 0:
-            suc_node = node % (suc, sims[suc].last_step)
+            suc_node = node % (suc, sims[suc].last_step.time)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress + 1 >= next_step
+            assert sims[suc].progress.value.time + 1 >= next_step
 
 
 def post_step(world, sim):

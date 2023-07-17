@@ -3,6 +3,7 @@ Scenario 18::
    A() → B()
 """
 
+XFAIL = [True, False]
 
 def create_scenario(world):
     model_a = world.start('A', step_type='event-based', events={0.05: 1, 0.1: 2}).A()

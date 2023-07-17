@@ -14,6 +14,7 @@ from collections import defaultdict
 import collections
 import itertools
 from loguru import logger
+import math
 import networkx
 from tqdm import tqdm
 from typing import (
@@ -33,6 +34,7 @@ from mosaik_api.connection import Channel
 from mosaik_api.types import EntityId, Attr, ModelName, SimId, FullId, ModelDescription
 
 from mosaik import simmanager
+from mosaik.dense_time import DenseTime
 from mosaik.proxies import Proxy
 from mosaik.simmanager import PredecessorInfo, SimRunner, SuccessorInfo
 from mosaik import scheduler
@@ -46,6 +48,11 @@ base_config = {
 }
 
 FULL_ID = simmanager.FULL_ID
+
+SENTINEL = object()
+"""Sentinel for initial data call (we can't use None as the user might
+want to supply that value.)
+"""
 
 
 class ModelOptionals(TypedDict, total=False):
@@ -197,6 +204,7 @@ class World(object):
         self.df_graph = networkx.DiGraph()
         """The directed data-flow :func:`graph <networkx.DiGraph>` for this
         scenario."""
+        self.df_multigraph = networkx.MultiDiGraph()
         self._trigger_graph = networkx.subgraph_view(self.df_graph,
             filter_edge=lambda s, t: bool(self.df_graph[s][t]["trigger"])
         )
@@ -241,10 +249,38 @@ class World(object):
         )
         self.sims[sim_id] = SimRunner(sim_id, proxy)
         if self.use_cache:
-            self.sims[sim_id].outputs = {} # collections.defaultdict(dict)
+            self.sims[sim_id].outputs = {}
         self.df_graph.add_node(sim_id)
+        self.df_multigraph.add_node(sim_id)
         return ModelFactory(self, sim_id, proxy)
 
+    def connect_one(
+        self,
+        src: Entity,
+        dest: Entity,
+        src_attr: Attr,
+        dest_attr: Optional[Attr] = None,
+        async_requests: bool = False,
+        time_shifted: Union[bool, int] = False,
+        weak: bool = False,
+        initial_data: Any = SENTINEL,
+    ):
+        # TODO: Errors
+        if not dest_attr:
+            dest_attr = src_attr
+
+        self.df_multigraph.add_edge(
+            src.sid,
+            dest.sid,
+            key=(src.eid, src_attr, dest.eid, dest_attr),
+            persistent=src.is_persistent(src_attr),
+            trigger=dest.triggered_by(dest_attr),
+            time_shifted=int(time_shifted),
+            delay=DenseTime(int(time_shifted), int(weak)),
+        )
+        
+        pass
+    
     def connect(
         self,
         src: Entity,
@@ -314,6 +350,17 @@ class World(object):
         attr_pairs: Set[Tuple[Attr, Attr]] = set(
             (a, a) if isinstance(a, str) else a for a in attr_pairs
         )
+        for src_attr, dest_attr in attr_pairs:
+            self.connect_one(
+                src,
+                dest,
+                src_attr,
+                dest_attr,
+                async_requests=async_requests,
+                time_shifted=time_shifted,
+                weak=weak,
+                initial_data=initial_data.get(src_attr, SENTINEL),
+            )
 
         missing_attrs = self._check_attributes(src, dest, attr_pairs)
         if missing_attrs:
@@ -376,17 +423,6 @@ class World(object):
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
-        # Cache the attribute names which we need output data for after a
-        # simulation step to reduce the number of df graph queries.
-        outattr = sorted(a[0] for a in attr_pairs)
-        if outattr:
-            src_sim.output_request.setdefault(src.eid, []).extend(outattr)
-
-        # TODO: Move creation of SimRunners into World.run
-        for src_attr, dest_attr in pushed:
-            src_sim.output_to_push.setdefault((src.eid, src_attr), []).append(
-                (dest_sim, int(time_shifted), dest.eid, dest_attr))
-
         # Setting of initial data
         
         if time_shifted:
@@ -434,7 +470,7 @@ class World(object):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
-        self.sims[sid].next_steps = [time]
+        self.sims[sid].next_steps = [DenseTime(time)]
 
     def get_data(
         self,
@@ -495,12 +531,29 @@ class World(object):
 
         return results
 
+    def build_simrunners(self):
+        for sid, sim in self.sims.items():
+            output_request = {}
+            output_to_push = {}
+            for (
+                _, dest_sid, (src_eid, src_attr, dest_eid, dest_attr), data
+            ) in self.df_multigraph.out_edges(sid, keys=True, data=True):
+                dest_sim = self.sims[dest_sid]
+                output_request.setdefault(src_eid, []).append(src_attr)
+                if not data["persistent"] or not self.use_cache:
+                    output_to_push.setdefault((src_eid, src_attr), []).append(
+                        (dest_sim, data["time_shifted"], dest_eid, dest_attr)
+                    )
+            sim.output_request = output_request
+            sim.output_to_push = output_to_push
+        
+    
     def run(
         self,
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        print_progress: Union[bool, Literal["individual"]] = "individual", #True,
         lazy_stepping: bool = True,
     ):
         """
@@ -545,12 +598,13 @@ class World(object):
             if deg == 0:
                 logger.warning('{sim_id} has no connections.', sim_id=sid)
 
+        self.build_simrunners()
+        
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
         # time-shifted or weak connections.
         self.create_simulator_ranking()
 
-        self.cache_self_trigger_times()
         self.cache_dependencies()
         self.cache_related_sims()
         self.cache_triggering_ancestors()
@@ -613,48 +667,15 @@ class World(object):
                     weight=lambda src, tgt, edge: edge["time_shifted"]
                 )
                 sim = self.sims[src_sid]
+                trigger_time = DenseTime(0, 1) + DenseTime(distance + data['time_shifted'])
                 for port in data['trigger']:
-                    if port in sim.self_trigger_times:
-                        sim.self_trigger_times[port] = min(
-                            distance + data['time_shifted'],
-                            sim.self_trigger_times[port],
-                        )
-                    else:
-                        sim.self_trigger_times[port] = distance + data['time_shifted']
+                    if not port in sim.self_trigger_times or trigger_time <= sim.self_trigger_times[port]:
+                        sim.self_trigger_times[port] = trigger_time
             except networkx.NetworkXNoPath:
                 # If there is no path, we just don’t add anything to the
                 # self_trigger_times
                 pass
         
-    
-    def _get_cycle_info(
-        self,
-        cycle: List[SimId],
-        index_of_simulator: int,
-    ) -> Tuple[SimId, List[DataflowEdge]]:
-        """
-        Returns the sid of the successor and all the edges from the cycle.
-        """
-        # Combine the ids of the cycle elements to get the edge ids and edges
-        edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
-        successor_sid = edge_ids[index_of_simulator][1]
-        cycle_edges = [
-            self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
-        ]
-        return successor_sid, cycle_edges
-
-    def _get_in_out_edges(
-        self,
-        index_of_simulator: int,
-        cycle_edges: List[DataflowEdge],
-    ) -> Tuple[DataflowEdge, DataflowEdge]:
-        """
-        Returns the ingoing and outgoing edge in the cycle from the given simulator
-        """
-        ingoing_edge = cycle_edges[(index_of_simulator - 1) % len(cycle_edges)]
-        outgoing_edge = cycle_edges[index_of_simulator]
-        return ingoing_edge, outgoing_edge
-
     def cache_dependencies(self):
         """
         Loops through all simulations and adds predecessors and successors to the
@@ -663,17 +684,12 @@ class World(object):
         for pre_sid, suc_sid, edge in self.df_graph.edges(data=True):
             pre_sim = self.sims[pre_sid]
             suc_sim = self.sims[suc_sid]
-            wait_event = asyncio.Event()
-            wait_event.set()
-            wait_lazy = asyncio.Event()
-            wait_lazy.set()
             wait_async = asyncio.Event()
             wait_async.set()
 
             suc_sim.predecessors[pre_sim] = PredecessorInfo(
                 time_shift=edge["time_shifted"],
-                wait_data=wait_event,
-                wait_lazy=wait_lazy,
+                is_weak=edge["weak"],
                 wait_async=wait_async,
                 pulled_inputs=edge['cached_connections'],
                 triggering=bool(edge["trigger"]),
@@ -682,10 +698,9 @@ class World(object):
             pre_sim.successors[suc_sim] = SuccessorInfo(
                 time_shift=edge["time_shifted"],
                 is_weak=edge["weak"],
+                delay=DenseTime(edge["time_shifted"], int(edge["weak"])),
                 pred_waiting=edge["async_requests"],
                 trigger=edge["trigger"],
-                wait_data=wait_event,
-                wait_lazy=wait_lazy,
                 wait_async=wait_async,
             )
 
@@ -710,11 +725,11 @@ class World(object):
             for ancestors_sid in ancestors:
                 distance = networkx.shortest_path_length(
                     self._trigger_graph, ancestors_sid, sim.sid,
-                    weight=lambda src, tgt, edge: edge["time_shifted"] or edge["weak"]
+                    weight=lambda src, tgt, edge: DenseTime(edge["time_shifted"], int(edge["weak"])) # or edge["weak"]
                 )
                 is_immediate_connection: bool = distance == 0
                 triggering_ancestors.append(
-                    (self.sims[ancestors_sid], is_immediate_connection)
+                    (self.sims[ancestors_sid], distance) # is_immediate_connection)
                 )
 
     def create_simulator_ranking(self):

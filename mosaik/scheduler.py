@@ -9,12 +9,14 @@ import networkx as nx
 from time import perf_counter
 import asyncio
 
-from mosaik_api.types import InputData, OutputData, SimId
+from mosaik_api.types import InputData, OutputData, SimId, Time
+from tqdm import tqdm
+from mosaik.dense_time import DenseTime
 
 from mosaik.exceptions import (ScenarioError, SimulationError, WakeUpException, NoStepException)
 from mosaik.simmanager import FULL_ID, SimRunner
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Coroutine, Tuple
 if TYPE_CHECKING:
     from typing import Dict, List, Optional
     from mosaik.scenario import World
@@ -86,122 +88,72 @@ async def sim_process(
     sim.rt_start = rt_start = perf_counter()
 
     try:
-        keep_running = get_keep_running_func(world, sim, until, rt_factor,
-                                             rt_start)
-        while keep_running():
+        advance_progress(sim, world)
+        while await next_step_settled(sim, world.until):
             warn_if_successors_terminated(world, sim)
-            try:
-                await wait_for_next_step(world, sim)
-            except WakeUpException:
-                # We've been woken up by a terminating predecessor.
-                # Check if we can also stop or need to keep running.
-                continue
-            except NoStepException:
-                # None of the simulators has a next step, therefore stop.
-                break
-            sim.interruptable = True
-            while True:
-                try:
-                    await rt_sleep(rt_factor, rt_start, sim, world)
-                    sim.tqdm.set_postfix_str('waiting')
-                    await wait_for_dependencies(world, sim, lazy_stepping)
-                    break
-                except asyncio.CancelledError:
-                    # We use cancellation as an interrupt.
-                    # TODO: Find a better way to do this.
-                    clear_wait_events(sim)
-                    continue
-            sim.interruptable = False
-            if sim.next_steps[0] >= world.until:
-                break
+            await rt_sleep(rt_factor, rt_start, sim, world)
+            sim.tqdm.set_postfix_str('await input')
+            await wait_for_dependencies(world, sim, lazy_stepping)
+            sim.current_step = heappop(sim.next_steps)
+            if sim.current_step != sim.progress.value:
+                raise SimulationError(
+                    f'Simulator {sim.sid} is trying to perform a step at time {sim.current_step}, '
+                    f'but it has already progressed to time {sim.progress.value}.'
+                )
+            if sim.current_step.microstep >= world.max_loop_iterations:
+                raise SimulationError(
+                    f"Simulator {sim.sid} has performed step {sim.current_step.time} "
+                    f"more than {world.max_loop_iterations} times. This might indicate "
+                    "that you have run into an infinite loop. If not, you can increase "
+                    "max_loop_iterations to get rid of this warning."
+                )
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
-            progress = await step(world, sim, input_data, max_advance)
+            await step(world, sim, input_data, max_advance)
             rt_check(rt_factor, rt_start, rt_strict, sim)
-            progress = await get_outputs(world, sim, progress)
-            notify_dependencies(world, sim, progress)
-            if world.use_cache:
-                prune_dataflow_cache(world)
+            await get_outputs(world, sim)
+            logger.trace("{sim.sid} completed step {step}", sim=sim, step=sim.current_step)
+            sim.current_step = None
+            notify_dependencies(world, sim)
+            for isim in world.sims.values():
+                advance_progress(isim, world)
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
-            sim.tqdm.update(sim.progress + 1 - sim.tqdm.n)
-        sim.progress = until
-        clear_wait_events_dependencies(sim)
-        check_and_resolve_deadlocks(sim, end=True)
-        # Before we stop, we wake up all dependencies who may be waiting for
-        # us. They can then decide whether to also stop of if there's another
-        # process left which might provide data.
-        for suc_sim, info in sim.successors.items():
-            if info.trigger and not suc_sim.task.done():
-                suc_sim.has_next_step.set()
-
+            if world.use_cache:
+                prune_dataflow_cache(world)
+        sim.tqdm.set_postfix_str('done')
     except ConnectionError as e:
         raise SimulationError('Simulator "%s" closed its connection.' %
                               sim.sid, e)
 
 
-def get_keep_running_func(
-    world: World,
-    sim: SimRunner,
-    until: int,
-    rt_factor: Optional[float],
-    rt_start: float
-):
-    """
-    Return a function that the :func:`sim_process()` uses to determine
-    when to stop.
-
-    Depending on whether the process has any successors in the dataflow graph,
-    the condition for when to stop differs.
-    """
-    check_functions = []
-    no_set_events = not (
-        rt_factor
-        and (
-            sim.supports_set_events
-            or any(
-                anc_sim.supports_set_events for anc_sim, _ in sim.triggering_ancestors
+async def next_step_settled(sim: SimRunner, until: Time) -> bool:
+    # When deciding when the next step will happen, we have two numbers
+    # that approach each other: The earliest currently scheduled next
+    # step (which might still go down) and the earliest potential next
+    # step based on the rest of the simulation, which we call the
+    # simulator's progress and which can only go up.
+    # Once these two numbers meet, we know that that time is the next
+    # step.
+    # As a slight complication, we also need to watch out for the end
+    # of the simulation. Once that is reached, we also return, albeit
+    # without having found a next step.
+    sim.tqdm.set_postfix_str('await step')
+    while sim.progress.value.time < until:
+        if sim.next_steps and sim.next_steps[0] == sim.progress.value:
+            return True
+        else:
+            await_time = sim.next_steps[0] if sim.next_steps else DenseTime(until)
+            _, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(sim.progress.has_reached(await_time)),
+                    asyncio.create_task(sim.newer_step.wait()),
+                ],
+                return_when="FIRST_COMPLETED"
             )
-        )
-    )
-    if no_set_events:
-        if not sim.triggering_ancestors:
-            def check_time():
-                return sim.progress < until
-        else:
-            def check_time():
-                return sim.progress <= until
-
-        check_functions.append(check_time)
-
-    if sim.type != 'time-based':
-        # If we are not self-stepped we can stop if all predecessors have
-        # stopped and there's no step left.
-        # Unless we are running in real-time mode, then we have to wait until
-        # the total wall-clock time has passed.
-        if not rt_factor:
-            pre_processes = [
-                pre_sim.task
-                for pre_sim, info in sim.predecessors.items()
-                if info.triggering
-            ]
-
-            def check_trigger():
-                return sim.next_steps or not all(p.done() for p in pre_processes)
-        else:
-            pre_sims = [pre_sim for pre_sim, _ in sim.triggering_ancestors]
-
-            def check_trigger():
-                return (sim.next_steps
-                        or any(pre_sim.next_steps for pre_sim in pre_sims)
-                        or (perf_counter() - rt_start < rt_factor * until))
-
-        check_functions.append(check_trigger)
-
-    def keep_running():
-        return all([f() for f in check_functions])
-
-    return keep_running
+            sim.newer_step.clear()
+            for task in pending: task.cancel()
+    return False
 
 
 def warn_if_successors_terminated(world: World, sim: SimRunner):
@@ -216,47 +168,6 @@ def warn_if_successors_terminated(world: World, sim: SimRunner):
         )
 
 
-async def wait_for_next_step(world: World, sim: SimRunner) -> None:
-    """
-    This coroutine checks and potentially waits for this simulator's next step.
-
-    If a predecessor terminates, we will be awoken as well, and throw a WakeUpException.
-    """
-    sim.has_next_step.clear()
-
-    if sim.next_steps:
-        sim.has_next_step.set()
-        sim.tqdm.set_postfix_str('no step')
-        await sim.has_next_step.wait()
-    else:
-        try:
-            if world.rt_factor:
-                rt_passed = perf_counter() - sim.rt_start
-                timeout = max(
-                    (world.rt_factor * world.until) - rt_passed,
-                    0.1 * world.rt_factor
-                )
-                sim.tqdm.set_postfix_str('no step')
-                try:
-                    await asyncio.wait_for(
-                        asyncio.shield(sim.has_next_step.wait()), timeout
-                    )
-                except asyncio.TimeoutError:
-                    raise NoStepException
-            else:
-                check_and_resolve_deadlocks(sim)
-                sim.tqdm.set_postfix_str('no step')
-                await sim.has_next_step.wait()
-
-            # If has_next_step is triggered but there is still no new step, this
-            # means that a predecessor has terminated. We return control to
-            # sim_process so that it can check whether we can terminate as well.
-            if not sim.next_steps:
-                raise WakeUpException
-        except NoStepException:
-            raise NoStepException
-
-
 async def rt_sleep(
     rt_factor: Optional[float],
     rt_start: float,
@@ -268,7 +179,7 @@ async def rt_sleep(
     """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
-        sleep = (rt_factor * sim.next_steps[0]) - rt_passed
+        sleep = (rt_factor * sim.next_steps[0].time) - rt_passed
         if sleep > 0:
             sim.tqdm.set_postfix_str('sleeping')
             await asyncio.sleep(sleep)
@@ -287,6 +198,7 @@ async def wait_for_dependencies(
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
+    futures: List[Coroutine] = []
     events: List[asyncio.Event] = []
     next_step = sim.next_steps[0]
 
@@ -294,35 +206,36 @@ async def wait_for_dependencies(
     # to provide the required input data for us:
     for pre_sim, info in sim.predecessors.items():
         # Wait for dep_sim if it hasn't progressed until actual time step:
-        if pre_sim.progress + info.time_shift <= next_step:
-            evt = info.wait_data
-            evt.clear()
-            events.append(evt)
-            # To avoid deadlocks:
-            info.wait_lazy.set()
+        if info.is_weak:
+            futures.append(pre_sim.progress.has_reached(next_step))
+        else:
+            futures.append(pre_sim.progress.has_passed(next_step - DenseTime(info.time_shift)))
 
+    for post_sim, info in sim.successors.items():
+        if lazy_stepping or info.pred_waiting:
+            futures.append(post_sim.progress.has_reached(next_step))
     # Check if a successor may request data from us.
     # We cannot step any further until the successor may no longer require
     # data for [last_step, next_step) from us:
-    if not world.rt_factor:
-        for suc_sim, info in sim.successors.items():
-            if info.pred_waiting and suc_sim.progress < next_step:
-                evt = info.wait_async
-                evt.clear()
-                events.append(evt)
-            elif lazy_stepping:
-                if not info.wait_lazy.is_set():
-                    events.append(info.wait_lazy)
-                elif suc_sim.next_steps and suc_sim.progress < next_step:
-                    evt = info.wait_lazy
-                    evt.clear()
-                    events.append(evt)
-    sim.wait_events = events
+    # if not world.rt_factor:
+    #     for suc_sim, info in sim.successors.items():
+    #         if info.pred_waiting and suc_sim.progress.value < next_step:
+    #             evt = info.wait_async
+    #             evt.clear()
+    #             events.append(evt)
+    #         elif lazy_stepping:
+    #             if not info.wait_lazy.is_set():
+    #                 events.append(info.wait_lazy)
+    #             elif suc_sim.next_steps and suc_sim.progress.value < next_step:
+    #                 evt = info.wait_lazy
+    #                 evt.clear()
+    #                 events.append(evt)
+    # sim.wait_events = events
 
-    if events:
-        check_and_resolve_deadlocks(sim, waiting=True)
+    # if events:
+    #     check_and_resolve_deadlocks(sim, waiting=True)
 
-    await asyncio.gather(*(evt.wait() for evt in events))
+    await asyncio.gather(*futures) #, *(evt.wait() for evt in events))
 
 
 def get_input_data(world: World, sim: SimRunner) -> InputData:
@@ -347,37 +260,36 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    input_data = sim.set_data_inputs
-    sim.set_data_inputs = {}
+    assert sim.current_step is not None
+    input_data = sim.inputs_from_set_data
+    sim.inputs_from_set_data = {}
     recursive_union(input_data, sim.persistent_inputs)
-    input_data = sim.timed_input_buffer.get_input(input_data, sim.next_steps[0])
+    input_data = sim.timed_input_buffer.get_input(input_data, sim.current_step.time)
 
-    #if world.use_cache:
-    if True:
-        for src_sim, info in sim.predecessors.items():
-            dataflows = info.pulled_inputs
-            if not dataflows:
-                continue
-            t = sim.next_steps[0] - info.time_shift
-            cache_slice = src_sim.get_output_for(t)
-            for src_eid, dest_eid, attrs in dataflows:
-                for src_attr, dest_attr in attrs:
-                    try:
-                        val = cache_slice[src_eid][src_attr]
-                    except KeyError:
-                        logger.warning(
-                            f"Simulator {src_sim.sid}'s entity {src_eid} did not "
-                            f"produce output on its persistent attribute {src_attr} "
-                            "during its last step. However, this value is now required "
-                            f"by simulator {sim.sid}. This usually results from "
-                            "attributes that are marked persistent despite working "
-                            "like events. This will be an error in future versions of "
-                            "mosaik."
-                        )
-                        val = None
-                    input_vals = input_data.setdefault(dest_eid, {}) \
-                        .setdefault(dest_attr, {})
-                    input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
+    for src_sim, info in sim.predecessors.items():
+        dataflows = info.pulled_inputs
+        if not dataflows:
+            continue
+        t = sim.current_step.time - info.time_shift
+        cache_slice = src_sim.get_output_for(t)
+        for src_eid, dest_eid, attrs in dataflows:
+            for src_attr, dest_attr in attrs:
+                try:
+                    val = cache_slice[src_eid][src_attr]
+                except KeyError:
+                    logger.warning(
+                        f"Simulator {src_sim.sid}'s entity {src_eid} did not "
+                        f"produce output on its persistent attribute {src_attr} "
+                        "during its last step. However, this value is now required "
+                        f"by simulator {sim.sid}. This usually results from "
+                        "attributes that are marked persistent despite working "
+                        "like events. This will be an error in future versions of "
+                        "mosaik."
+                    )
+                    val = None
+                input_vals = input_data.setdefault(dest_eid, {}) \
+                    .setdefault(dest_attr, {})
+                input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
 
     recursive_update(sim.persistent_inputs, input_data)
 
@@ -407,22 +319,14 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
     Checks how far *sim* can safely advance its internal time during next step
     without causing a causality error.
     """
-    ancs_next_steps = []
-    for anc_sim, immediate in sim.triggering_ancestors:
+    ancs_next_steps: List[DenseTime] = []
+    for anc_sim, distance in sim.triggering_ancestors:
         if anc_sim.next_steps:
-            ancs_next_steps.append(anc_sim.next_steps[0] - immediate)
+            ancs_next_steps.append(anc_sim.next_steps[0] + distance)
 
-    if ancs_next_steps:
-        max_advance = min(ancs_next_steps)
-    else:
-        max_advance = until
+    own_next_step = [sim.next_steps[0]] if sim.next_steps else []
 
-    if len(sim.next_steps) >= 2:
-        tmp = heappop(sim.next_steps)
-        max_advance = min(sim.next_steps[0] - 1, max_advance)
-        heappush(sim.next_steps, tmp)
-
-    return max_advance
+    return min([*ancs_next_steps, *own_next_step, DenseTime(until)]).time
 
 
 async def step(
@@ -430,7 +334,7 @@ async def step(
     sim: SimRunner,
     inputs: InputData,
     max_advance: int
-) -> int:
+):
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -441,44 +345,33 @@ async def step(
     *max_advance* is the simulation time until the simulator can safely advance
     it's internal time without causing any causality errors.
     """
-    current_step = heappop(sim.next_steps)
-    if current_step < sim.progress - 1:
-        raise SimulationError(
-            f'Simulator {sim.sid} is trying to perform a step at time {current_step}, '
-            f'but it has already progressed to time {sim.progress}.'
-        )
-    sim.last_step = current_step
-
+    assert sim.current_step is not None
     sim.tqdm.set_postfix_str('stepping')
     sim.is_in_step = True
-    next_step = await sim.step(current_step, inputs, max_advance)
+    next_step_time = await sim.step(sim.current_step.time, inputs, max_advance)
+    sim.last_step = sim.current_step
     sim.is_in_step = False
 
-    if next_step is not None:
-        if type(next_step) != int:
+
+    if next_step_time is not None:
+        if type(next_step_time) != int:
             raise SimulationError(
-                f'next_step must be of type int, but is "{type(next_step)}" for '
-                f'simulator "{sim.sid}"'
+                f'the next step time returned by the step method must be of type int, '
+                f'but is of type {type(next_step_time)} for simulator "{sim.sid}"'
             )
-        if next_step <= sim.last_step:
+        if next_step_time <= sim.current_step.time:
             raise SimulationError(
-                f'next_step must be > last_step, but {next_step} <= {sim.last_step} '
+                f'the next step time returned by step must be later than the current '
+                f"step's time, but {next_step_time} <= {sim.current_step.time} "
                 f'for simulator "{sim.sid}"'
             )
 
-        if next_step not in sim.next_steps and next_step < world.until:
-            heappush(sim.next_steps, next_step)
-
-        sim.next_self_step = next_step
+        if next_step_time < world.until:
+            sim.schedule_step(DenseTime(next_step_time))
+            sim.next_self_step = next_step_time
 
     if sim.type == 'time-based':
-        assert next_step, "A time-based simulator must always return a next step"
-        return next_step
-    else:
-        if sim.next_steps:
-            return min(sim.next_steps[0], max_advance + 1)
-        else:
-            return max_advance + 1
+        assert next_step_time, "A time-based simulator must always return a next step"
 
 
 def rt_check(
@@ -492,7 +385,7 @@ def rt_check(
     """
     if rt_factor:
         rt_passed = perf_counter() - rt_start
-        delta = rt_passed - (rt_factor * sim.last_step)
+        delta = rt_passed - (rt_factor * sim.last_step.time)
         if delta > 0:
             if rt_strict:
                 raise RuntimeError(
@@ -507,12 +400,13 @@ def rt_check(
                 )
 
 
-async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
+async def get_outputs(world: World, sim: SimRunner):
     """
     Wait for all required output data from a simulator *sim*.
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
+    assert sim.current_step is not None
     sid = sim.sid
     outattr = sim.output_request
     if outattr:
@@ -520,8 +414,13 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
         data = await sim.get_data(outattr)
 
         output_time: int
-        output_time = sim.output_time = data.get('time', sim.last_step)  # type: ignore
-        if sim.last_step > output_time:
+        output_time = data.get('time', sim.last_step.time)  # type: ignore
+        if output_time == sim.current_step.time:
+            output_dense_time = sim.current_step
+        else:
+            output_dense_time = DenseTime(output_time)
+        sim.output_time = output_dense_time
+        if sim.last_step.time > output_time:
             raise SimulationError(
                 'Output time (%s) is not >= time (%s) for simulator "%s"'
                 % (output_time, sim.last_step, sim.sid))
@@ -531,8 +430,6 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
         # than filter out this data here.
         if sim.outputs is not None:
             sim.outputs[output_time] = data
-
-        progress = treat_cycling_output(world, sim, data, output_time, progress)
 
         # Push forward certain data
         for (src_eid, src_attr), destinations in sim.output_to_push.items():
@@ -544,66 +441,22 @@ async def get_outputs(world: World, sim: SimRunner, progress: int) -> int:
                     )
             except KeyError:
                 pass
-        sim.data = data
-
-    return progress
+        sim.data = data 
 
 
-def treat_cycling_output(
-    world: World,
-    sim: SimRunner,
-    data: OutputData,
-    output_time: int,
-    progress: int,
-) -> int:
-    """
-    Check for each triggering cycle if the maximum number of iterations
-    within the same time step has been reached. Also adjust the progress
-    of *sim* if the cycle has been activated and could cause an earlier
-    step then deduced in get_max_advance before."""
-    for (eid, attr), self_trigger_time in sim.self_trigger_times.items():
-        if attr in data.get(eid, {}):
-            progress = min(output_time + self_trigger_time, progress)
-
-    if progress > sim.progress:
-        sim.same_time_steps = 0
-    else:
-        sim.same_time_steps += 1
-        if sim.same_time_steps > world.max_loop_iterations:
-            raise SimulationError(
-                f"Simulator {sim.sid} has performed step {progress} more than "
-                f"{world.max_loop_iterations} times. This might indicate that "
-                "you have run into an infinite loop. If not, you can increase "
-                "max_loop_iterations to get rid of this warning."
-            )
-
-    return progress
-
-
-def notify_dependencies(world: World, sim: SimRunner, progress: int) -> None:
+def notify_dependencies(world: World, sim: SimRunner) -> None:
     """
     Notify all simulators waiting for us.
     """
-    sim.progress = progress
-
     # Notify simulators waiting for inputs from us.
     for dest_sim, info in sim.successors.items():
-        weak_or_shifted = info.time_shift or info.is_weak
-        if dest_sim.next_steps and dest_sim.next_steps[0] - weak_or_shifted < progress:
-            info.wait_data.set()
         for eid, attr in info.trigger:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
-                dest_input_time = sim.output_time + info.time_shift
-                dest_sim.schedule_step(dest_input_time)
+                dest_input_time = sim.output_time + info.delay
+                if dest_input_time < world.until:
+                    dest_sim.schedule_step(dest_input_time)
                 break  # Further triggering attributes would only schedule the same event
-
-    # Notify simulators waiting for async. requests from us.
-    for pre_sim, info in sim.predecessors.items():
-        if pre_sim.next_steps and pre_sim.next_steps[0] <= progress:
-            info.wait_async.set()
-        elif not pre_sim.next_steps or pre_sim.next_steps[0] <= progress:
-            info.wait_lazy.set()
 
 
 def prune_dataflow_cache(world: World):
@@ -612,7 +465,7 @@ def prune_dataflow_cache(world: World):
     """
     if not world.use_cache:
         return
-    min_cache_time = min(s.last_step for s in world.sims.values())
+    min_cache_time = min(s.last_step.time for s in world.sims.values())
     for sim in world.sims.values():
         if sim.outputs:
             sim.outputs = {
@@ -626,15 +479,34 @@ def get_progress(sims: Dict[SimId, SimRunner], until: int) -> float:
     """
     Return the current progress of the simulation in percent.
     """
-    times = [sim.progress for sim in sims.values()]
+    times = [sim.progress.value.time for sim in sims.values()]
     avg_time = sum(times) / len(times)
     return avg_time * 100 / until
 
 
 def get_avg_progress(sims: Dict[SimId, SimRunner], until: int) -> int:
     """Get the average progress of all simulations (in time steps)."""
-    times = [min(until, sim.progress + 1) for sim in sims.values()]
+    times = [min(until, sim.progress.value.time + 1) for sim in sims.values()]
     return sum(times) // len(times)
+
+
+def advance_progress(sim: SimRunner, world: World):
+    pre_sim_induced_progress: List[DenseTime] = [
+        pre_sim.next_steps[0] + distance
+        for pre_sim, distance in sim.triggering_ancestors
+        if pre_sim.next_steps
+    ]
+
+    next_step_progress: List[DenseTime] = [sim.next_steps[0]] if sim.next_steps else []
+    current_step_prog = [sim.current_step] if sim.current_step else []
+    new_progress = min([
+        *pre_sim_induced_progress,
+        *next_step_progress,
+        *current_step_prog,
+        DenseTime(world.until),
+    ])
+    sim.progress.set(new_progress)
+    sim.tqdm.update(new_progress.time - sim.tqdm.n)
 
 
 def check_and_resolve_deadlocks(
@@ -680,18 +552,12 @@ def check_and_resolve_deadlocks(
     if not sim.next_steps:
         for pre_sim, info in sim.predecessors.items():
             info.wait_async.set()
-            info.wait_lazy.set()
-
 
 def clear_wait_events(sim: SimRunner) -> None:
     """
     Clear/succeed all wait events *sim* is waiting for.
     """
-    for info in sim.predecessors.values():
-        info.wait_data.set()
-
     for info in sim.successors.values():
-        info.wait_lazy.set()
         info.wait_async.set()
 
 
@@ -700,9 +566,5 @@ def clear_wait_events_dependencies(sim: SimRunner) -> None:
     Clear/succeed all wait events over which other simulators are waiting for
     *sim*.
     """
-    for info in sim.successors.values():
-        info.wait_data.set()
-
     for info in sim.predecessors.values():
-        info.wait_lazy.set()
         info.wait_async.set()

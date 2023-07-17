@@ -354,7 +354,7 @@ def test_sim_proxy_stop_impl(world):
 
         meta = {"type": "time-based", "models": {}}
 
-    sim = simmanager.SimRunner("id", world, Test())
+    sim = simmanager.SimRunner("id", Test())
     with pytest.raises(NotImplementedError):
         world.loop.run_until_complete(sim.stop())
 
@@ -363,7 +363,7 @@ def test_local_process(world):
     es = ExampleSim()
     proxy = LocalProxy(es, None)
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
-    sim = simmanager.SimRunner("ExampleSim-0", world, proxy)
+    sim = simmanager.SimRunner("ExampleSim-0", proxy)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
     assert sim.last_step == -1
@@ -544,13 +544,11 @@ def test_mosaik_remote(rpc, err):
             channel = await world.incoming_connections_queue.get()
             proxy = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy._meta = {"type": "time-based", "models": {}}
-            sim = simmanager.SimRunner("X", world, proxy)
+            sim = simmanager.SimRunner("X", proxy)
             sim.last_step = 1
             sim.is_in_step = True
             world.sims["X"] = sim
-            world.sims["X"].outputs[1] = {
-                "2": {"attr": "val"},
-            }
+            world.sims["X"].outputs = {1: {"2": {"attr": "val"}}}
 
         async def run():
             sim_exc, greeter_exc = await asyncio.gather(
