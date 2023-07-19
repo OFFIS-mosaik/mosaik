@@ -648,14 +648,12 @@ class World(object):
     def detect_unresolved_cycles(self):
         """
         Searches for unresolved cycles, i.e. cycles that do not have a weak or
-        time_shifted connection or have more than one weak connection. Raises
-        an error if an unresolved cycle is found.
+        time_shifted connection. Raises an error if an unresolved cycle is found.
         """
         cycles = list(networkx.simple_cycles(self.df_graph))
         for cycle in cycles:
             sim_pairs = list(zip(cycle, cycle[1:] + [cycle[0]]))
             self._detect_missing_loop_breakers(cycle, sim_pairs)
-            self._detect_too_many_weak_connections(cycle, sim_pairs)
 
     def _detect_missing_loop_breakers(
         self,
@@ -677,26 +675,6 @@ class World(object):
                 "Scenario has unresolved cyclic "
                 f"dependencies: {sorted(cycle)}. Use options "
                 '"time-shifted" or "weak" for resolution.'
-            )
-
-    def _detect_too_many_weak_connections(
-        self,
-        cycle: List[SimId],
-        sim_pairs: List[Tuple[SimId, SimId]],
-    ):
-        """
-        Searches for cycles with more than one weak connection and raises
-        an error if such a connection is found.
-        """
-        is_weak = [
-            self.df_graph[src_id][dest_id]["weak"] for src_id, dest_id in sim_pairs
-        ]
-        if sum(is_weak) > 1:
-            raise ScenarioError(
-                "Maximum one weak connection is allowed in"
-                " an elementary cycle, but there are "
-                f"actually {sum(is_weak)} in "
-                f"{sorted(cycle)}."
             )
 
     def cache_trigger_cycles(self):
