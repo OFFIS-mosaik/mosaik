@@ -289,8 +289,6 @@ class PredecessorInfo:
     is_weak: bool
     triggering: bool
 
-    wait_async: asyncio.Event
-
     pulled_inputs: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
     """Inputs that this simulator pulls from its predecessor using that
     SimRunner's get_output_for method.
@@ -309,8 +307,6 @@ class SuccessorInfo:
     pred_waiting: bool
 
     trigger: Set[Tuple[EntityId, Attr]]
-    
-    wait_async: asyncio.Event
 
 
 class SimRunner:

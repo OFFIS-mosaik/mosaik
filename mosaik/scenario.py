@@ -553,7 +553,7 @@ class World(object):
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
-        print_progress: Union[bool, Literal["individual"]] = "individual", #True,
+        print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
     ):
         """
@@ -659,23 +659,6 @@ class World(object):
             if success:
                 logger.info('Simulation finished successfully.')
 
-    def cache_self_trigger_times(self):
-        for src_sid, dest_sid, data in self._trigger_graph.edges(data=True):
-            try:
-                distance = networkx.shortest_path_length(
-                    self._trigger_graph, dest_sid, src_sid,
-                    weight=lambda src, tgt, edge: edge["time_shifted"]
-                )
-                sim = self.sims[src_sid]
-                trigger_time = DenseTime(0, 1) + DenseTime(distance + data['time_shifted'])
-                for port in data['trigger']:
-                    if not port in sim.self_trigger_times or trigger_time <= sim.self_trigger_times[port]:
-                        sim.self_trigger_times[port] = trigger_time
-            except networkx.NetworkXNoPath:
-                # If there is no path, we just don’t add anything to the
-                # self_trigger_times
-                pass
-        
     def cache_dependencies(self):
         """
         Loops through all simulations and adds predecessors and successors to the
@@ -684,13 +667,10 @@ class World(object):
         for pre_sid, suc_sid, edge in self.df_graph.edges(data=True):
             pre_sim = self.sims[pre_sid]
             suc_sim = self.sims[suc_sid]
-            wait_async = asyncio.Event()
-            wait_async.set()
 
             suc_sim.predecessors[pre_sim] = PredecessorInfo(
                 time_shift=edge["time_shifted"],
                 is_weak=edge["weak"],
-                wait_async=wait_async,
                 pulled_inputs=edge['cached_connections'],
                 triggering=bool(edge["trigger"]),
             )
@@ -701,7 +681,6 @@ class World(object):
                 delay=DenseTime(edge["time_shifted"], int(edge["weak"])),
                 pred_waiting=edge["async_requests"],
                 trigger=edge["trigger"],
-                wait_async=wait_async,
             )
 
     def cache_related_sims(self):

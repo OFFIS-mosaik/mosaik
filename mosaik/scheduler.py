@@ -93,7 +93,7 @@ async def sim_process(
             warn_if_successors_terminated(world, sim)
             await rt_sleep(rt_factor, rt_start, sim, world)
             sim.tqdm.set_postfix_str('await input')
-            await wait_for_dependencies(world, sim, lazy_stepping)
+            await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
             if sim.current_step != sim.progress.value:
                 raise SimulationError(
@@ -114,7 +114,11 @@ async def sim_process(
             await get_outputs(world, sim)
             logger.trace("{sim.sid} completed step {step}", sim=sim, step=sim.current_step)
             sim.current_step = None
-            notify_dependencies(world, sim)
+            notify_dependencies(sim)
+            # TODO: Reduce the number of sims that need to be advanced
+            # (At least only to those that could potentially be
+            # triggered by this step; maybe there's even a more clever
+            # way.)
             for isim in world.sims.values():
                 advance_progress(isim, world)
             world.sim_progress = get_progress(world.sims, until)
@@ -186,7 +190,6 @@ async def rt_sleep(
 
 
 async def wait_for_dependencies(
-    world: World,
     sim: SimRunner,
     lazy_stepping: bool
 ) -> None:
@@ -214,28 +217,8 @@ async def wait_for_dependencies(
     for post_sim, info in sim.successors.items():
         if lazy_stepping or info.pred_waiting:
             futures.append(post_sim.progress.has_reached(next_step))
-    # Check if a successor may request data from us.
-    # We cannot step any further until the successor may no longer require
-    # data for [last_step, next_step) from us:
-    # if not world.rt_factor:
-    #     for suc_sim, info in sim.successors.items():
-    #         if info.pred_waiting and suc_sim.progress.value < next_step:
-    #             evt = info.wait_async
-    #             evt.clear()
-    #             events.append(evt)
-    #         elif lazy_stepping:
-    #             if not info.wait_lazy.is_set():
-    #                 events.append(info.wait_lazy)
-    #             elif suc_sim.next_steps and suc_sim.progress.value < next_step:
-    #                 evt = info.wait_lazy
-    #                 evt.clear()
-    #                 events.append(evt)
-    # sim.wait_events = events
 
-    # if events:
-    #     check_and_resolve_deadlocks(sim, waiting=True)
-
-    await asyncio.gather(*futures) #, *(evt.wait() for evt in events))
+    await asyncio.gather(*futures)
 
 
 def get_input_data(world: World, sim: SimRunner) -> InputData:
@@ -444,7 +427,7 @@ async def get_outputs(world: World, sim: SimRunner):
         sim.data = data 
 
 
-def notify_dependencies(world: World, sim: SimRunner) -> None:
+def notify_dependencies(sim: SimRunner) -> None:
     """
     Notify all simulators waiting for us.
     """
@@ -454,8 +437,7 @@ def notify_dependencies(world: World, sim: SimRunner) -> None:
             data_eid = sim.data.get(eid, {})
             if attr in data_eid:
                 dest_input_time = sim.output_time + info.delay
-                if dest_input_time < world.until:
-                    dest_sim.schedule_step(dest_input_time)
+                dest_sim.schedule_step(dest_input_time)
                 break  # Further triggering attributes would only schedule the same event
 
 
@@ -508,63 +490,3 @@ def advance_progress(sim: SimRunner, world: World):
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
 
-
-def check_and_resolve_deadlocks(
-    sim: SimRunner,
-    waiting: bool = False,
-    end: bool = False
-) -> None:
-    """
-    Checks for deadlocks which can occur when all simulators are either waiting
-    for a next step or for dependencies, or have finished already.
-    """
-    waiting_sims = [] if not waiting else [sim]
-    for isim in sim.related_sims:
-        if not isim.started:
-            # isim hasn't done anything yet. If there are deadlocks
-            # during start-up, we will notice this during the last
-            # simulators first call to check_and_resolve_deadlocks.
-            break
-        elif isim.task.done() or not isim.has_next_step.is_set():
-            # isim has finished already or has no next step
-            continue
-        elif not isim.wait_events or all(evt.is_set() for evt in isim.wait_events):
-            # isim hasn't executed `wait_for_dependencies` yet and will
-            # perform a deadlock check again if necessary or is not waiting.
-            break
-        else:
-            waiting_sims.append(isim)
-    else:
-        # This part will only be reached if all simulators either have no next
-        # step or are waiting for dependencies.
-        if waiting_sims:
-            sim_queue = []
-            for isim in waiting_sims:
-                heappush(sim_queue, (isim.next_steps[0], isim.rank, isim))
-            clear_wait_events(sim_queue[0][2])
-        else:
-            if not end:
-                # None of interdependent sims has a next step, isim can stop.
-                raise NoStepException
-
-    # If we have no next step, we have to check if a predecessor is waiting for
-    # us for async. requests or lazily:
-    if not sim.next_steps:
-        for pre_sim, info in sim.predecessors.items():
-            info.wait_async.set()
-
-def clear_wait_events(sim: SimRunner) -> None:
-    """
-    Clear/succeed all wait events *sim* is waiting for.
-    """
-    for info in sim.successors.values():
-        info.wait_async.set()
-
-
-def clear_wait_events_dependencies(sim: SimRunner) -> None:
-    """
-    Clear/succeed all wait events over which other simulators are waiting for
-    *sim*.
-    """
-    for info in sim.predecessors.values():
-        info.wait_async.set()

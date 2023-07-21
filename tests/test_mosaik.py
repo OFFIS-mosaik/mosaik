@@ -89,7 +89,7 @@ def test_mosaik(scenario_name, cache):
 
         for sim in world.sims.values():
             assert sim.last_step.time < scenario_desc.UNTIL
-            assert sim.progress.value.time >= scenario_desc.UNTIL - 1
+            assert sim.progress.value.time == scenario_desc.UNTIL
     finally:
         world.shutdown()
 
