@@ -305,26 +305,29 @@ def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph
         y_pos1 = positions[edge[1]][1]
 
         con = ConnectionPatch((x_pos1, y_pos1), (x_pos0, y_pos0), "data", "data",
-                      arrowstyle="->", linestyle=linestyle, connectionstyle='arc3,rad=0.2', shrinkA=5, shrinkB=5,
+                      arrowstyle="->", linestyle=linestyle, connectionstyle='arc3,rad=0.1', shrinkA=5, shrinkB=5,
                       mutation_scale=20, fc="w", color=color, alpha=0.6)
         ax.add_artist(con)
-        
-        # Get the middle point of the arrow (does not include that it is not straight)
-        dx = x_pos1 - x_pos0
-        dy = y_pos1 - y_pos0
-        mid_x = x_pos0 + 0.5 * dx
-        mid_y = y_pos0 + 0.5 * dy
+
+        # Attention: This is not the actual mid-point in the line
+        # I suspect its more like a control point in a bezier interpolation
+        # When the line is more curved, the middle point here is further away from the actual line
+        # One could suspect that the mid-point is actually the middle point in this array,
+        # but the array starts with the stating point, then has the curve-control point in the middle
+        # and then has the points that draw the arrow
+        # Why not calculating the middle point on the straight line? Because then by a 50/50 chance 
+        # when you have a curved arrow back and forth between two points, you can have the annotation
+        # above the wrong arrow.
+        midpoint = con.get_path().vertices[1]
 
         ax.annotate(
             annotation,
-            (mid_x, mid_y),
-            xytext=(0.10, -0.10),
+            (midpoint[0], midpoint[1]),
+            xytext=(0, 0),
             textcoords='offset points',
             color=color,
             fontsize=5,
         )
-
-    # print('Cycles: %s ' % list(nx.simple_cycles(world.execution_graph)))
 
     plt.axis("off")
     plt.show()
