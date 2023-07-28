@@ -238,50 +238,54 @@ def plot_df_graph(
         bbox_inches="tight",
     )
 
-    plot_df_graph_via_force_atlas(folder, hdf5path, dpi, format, df)
+    plot_df_graph_force_layout(folder, hdf5path, dpi, format, df)
 
 
-def plot_df_graph_via_force_atlas(folder: str, hdf5path: str, dpi, format, df):
+def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph):
     try:
         from fa2 import ForceAtlas2
+
+        forceatlas2 = ForceAtlas2(
+            # Behavior alternatives
+            outboundAttractionDistribution=True,  # Dissuade hubs
+            linLogMode=False,  # NOT IMPLEMENTED
+            adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
+            edgeWeightInfluence=1.0,
+            # Performance
+            jitterTolerance=1.0,  # Tolerance
+            barnesHutOptimize=True,
+            barnesHutTheta=1.2,
+            multiThreaded=False,  # NOT IMPLEMENTED
+            # Tuning
+            scalingRatio=2.0,
+            strongGravityMode=False,
+            gravity=10,
+            # Log
+            verbose=True,
+        )
+
+        positions = forceatlas2.forceatlas2_networkx_layout(
+            df_graph, pos=None, iterations=5000
+        )
     except ImportError:
         print(
-            "ForceAtlas2 could not be imported and execution graph can not be visualized using ForceAtlas algorithm."
+            "ForceAtlas2 could not be imported and execution graph can not be visualized using ForceAtlas algorithm. Using the spring (Fruchterman-Reingold force-directed) algorithm instead."
         )
-        return
-
-    forceatlas2 = ForceAtlas2(
-        # Behavior alternatives
-        outboundAttractionDistribution=True,  # Dissuade hubs
-        linLogMode=False,  # NOT IMPLEMENTED
-        adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
-        edgeWeightInfluence=1.0,
-        # Performance
-        jitterTolerance=1.0,  # Tolerance
-        barnesHutOptimize=True,
-        barnesHutTheta=1.2,
-        multiThreaded=False,  # NOT IMPLEMENTED
-        # Tuning
-        scalingRatio=2.0,
-        strongGravityMode=False,
-        gravity=10,
-        # Log
-        verbose=True,
-    )
-
-    positions = forceatlas2.forceatlas2_networkx_layout(df, pos=None, iterations=5000)
+        positions = nx.spring_layout(df_graph)
 
     fig, ax = plt.subplots()
-    for node in df.nodes:
+    for node in df_graph.nodes:
+        # Draw a dot for the simulator
         ax.plot(positions[node][0], positions[node][1], "o")
-        text_x = positions[node][0] + 0.5
-        text_y = positions[node][1] + 0.5
+        # Put the name of the simulator on the dot. If we put an absolute distance, we depend on the scaling, which
+        # can effect seemingly random distances from the dot
+        text_x = positions[node][0]
+        text_y = positions[node][1]
         label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
-        label.set_alpha = 0.5
+        label.set_alpha(0.6)
 
-    for edge in list(df.edges()):
-        edge_infos = df.adj[edge[0]][edge[1]]
-        # print(edge_infos['time_shifted'])
+    for edge in list(df_graph.edges()):
+        edge_infos = df_graph.adj[edge[0]][edge[1]]
         color = "tab:red"
         if not edge_infos["time_shifted"]:
             color = "grey"
@@ -305,7 +309,7 @@ def plot_df_graph_via_force_atlas(folder: str, hdf5path: str, dpi, format, df):
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "graph_df." + format)
     else:
-        filename: str = get_filename(folder, "dataflowGraph_fa2", format)
+        filename: str = get_filename(folder, "dataflowGraph_2", format)
 
     fig.savefig(
         filename,
