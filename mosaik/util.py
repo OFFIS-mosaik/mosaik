@@ -8,6 +8,8 @@ import networkx as nx
 import datetime
 import matplotlib.colors as mcolors
 from matplotlib.ticker import MaxNLocator
+from matplotlib.patches import ConnectionPatch
+import numpy as np
 
 
 STANDARD_DPI = 600
@@ -286,20 +288,40 @@ def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph
 
     for edge in list(df_graph.edges()):
         edge_infos = df_graph.adj[edge[0]][edge[1]]
-        color = "tab:red"
-        if not edge_infos["time_shifted"]:
-            color = "grey"
+        annotation = ""
+        color = "grey"
+        linestyle = "solid"
+        if edge_infos["time_shifted"]:
+            color = "tab:red"
+            annotation = "time_shifted"
+
+        if edge_infos["weak"]:
+            annotation += " weak"
+            linestyle="dotted"
+
         x_pos0 = positions[edge[0]][0]
         x_pos1 = positions[edge[1]][0]
         y_pos0 = positions[edge[0]][1]
         y_pos1 = positions[edge[1]][1]
+
+        con = ConnectionPatch((x_pos1, y_pos1), (x_pos0, y_pos0), "data", "data",
+                      arrowstyle="->", linestyle=linestyle, connectionstyle='arc3,rad=0.2', shrinkA=5, shrinkB=5,
+                      mutation_scale=20, fc="w", color=color, alpha=0.6)
+        ax.add_artist(con)
+        
+        # Get the middle point of the arrow (does not include that it is not straight)
+        dx = x_pos1 - x_pos0
+        dy = y_pos1 - y_pos0
+        mid_x = x_pos0 + 0.5 * dx
+        mid_y = y_pos0 + 0.5 * dy
+
         ax.annotate(
-            "",
-            (x_pos1, y_pos1),
-            xytext=(x_pos0, y_pos0),
-            arrowprops=dict(
-                color=color, arrowstyle="->", connectionstyle="arc3,rad=0.2", alpha=0.6
-            ),
+            annotation,
+            (mid_x, mid_y),
+            xytext=(0.10, -0.10),
+            textcoords='offset points',
+            color=color,
+            fontsize=5,
         )
 
     # print('Cycles: %s ' % list(nx.simple_cycles(world.execution_graph)))
