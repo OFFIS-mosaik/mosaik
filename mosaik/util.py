@@ -422,7 +422,7 @@ def plot_execution_graph(
             "",
             (x_pos1, y_pos1),
             xytext=(x_pos0, y_pos0),
-            arrowprops=dict(color=colormap[y_pos0], arrowstyle="->"),
+            arrowprops=dict(color=colormap[y_pos0], arrowstyle="->", connectionstyle="arc3,rad=0.05", alpha=0.6),
         )
 
     plt.show()
