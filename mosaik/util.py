@@ -3,7 +3,6 @@ This module contains some utility functions and classes.
 
 """
 import random
-import matplotlib.pyplot as plt
 import networkx as nx
 import datetime
 
@@ -127,6 +126,8 @@ def plot_execution_time(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
+    import matplotlib.pyplot as plt
+
     steps = {}
 
     all_nodes = list(world.execution_graph.nodes(data=True))
@@ -183,6 +184,8 @@ def plot_df_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
+    import matplotlib.pyplot as plt
+
     df_graph = world.df_graph
 
     edges_time_shifted = []
@@ -251,6 +254,7 @@ def plot_df_graph_with_force_layout(folder: str, hdf5path: str, dpi, format, df_
     :param df_graph: the dataflow graph object
     :return: no return object, but image file will be written to the file system
     """
+    import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
     positions = nx.spring_layout(df_graph)
@@ -375,6 +379,7 @@ def plot_execution_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
+    import matplotlib.pyplot as plt
     from matplotlib import rcParams
     from matplotlib.ticker import MaxNLocator
 
@@ -458,6 +463,7 @@ def plot_execution_time_per_simulator(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
+    import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
 
     eg = world.execution_graph
