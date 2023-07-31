@@ -6,10 +6,6 @@ import random
 import matplotlib.pyplot as plt
 import networkx as nx
 import datetime
-import matplotlib.colors as mcolors
-from matplotlib.ticker import MaxNLocator
-from matplotlib.patches import ConnectionPatch
-import numpy as np
 
 
 STANDARD_DPI = 600
@@ -178,7 +174,7 @@ def plot_df_graph(
     format=STANDARD_FORMAT,
 ):
     """
-        Creates an image visualizing the data flow graph of a mosaik scenario.
+    Creates an image visualizing the data flow graph of a mosaik scenario.
 
     :param world: mosaik world object
     :param folder: folder to store the image (only if no hdf5path is provided)
@@ -187,12 +183,12 @@ def plot_df_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
-    df = world.df_graph
+    df_graph = world.df_graph
 
     edges_time_shifted = []
     edges_not_time_shifted = []
-    for edge in list(df.edges()):
-        edge_infos = df.adj[edge[0]][edge[1]]
+    for edge in list(df_graph.edges()):
+        edge_infos = df_graph.adj[edge[0]][edge[1]]
         if not edge_infos["time_shifted"]:
             edges_not_time_shifted.append(edge)
         else:
@@ -202,10 +198,10 @@ def plot_df_graph(
 
     # Replaced nx.draw_circular with nx.draw_networkx
     # https://stackoverflow.com/questions/74189581/axesstack-object-is-not-callable-while-using-networkx-to-plot
-    nx.draw_networkx(df, edgelist=[], with_labels=True, font_size=6, alpha=0.75)
+    nx.draw_networkx(df_graph, edgelist=[], with_labels=True, font_size=6, alpha=0.75)
     plt.draw()
     nx.draw_networkx(
-        df,
+        df_graph,
         nodelist=[],
         edgelist=edges_time_shifted,
         arrows=True,
@@ -216,7 +212,7 @@ def plot_df_graph(
     )
     plt.draw()
     nx.draw_networkx(
-        df,
+        df_graph,
         nodelist=[],
         edgelist=edges_not_time_shifted,
         arrows=True,
@@ -240,41 +236,24 @@ def plot_df_graph(
         bbox_inches="tight",
     )
 
-    plot_df_graph_force_layout(folder, hdf5path, dpi, format, df)
+    plot_df_graph_with_force_layout(folder, hdf5path, dpi, format, df_graph)
 
 
-def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph):
-    try:
-        from fa2 import ForceAtlas2
+def plot_df_graph_with_force_layout(folder: str, hdf5path: str, dpi, format, df_graph):
+    """
+    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
+    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
 
-        forceatlas2 = ForceAtlas2(
-            # Behavior alternatives
-            outboundAttractionDistribution=True,  # Dissuade hubs
-            linLogMode=False,  # NOT IMPLEMENTED
-            adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
-            edgeWeightInfluence=1.0,
-            # Performance
-            jitterTolerance=1.0,  # Tolerance
-            barnesHutOptimize=True,
-            barnesHutTheta=1.2,
-            multiThreaded=False,  # NOT IMPLEMENTED
-            # Tuning
-            scalingRatio=2.0,
-            strongGravityMode=False,
-            gravity=10,
-            # Log
-            verbose=True,
-        )
+    :param folder: folder to store the image (only if no hdf5path is provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param dpi: DPI for created images
+    :param format: format for created image
+    :param df_graph: the dataflow graph object
+    :return: no return object, but image file will be written to the file system
+    """
+    from matplotlib.patches import ConnectionPatch
 
-        positions = forceatlas2.forceatlas2_networkx_layout(
-            df_graph, pos=None, iterations=5000
-        )
-    except ImportError:
-        print(
-            "ForceAtlas2 could not be imported and execution graph can not be visualized using ForceAtlas algorithm. Using the spring (Fruchterman-Reingold force-directed) algorithm instead."
-        )
-        positions = nx.spring_layout(df_graph)
-
+    positions = nx.spring_layout(df_graph)
     fig, ax = plt.subplots()
     for node in df_graph.nodes:
         # Draw a dot for the simulator
@@ -297,16 +276,28 @@ def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph
 
         if edge_infos["weak"]:
             annotation += " weak"
-            linestyle="dotted"
+            linestyle = "dotted"
 
         x_pos0 = positions[edge[0]][0]
         x_pos1 = positions[edge[1]][0]
         y_pos0 = positions[edge[0]][1]
         y_pos1 = positions[edge[1]][1]
 
-        con = ConnectionPatch((x_pos1, y_pos1), (x_pos0, y_pos0), "data", "data",
-                      arrowstyle="->", linestyle=linestyle, connectionstyle='arc3,rad=0.1', shrinkA=5, shrinkB=5,
-                      mutation_scale=20, fc="w", color=color, alpha=0.6)
+        con = ConnectionPatch(
+            (x_pos1, y_pos1),
+            (x_pos0, y_pos0),
+            "data",
+            "data",
+            arrowstyle="->",
+            linestyle=linestyle,
+            connectionstyle="arc3,rad=0.1",
+            shrinkA=5,
+            shrinkB=5,
+            mutation_scale=20,
+            fc="w",
+            color=color,
+            alpha=0.6,
+        )
         ax.add_artist(con)
 
         # Attention: This is not the actual mid-point in the line
@@ -315,7 +306,7 @@ def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph
         # One could suspect that the mid-point is actually the middle point in this array,
         # but the array starts with the stating point, then has the curve-control point in the middle
         # and then has the points that draw the arrow
-        # Why not calculating the middle point on the straight line? Because then by a 50/50 chance 
+        # Why not calculating the middle point on the straight line? Because then by a 50/50 chance
         # when you have a curved arrow back and forth between two points, you can have the annotation
         # above the wrong arrow.
         midpoint = con.get_path().vertices[1]
@@ -324,7 +315,7 @@ def plot_df_graph_force_layout(folder: str, hdf5path: str, dpi, format, df_graph
             annotation,
             (midpoint[0], midpoint[1]),
             xytext=(0, 0),
-            textcoords='offset points',
+            textcoords="offset points",
             color=color,
             fontsize=5,
         )
@@ -384,9 +375,10 @@ def plot_execution_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
-    all_nodes = list(world.execution_graph.nodes(data=True))
-
     from matplotlib import rcParams
+    from matplotlib.ticker import MaxNLocator
+
+    all_nodes = list(world.execution_graph.nodes(data=True))
 
     rcParams.update({"figure.autolayout": True})
 
@@ -466,6 +458,8 @@ def plot_execution_time_per_simulator(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
+    from matplotlib.ticker import MaxNLocator
+
     eg = world.execution_graph
     results = {}
     for node in eg.nodes:
