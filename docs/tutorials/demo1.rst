@@ -50,7 +50,7 @@ the simulator knows where to connect to.
 The section about the :doc:`Sim Manager </simmanager>` explains all this in
 detail.
 
-Here is the complete file of the data collector:
+Here is the complete file of the data collector take care of adding it to your example:
 
 .. literalinclude:: code/collector.py
 
