@@ -288,8 +288,8 @@ def plot_df_graph_with_force_layout(folder: str, hdf5path: str, dpi, format, df_
         y_pos1 = positions[edge[1]][1]
 
         con = ConnectionPatch(
-            (x_pos1, y_pos1),
             (x_pos0, y_pos0),
+            (x_pos1, y_pos1),
             "data",
             "data",
             arrowstyle="->",
