@@ -97,7 +97,7 @@ the connection between ExampleSim and ExampleSim2 is only marked as weak, not as
 
 If we add back the timeshift parameter, we get an additional arrow from ExampleSim to ExampleSim2. That 
 is because the data from ExampleSim is used in ExampleSim2 in a timeshifted manner, i.e., from the previous 
-step. This is the :doc:`Gauss-Seidel scheme<../scheduler>`.
+step. This is the :doc:`Gauss-Seidel scheme<../scheduler#cyclic-data-flows>`.
 
 .. figure:: /_static/graphs/execution_graph_timeshifted_weak.png
    :width: 100%
