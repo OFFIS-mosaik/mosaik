@@ -79,7 +79,7 @@ the ExampleSim simulator sends data to the Collector. The ExampleSim2 sends data
 dataflow connection from ExampleSim to ExampleSim2 is both weak (dotted line) and timeshifted (red line), 
 which can be seen in the red label.
 
-.. figure:: /_static/graphs/dataflowGraph_2_timeshifted_weak.png
+.. figure:: /_static/graphs/dataflowGraph_timeshifted_weak.png
    :width: 100%
    :align: center
    :alt: Dataflow Graph timeshifted weak
