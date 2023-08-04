@@ -7,6 +7,7 @@ Sometimes it is useful to visualize your scenario to understand the behavior of 
 There are four different plots available:
 
 .. code-block:: Python
+
     world = mosaik.World(SIM_CONFIG, debug=True)
     ...
     mosaik.util.plot_df_graph(world, folder='util_figures')
@@ -23,8 +24,9 @@ how the connections are set up, so that the graphs can be interpreted accordingl
 important part is the part where the entities are connected.
 
 .. code-block:: Python
-    import mosaik.util
+    :emphasize-lines: 30,31,32,33
 
+    import mosaik.util
 
     # Sim config. and other parameters
     SIM_CONFIG = {
@@ -77,7 +79,7 @@ the ExampleSim simulator sends data to the Collector. The ExampleSim2 sends data
 dataflow connection from ExampleSim to ExampleSim2 is both weak (dotted line) and timeshifted (red line), 
 which can be seen in the red label.
 
-.. figure:: /_static/graphs/dataflowGraph_2_timeshifted_weak.*
+.. figure:: /_static/graphs/dataflowGraph_2_timeshifted_weak.png
    :width: 100%
    :align: center
    :alt: Dataflow Graph timeshifted weak
