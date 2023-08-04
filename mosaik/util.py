@@ -125,6 +125,9 @@ def plot_execution_time(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
+    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
+    Slice needs to be a two-parameter integer list, e.g. [0,5].
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
@@ -132,13 +135,12 @@ def plot_execution_time(
     steps = {}
     all_nodes = list(world.execution_graph.nodes(data=True))
 
+    # Slice the data if the slice reduces the timesteps to be shown
     if slice != None:
+        slices_steps = range(world.until)[slice[0]:slice[1]]
         all_nodes_sliced = []
         for node in all_nodes:
-            if (
-                int(node[0].split("-")[-1]) >= slice[0]
-                and int(node[0].split("-")[-1]) < slice[1]
-            ):
+            if int(node[0].split("-")[-1]) in slices_steps:
                 all_nodes_sliced.append(node)
         all_nodes = all_nodes_sliced
 
@@ -391,6 +393,7 @@ def plot_execution_graph(
     :param format: format for created image
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
+    Slice needs to be a two-parameter integer list, e.g. [0,5].
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
@@ -444,7 +447,7 @@ def plot_execution_graph(
     # The slice values can be negative, so we want to have the correct time steps
     labels = None
     if slice != None:
-        labels = range(number_of_steps)[slice[0] : slice[1]]
+        labels = range(world.until)[slice[0] : slice[1]]
 
     for edge in all_edges:
         isid_0, t0, n_rep0 = split_node(edge[0])
@@ -508,6 +511,7 @@ def plot_execution_time_per_simulator(
     :param format: format for created image
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
+    Slice needs to be a two-parameter integer list, e.g. [0,5].
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt

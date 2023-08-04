@@ -102,7 +102,7 @@ step. This is the :doc:`Gauss-Seidel scheme<../scheduler#cyclic-data-flows>`.
 .. figure:: /_static/graphs/execution_graph_timeshifted_weak.png
    :width: 100%
    :align: center
-   :alt: Execution graph
+   :alt: Execution graph weak timeshifted
 
 Execution time
 ==============
@@ -124,3 +124,23 @@ in the figure below.
    :width: 100%
    :align: center
    :alt: Execution time per simulator
+
+Slicing the graphs
+==================
+If you are especially interested in a certain part of the simulation to be shown you can slice the 
+time steps for the execution graph, the execution time graph, and the execution time per simulator. 
+You can use the slicing as with Python list slicing. Jumps are not possible. Below you can see 
+a few examples:
+
+.. code-block:: Python
+
+    mosaik.util.plot_execution_graph(world, folder='util_figures', slice=[-5,-1])
+    mosaik.util.plot_execution_time(world, folder='util_figures', slice=[0,5])
+    mosaik.util.plot_execution_time_per_simulator(world, folder='util_figures', slice=[-4,-1])
+
+Below is the execution graph sliced as shown in the example code above.
+
+.. figure:: /_static/graphs/execution_graph_timeshifted_weak_sliced.png
+   :width: 100%
+   :align: center
+   :alt: Execution graph weak timeshifted sliced
