@@ -1,12 +1,12 @@
-=========================================
-Plotting graphs to debug mosaik scenarios
-=========================================
+===============
+Plotting graphs
+===============
 
 Sometimes it is useful to visualize your scenario to understand the behavior of mosaik. You can use the plotting functions in `utils` for different graphs. The parameters are always the same: the world object and the name of the folder where the figures shall be stored in.
 
 There are four different plots available:
 
-.. code_block:: Python
+.. code-block:: Python
     world = mosaik.World(SIM_CONFIG, debug=True)
     ...
     mosaik.util.plot_df_graph(world, folder='util_figures')
@@ -22,7 +22,7 @@ The following examples will be done with the following scenario. This code is ju
 how the connections are set up, so that the graphs can be interpreted accordingly. The
 important part is the part where the entities are connected.
 
-.. code_block:: Python
+.. code-block:: Python
     import mosaik.util
 
 
@@ -77,7 +77,7 @@ the ExampleSim simulator sends data to the Collector. The ExampleSim2 sends data
 dataflow connection from ExampleSim to ExampleSim2 is both weak (dotted line) and timeshifted (red line), 
 which can be seen in the red label.
 
-.. image:: /figures/dataflowGraph_2_timeshifted_weak.png
+.. image:: _static/graphs/dataflowGraph_2_timeshifted_weak.*
   :width: 400
   :alt: Dataflow Graph timeshifted weak
 
@@ -86,7 +86,7 @@ Execution graph
 The execution graph shows the order in which the simulators are executed. Differing from the example above,
 the connection between ExampleSim and ExampleSim2 is only marked as weak, not as timeshifted. 
 
-.. image:: /figures/execution_graph_weak.png
+.. image:: _static/graphs/execution_graph_weak.png
   :width: 400
   :alt: Execution graph weak
 
@@ -95,7 +95,7 @@ If we add back the timeshift parameter, we get an additional arrow from ExampleS
 is because the data from ExampleSim is used in ExampleSim2 in a timeshifted manner, i.e., from the previous 
 step. This is the :doc:`Gauss-Seidel scheme<../scheduler>`.
 
-.. image:: /figures/execution_graph_timeshifted_weak.png
+.. image:: _static/graphs/execution_graph_timeshifted_weak.png
   :width: 400
   :alt: Execution graph
 
@@ -105,7 +105,7 @@ The execution time graph shows the execution time of the different simulators so
 where the simulation takes more or less time. In the example below it can be seen that the Collector 
 uses comparatively more time than the ExampleSim simulators.
 
-.. image:: /figures/executiontime.png
+.. image:: _static/graphs/executiontime.png
   :width: 400
   :alt: Execution time
 
@@ -114,6 +114,6 @@ Execution time per simulator
 The execution time can also be plotted over the simulation steps per simulator, as can be seen 
 in the figure below.
 
-.. image:: /figures/execution_time_simulator.png
+.. image:: _static/graphs/execution_time_simulator.png
   :width: 400
   :alt: Execution time per simulator
