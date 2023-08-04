@@ -115,6 +115,7 @@ def plot_execution_time(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    slice=None,
 ):
     """
         Creates an image visualizing the execution time of the different simulators of a mosaik scenario.
@@ -129,8 +130,18 @@ def plot_execution_time(
     import matplotlib.pyplot as plt
 
     steps = {}
-
     all_nodes = list(world.execution_graph.nodes(data=True))
+
+    if slice != None:
+        all_nodes_sliced = []
+        for node in all_nodes:
+            if (
+                int(node[0].split("-")[-1]) >= slice[0]
+                and int(node[0].split("-")[-1]) < slice[1]
+            ):
+                all_nodes_sliced.append(node)
+        all_nodes = all_nodes_sliced
+
     t_min = min([node[1]["t"] for node in all_nodes])
     t_max = max([node[1]["t_end"] for node in all_nodes])
 
@@ -367,6 +378,7 @@ def plot_execution_graph(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    slice=None,
 ):
     """
         Creates an image visualizing the execution graph of a mosaik scenario.
@@ -377,6 +389,8 @@ def plot_execution_graph(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
+    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
@@ -400,9 +414,21 @@ def plot_execution_graph(
         fig.suptitle(title)
 
     # Draw the time steps from the simulators
+    number_of_steps = 0
     colormap = ["black" for x in range(len(world.sims.keys()))]
     for i, sim_name in enumerate(world.sims.keys()):
-        dot = ax.plot(steps_st[sim_name], [i] * len(steps_st[sim_name]), "o")
+        # We need the number of steps in the simulation for correct plotting with slices
+        if number_of_steps < len(steps_st[sim_name]):
+            number_of_steps = len(steps_st[sim_name])
+
+        if slice != None:
+            dot = ax.plot(
+                steps_st[sim_name][slice[0] : slice[1]],
+                [i] * len(steps_st[sim_name][slice[0] : slice[1]]),
+                "o",
+            )
+        else:
+            dot = ax.plot(steps_st[sim_name], [i] * len(steps_st[sim_name]), "o")
         # Store the color that is used for the dots in this line (for this simulator)
         colormap[i] = dot[0].get_color()
 
@@ -415,9 +441,18 @@ def plot_execution_graph(
     for sim_count, sim_name in enumerate(world.sims.keys()):
         y_pos[sim_name] = sim_count
 
+    # The slice values can be negative, so we want to have the correct time steps
+    labels = None
+    if slice != None:
+        labels = range(number_of_steps)[slice[0] : slice[1]]
+
     for edge in all_edges:
         isid_0, t0, n_rep0 = split_node(edge[0])
         isid_1, t1, n_rep1 = split_node(edge[1])
+
+        if arrow_is_not_in_slice(labels, t0, t1):
+            continue
+
         x_pos0 = t0 + n_rep0 * 0.1
         x_pos1 = t1 + n_rep1 * 0.1
         y_pos0 = y_pos[isid_0]
@@ -427,7 +462,12 @@ def plot_execution_graph(
             "",
             (x_pos1, y_pos1),
             xytext=(x_pos0, y_pos0),
-            arrowprops=dict(color=colormap[y_pos0], arrowstyle="->", connectionstyle="arc3,rad=0.05", alpha=0.6),
+            arrowprops=dict(
+                color=colormap[y_pos0],
+                arrowstyle="->",
+                connectionstyle="arc3,rad=0.05",
+                alpha=0.6,
+            ),
         )
 
     plt.show()
@@ -446,12 +486,17 @@ def plot_execution_graph(
     )
 
 
+def arrow_is_not_in_slice(labels, t0, t1):
+    return labels != None and (t0 not in labels or t1 not in labels)
+
+
 def plot_execution_time_per_simulator(
     world,
     folder=STANDARD_FOLDER,
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    slice=None,
 ):
     """
         Creates images visualizing the execution time of each of the different simulators of a mosaik scenario.
@@ -461,15 +506,19 @@ def plot_execution_time_per_simulator(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
+    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
 
-    eg = world.execution_graph
+    execution_graph = world.execution_graph
     results = {}
-    for node in eg.nodes:
-        execution_time = eg.nodes[node]["t_end"] - eg.nodes[node]["t"]
+    for node in execution_graph.nodes:
+        execution_time = (
+            execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
+        )
         sim_id = node.split("-")[0] + "-" + node.split("-")[1]
         if not sim_id in results:
             results[sim_id] = []
@@ -482,7 +531,14 @@ def plot_execution_time_per_simulator(
     sub_figure.set_xlabel("Simulation time [steps of the simulator]")
     sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
     for key in results.keys():
-        sub_figure.plot(results[key], label=key)
+        if slice != None:
+            plot_results = results[key][slice[0] : slice[1]]
+            # The slice values can be negative, so we want to have the correct time steps
+            labels = range(len(results[key]))[slice[0] : slice[1]]
+            sub_figure.set_xticks(range(0, len(labels)), labels)
+        else:
+            plot_results = results[key]
+        sub_figure.plot(plot_results, label=key)
     fig.legend()
 
     if hdf5path:
