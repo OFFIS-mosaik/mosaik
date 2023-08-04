@@ -74,8 +74,8 @@ Dataflow graph
 ==============
 The dataflow graph shows the direction of the dataflow between the simulators. In the example below, 
 the ExampleSim simulator sends data to the Collector. The ExampleSim2 sends data to ExampleSim. The 
-dataflow connection from ExampleSim to ExampleSim2 is both weak (dotted line) and timeshifted (red line), which can be seen 
-in the red label.
+dataflow connection from ExampleSim to ExampleSim2 is both weak (dotted line) and timeshifted (red line), 
+which can be seen in the red label.
 
 .. image:: /figures/dataflowGraph_2_timeshifted_weak.png
   :width: 400
@@ -83,18 +83,37 @@ in the red label.
 
 Execution graph
 ===============
-The execution graph shows the order in which the simulators are executed. In the example below, there is a sametime loop between ExampleSim2 and ExampleSim.
-The connection between ExampleSim and ExampleSim2 is marked as weak, wherefore ExampleSim2
-calls ExampleSim. 
+The execution graph shows the order in which the simulators are executed. Differing from the example above,
+the connection between ExampleSim and ExampleSim2 is only marked as weak, not as timeshifted. 
 
 .. image:: /figures/execution_graph_weak.png
   :width: 400
   :alt: Execution graph weak
 
 
-In the next example, the scenario is altered so that the connection between ExampleSim and ExampleSim2
-is not only weak, but also timeshifted. Now, 
+If we add back the timeshift parameter, we get an additional arrow from ExampleSim to ExampleSim2. That 
+is because the data from ExampleSim is used in ExampleSim2 in a timeshifted manner, i.e., from the previous 
+step. This is the :doc:`Gauss-Seidel scheme<../scheduler>`.
 
 .. image:: /figures/execution_graph_timeshifted_weak.png
   :width: 400
   :alt: Execution graph
+
+Execution time
+==============
+The execution time graph shows the execution time of the different simulators so that it can be seen 
+where the simulation takes more or less time. In the example below it can be seen that the Collector 
+uses comparatively more time than the ExampleSim simulators.
+
+.. image:: /figures/executiontime.png
+  :width: 400
+  :alt: Execution time
+
+Execution time per simulator
+============================
+The execution time can also be plotted over the simulation steps per simulator, as can be seen 
+in the figure below.
+
+.. image:: /figures/execution_time_simulator.png
+  :width: 400
+  :alt: Execution time per simulator
