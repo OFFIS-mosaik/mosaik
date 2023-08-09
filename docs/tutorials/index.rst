@@ -75,3 +75,10 @@ Jupyter tutorial
    :maxdepth: 1
 
    jupyter_notebook
+
+Visualize scenarios
+
+.. toctree::
+   :maxdepth: 1
+
+   graphs
