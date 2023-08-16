@@ -183,10 +183,7 @@ async def start_inproc(
 async def start_proc(
     world: World,
     sim_name: str,
-    sim_config: Dict[Literal['cmd', 'cwd', 'env', 'posix', 'new_console'], Any],
-    sim_id: SimId,
-    time_resolution: float,
-    sim_params: Dict[str, Any],
+    sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
     mosaik_remote: MosaikRemote,
 ) -> APIProxy:
     """
