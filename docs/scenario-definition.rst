@@ -226,12 +226,12 @@ mosaik deals with two separate types of data exchange between simulators:
   Examples include all kinds of physical measurements like the voltage at a
   grid node or the power output of a PV system.
 - Second, there are events (those were introduced in mosaik 3) which happen at
-  particular point in time. A typical example is a message between ICT devices
+  a particular point in time. A typical example is a message between ICT devices
   or a set-point message from some controller to the PV system that it controls.
 
 Each attribute of a mosaik simulator can deal either with measurements or with
 events. In case of time-based simulators, all attributes work as measurements,
-in case of time-based simulators, all attributes work as events. Hybrid-simulators
+in case of event-based simulators, all attributes work as events. Hybrid-simulators
 can work with either on an attribute-by-attribute basis (i.e. each attribute is
 either for measurements or for events). For historic reasons, input attributes
 are called trigger attributes when they deal with events, and output attributes
