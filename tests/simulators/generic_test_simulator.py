@@ -38,9 +38,13 @@ sim_meta = {
         'A': {
             'public': True,
             'params': [],
-            'attrs': ['val_in', 'val_out'],
+            'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
+    'extra_methods': [
+        'method_a',
+        'method_b',
+    ]
 }
 
 
@@ -100,7 +104,8 @@ class TestSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         if self.output_timing is None:
-            data = {eid: {'val_out': self.time} for eid in self.entities}
+            data = {eid: {'val_out': self.time}
+                    for eid in self.entities}
         else:
             try:
                 current_output_timing = self.output_timing[self.time]
@@ -115,7 +120,8 @@ class TestSim(mosaik_api.Simulator):
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
-                        **{eid: {'val_out': self.time} for eid in self.entities}}
+                        **{eid: {'val_out': self.time}
+                           for eid in self.entities}}
             else:
                 data = {}
         return data
@@ -123,6 +129,12 @@ class TestSim(mosaik_api.Simulator):
     def setup_done(self):
         if self.event_setter_wait:
             self.event_setter_wait.succeed()
+
+    def method_a(self, arg):
+        return f"method_a({arg})"
+    
+    def method_b(self, val):
+        return f"method_b({val})"
 
     def event_setter(self, env):
         last_time = 0

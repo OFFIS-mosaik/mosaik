@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.9
 
 WORKDIR /usr/src/app
 
@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN ls
 RUN pip install .
 RUN pip install tox
-RUN tox -e py37
+RUN tox -e py39

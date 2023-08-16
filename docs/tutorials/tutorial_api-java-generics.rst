@@ -1,8 +1,8 @@
 .. _tutorial_api-java-generics:
 
-========================================================
-Integrating a Model in Java
-========================================================
+===========================================================
+Integrating a Model in Java with Generics / Annotations API
+===========================================================
 
 Additionally to the basic mosaik Java API, another API based on the basic one can be used, called `mosaik-java-api-generics <https://gitlab.com/mosaik/mosaik-api-java-generics>`_,
 that contains some quality of life changes, for example automatic meta-model generation based on your model,
