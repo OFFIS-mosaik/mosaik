@@ -863,18 +863,12 @@ class World(object):
         non_persistent = set(src.meta['attrs']).difference(src.meta['persistent'])
         non_trigger = set(dest.meta['attrs']).difference(dest.meta['trigger'])
         for src_attr, dest_attr in attr_pairs:
-            if (dest_attr in dest.meta['trigger']) and (src_attr in src.meta['persistent']):
+            if (dest_attr in non_trigger) and (src_attr in non_persistent):
                 logger.warning(
-                    f'A connection between the persistent attribute {src_attr} of '
-                    f'{src.sid} and the trigger attribute {dest_attr} of {dest.sid} is '
-                    f'not recommended. This might cause problems in the simulation!'
-                )
-            elif (dest_attr in non_trigger) and (src_attr in non_persistent):
-                logger.warning(
-                    f'A connection between the non-persistent attribute {src_attr} of '
-                    f'{src.sid} and the non-trigger attribute {dest_attr} of '
-                    f'{dest.sid} is not recommended. This might cause problems in the '
-                    'simulation!'
+                    'A connection between non-persistent ({src_sid}:{src_attr}) and non-trigger ({dest_sid}:{dest_attr}) '
+                    'attributes is not recommended. This might cause problems in the simulation! See also: '
+                    'https://mosaik.readthedocs.io/en/latest/scenario-definition.html#connecting-entities',
+                    src_attr=src_attr, dest_attr=dest_attr, src_sid=src.sim.sid, dest_sid=dest.sim.sid
                 )
 
     def _classify_connections_with_cache(
