@@ -2,11 +2,21 @@
 Connecting mosaik and Odysseus
 ==============================
 
-In this first part of the tutorial we cover the two ways to connect mosaik and 
-:doc:`Odysseus<../ecosystem/odysseus>`, the :doc:`second part<odysseus2>` is about how 
+`Odysseus <http://odysseus.informatik.uni-oldenburg.de>`_ is
+a framework for in-memory data stream management that is designed for
+online processing of big data. Large volumes of data such as continuously
+occurring events or sensor data can be processed in real time. In combination
+with mosaik Odysseus can be used to process, visualise and store the results of
+mosaik during a simulation.
+
+In this first part of the tutorial we cover the two ways to connect mosaik and
+:doc:`Odysseus<../ecosystem/odysseus>`, the :doc:`second part<odysseus2>` is about how
 to use Odysseus to process, visualize and store simulation data.
 .. note::
     Connecting mosaik and Odysseus works mosaik >= 3.0
+
+.. note::
+    Connecting mosaik and Odysseus works only with mosaik >= 3.0
 
 You can choose between two different solutions to connect mosaik and Odysseus.
 Both have their advantages and disadvantages and therefore, the right choice depends on your use case.

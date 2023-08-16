@@ -8,22 +8,24 @@ import subprocess
 import sys
 
 import pytest
-import pytest_benchmark
 
-benchmarks = [os.path.abspath(file)
-              for file in glob.glob('tests/benchmarks/benchmark*.py')]
 
-@pytest.mark.benchmark(
-    min_rounds=1,
-    warmup=False
-)
+benchmarks = [
+    os.path.abspath(file) for file in glob.glob("tests/benchmarks/benchmark*.py")
+]
 
-@pytest.mark.parametrize('benchmark_filename', benchmarks)
+
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+@pytest.mark.parametrize("benchmark_filename", benchmarks)
 def test_benchmarks(benchmark, benchmark_filename):
-	returncode = benchmark(run_it, benchmark_filename)
-	if returncode == 3:
-		print(f'Execution graph of {benchmark_filename} is different than the comparison graph')
-	assert returncode == 0
+    returncode = benchmark(run_it, benchmark_filename)
+    if returncode == 3:
+        print(
+            f"Execution graph of {benchmark_filename} is different than the comparison "
+            "graph."
+        )
+    assert returncode == 0
+
 
 def run_it(benchmark_filename):
-	return subprocess.call([sys.executable, benchmark_filename, '--compare', '1'])
+    return subprocess.call([sys.executable, benchmark_filename, "--compare", "1"])
