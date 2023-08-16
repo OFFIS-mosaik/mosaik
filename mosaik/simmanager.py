@@ -20,6 +20,7 @@ import os
 import shlex
 import subprocess
 import sys
+import platform
 from loguru import logger
 from typing import (
     Any,
@@ -37,6 +38,10 @@ from typing import (
 )
 from typing_extensions import Literal
 
+if 'Windows' in platform.system():
+    from subprocess import CREATE_NEW_CONSOLE
+
+from mosaik import _version
 import mosaik_api
 
 from mosaik.exceptions import ScenarioError, SimulationError
@@ -178,7 +183,7 @@ async def start_inproc(
 async def start_proc(
     world: World,
     sim_name: str,
-    sim_config: Dict[Literal['cmd', 'cwd', 'env', 'posix'], str],
+    sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
     mosaik_remote: MosaikRemote,
 ) -> APIProxy:
     """
@@ -207,11 +212,22 @@ async def start_proc(
     env = dict(os.environ)
     env.update(sim_config.get('env', {}))  # type: ignore
 
+    # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+    creationflags = 0
+    new_console = sim_config['new_console'] if 'new_console' in sim_config else False
+    if new_console:
+        if 'Windows' in platform.system():
+            creationflags = CREATE_NEW_CONSOLE
+        else:
+            logger.warning('Simulator "{sim_name}" could not be started in a new console: '
+                           'Only available on Windows', sim_name=sim_name)
+
     kwargs = {
         'bufsize': 1,
         'cwd': cwd,
         'universal_newlines': True,
         'env': env,  # pass the new env dict to the sub process
+        'creationflags': creationflags,
     }
     try:
         subprocess.Popen(cmd, **kwargs)

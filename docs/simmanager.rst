@@ -110,6 +110,19 @@ environment variables. That could look like this:
   placeholder ``%(addr)s`` in your command. Mosaik will replace this with the
   actual address.
 
+  If the simulator should open a seperate console window, the *new_console*
+  keyword can be used. This option is only available on Windows machines
+  and mosaik version >= 3.2.0.
+
+  .. code-block:: python
+
+     >>> sim_config = {
+     ...      'SimB': {
+     ...          'cmd': 'java -jar simB.jar %(addr)s',
+     ...          'new_console': True,
+     ...      },
+     ... }
+
   You can optionally specify a current working directory *(cwd)*. If it is
   present, mosaik will change to that directory before executing *cmd*. Its
   default value is ``'.'``.
