@@ -67,7 +67,7 @@ important part is the part where the entities are connected.
     # Run simulation
     world.run(until=END)
 
-    mosaik.util.plot_df_graph(world, folder='util_figures')
+    mosaik.util.plot_dataflow_graph(world, folder='util_figures')
     #mosaik.util.plot_execution_graph(world, folder='util_figures')
     #mosaik.util.plot_execution_time(world, folder='util_figures')
     #mosaik.util.plot_execution_time_per_simulator(world, folder='util_figures')

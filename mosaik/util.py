@@ -137,7 +137,7 @@ def plot_execution_time(
 
     # Slice the data if the slice reduces the timesteps to be shown
     if slice != None:
-        slices_steps = range(world.until)[slice[0]:slice[1]]
+        slices_steps = range(world.until)[slice[0] : slice[1]]
         all_nodes_sliced = []
         for node in all_nodes:
             if int(node[0].split("-")[-1]) in slices_steps:
@@ -180,7 +180,7 @@ def plot_execution_time(
     plt.show()
 
 
-def plot_df_graph(
+def plot_dataflow_graph(
     world,
     folder=STANDARD_FOLDER,
     hdf5path=None,
@@ -188,7 +188,8 @@ def plot_df_graph(
     format=STANDARD_FORMAT,
 ):
     """
-    Creates an image visualizing the data flow graph of a mosaik scenario.
+    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
+    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
     :param folder: folder to store the image (only if no hdf5path is provided)
@@ -197,76 +198,8 @@ def plot_df_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
-    import matplotlib.pyplot as plt
-
     df_graph = world.df_graph
 
-    edges_time_shifted = []
-    edges_not_time_shifted = []
-    for edge in list(df_graph.edges()):
-        edge_infos = df_graph.adj[edge[0]][edge[1]]
-        if not edge_infos["time_shifted"]:
-            edges_not_time_shifted.append(edge)
-        else:
-            edges_time_shifted.append(edge)
-
-    fig, ax = plt.subplots()
-
-    # Replaced nx.draw_circular with nx.draw_networkx
-    # https://stackoverflow.com/questions/74189581/axesstack-object-is-not-callable-while-using-networkx-to-plot
-    nx.draw_networkx(df_graph, edgelist=[], with_labels=True, font_size=6, alpha=0.75)
-    plt.draw()
-    nx.draw_networkx(
-        df_graph,
-        nodelist=[],
-        edgelist=edges_time_shifted,
-        arrows=True,
-        edge_color="red",
-        arrowstyle="->",
-        connectionstyle="arc3,rad=0.2",
-        alpha=0.5,
-    )
-    plt.draw()
-    nx.draw_networkx(
-        df_graph,
-        nodelist=[],
-        edgelist=edges_not_time_shifted,
-        arrows=True,
-        arrowstyle="->",
-        connectionstyle="arc3,rad=0.2",
-        alpha=0.5,
-    )
-    plt.draw()
-    plt.show()
-    if hdf5path:
-        filename = hdf5path.replace(".hdf5", "graph_df_nx." + format)
-    else:
-        filename: str = get_filename(folder, "dataflowGraph", format)
-
-    fig.savefig(
-        filename,
-        format=format,
-        dpi=600,
-        facecolor="white",
-        transparent=True,
-        bbox_inches="tight",
-    )
-
-    plot_df_graph_with_force_layout(folder, hdf5path, dpi, format, df_graph)
-
-
-def plot_df_graph_with_force_layout(folder: str, hdf5path: str, dpi, format, df_graph):
-    """
-    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
-    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
-
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
-    :param dpi: DPI for created images
-    :param format: format for created image
-    :param df_graph: the dataflow graph object
-    :return: no return object, but image file will be written to the file system
-    """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
@@ -352,25 +285,6 @@ def plot_df_graph_with_force_layout(folder: str, hdf5path: str, dpi, format, df_
         transparent=True,
         bbox_inches="tight",
     )
-
-
-def split_node(node):
-    """
-
-    :param node:
-    :return:
-    """
-    isid, t = node.rsplit("-", 1)
-    try:
-        t = int(t)
-        n_rep = 0
-    except ValueError:
-        t, n_rep = map(int, t.split("~"))
-
-    if isid.endswith("-"):
-        isid = isid.strip("-")
-        t = -1
-    return isid, t, n_rep
 
 
 def plot_execution_graph(
