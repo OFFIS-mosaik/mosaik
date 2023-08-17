@@ -57,7 +57,7 @@ important part is the part where the entities are connected.
 
     # Connect entities
     world.connect(model2, model, 'val', 'delta')
-    world.connect(model, model2, 'val', 'delta', initial_data={"val": "test", "delta": "test"}, time_shifted=True, weak=True)
+    world.connect(model, model2, 'val', 'delta', initial_data={"val": 1, "delta": 1}, time_shifted=True, weak=True)
     world.connect(model, monitor, 'val', 'delta')
 
     # Create more entities

@@ -136,7 +136,7 @@ def plot_execution_time(
     all_nodes = list(world.execution_graph.nodes(data=True))
 
     # Slice the data if the slice reduces the timesteps to be shown
-    if slice != None:
+    if slice is not None:
         slices_steps = range(world.until)[slice[0] : slice[1]]
         all_nodes_sliced = []
         for node in all_nodes:
@@ -198,11 +198,10 @@ def plot_dataflow_graph(
     :param format: format for created image
     :return: no return object, but image file will be written to file system
     """
-    df_graph = world.df_graph
-
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
+    df_graph = world.df_graph
     positions = nx.spring_layout(df_graph)
     fig, ax = plt.subplots()
     for node in df_graph.nodes:
@@ -360,7 +359,7 @@ def plot_execution_graph(
 
     # The slice values can be negative, so we want to have the correct time steps
     labels = None
-    if slice != None:
+    if slice is not None:
         labels = range(world.until)[slice[0] : slice[1]]
 
     for edge in all_edges:
@@ -404,7 +403,26 @@ def plot_execution_graph(
 
 
 def arrow_is_not_in_slice(labels, t0, t1):
-    return labels != None and (t0 not in labels or t1 not in labels)
+    return labels is not None and (t0 not in labels or t1 not in labels)
+
+
+def split_node(node):
+    """
+
+    :param node:
+    :return:
+    """
+    isid, t = node.rsplit("-", 1)
+    try:
+        t = int(t)
+        n_rep = 0
+    except ValueError:
+        t, n_rep = map(int, t.split("~"))
+
+    if isid.endswith("-"):
+        isid = isid.strip("-")
+        t = -1
+    return isid, t, n_rep
 
 
 def plot_execution_time_per_simulator(
@@ -438,7 +456,7 @@ def plot_execution_time_per_simulator(
             execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
         )
         sim_id = node.split("-")[0] + "-" + node.split("-")[1]
-        if not sim_id in results:
+        if sim_id not in results:
             results[sim_id] = []
         results[sim_id].append(execution_time)
 
@@ -449,7 +467,7 @@ def plot_execution_time_per_simulator(
     sub_figure.set_xlabel("Simulation time [steps of the simulator]")
     sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
     for key in results.keys():
-        if slice != None:
+        if slice is not None:
             plot_results = results[key][slice[0] : slice[1]]
             # The slice values can be negative, so we want to have the correct time steps
             labels = range(len(results[key]))[slice[0] : slice[1]]
