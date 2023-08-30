@@ -115,6 +115,7 @@ def plot_execution_time(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    show_plot=True,
     slice=None,
 ):
     """
@@ -125,6 +126,7 @@ def plot_execution_time(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :show_plot: open a window to show the plot
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     Slice needs to be a two-parameter integer list, e.g. [0,5].
@@ -177,7 +179,8 @@ def plot_execution_time(
         transparent=True,
         bbox_inches="tight",
     )
-    plt.show()
+    if show_plot is True:
+        plt.show()
 
 
 def plot_dataflow_graph(
@@ -186,6 +189,7 @@ def plot_dataflow_graph(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    show_plot=True,
 ):
     """
     Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
@@ -196,6 +200,7 @@ def plot_dataflow_graph(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :show_plot: open a window to show the plot
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
@@ -270,7 +275,10 @@ def plot_dataflow_graph(
         )
 
     plt.axis("off")
-    plt.show()
+
+    if show_plot is True:
+        plt.show()
+
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "graph_df." + format)
     else:
@@ -293,6 +301,7 @@ def plot_execution_graph(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    show_plot=True,
     slice=None,
 ):
     """
@@ -304,6 +313,7 @@ def plot_execution_graph(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :show_plot: open a window to show the plot
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     Slice needs to be a two-parameter integer list, e.g. [0,5].
@@ -385,8 +395,10 @@ def plot_execution_graph(
                 alpha=0.6,
             ),
         )
+    
+    if show_plot is True:
+        plt.show()
 
-    plt.show()
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "graph_execution." + format)
     else:
@@ -431,6 +443,7 @@ def plot_execution_time_per_simulator(
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
+    show_plot=True,
     slice=None,
 ):
     """
@@ -441,6 +454,7 @@ def plot_execution_time_per_simulator(
     :param hdf5path: Path to HDF5 file, which will be used as path for the created image
     :param dpi: DPI for created images
     :param format: format for created image
+    :show_plot: open a window to show the plot
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     Slice needs to be a two-parameter integer list, e.g. [0,5].
@@ -490,7 +504,10 @@ def plot_execution_time_per_simulator(
         transparent=True,
         bbox_inches="tight",
     )
-    plt.show()
+    
+    if show_plot is True:
+        plt.show()
+        
     plt.close()
 
 
