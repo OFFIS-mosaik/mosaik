@@ -252,6 +252,13 @@ you might want to change the source simulator to hybrid, instead. (And then chan
 all its *other* attributes to trigger and/or non-persistent to retain its former
 event-based behaviour).
 
+.. figure:: /_static/connect_attr_simulator.*
+   :width: 600
+   :align: center
+   :alt: Solutions to solve warnings for attribute connections
+
+   A non-persistent output connected to a non-trigger input leads to a warning.
+
 Usually, the solution to resolve this warning is to change the type of one of the
 affected attributes: the source attribute from non-persistent to persistent, or
 the target attribute from non-trigger to trigger. You can do this without
