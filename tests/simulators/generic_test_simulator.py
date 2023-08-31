@@ -24,8 +24,9 @@ events : dict of {float: int}, default {}
     seconds.
 """
 
+import asyncio
 import logging
-import mosaik_api
+import mosaik_api_v3
 import copy
 from time import sleep
 
@@ -48,7 +49,7 @@ sim_meta = {
 }
 
 
-class TestSim(mosaik_api.Simulator):
+class TestSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))
         self.sid = None
@@ -128,7 +129,7 @@ class TestSim(mosaik_api.Simulator):
 
     def setup_done(self):
         if self.event_setter_wait:
-            self.event_setter_wait.succeed()
+            self.event_setter_wait.set()
 
     def method_a(self, arg):
         return f"method_a({arg})"
@@ -136,16 +137,15 @@ class TestSim(mosaik_api.Simulator):
     def method_b(self, val):
         return f"method_b({val})"
 
-    def event_setter(self, env):
+    def event_setter(self):
+        self.event_setter_wait = asyncio.Event()
+        yield self.event_setter_wait.wait()
         last_time = 0
-        wait_event = env.event()
-        self.event_setter_wait = wait_event
-        yield wait_event
         for real_time, event_time in self.events.items():
-            yield env.timeout(real_time - last_time)
+            yield asyncio.sleep(real_time - last_time)
             yield self.mosaik.set_event(event_time)
             last_time = real_time
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(TestSim())
+    mosaik_api_v3.start_simulation(TestSim())

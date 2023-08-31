@@ -1,7 +1,7 @@
-import mosaik_api
+import mosaik_api_v3
 
 
-class MetaMock(mosaik_api.Simulator):
+class MetaMock(mosaik_api_v3.Simulator):
     """
     This is a simulator for mocking different sim metas. It will simply
     return the meta that it receives as part of its init call.

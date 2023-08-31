@@ -3,7 +3,7 @@
 A simple demo controller.
 
 """
-import mosaik_api
+import mosaik_api_v3
 
 
 META = {
@@ -18,7 +18,7 @@ META = {
 }
 
 
-class Controller(mosaik_api.Simulator):
+class Controller(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
         self.agents = []
@@ -78,7 +78,7 @@ class Controller(mosaik_api.Simulator):
 
 
 def main():
-    return mosaik_api.start_simulation(Controller())
+    return mosaik_api_v3.start_simulation(Controller())
 
 
 if __name__ == '__main__':

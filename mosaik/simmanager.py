@@ -42,7 +42,7 @@ if 'Windows' in platform.system():
     from subprocess import CREATE_NEW_CONSOLE
 
 from mosaik import _version
-import mosaik_api
+import mosaik_api_v3
 
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import LocalProxy, APIProxy, RemoteProxy
@@ -98,7 +98,7 @@ async def start(
     value is 1., meaning one integer step corresponds to one second simulated
     time.
 
-    The function returns a :class:`mosaik_api.Simulator` instance.
+    The function returns a :class:`mosaik_api_v3.Simulator` instance.
 
     It raises a :exc:`~mosaik.exceptions.SimulationError` if the simulator
     could not be started.
@@ -173,9 +173,8 @@ async def start_inproc(
                             (sim_name, details, origerr)) from None
     sim = cls()
 
-    if int(mosaik_api.__version__.split('.')[0]) < 3:
-        raise ScenarioError("Mosaik 3 requires mosaik_api's version also "
-                            "to be >=3.")
+    if int(mosaik_api_v3.__version__.split('.')[0]) < 3:
+        raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
     return LocalProxy(mosaik_remote, sim)
 
