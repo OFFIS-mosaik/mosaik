@@ -97,7 +97,7 @@ be used in the following way:
 The ``Simulator`` class
 =======================
 
-The package ``mosaik_api`` defines a base class ``Simulator`` for which we now
+The package ``mosaik_api_v3`` defines a base class ``Simulator`` for which we now
 need to write a sub-class:
 
 .. literalinclude:: code/simulator_mosaik.py
@@ -288,7 +288,7 @@ Making it executable
 
 The last step is adding a ``main()`` method to make our simulator executable
 (e.g., via ``python -m simulator_mosaik HOST:PORT``). The package
-``mosaik_api`` contains the method ``start_simulation()`` which creates
+``mosaik_api_v3`` contains the method ``start_simulation()`` which creates
 a socket, connects to mosaik and listens for requests from it. You just call it
 in your ``main()`` and pass an instance of your simulator class to it:
 

@@ -3,7 +3,7 @@ import pytest
 import sys
 
 from example_sim.mosaik import ExampleSim
-from mosaik_api import __api_version__ as api_version
+from mosaik_api_v3 import __api_version__ as api_version
 
 from mosaik import scenario
 from mosaik import simmanager
@@ -154,16 +154,16 @@ def test_start_external_process_with_environment_variables(world, tmpdir):
     # Write the module "simulator_mock.py" to tmpdir:
     tmpdir.join("simulator_mock.py").write(
         """
-import mosaik_api
+import mosaik_api_v3
 
 
-class SimulatorMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(meta={})
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(SimulatorMock())
+    mosaik_api_v3.start_simulation(SimulatorMock())
 """
     )
     sim = world.start("SimulatorMockTmp")

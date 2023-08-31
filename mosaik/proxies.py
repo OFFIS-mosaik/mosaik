@@ -9,7 +9,7 @@ from json import JSONEncoder, JSONDecoder
 from typing import Any, Dict, Iterator, Optional, Tuple, TYPE_CHECKING, Union
 from loguru import logger
 
-import mosaik_api
+import mosaik_api_v3
 from mosaik import _version
 from mosaik.exceptions import ScenarioError
 
@@ -124,12 +124,12 @@ class LocalProxy(APIProxy):
     """
     Proxy for a local simulator. This mainly wraps each mosaik method in a coroutine.
     """
-    sim: mosaik_api.Simulator
+    sim: mosaik_api_v3.Simulator
 
-    def __init__(self, mosaik_remote: MosaikRemote, sim: mosaik_api.Simulator):
+    def __init__(self, mosaik_remote: MosaikRemote, sim: mosaik_api_v3.Simulator):
         super().__init__(mosaik_remote)
         self.sim = sim
-        self._api_compliant = mosaik_api.check_api_compliance(sim)
+        self._api_compliant = mosaik_api_v3.check_api_compliance(sim)
         sim.mosaik = mosaik_remote  # type: ignore
 
     async def _send(self, func_name: str, args, kwargs):

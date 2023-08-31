@@ -1,7 +1,7 @@
-import mosaik_api
+import mosaik_api_v3
 
 
-class SimulatorMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api_v3.Simulator):
     def create(self, num, model, **model_params):
         raise NotImplementedError()
 

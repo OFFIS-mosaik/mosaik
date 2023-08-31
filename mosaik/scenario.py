@@ -1024,7 +1024,7 @@ class ModelMock(object):
         a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api.Simulator.create()`, but the simulator is prepended
+        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
         to every entity ID to make them globally unique.
         """
         self._check_params(**model_params)

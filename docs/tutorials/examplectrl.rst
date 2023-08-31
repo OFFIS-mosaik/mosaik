@@ -14,7 +14,7 @@ will monitor the current *value* of their respective models and when it reaches
 -3/3, they will set *delta* to 1/-1 for their model.
 
 Implementing the Sim API for control strategies is very similar to implementing
-it for normal simulators. We start again by importing the :mod:`mosaik_api`
+it for normal simulators. We start again by importing the :mod:`mosaik_api_v3`
 package and defining the simulator meta data:
 
 .. literalinclude:: code/controller.py
@@ -37,7 +37,7 @@ in the get_data's return dictionary.
 Our control mechanism will use agents to control other entities. The agent has
 no parameters and two attributes, the input 'val_in' and the output 'delta'.
 
-Let's continue and implement :class:`mosaik_api.Simulator`:
+Let's continue and implement :class:`mosaik_api_v3.Simulator`:
 
 .. literalinclude:: code/controller.py
    :lines: 21-26
@@ -48,16 +48,16 @@ our super class and set an empty list for our agents.
 Because our agents don't have an internal concept of time, we don't need to take
 care of the time_resolution of the scenario. And as there aren't any simulator
 parameters either, we don't need to implement
-:meth:`~mosaik_api.Simulator.init()`. The default implementation will return
+:meth:`~mosaik_api_v3.Simulator.init()`. The default implementation will return
 the meta data, so there's nothing we need to do in this case.
 
-Implementing :meth:`~mosaik_api.Simulator.create()` is also straight forward:
+Implementing :meth:`~mosaik_api_v3.Simulator.create()` is also straight forward:
 
 .. literalinclude:: code/controller.py
    :lines: 28-36
 
 Every agent gets an ID like "Agent_*<num>*". Because there might be multiple
-:meth:`~mosaik_api.Simulator.create()` calls, we need to keep track of how many
+:meth:`~mosaik_api_v3.Simulator.create()` calls, we need to keep track of how many
 agents we already created in order to generate correct entity IDs. We also
 create a list of `{'eid': 'Agent_<num>', 'type': 'Agent'}` dictionaries for
 mosaik.
@@ -65,7 +65,7 @@ mosaik.
 You may have noticed that we, in contrast to our example simulator, did not
 actually instantiate any *real* simulation models this time. We just pretend to
 do it. This okay, since we'll implement the agent's "intelligence" directly in
-:meth:`~mosaik_api.Simulator.step()`:
+:meth:`~mosaik_api_v3.Simulator.step()`:
 
 .. literalinclude:: code/controller.py
    :lines: 38-52
