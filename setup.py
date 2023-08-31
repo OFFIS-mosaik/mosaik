@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-find_version='3.1.1'
+find_version='3.2.0'
 if os.environ.get('CI_COMMIT_TAG'):
     find_version = os.environ['CI_COMMIT_TAG']
 
@@ -10,7 +10,7 @@ if os.environ.get('CI_COMMIT_TAG'):
 setup(
     name='mosaik',
     version=find_version,
-    author='Stefan Scherfke',
+    author='mosaik development team',
     author_email='mosaik@offis.de',
     description='Mosaik is a flexible Smart-Grid co-simulation framework.',
     long_description=(open('README.rst', encoding='utf-8').read() + '\n\n' +
