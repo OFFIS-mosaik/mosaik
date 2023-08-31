@@ -9,12 +9,13 @@ import example_model
 
 
 META = {
-    'type': 'time-based',
+    'type': 'hybrid',
     'models': {
         'ExampleModel': {
             'public': True,
             'params': ['init_val'],
             'attrs': ['delta', 'val'],
+            'trigger': ['delta'],
         },
     },
 }
