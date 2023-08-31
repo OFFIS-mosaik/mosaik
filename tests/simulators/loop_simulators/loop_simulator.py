@@ -7,7 +7,7 @@ features of the mosaik API.
 """
 from loguru import logger
 
-import mosaik_api
+import mosaik_api_v3
 
 
 example_sim_meta = {
@@ -22,7 +22,7 @@ example_sim_meta = {
 }
 
 
-class LoopSim(mosaik_api.Simulator):
+class LoopSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(example_sim_meta)
         self.sid = None
@@ -69,4 +69,4 @@ class LoopSim(mosaik_api.Simulator):
 
 
 def main():
-    return mosaik_api.start_simulation(LoopSim())
+    return mosaik_api_v3.start_simulation(LoopSim())

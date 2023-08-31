@@ -33,6 +33,7 @@ class WakeUpException(Exception):
     which has terminated.
     """
 
+
 class NoStepException(Exception):
     """
     This exception is raised if none of the simulators has a next step.

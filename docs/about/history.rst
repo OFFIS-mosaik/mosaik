@@ -5,7 +5,16 @@ The history of mosaik
 Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
-3.1.1 - 2022-01-11
+3.2.0 - 2023-08-31
+------------------
+- [NEW] Visualizations for the simulation debug information (https://gitlab.com/mosaik/mosaik/-/issues/173)
+- [NEW] Allow to open a new console for simulator (https://gitlab.com/mosaik/mosaik/-/issues/84)
+- [FIX] Lift restriction of only one weak connection per cycle (https://gitlab.com/mosaik/mosaik/-/issues/151)
+- [FIX] Incorrect triggering when adding several edges (https://gitlab.com/mosaik/mosaik/-/issues/92)
+- [IMPROVEMENT] Switch from simpy to asycnio (https://gitlab.com/mosaik/mosaik/-/issues/103)
+- [CHANGE] Removed support for Python 3.7, added support for Python 3.11 (https://gitlab.com/mosaik/mosaik/-/issues/171)
+
+3.1.1 - 2023-01-11
 ------------------
 
 - [FIX] Fix compatibilty with mosaik 2 simulators (https://gitlab.com/mosaik/mosaik/-/issues/152)

@@ -3,6 +3,7 @@ import os
 import sys
 
 import mosaik
+import mosaik.util
 
 from argparser import argparser
 from comparison import write_exeuction_graph, compare_execution_graph

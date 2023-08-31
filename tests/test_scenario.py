@@ -16,8 +16,7 @@ sim_config = {
 def world_fixture():
     world = scenario.World(sim_config)
     yield world
-    if world.srv_sock:
-        world.shutdown()
+    world.shutdown()
 
 
 @pytest.fixture
@@ -46,7 +45,7 @@ def test_world():
         assert world.time_resolution == 1.0
         assert world.config['start_timeout'] == 23
         assert world.sims == {}
-        assert world.env
+        assert world.loop
         assert list(world.df_graph.nodes()) == []
         assert list(world.df_graph.edges()) == []
         assert not hasattr(world, 'execution_graph')
@@ -69,7 +68,7 @@ def test_world_start(world):
     fac = world.start('ExampleSim', step_size=2)
     assert isinstance(fac, scenario.ModelFactory)
     assert world.sims == {'ExampleSim-0': fac._sim}
-    assert fac._sim._inst.step_size == 2
+    assert fac._sim.proxy.sim.step_size == 2
     assert fac._sim._world.time_resolution == 1.0
     assert 'ExampleSim-0' in world.df_graph
 
@@ -110,9 +109,12 @@ def test_world_connect(world):
                 'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': False,
+                'trigger': set(),
                 'dataflows': connections,
                 'cached_connections': connections,
+                'wait_async': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_async'],
+                'wait_event': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_event'],
+                'wait_lazy': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_lazy'],
             },
         },
         'ExampleSim-1': {},
@@ -203,9 +205,12 @@ def test_world_connect_no_attrs(world):
                 'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': False,
+                'trigger': set(),
                 'dataflows': [(a.eid, b.eid, ())],
                 'cached_connections': [],
+                'wait_async': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_async'],
+                'wait_event': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_event'],
+                'wait_lazy': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_lazy'],
             },
         },
         'ExampleSim-1': {},
@@ -224,7 +229,7 @@ def test_world_connect_any_inputs(world):
     """
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
-    b.sim.meta['models']['B']['any_inputs'] = True
+    b.sim.proxy.meta['models']['B']['any_inputs'] = True
     world.connect(a, b, 'val_out')
 
     connections = [(a.eid, b.eid, (('val_out', 'val_out'),))]
@@ -235,9 +240,12 @@ def test_world_connect_any_inputs(world):
                 'pred_waiting': False,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': False,
+                'trigger': set(),
                 'dataflows': connections,
                 'cached_connections': connections,
+                'wait_async': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_async'],
+                'wait_event': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_event'],
+                'wait_lazy': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_lazy'],
             },
         },
         'ExampleSim-1': {},
@@ -263,9 +271,12 @@ def test_world_connect_async_requests(world):
                 'pred_waiting': True,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': False,
+                'trigger': set(),
                 'dataflows': [(a.eid, b.eid, ())],
                 'cached_connections': [],
+                'wait_async': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_async'],
+                'wait_event': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_event'],
+                'wait_lazy': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_lazy'],
             },
         },
         'ExampleSim-1': {},
@@ -285,9 +296,12 @@ def test_world_connect_time_shifted(world):
                 'pred_waiting': False,
                 'time_shifted': True,
                 'weak': False,
-                'trigger': False,
+                'trigger': set(),
                 'dataflows': connections,
                 'cached_connections': connections,
+                'wait_async': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_async'],
+                'wait_event': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_event'],
+                'wait_lazy': world.df_graph['ExampleSim-0']['ExampleSim-1']['wait_lazy'],
             },
         },
         'ExampleSim-1': {},
@@ -334,7 +348,8 @@ def test_world_get_data(world):
 def test_world_run_twice(world):
     world.start('ExampleSim')
     world.run(0)
-    pytest.raises(RuntimeError, world.run, 1)
+    with pytest.raises(RuntimeError):
+        world.run(1)
 
 
 def test_model_factory(world, mf):
@@ -351,15 +366,21 @@ def test_model_factory_check_params(world, mf):
                                "'spam'"
 
 
+def async_mock(return_value):
+    async def f(*args, **kwargs):
+        return return_value
+    return f
+
+
 def test_model_factory_hierarchical_entities(world, mf):
-    ret = world.env.event().succeed([{
+    ret = [{
         'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
             'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
                 'eid': 'c', 'type': 'C', 'rel': [],
             }],
         }]
-    }])
-    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
+    }]
+    mf.A._sim.proxy.create = async_mock(return_value=ret)
 
     a = mf.A(init_val=1)
     assert len(a.children) == 1
@@ -374,42 +395,47 @@ def test_model_factory_hierarchical_entities(world, mf):
 
 
 def test_model_factory_wrong_entity_count(world, mf):
-    ret = world.env.event().succeed([None, None, None])
-    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
-    err = pytest.raises(AssertionError, mf.A.create, 2, init_val=0)
+    ret = [None, None, None]
+    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    with pytest.raises(AssertionError) as err:
+        mf.A.create(2, init_val=0)
     assert str(err.value) == '2 entities were requested but 3 were created.'
 
 
 def test_model_factory_wrong_model(world, mf):
-    ret = world.env.event().succeed([{'eid': 'spam_0', 'type': 'Spam'}])
-    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
-    err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
+    ret = [{'eid': 'spam_0', 'type': 'Spam'}]
+    mf.A._sim.proxy.create = async_mock(return_value=ret)
+    with pytest.raises(AssertionError) as err:
+        mf.A.create(1, init_val=0)
     assert str(err.value) == ('Entity "spam_0" has the wrong type: "Spam"; '
                               '"A" required.')
 
 
 def test_model_factory_hierarchical_entities_illegal_type(world, mf):
-    ret = world.env.event().succeed([{
+    ret = [{
         'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
             'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
                 'eid': 'c', 'type': 'Spam', 'rel': [],
             }],
         }]
-    }])
-    mf.A._sim.proxy.create = mock.Mock(return_value=ret)
+    }]
+    mf.A._sim.proxy.create = async_mock(return_value=ret)
 
-    err = pytest.raises(AssertionError, mf.A.create, 1, init_val=0)
+    with pytest.raises(AssertionError) as err:
+        mf.A.create(1, init_val=0)
     assert str(err.value) == ('Type "Spam" of entity "c" not found in sim\'s '
                               'meta data.')
 
 
 def test_model_factory_private_model(world, mf):
-    err = pytest.raises(AttributeError, getattr, mf, 'C')
+    with pytest.raises(AttributeError) as err:
+        getattr(mf, 'C')
     assert str(err.value) == 'Model "C" is not public.'
 
 
 def test_model_factory_unkown_model(world, mf):
-    err = pytest.raises(AttributeError, getattr, mf, 'D')
+    with pytest.raises(AttributeError) as err:
+        getattr(mf, 'D')
     assert str(err.value) == ('Model factory for "ExampleSim-0" has no model '
                               'and no function "D".')
 
@@ -419,12 +445,12 @@ def test_model_mock_entity_graph(world):
     Test if related entities are added to the entity_graph.
     """
 
-    def create(*args, **kwargs):
+    async def create(*args, **kwargs):
         entities = [
             {'eid': '0', 'type': 'A', 'rel': ['1']},
             {'eid': '1', 'type': 'A', 'rel': []},
         ]
-        return world.env.event().succeed(entities)
+        return entities
 
     fac = world.start('ExampleSim')
     sp = fac._sim

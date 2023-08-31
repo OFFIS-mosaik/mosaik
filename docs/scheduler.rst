@@ -9,7 +9,7 @@ handles the :term:`data-flows <data-flow>` between them.
 
 Mosaik runs the simulation by :term:`stepping <step>` simulators through time.
 Mosaik uses integers for the representation of time (to avoid rounding errors
-etc.). It's unit (to how many seconds one integer step corresponds) can be
+etc.). Its unit (to how many seconds one integer step corresponds) can be
 defined in the scenario, and is passed to every simulation component via the
 :ref:`init function <api.init>` as key-word parameter *time_resolution*. It's
 a floating point number and defaults to *1.*.
@@ -20,8 +20,8 @@ a floating point number and defaults to *1.*.
 Time paradigms
 ==============
 
-There are various paradigms for time in simulations, discrete time, continuous
-time, discrete event, to name the probably most common ones. Mosaik supports
+There are various paradigms for time in simulations: discrete time, continuous
+time, and discrete event, to name the probably most common ones. Mosaik supports
 discrete-time and discrete-event simulations, including the combination of both.
 As these concepts are not always strictly distinguishable, we use a slightly
 different notation for the simulator's types, namely time-based, event-based,
@@ -30,7 +30,7 @@ appropriate one for a simulator, and in many cases both would be possible. As
 a rough guide we could say:
 
 Time-based simulators are more related to the physical world,
-where the state, inputs and outputs of a system are continuous (e.g. active
+where the state, inputs, and outputs of a system are continuous (e.g. active
 power of a PV module). The mapping of those continuous signals to discrete
 points in time is then somewhat arbitrary (and depends on the desired precision
 and the available computing resources). The lower limit for the temporal
@@ -39,12 +39,12 @@ resolution in a mosaik scenario is the unit assigned to the integer time steps.
 Event-based simulators are related to the cyber world, where the state(s)
 of a system can instantaneously change, and inputs and outputs also occur at
 a specific point in time (example: sending/receiving of messages in a
-communication simulation). The native way of stepping through time would than
+communication simulation). The native way of stepping through time would then
 be to just jump between all occurring events. In a mosaik simulation the time
 of the events have to be rounded to the mosaik's integer time steps.
 
 Hybrid simulators can represent any kind of combined systems with both
-continuous and event-type components.
+time-based and event-based components.
 
 
 .. _stepping_types:
@@ -83,7 +83,7 @@ Event-based simulators
 
 The stepping through time of event-based simulators is rather different.
 Event-based simulators are stepped at all times an event is created at. These
-events can either be created by other simulators w are connected to this
+events can either be created by other simulators that are connected to this
 simulator via providing the connected attribute, or the simulator can also
 schedule events for itself via the step function's return value.
 The output provided by event-based simulators is only valid for a specific
@@ -135,7 +135,7 @@ following figure illustrates.
    **(b)** *B* can perform its next step, because *A* now has progressed far
    enough (*t*:sub:`next(A)` > *t*:sub:`now(B)`).
 
-If this condition is met for all simulators providing input for *B*, mosaik
+When this condition is met for all simulators providing input for *B*, mosaik
 collects all input data for *B* that is valid at *t*:sub:`now(B)` (you could
 say it takes *one* snapshot of the global simulation state). It passes
 this data to *B*. Based upon this (and *only* this) data, *B* performs its step
@@ -153,7 +153,7 @@ as the following figures shows:
    in an alternating order starting with *A*, because it provides the input
    data for *B*.
 
-If *B* had a larger step size then *A*, *A* would produce new data while *B*
+If *B* had a larger step size than *A*, *A* would produce new data while *B*
 steps. *B* would still only use the data that was valid at *t*:sub:`now(B)`,
 because it only "measures" its inputs once at the beginning of its step:
 
@@ -166,7 +166,7 @@ because it only "measures" its inputs once at the beginning of its step:
    that *A* produces, because it only gets data once at the beginning of its
    step.
 
-On the other hand, if *A* had a larger step size then *B*, we would reuse the
+On the other hand, if *A* had a larger step size than *B*, we would reuse the
 same data from *A* multiple times as long as it is valid:
 
 .. figure:: /_static/scheduler-dataflow-2-1.*
@@ -197,14 +197,15 @@ simulators. Note that the simulator will not necessarily be stepped at
 provides the connected output attribute(s).
 
 As time-based simulators (or hybrid ones without any triggering input) only
-decide themselves when they are stepped, max_advance is always equal to the
+decide themselves when they are stepped, *max_advance* is always equal to the
 end of the simulation for those. But of course they will most likely miss some
 updates of the input data if their step size is too large and not synchronized
 with their input providers. In order not to miss any input update, you can
 change the type of the simulator to *hybrid*. Then the simulator will be
 stepped on each update.
 
-TODO: Add info for rt-simulations
+.. note::
+   The *max_advance* value is not necessarily appropriate for real-time simulations as it does not consider eventual steps which are scheduled via the asynchronous *set_event()* method.
 
 
 How data flows through mosaik
@@ -295,6 +296,11 @@ You can take a look at our :ref:`discussion of design decisions
 Same-time (algebraic) loops
 ---------------------------
 
+Sometimes, simulators need to exchange data back and forth at the same time before they
+can step to their next time step. Such same-time loop can be defined via a weak 
+connection. In the connect statement, the connection is marked as weak, e.g. via 
+``world.connect(agent, model, 'delta', weak=True)``.
+
 Loops which are closed by a weak connection can be run multiple times within
 the same mosaik time step, as weak connections do not necessarily imply a
 temporal progress. This can be used for example to only advance the simulation time
@@ -378,7 +384,7 @@ done?
 
 When we start the simulation, we pass a time unto which our simulation should
 run (``world.run(until=END)``). Usually a simulator is done if the time of its
-next step is equal or larger then the value of *until*. This is, however, not
+next step is equal or larger than the value of *until*. This is, however, not
 true for *all* simulators in a simulation. If no one needs the data of a
 simulator step, why perform this step?
 

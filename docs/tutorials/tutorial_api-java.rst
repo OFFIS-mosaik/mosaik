@@ -13,7 +13,9 @@ i. e. we will try to replicate the first part of the :doc:`Python tutorial</tuto
 Getting the Java API
 ====================
 
-First you have to get the sources of the `mosaik-API for Java <https://gitlab.com/mosaik/mosaik-api-java>`_ 
+You can add the java package via maven or gradle, following the instructions at the `mosaik-java-API package repository <https://gitlab.com/mosaik/mosaik-api-java/-/packages/4477777>`_.
+
+If you want to compile the jar yourself, you have to get the sources of the `mosaik-java-API for Java <https://gitlab.com/mosaik/mosaik-api-java>`_
 which is provided on Gitlab. Clone it and put it in the development environment of your choice.
 
 Creating the model

@@ -14,6 +14,7 @@ CODE_DIR = os.path.join(os.path.abspath('.'), 'docs', 'tutorials', 'code')
 CASES = glob.glob(os.path.join(glob.escape(CODE_DIR), '*.out'))
 
 
+@pytest.mark.cmd_process
 @pytest.mark.parametrize('outfile', CASES)
 def test_tutorial(outfile):
     python_file = outfile.rsplit('.', 1)[0] + '.py'

@@ -61,3 +61,24 @@ Java API tutorial
    :maxdepth: 1
 
    tutorial_api-java
+
+Java Generics API tutorial
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorial_api-java-generics
+
+Jupyter tutorial
+
+.. toctree::
+   :maxdepth: 1
+
+   jupyter_notebook
+
+Visualize scenarios
+
+.. toctree::
+   :maxdepth: 1
+
+   graphs

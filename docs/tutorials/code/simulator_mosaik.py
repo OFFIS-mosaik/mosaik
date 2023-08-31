@@ -3,24 +3,25 @@
 Mosaik interface for the example simulator.
 
 """
-import mosaik_api
+import mosaik_api_v3
 
 import example_model
 
 
 META = {
-    'type': 'time-based',
+    'type': 'hybrid',
     'models': {
         'ExampleModel': {
             'public': True,
             'params': ['init_val'],
             'attrs': ['delta', 'val'],
+            'trigger': ['delta'],
         },
     },
 }
 
 
-class ExampleSim(mosaik_api.Simulator):
+class ExampleSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
         self.eid_prefix = 'Model_'
@@ -79,7 +80,7 @@ class ExampleSim(mosaik_api.Simulator):
 
 
 def main():
-    return mosaik_api.start_simulation(ExampleSim())
+    return mosaik_api_v3.start_simulation(ExampleSim())
 
 
 if __name__ == '__main__':

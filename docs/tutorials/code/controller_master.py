@@ -3,7 +3,7 @@
 A simple demo controller.
 
 """
-import mosaik_api
+import mosaik_api_v3
 
 
 META = {
@@ -18,7 +18,7 @@ META = {
 }
 
 
-class Controller(mosaik_api.Simulator):
+class Controller(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
         self.agents = []
@@ -44,7 +44,7 @@ class Controller(mosaik_api.Simulator):
             for key, value in values_dict.items():
                 self.cache[key] = value
         
-        if sum(self.cache.values()) < -1:
+        if sum(self.cache.values()) < -1 or sum(self.cache.values()) > 1:
             data[agent_eid] = {'delta_out': 0}
 
         self.data = data
@@ -65,7 +65,7 @@ class Controller(mosaik_api.Simulator):
 
 
 def main():
-    return mosaik_api.start_simulation(Controller())
+    return mosaik_api_v3.start_simulation(Controller())
 
 
 if __name__ == '__main__':

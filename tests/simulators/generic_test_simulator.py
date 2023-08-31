@@ -24,8 +24,9 @@ events : dict of {float: int}, default {}
     seconds.
 """
 
+import asyncio
 import logging
-import mosaik_api
+import mosaik_api_v3
 import copy
 from time import sleep
 
@@ -38,13 +39,17 @@ sim_meta = {
         'A': {
             'public': True,
             'params': [],
-            'attrs': ['val_in', 'val_out'],
+            'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
+    'extra_methods': [
+        'method_a',
+        'method_b',
+    ]
 }
 
 
-class TestSim(mosaik_api.Simulator):
+class TestSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))
         self.sid = None
@@ -100,7 +105,8 @@ class TestSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         if self.output_timing is None:
-            data = {eid: {'val_out': self.time} for eid in self.entities}
+            data = {eid: {'val_out': self.time}
+                    for eid in self.entities}
         else:
             try:
                 current_output_timing = self.output_timing[self.time]
@@ -115,25 +121,31 @@ class TestSim(mosaik_api.Simulator):
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
-                        **{eid: {'val_out': self.time} for eid in self.entities}}
+                        **{eid: {'val_out': self.time}
+                           for eid in self.entities}}
             else:
                 data = {}
         return data
 
     def setup_done(self):
         if self.event_setter_wait:
-            self.event_setter_wait.succeed()
+            self.event_setter_wait.set()
 
-    def event_setter(self, env):
+    def method_a(self, arg):
+        return f"method_a({arg})"
+    
+    def method_b(self, val):
+        return f"method_b({val})"
+
+    def event_setter(self):
+        self.event_setter_wait = asyncio.Event()
+        yield self.event_setter_wait.wait()
         last_time = 0
-        wait_event = env.event()
-        self.event_setter_wait = wait_event
-        yield wait_event
         for real_time, event_time in self.events.items():
-            yield env.timeout(real_time - last_time)
+            yield asyncio.sleep(real_time - last_time)
             yield self.mosaik.set_event(event_time)
             last_time = real_time
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(TestSim())
+    mosaik_api_v3.start_simulation(TestSim())

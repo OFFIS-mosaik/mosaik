@@ -1,10 +1,8 @@
 import collections
+import pytest
 import random
 
-from simpy.io.network import RemoteException
-import pytest
-
-from mosaik import exceptions, scenario, util
+from mosaik import util
 
 
 class World(object):
@@ -20,56 +18,6 @@ class World(object):
         self.async_requests = async_requests
         self.src_connects.add(src)
         self.dest_connects[dest] += 1
-
-
-@pytest.mark.parametrize(['error', 'errmsg'], [
-    (ConnectionResetError('Spam'),
-     'Spam'),
-    (RemoteException('spam', 'eggs'),
-     'eggs'),
-    (exceptions.SimulationError('spam'),
-     'spam'),
-
-])
-def test_sync_process_error(error, errmsg, caplog):
-    """
-    Test sims breaking during their start.
-    """
-    world = scenario.World({})
-
-    def gen():
-        raise error
-        yield world.env.event()
-
-    pytest.raises(SystemExit, util.sync_process, gen(), world)
-
-    assert errmsg in caplog.text
-
-
-def test_sync_process_errback():
-    world = scenario.World({})
-    try:
-        test_list = []
-        cb = lambda: test_list.append('got called')  # flake8: noqa
-
-        def gen():
-            raise ConnectionError()
-            yield world.env.event()
-
-        util.sync_process(gen(), world, errback=cb, ignore_errors=True)
-        assert test_list == ['got called']
-    finally:
-        world.shutdown()
-
-
-def test_sync_process_ignore_errors():
-    world = scenario.World({})
-
-    def gen():
-        raise ConnectionError()
-        yield world.env.event()
-
-    util.sync_process(gen(), world, ignore_errors=True)
 
 
 def test_connect_many_to_one():
