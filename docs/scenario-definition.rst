@@ -257,7 +257,7 @@ affected attributes: the source attribute from non-persistent to persistent, or
 the target attribute from non-trigger to trigger. You can do this without
 affecting the simulator’s other attributes by changing the simulator’s type to
 hybrid, where you can then specify which attributes should be trigger and/or
-non-persistent. (:doc:`See here for the format of META</mosaik-api/high-level.html#mosaik_api.Simulator.meta>`)
+non-persistent. :doc:`(See here for the format of META.) </mosaik-api/high-level.html#mosaik_api.Simulator.meta>`
 Note that the attributes of hybrid simulator behave like measurements by default,
 so if you are changing an event-based simulator to hybrid, you will have to specify
 all attributes except for the affected one to be trigger and/or non-persistent if
