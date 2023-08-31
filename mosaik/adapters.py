@@ -36,15 +36,15 @@ async def init_and_get_adapter(
     sid: SimId,
     sim_params: Dict[str, Any],
 ) -> Proxy:
-    """Initialize the simulator given by ``connection`` (by calling its
-    ``init`` function) and wrap it in a ``Connection`` object that
+    """Initialize the simulator given by ``base_proxy`` (by calling its
+    ``init`` function) and wrap it in a ``Proxy`` object that
     adapts it to the current version of mosaik.
 
-    :param connection: The ``BaseConnection`` for this simulator.
+    :param base_proxy: The ``BaseProxy`` for this simulator.
     :param sid: The ``SimId`` that was assigned to this simulator.
     :param kwargs: The remaining initialization arguments for the
     simulator.
-    :return: The connection wrapped in adapters based on the API version
+    :return: The base proxy wrapped in adapters based on the API version
     returned by the simulator's ``init`` function and the meta returned
     by the init call.
     :raise ScenarioError: if there is a problem during initialization.
