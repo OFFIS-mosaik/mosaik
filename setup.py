@@ -16,6 +16,7 @@ setup(
     long_description=(open('README.rst', encoding='utf-8').read() + '\n\n' +
                       open('CHANGES.txt', encoding='utf-8').read() + '\n\n' +
                       open('AUTHORS.txt', encoding='utf-8').read()),
+    long_description_content_type='text/x-rst',
     url='https://mosaik.offis.de',
     install_requires=[
         'networkx>=2.5',
