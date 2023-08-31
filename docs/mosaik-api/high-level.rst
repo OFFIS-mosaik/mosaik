@@ -64,6 +64,7 @@ API calls
 .. autoclass:: Simulator
    :members: init, create, setup_done, step, get_data, configure, finalize
 
+   .. _meta:
    .. autoattribute:: meta
       :annotation:
 
