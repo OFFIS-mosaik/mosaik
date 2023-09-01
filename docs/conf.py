@@ -27,6 +27,7 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.imgmath',
     'sphinx_rtd_theme',
+    'sphinxcontrib.plantuml',
 ]
 
 # -- Options for Graphviz -------------------------------------------------
@@ -256,9 +257,8 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'https://docs.python.org/3/': None,
-    'https://simpy.readthedocs.io/en/latest/': None,
-    'https://networkx.github.io/': None,
+    'python': ('https://docs.python.org/3/', None),
+    'networkx': ('https://networkx.org/documentation/stable/', None),
 }
 
 # Autodoc
