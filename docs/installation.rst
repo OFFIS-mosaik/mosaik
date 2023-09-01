@@ -299,6 +299,7 @@ This guide is based on *Windows 10, 64bit*.
    To activate the virtual environment use the following command:
 
    .. code-block:: bat
+
       C:\Users\yourname> Envs\mosaik\Scripts\activate
    
    This command should also function when using the powershell, however the execution policy might need to be changed.
