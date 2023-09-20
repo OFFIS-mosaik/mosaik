@@ -131,8 +131,7 @@ a co-simulation framework:
 
    :doc:`Read more … <simmanager>`
 
-#. Mosaik's **Scheduler** uses the event-discrete simulation library `SimPy
-   <https://simpy.readthedocs.org>`_ for the coordinated simulation of
+#. Mosaik's **Scheduler** uses the event-discrete simulation approach for the coordinated simulation of
    a scenario.
 
    Mosaik supports both time-discrete and event-discrete simulations as well
