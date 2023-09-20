@@ -7,6 +7,7 @@ You can use mosaik with Jupyter notebooks to have an interactive experience and 
 .. note:: Starting from version 3.2, mosaik uses asyncio, which does not support nested event loops natively. This leads to an error when using mosaik in a Jupyter notebook. Luckily, the issue can be resolved by installing the library `nest_asyncio <https://pypi.org/project/nest-asyncio/>`_ and calling
 
 .. code-block:: python
+   
    import nest_asyncio
    nest_asyncio.apply()
 
