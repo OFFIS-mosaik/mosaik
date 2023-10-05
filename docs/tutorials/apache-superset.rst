@@ -55,11 +55,13 @@ To install the production version of Superset locally clone the Superset reposit
 Afterwards a secret key needs to be set for the production version. 
 For this the file superset_config.py is needed.
 It can be copied into the right place using the command:
+
 .. code-block:: bash
 
    $ cp ./docker/pythonpath_dev/superset_config_local.example ./docker/pythonpath_dev/superset_config_docker.py
 
 When this is done a Secret Key can be generated using the command 
+
 .. code-block:: bash
 
    $ openssl rand -base64 42
@@ -95,7 +97,7 @@ Database Connections Setting
 
 Afterwards a new Database is added  by clickin on the ``Database +`` Button.
 
-.. figure:: /_static/tutorials/superset/Superset Database.png
+.. figure:: /_static/tutorials/superset/Superset_Databases.png
    :width: 100%
    :align: center
    :alt: Button to click for adding a database
@@ -103,19 +105,19 @@ Button to click for adding a database
 
 This initiates the add database dialog consisting of three steps:
 
-.. figure:: /_static/tutorials/superset/Connect a Database.png
+.. figure:: /_static/tutorials/superset/Connect_a_Database.png
    :width: 100%
    :align: center
    :alt: Step 1: Choosing the correct database(PostgreSQL in this example)
 Step 1: Choosing the correct database(PostgreSQL in this example)
 
-.. figure:: /_static/tutorials/superset/Connect Step 2.png
+.. figure:: /_static/tutorials/superset/Connect_Step_2.png
    :width: 100%
    :align: center
    :alt: Step 2: Adding the database Credentials
 Step 2: Adding the database Credentials. If the database i run locally the IP-Address is 172.18.0.1 by default.
 
-.. figure:: /_static/tutorials/superset/Connect step 3.png
+.. figure:: /_static/tutorials/superset/Connect_step_3.png
    :width: 100%
    :align: center
    :alt: Step 3: Finishing the setup
@@ -127,7 +129,7 @@ Visualizing Data in Apache Superset
 After connecting the database to superset the data can now be visualized.
 To do this first the data needs to be extracted from the databae using SQL. This is done in the SQL Lab:
 
-.. figure:: /_static/tutorials/superset/SQL LAB.png
+.. figure:: /_static/tutorials/superset/SQL_LAB.png
    :width: 100%
    :align: center
    :alt: SQL LAB view
@@ -154,7 +156,7 @@ And it being a single cast when it being the table_type string:
 
 After extracting the wanted data using a SQL query it needs to be saved as a dataset by running the query and afterwards using the save button:
 
-.. figure:: /_static/tutorials/superset/Save Dataset 2.png
+.. figure:: /_static/tutorials/superset/Save_Dataset_2.png
    :width: 100%
    :align: center
    :alt: SQL LAB saing
@@ -162,7 +164,7 @@ View of saving the dataset in the SQL Lab
 
 Clicking the ``Save & Explore`` Button will open up the Chart creation view of superset. This can also be done afterwards by selecting the wanted dataset in the datasets tab.
 
-.. figure:: /_static/tutorials/superset/Default Chart.png
+.. figure:: /_static/tutorials/superset/Default_Chart.png
    :width: 100%
    :align: center
    :alt: Chart View
@@ -173,7 +175,7 @@ the data from the dataset into the chart and the right chart where the chart wil
 
 For this example lets start by selecting a line chart from the left side and then adding data to the relevant fields.
 
-.. figure:: /_static/tutorials/superset/Default Chart.png
+.. figure:: /_static/tutorials/superset/Default_Chart_Arrow.png
    :width: 100%
    :align: center
    :alt: Chart View Changing to line chart
@@ -183,7 +185,7 @@ After changing the chart to line chart the relevant fields to fill out are the x
 Superset can not display  simple y value, it is always a sql function. If a simple x/y comparison is needed the avg/min/max of the y values can be used since for only one value this is the value itself.
 
 
-.. figure:: /_static/tutorials/superset/x axis.png
+.. figure:: /_static/tutorials/superset/x_axis.png
    :width: 100%
    :align: center
    :alt: Chart View selecting x axis
@@ -195,7 +197,7 @@ For selecting the x Axis you can chose from your dataset columns. Most of the ti
    :alt: Chart View selecting metrics
 When selecting a metric there are many basic sql aggregation functions to choose from.
 
-.. figure:: /_static/tutorials/superset/metrics 3.png
+.. figure:: /_static/tutorials/superset/metrics_3.png
    :width: 100%
    :align: center
    :alt: Chart View selecting metrics 2
@@ -204,7 +206,7 @@ After Selecting the metrics you can render the chart by clickin the ``Create Cha
 
 Multiple metrics can be selected but only one x-Axis.
 
-.. figure:: /_static/tutorials/superset/Finished Graph.png
+.. figure:: /_static/tutorials/superset/Finished_Graph.png
    :width: 100%
    :align: center
    :alt: Chart View selecting metrics 3
@@ -214,21 +216,23 @@ If for your chart you cannot see the graph try making the time grain smaller.
 There is a number of different charts available to visualize the data. After finishing your chart it needs to be saved inside a dashboard.
 This is done by clicking the save button and giving the chart a name and either picking an existing dashboard or selecting the name of a new dashboard to be created.
 
-.. figure:: /_static/tutorials/superset/New Dashboard.png
+.. figure:: /_static/tutorials/superset/New_Dashboard.png
    :width: 100%
    :align: center
    :alt: Chart View create Dashboard
 This is the saving menu of the chart view.
 
 After saving the chart in a dashboard the created/picked dashboard can be found in the dashboard view.
-.. figure:: /_static/tutorials/superset/The Dashboard.png
+
+.. figure:: /_static/tutorials/superset/The_Dashboard_superset.png
    :width: 100%
    :align: center
    :alt: Chart View create Dashboard
 This is the dashboard view.
 
 If a dashboard is selected it displays all charts that are saved in it.
-.. figure:: /_static/tutorials/superset/Dashboard Full.png
+
+.. figure:: /_static/tutorials/superset/Dashboard_Full_superset.png
    :width: 100%
    :align: center
    :alt: Dashboard Full
@@ -236,7 +240,7 @@ This is the created example dashboard.
 
 Inside a dashboard charts can be updated, removed, looked at in fullscreen, exported and more.
 
-.. figure:: /_static/tutorials/superset/Example Fullscreen.png
+.. figure:: /_static/tutorials/superset/Example_Fullscreen.png
    :width: 100%
    :align: center
    :alt: Dashboard Fullscreen
