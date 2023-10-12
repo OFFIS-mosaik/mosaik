@@ -24,6 +24,7 @@ To use Apache Superset a SQL database that contains simulation data is needed. F
 * `A PostgreSQL database`_
 * `A Timescale database`_
 | To install one of the databases locally follow the link, this tutorial is written with the Timescale database in mind, the other databases however, should follow similar steps. 
+**Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same port**
 | After installing the database the corresponding  mosaik adapter can be used to save simulation data into the database:
 
 * `MySQL adapter`_
@@ -37,7 +38,7 @@ To use Apache Superset a SQL database that contains simulation data is needed. F
 .. _MySQL adapter: https://gitlab.com/mosaik/components/data/mosaik-sql
 .. _PostgreSQL/Timescale adapter: https://gitlab.com/mosaik/internal/mosaik-timescaledb
 
-For further explanation regarding this 
+For further explanation regarding this.
 
 Installing Superset
 ===================
@@ -126,7 +127,7 @@ Step 3: Finishing the setup
 Visualizing Data in Apache Superset
 ===================================
 
-After connecting the database to superset the data can now be visualized.
+After connecting the database to superset the data can now be visualized. This tutorial shows data that is saved in a Timescale database. *This data is saved using the MultiWriter2 of the mosaik Timescale adapter.*
 To do this first the data needs to be extracted from the databae using SQL. This is done in the SQL Lab:
 
 .. figure:: /_static/tutorials/superset/SQL_LAB.png
