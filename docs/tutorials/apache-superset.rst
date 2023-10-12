@@ -184,7 +184,7 @@ For this example lets start by selecting a line chart from the left side and the
    :alt: Chart View Changing to line chart
 Changing chart to line chart.
 
-After changing the chart to line chart the relevant fields to fill out are the x-Axis, which in most cases will be the time column, and the metrics, which represent te y values.
+After changing the chart to line chart the relevant fields to fill out are **the x-Axis, which in most cases will be the time column, and the metrics, which represent te y values.**
 Superset can not display  simple y value, it is always a sql function. If a simple x/y comparison is needed the avg/min/max of the y values can be used since for only one value this is the value itself.
 
 
