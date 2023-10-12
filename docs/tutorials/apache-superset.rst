@@ -10,6 +10,7 @@ For a more in-depth look at Apache Superset and all of its features please consu
 .. _Apache Superset: https://superset.apache.org/
 .. _tutorials on the Superset website: https://superset.apache.org/docs/intro/
 
+This tutorial is based on a superset and timescaledb instance. Both instances were run through docker on ubuntu.
 
 Getting Started
 ===============
@@ -24,7 +25,7 @@ To use Apache Superset a SQL database that contains simulation data is needed. F
 * `A PostgreSQL database`_
 * `A Timescale database`_
 | To install one of the databases locally follow the link, this tutorial is written with the Timescale database in mind, the other databases however, should follow similar steps. 
-**Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same port**.
+**Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same default port for its databse.**
 When using docker the command should look something like this:
 
 .. code-block:: bash
