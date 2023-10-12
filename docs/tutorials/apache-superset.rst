@@ -24,7 +24,14 @@ To use Apache Superset a SQL database that contains simulation data is needed. F
 * `A PostgreSQL database`_
 * `A Timescale database`_
 | To install one of the databases locally follow the link, this tutorial is written with the Timescale database in mind, the other databases however, should follow similar steps. 
-**Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same port**
+**Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same port**.
+When using docker the command should look something like this:
+
+.. code-block:: bash
+
+   $ docker run -d --name [YOURCONTAINERNAME] -p [YOURPORT]:5432 ...
+
+
 | After installing the database the corresponding  mosaik adapter can be used to save simulation data into the database:
 
 * `MySQL adapter`_
@@ -61,7 +68,7 @@ It can be copied into the right place using the command:
 
    $ cp ./docker/pythonpath_dev/superset_config_local.example ./docker/pythonpath_dev/superset_config_docker.py
 
-When this is done a Secret Key can be generated using the command 
+When this is done a Secret Key can be generated. The following command can be used on linux:
 
 .. code-block:: bash
 
@@ -74,7 +81,7 @@ and then be added into the superset_config ``./docker/pythonpath_dev/superset_co
 
    $ SECRET_KEY = 'YOUR_OWN_RANDOM_GENERATED_SECRET_KEY'
 
-Please be sure to remove any other option from the configuration/make sure you need the other configuration optons.
+**Please be sure to remove any other option from the configuration** or make sure you need the other configuration options and know what they do.
 
 The Superset instance can be started with the following commands:
 
