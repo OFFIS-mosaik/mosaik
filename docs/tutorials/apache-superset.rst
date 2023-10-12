@@ -74,6 +74,8 @@ and then be added into the superset_config ``./docker/pythonpath_dev/superset_co
 
    $ SECRET_KEY = 'YOUR_OWN_RANDOM_GENERATED_SECRET_KEY'
 
+Please be sure to remove any other option from the configuration/make sure you need the other configuration optons.
+
 The Superset instance can be started with the following commands:
 
 .. code-block:: bash
@@ -116,7 +118,7 @@ Step 1: Choosing the correct database(PostgreSQL in this example)
    :width: 100%
    :align: center
    :alt: Step 2: Adding the database Credentials
-Step 2: Adding the database Credentials. If the database i run locally the IP-Address is 172.18.0.1 by default.
+Step 2: Adding the database Credentials. If the database i run locally the IP-Address is 172.18.0.1 by default. If using Windows the IP might be host.docker.internal.
 
 .. figure:: /_static/tutorials/superset/Connect_step_3.png
    :width: 100%
