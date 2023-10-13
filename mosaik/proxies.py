@@ -7,10 +7,10 @@ from inspect import isgeneratorfunction
 from typing import Any, Dict, Iterator, List, Tuple
 from loguru import logger
 
-from mosaik_api import check_api_compliance, MosaikProxy, Simulator
-from mosaik_api.connection import Channel, EndOfRequests
-from mosaik_api.types import Meta, SimId, OutputData, InputData
-
+from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
+from mosaik_api_v3.connection import Channel, EndOfRequests
+from mosaik_api_v3.types import Meta, SimId, OutputData, InputData
+from mosaik import _version
 from mosaik.exceptions import ScenarioError
 
 

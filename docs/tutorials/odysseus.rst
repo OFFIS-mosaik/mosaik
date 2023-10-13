@@ -65,7 +65,7 @@ As we can see the protocol 'mosaik' is chosen. When the query is started, the mo
 protocol handler in Odysseus opens a TCP server for receiving data from mosaik.
 
 Before we can receive data, we have to adapt our mosaik :doc:`scenario<../scenario-definition>`.
-Here we take the mosaik-demo as an example. The Odysseus simulator is treated 
+Here we take the `mosaik-demo <https://gitlab.com/mosaik/examples/mosaik-demo/>`_ as an example. The Odysseus simulator is treated 
 just like any other component in mosaik. It has to be added to the ``SIM_CONFIG`` parameter.
 For the connection to the simulator the ``connect`` command is used and the IP 
 address and port of Odysseus have to be specified:

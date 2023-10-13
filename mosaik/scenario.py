@@ -30,8 +30,8 @@ from typing import (
 )
 from typing_extensions import Literal, TypedDict
 
-from mosaik_api.connection import Channel
-from mosaik_api.types import EntityId, Attr, ModelName, SimId, FullId, ModelDescription
+from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import EntityId, Attr, ModelName, SimId, FullId, ModelDescription
 
 from mosaik import simmanager
 from mosaik.dense_time import DenseTime
@@ -782,15 +782,6 @@ class World(object):
         """
         for src_attr, dest_attr in attr_pairs:
             if (
-                dest_attr in dest.model_mock.event_inputs
-                and src_attr in src.model_mock.measurement_outputs
-            ):
-                logger.warning(
-                    f'A connection between the persistent attribute {src_attr} of '
-                    f'{src.sid} and the trigger attribute {dest_attr} of {dest.sid} is '
-                    f'not recommended. This might cause problems in the simulation!'
-                )
-            elif (
                 dest_attr in dest.model_mock.measurement_inputs
                 and src_attr in src.model_mock.event_outputs
             ):
@@ -798,7 +789,8 @@ class World(object):
                     f'A connection between the non-persistent attribute {src_attr} of '
                     f'{src.sid} and the non-trigger attribute {dest_attr} of '
                     f'{dest.sid} is not recommended. This might cause problems in the '
-                    'simulation!'
+                    'simulation! See also: '
+                    'https://mosaik.readthedocs.io/en/latest/scenario-definition.html#connecting-entities'
                 )
 
 
@@ -993,7 +985,7 @@ class ModelMock(object):
         a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api.Simulator.create()`, but the simulator is prepended
+        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
         to every entity ID to make them globally unique.
         """
         self._check_params(**model_params)

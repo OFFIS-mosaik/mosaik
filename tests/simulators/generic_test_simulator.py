@@ -26,7 +26,7 @@ events : dict of {float: int}, default {}
 
 import asyncio
 import logging
-import mosaik_api
+import mosaik_api_v3
 import copy
 from time import sleep
 
@@ -49,7 +49,7 @@ sim_meta = {
 }
 
 
-class TestSim(mosaik_api.Simulator):
+class TestSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))
         self.sid = None
@@ -149,4 +149,4 @@ class TestSim(mosaik_api.Simulator):
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(TestSim())
+    mosaik_api_v3.start_simulation(TestSim())

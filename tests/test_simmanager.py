@@ -4,13 +4,14 @@ import pytest
 import sys
 
 from example_sim.mosaik import ExampleSim
-from mosaik_api import __api_version__ as api_version
-import mosaik_api.connection
-from mosaik_api.connection import RemoteException
+from mosaik_api_v3 import __api_version__ as api_version
+import mosaik_api_v3.connection
+from mosaik_api_v3.connection import RemoteException
 
 from mosaik import scenario
 from mosaik import simmanager
 from mosaik import proxies
+from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 import mosaik
 from mosaik.proxies import BaseProxy, LocalProxy
@@ -25,7 +26,7 @@ sim_config = {
         "cwd": ".",
     },
     "ExampleSimC": {
-        "connect": "localhost:5556",
+        "connect": "127.0.0.1:5556",
     },
     "ExampleSimD": {},
     "Fail": {
@@ -154,16 +155,16 @@ def test_start_external_process_with_environment_variables(world, tmpdir):
     # Write the module "simulator_mock.py" to tmpdir:
     tmpdir.join("simulator_mock.py").write(
         """
-import mosaik_api
+import mosaik_api_v3
 
 
-class SimulatorMock(mosaik_api.Simulator):
+class SimulatorMock(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(meta={})
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(SimulatorMock())
+    mosaik_api_v3.start_simulation(SimulatorMock())
 """
     )
     sim = world.start("SimulatorMockTmp")
@@ -180,14 +181,14 @@ def test_start_connect(world: scenario.World):
     """
 
     async def mock_sim_server(reader, writer):
-        channel = mosaik_api.connection.Channel(reader, writer)
+        channel = mosaik_api_v3.connection.Channel(reader, writer)
         request = await channel.next_request()
         await request.set_result(ExampleSim().meta)
         await channel.next_request()
         channel.close()
 
     server = world.loop.run_until_complete(
-        asyncio.start_server(mock_sim_server, "localhost", 5556)
+        asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     proxy = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
@@ -231,7 +232,7 @@ def test_start_connect_stop_timeout(world):
     """
 
     async def mock_sim_server(reader, writer):
-        channel = mosaik_api.connection.Channel(reader, writer)
+        channel = mosaik_api_v3.connection.Channel(reader, writer)
         request = await channel.next_request()
         await request.set_result(ExampleSim().meta)
         await channel.next_request()  # Wait for stop message
@@ -366,8 +367,8 @@ def test_local_process(world):
     sim = simmanager.SimRunner("ExampleSim-0", proxy)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
-    assert sim.last_step == -1
-    assert sim.next_steps == [0]
+    assert sim.last_step == DenseTime(-1)
+    assert sim.next_steps == [DenseTime(0)]
 
 
 def test_local_process_finalized(world):
@@ -381,7 +382,7 @@ def test_local_process_finalized(world):
 
 
 async def _rpc_get_progress(channel, world):
-    """
+    """ 
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
@@ -445,18 +446,18 @@ async def _rpc_get_data(channel, world):
     assert data == {"X.2": {"attr": "val"}}
 
 
-async def _rpc_set_data(channel, world):
+async def _rpc_set_data(channel, world: scenario.World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC.
     """
     await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
-    assert world.sims["X"].set_data_inputs == {
+    assert world.sims["X"].inputs_from_set_data == {
         "2": {"val": {"src": 23}},
     }
 
     await channel.send(["set_data", [{"src": {"X.2": {"val": 42}}}], {}])
-    assert world.sims["X"].set_data_inputs == {
+    assert world.sims["X"].inputs_from_set_data == {
         "2": {"val": {"src": 42}},
     }
 
@@ -467,7 +468,7 @@ async def _rpc_get_data_err1(channel, world):
     """
     try:
         await channel.send(["get_data", [{"Z.2": []}], {}])
-    except mosaik_api.connection.RemoteException as exception:
+    except mosaik_api_v3.connection.RemoteException as exception:
         if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
@@ -485,7 +486,7 @@ async def _rpc_get_data_err2(channel, world):
     """
     try:
         await channel.send(["get_data", [{"Y.2": []}], {}])
-    except mosaik_api.connection.RemoteException as exception:
+    except mosaik_api_v3.connection.RemoteException as exception:
         if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
@@ -534,7 +535,7 @@ def test_mosaik_remote(rpc, err):
 
         async def simulator():
             reader, writer = await asyncio.open_connection("localhost", 5555)
-            channel = mosaik_api.connection.Channel(reader, writer)
+            channel = mosaik_api_v3.connection.Channel(reader, writer)
             try:
                 await rpc(channel, world)
             finally:
@@ -545,7 +546,8 @@ def test_mosaik_remote(rpc, err):
             proxy = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy._meta = {"type": "time-based", "models": {}}
             sim = simmanager.SimRunner("X", proxy)
-            sim.last_step = 1
+            sim.last_step = DenseTime(1)
+            sim.current_step = DenseTime(0)
             sim.is_in_step = True
             world.sims["X"] = sim
             world.sims["X"].outputs = {1: {"2": {"attr": "val"}}}

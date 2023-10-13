@@ -4,12 +4,13 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 from heapq import heappush, heappop
+from icecream import ic
 from loguru import logger
 import networkx as nx
 from time import perf_counter
 import asyncio
 
-from mosaik_api.types import InputData, OutputData, SimId, Time
+from mosaik_api_v3.types import InputData, OutputData, SimId, Time
 from tqdm import tqdm
 from mosaik.dense_time import DenseTime
 
@@ -202,17 +203,18 @@ async def wait_for_dependencies(
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
     futures: List[Coroutine] = []
-    events: List[asyncio.Event] = []
     next_step = sim.next_steps[0]
 
-    # Check if all predecessors have stepped far enough
-    # to provide the required input data for us:
+    # Check if all predecessors have stepped far enough to provide the
+    # required input data for us:
     for pre_sim, info in sim.predecessors.items():
-        # Wait for dep_sim if it hasn't progressed until actual time step:
+        # Wait for pre_sim if it hasn't progressed until current time step:
         if info.is_weak:
             futures.append(pre_sim.progress.has_reached(next_step))
         else:
-            futures.append(pre_sim.progress.has_passed(next_step - DenseTime(info.time_shift)))
+            futures.append(
+                pre_sim.progress.has_passed(next_step - DenseTime(info.time_shift))
+            )
 
     for post_sim, info in sim.successors.items():
         if lazy_stepping or info.pred_waiting:
@@ -309,7 +311,9 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
 
     own_next_step = [sim.next_steps[0]] if sim.next_steps else []
 
-    return min([*ancs_next_steps, *own_next_step, DenseTime(until)]).time
+    # The +1, -1 shenanigans exists due to max_advance was originally
+    # designed.
+    return min([*ancs_next_steps, *own_next_step, DenseTime(until + 1)]).time - 1
 
 
 async def step(

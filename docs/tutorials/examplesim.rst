@@ -60,7 +60,7 @@ We start by creating a new :file:`simulator_mosaik.py` and import the module
 containing the mosaik API as well as our model:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 1-8
+   :lines: 1-9
 
 .. _meta_data:
 
@@ -74,9 +74,11 @@ attributes it has. Since this data is usually constant, we define this at
 module level (which improves readability):
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 11-20
+   :lines: 12-21
 
-In this case we create a *time-based* simulator.
+In this case we create a *hybrid* simulator, because we want to be able to
+control it using ``delta`` events later. For now, we won’t use ``delta``,
+though.
 We added our "ExampleModel" model with the parameter *init_val* and the
 attributes *delta* and *val*. At this point we don't care if they are inputs
 or outputs. We just list everything we can read or write.  The *public* flag
@@ -97,11 +99,11 @@ be used in the following way:
 The ``Simulator`` class
 =======================
 
-The package ``mosaik_api`` defines a base class ``Simulator`` for which we now
+The package ``mosaik_api_v3`` defines a base class ``Simulator`` for which we now
 need to write a sub-class:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 23-28
+   :lines: 24-29
 
 In our simulator's ``__init__()`` method (the constructor) we need to call
 ``Simulator.__init__()`` and pass the meta data dictionary to it.
@@ -124,7 +126,7 @@ that you pass to a simulator in your scenario definition). It must return the
 meta data dictionary ``self.meta``:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 30-36
+   :lines: 31-37
 
 The first argument is the ID that mosaik gave to that simulator instance. The
 second argument is the :ref:`time resolution <time_resolution>` of the
@@ -145,7 +147,7 @@ instances *(entities)* within that simulator. It must return a list with some
 information about each entity created:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 38-48
+   :lines: 39-49
 
 The first two parameters tell mosaik how many instances of which model you
 want to create. As in ``init()``, you can specify additional parameters for
@@ -178,11 +180,13 @@ simulators a next (self-)step is optional. If there is no next self-step, the
 return value is None/null.
 
 .. note::
-   The *max_advance* value is not necessarily used and is only for special use cases where simulators can advance in time without expecting new inputs from other simulators, e.g. for the integration of a communication simulation.
+   The *max_advance* value is not necessarily used and is only for special use
+   cases where simulators can advance in time without expecting new inputs from
+   other simulators, e.g. for the integration of a communication simulation.
 
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 51-63
+   :lines: 52-64
 
 .. _inputs:
 
@@ -242,7 +246,7 @@ The ``get_data()`` call allows other simulators to get the values of the
 the simulator meta data):
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 65-78
+   :lines: 66-79
 
 .. _outputs:
 
@@ -288,12 +292,12 @@ Making it executable
 
 The last step is adding a ``main()`` method to make our simulator executable
 (e.g., via ``python -m simulator_mosaik HOST:PORT``). The package
-``mosaik_api`` contains the method ``start_simulation()`` which creates
+``mosaik_api_v3`` contains the method ``start_simulation()`` which creates
 a socket, connects to mosaik and listens for requests from it. You just call it
 in your ``main()`` and pass an instance of your simulator class to it:
 
 .. literalinclude:: code/simulator_mosaik.py
-   :lines: 81-86
+   :lines: 82-87
 
 Simulators running on different nodes than the mosaik instance are supported
 explicitly with the mosaik Python-API v2.4 upward via the **remote** flag. A simulator

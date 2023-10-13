@@ -4,7 +4,7 @@ A simple data collector that prints all data when the simulation finishes.
 """
 import collections
 
-import mosaik_api
+import mosaik_api_v3
 
 
 META = {
@@ -20,7 +20,7 @@ META = {
 }
 
 
-class Collector(mosaik_api.Simulator):
+class Collector(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
         self.eid = None
@@ -54,4 +54,4 @@ class Collector(mosaik_api.Simulator):
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(Collector())
+    mosaik_api_v3.start_simulation(Collector())

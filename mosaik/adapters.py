@@ -25,7 +25,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from mosaik_api.types import Meta, SimId
+from mosaik_api_v3.types import Meta, SimId
 
 from mosaik.exceptions import ScenarioError
 from mosaik.proxies import BaseProxy, Proxy

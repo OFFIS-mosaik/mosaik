@@ -125,10 +125,6 @@ def test_world_connect(world):
         'ExampleSim-0.' + a[1].eid: {'ExampleSim-1.' + b[1].eid: {}},
         'ExampleSim-1.' + b[1].eid: {'ExampleSim-0.' + a[1].eid: {}},
     }
-    assert world.sims['ExampleSim-0'].output_request == {
-        '0.0': ['dummy_out', 'val_out'],
-        '0.1': ['dummy_out', 'val_out'],
-    }
 
 
 def test_world_connect_same_simulator(world):
@@ -241,9 +237,6 @@ def test_world_connect_any_inputs(world):
     assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
-    }
-    assert world.sims['ExampleSim-0'].output_request == {
-        '0.0': ['val_out'],
     }
 
 

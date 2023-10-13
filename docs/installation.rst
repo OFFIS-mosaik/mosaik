@@ -284,7 +284,7 @@ This guide is based on *Windows 10, 64bit*.
 
       .. code-block:: bat
 
-         C:\Windows\system32> cd \Users\yourname
+         C:\Windows\system32> cd C:\Users\yourname
          C:\Users\yourname>
 
 3. Now we need to create a virtual environment for mosaik and its dependencies.
@@ -293,8 +293,16 @@ This guide is based on *Windows 10, 64bit*.
 
    .. code-block:: bat
 
-      C:\Users\yourname> virtualenv -p C:\Python34\python.exe Envs\mosaik
-      C:\Users\yourname> Envs\mosaik\Scripts\activate.bat
+      C:\Users\yourname> virtualenv -p path\to\python.exe Envs\mosaik
+      
+
+   To activate the virtual environment use the following command:
+
+   .. code-block:: bat
+
+      C:\Users\yourname> Envs\mosaik\Scripts\activate
+   
+   This command should also function when using the powershell, however the execution policy might need to be changed.
 
    Your command line prompt should now start with "(mosaik)" and roughly look
    like this: ``(mosaik) C:\Users\yourname>``.
@@ -327,7 +335,7 @@ simulators as well as a mosaik binding for `PYPOWER`__.
 
    .. code-block:: bat
 
-      C:\Users\yourname> Envs\mosaik\Scripts\activate.bat
+      C:\Users\yourname> Envs\mosaik\Scripts\activate
 
 2. Clone the demo repository:
 

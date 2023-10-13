@@ -15,6 +15,7 @@ def test_shortest_path_length_time_then_microstep():
 	distance = nx.shortest_path_length(graph, 0, 2, "weight")
 	assert distance == DenseTime(1, 1)
 
+
 def test_shortest_path_length_microstep_then_time():
 	graph = nx.DiGraph()
 	graph.add_edges_from([
@@ -27,6 +28,7 @@ def test_shortest_path_length_microstep_then_time():
 
 
 dense_time = st.builds(DenseTime, st.integers(min_value=0), st.integers(min_value=0))
+
 
 @hypothesis.given(dense_time, dense_time, dense_time)
 def test_associative(d1, d2, d3):

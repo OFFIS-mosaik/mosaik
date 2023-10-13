@@ -24,7 +24,7 @@ events : dict of {float: int}, default {}
     seconds.
 """
 
-import mosaik_api
+import mosaik_api_v3
 import copy
 
 
@@ -40,7 +40,7 @@ sim_meta = {
 }
 
 
-class FixedOutputSim(mosaik_api.Simulator):
+class FixedOutputSim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))
         self.sid = None
@@ -73,4 +73,4 @@ class FixedOutputSim(mosaik_api.Simulator):
 
 
 if __name__ == '__main__':
-    mosaik_api.start_simulation(FixedOutputSim())
+    mosaik_api_v3.start_simulation(FixedOutputSim())

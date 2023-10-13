@@ -1,6 +1,7 @@
 import asyncio
 from loguru import logger
-from typing import Generic, Optional, Protocol, Self, TypeVar
+from typing import Generic, Optional, Protocol, TypeVar
+from typing_extensions import Self
 
 class Comparable(Protocol):
     def __lt__(self, other: Self) -> bool: ...

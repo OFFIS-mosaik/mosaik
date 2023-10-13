@@ -20,6 +20,7 @@ import os
 import shlex
 import subprocess
 import sys
+import platform
 from loguru import logger
 from typing import (
     Any,
@@ -35,21 +36,23 @@ from typing import (
     TYPE_CHECKING,
     Union,
 )
+import tqdm
 from typing_extensions import Literal
 
-import mosaik_api
-from mosaik_api.connection import Channel
-from mosaik_api.types import CreateResult, Meta, ModelName, OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId
+import mosaik_api_v3
+from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId
 from mosaik.dense_time import DenseTime
-
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
 
+if 'Windows' in platform.system():
+    from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
+
 if TYPE_CHECKING:
-    import tqdm
-    from mosaik.scenario import World, DataflowEdge
+    from mosaik.scenario import World
 
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
@@ -99,7 +102,7 @@ async def start(
     value is 1., meaning one integer step corresponds to one second simulated
     time.
 
-    The function returns a :class:`mosaik_api.Simulator` instance.
+    The function returns a :class:`mosaik_api_v3.Simulator` instance.
 
     It raises a :exc:`~mosaik.exceptions.SimulationError` if the simulator
     could not be started.
@@ -178,9 +181,8 @@ async def start_inproc(
                             (sim_name, details, origerr)) from None
     sim = cls()
 
-    if int(mosaik_api.__version__.split('.')[0]) < 3:
-        raise ScenarioError("Mosaik 3 requires mosaik_api's version also "
-                            "to be >=3.")
+    if int(mosaik_api_v3.__version__.split('.')[0]) < 3:
+        raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
     return LocalProxy(sim, mosaik_remote)
 
@@ -188,7 +190,7 @@ async def start_inproc(
 async def start_proc(
     world: World,
     sim_name: str,
-    sim_config: Dict[Literal['cmd', 'cwd', 'env', 'posix'], str],
+    sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -217,11 +219,22 @@ async def start_proc(
     env = dict(os.environ)
     env.update(sim_config.get('env', {}))  # type: ignore
 
+    # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+    creationflags = 0
+    new_console = sim_config['new_console'] if 'new_console' in sim_config else False
+    if new_console:
+        if 'Windows' in platform.system():
+            creationflags = CREATE_NEW_CONSOLE
+        else:
+            logger.warning('Simulator "{sim_name}" could not be started in a new console: '
+                           'Only available on Windows', sim_name=sim_name)
+
     kwargs = {
         'bufsize': 1,
         'cwd': cwd,
         'universal_newlines': True,
         'env': env,  # pass the new env dict to the sub process
+        'creationflags': creationflags,
     }
     try:
         subprocess.Popen(cmd, **kwargs)
@@ -386,8 +399,6 @@ class SimRunner:
     """Simulators related to this simulator. (Currently all other simulators.)"""
     task: asyncio.Task
     """The asyncio.Task for this simulator."""
-    wait_events: List[asyncio.Event]
-    """The list of all events for which this simulator is waiting"""
     rank: int
     """The topological rank of the simulator in the graph of all
     simulators with their non-weak, non-time-shifted connections.
@@ -423,7 +434,6 @@ class SimRunner:
 
         self.task = None  # type: ignore  # will be set in World.run
         self.newer_step = asyncio.Event()
-        self.wait_events = []
         self.is_in_step = False
         self.rank = None  # type: ignore  # will be set in World.run
 
@@ -476,7 +486,7 @@ class SimRunner:
         return f"<{self.__class__.__name__} sid={self.sid!r}>"
 
 
-class MosaikRemote:
+class MosaikRemote(mosaik_api_v3.MosaikProxy):
     world: World
     sid: SimId
 

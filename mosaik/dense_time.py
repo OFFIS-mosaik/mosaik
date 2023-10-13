@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import functools
-from typing import Self, Union
+from typing import Union
+from typing_extensions import Self
 
 
 @functools.total_ordering
