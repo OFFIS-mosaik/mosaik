@@ -34,7 +34,7 @@ simulators or to visualize and analyze the simulation results. These tools are
 located in the |mosaik| :ref:`mosaik_tools`-library.
 
 There are also some implementations done by external users of mosaik. We give an overview
-of the |mosaik| :ref:`external_components` we know here.
+of the |mosaik| :ref:`external_components` and |mosaik| :ref:`external_scenarios` we know here.
 
 .. _mosaik_core:
 
@@ -70,6 +70,9 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
       contains different models for simulation of heatpumps.
 
+    - `mosiak-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
+      is a simple PV Simulator based on PyPVSim.
+
 - `data <https://gitlab.com/mosaik/components/data>`_ related components:
 
     - `mosaik-web <https://gitlab.com/mosaik/components/data/mosaik-web>`_ is a web
@@ -99,6 +102,9 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
   which are based on the `FMI standard <https://fmi-standard.org>`_.
 - `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_ is a
   basic communication suite using delays.
+
+- `mosaik-104 <https://gitlab.com/mosaik/components/communication/mosaik-104>`_ contains an adapter to receive IEC 60870-5-104 protocol
+  messages and hands it over to mosaik.
 
 .. _mosaik_examples:
 
@@ -142,8 +148,39 @@ feel free to contact us at `mosaik [ A T ] offis.de <mosaik@offis.de>`_ to be li
 - `mosaik-docker <https://github.com/ERIGrid2/mosaik-docker>`_ is a package for the deployment
   of mosaik with Docker.
 
-- `ZDIN-ZLE <https://gitlab.com/zdin-zle>`_ contains the research and development of digitalized
-  energy systems in ZLE using mosaik (collection of simulation models and scenarios).
+- `ZDIN-ZLE components <https://gitlab.com/zdin-zle/models>`_ contains the research and development of digitalized
+  energy systems in ZLE using mosaik (collection of simulation models).
+
+- `nestli <https://github.com/hues-platform/nestli>`_ (Neighborhood Energy System Testing towards Large-scale
+  Integration) is a co-simulation environment for benchmarking the performance of BACS (building automation and
+  control systems). Is uses EnergyPlus and FMUs with mosaik.
+
+- `toolbox_doe_sa <https://github.com/ERIGrid2/toolbox_doe_sa>`_ is a toolbox with Design of Experiment (DoE) and
+  Sensitivity Analysis (SA) methods developed in the `ERIGrid 2.0 <https://erigrid2.eu/>`_ project.
+
+- `mosaik-demod <https://github.com/epfl-herus/mosaik-demod>`_ is a domestic energy demand modeling simulator.
+
+- `palestrai-mosaik <https://gitlab.com/arl2/palaestrai-mosaik>`_ is an adapter to integrate
+  `palaestrAI <https://palaestr.ai>`_ (an universal framework for multi-agent artificial intelligence)
+  into mosaik.
+
+.. _external_scenarios:
+
+|mosaik| external scenarios
+============================
+
+These scenarios are developed by external users of mosaik and we can not guarantee or support
+the flawless practicability.
+
+- `Benchmark Model Multi-Energy Networks <https://github.com/ERIGrid2/benchmark-model-multi-energy-networks/tree/mooc-demo>`_
+  contains the implementation of a multi-energy networks (heat and electricity grid) benchmark model
+  developed in the `ERIGrid 2.0 <https://erigrid2.eu/>`_ project.
+
+- `Benchmark Model Multi-Energy Networks STL <https://github.com/ERIGrid2/JRA-2.1.3-STL>`_ is based on the
+  multi-energy networks benchmark and contains a same time loop for improved initialization of the simulators.
+
+- `ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`_ contains the research and development of digitalized
+  energy systems in ZLE using mosaik (collection of simulation scenarios).
 
 
 .. |mosaik| image:: /_static/favicon.png
