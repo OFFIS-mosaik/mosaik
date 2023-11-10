@@ -70,7 +70,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
       contains different models for simulation of heatpumps.
 
-    - `mosiak-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
+    - `mosaik-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
       is a simple PV Simulator based on PyPVSim.
 
 - `data <https://gitlab.com/mosaik/components/data>`_ related components:
