@@ -120,7 +120,9 @@ uses comparatively more time than the ExampleSim simulators.
 Execution time per simulator
 ============================
 The execution time can also be plotted over the simulation steps per simulator, as can be seen 
-in the figure below.
+in the figure below. You can also set the parameter `plot_per_simulator=True`. In that case,
+the plots for the different are separated. This is especially useful if the simulators have 
+different step sizes.
 
 .. figure:: /_static/graphs/execution_time_simulator.png
    :width: 100%

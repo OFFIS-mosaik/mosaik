@@ -395,7 +395,7 @@ def plot_execution_graph(
                 alpha=0.6,
             ),
         )
-    
+
     if show_plot is True:
         plt.show()
 
@@ -444,6 +444,7 @@ def plot_execution_time_per_simulator(
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
     show_plot=True,
+    plot_per_simulator: bool = False,
     slice=None,
 ):
     """
@@ -455,13 +456,14 @@ def plot_execution_time_per_simulator(
     :param dpi: DPI for created images
     :param format: format for created image
     :show_plot: open a window to show the plot
+    :plot_per_simulator: Create a separated plot per simulator. This is especially useful
+                         if the step sizes of the simulators are very different.
     :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
     i.e., negative values are possible to start from the end of the list. Jumps are not possible.
     Slice needs to be a two-parameter integer list, e.g. [0,5].
     :return: no return object, but image file will be written to file system
     """
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
 
     execution_graph = world.execution_graph
     results = {}
@@ -474,27 +476,46 @@ def plot_execution_time_per_simulator(
             results[sim_id] = []
         results[sim_id].append(execution_time)
 
-    fig = plt.figure()
-    sub_figure = fig.add_subplot()
-    sub_figure.set_title("Execution time")
-    sub_figure.set_ylabel("Execution time [s]")
-    sub_figure.set_xlabel("Simulation time [steps of the simulator]")
-    sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
-    for key in results.keys():
-        if slice is not None:
-            plot_results = results[key][slice[0] : slice[1]]
-            # The slice values can be negative, so we want to have the correct time steps
-            labels = range(len(results[key]))[slice[0] : slice[1]]
-            sub_figure.set_xticks(range(0, len(labels)), labels)
-        else:
-            plot_results = results[key]
-        sub_figure.plot(plot_results, label=key)
-    fig.legend()
+    if plot_per_simulator is False:
+        fig, sub_figure = init_execution_time_per_simulator_plot(plt)
 
+    for key in results.keys():
+        if plot_per_simulator is True:
+            fig, sub_figure = init_execution_time_per_simulator_plot(plt)
+        plot_results = get_execution_time_per_simulator_plot_data(
+            slice, results, sub_figure, key
+        )
+        sub_figure.plot(plot_results, label=key)
+        if plot_per_simulator is True:
+            finish_execution_time_per_simulator_plot(
+                folder, hdf5path, dpi, format, show_plot, plt, fig, "_" + key
+            )
+
+    if plot_per_simulator is False:
+        finish_execution_time_per_simulator_plot(
+            folder, hdf5path, dpi, format, show_plot, plt, fig
+        )
+
+
+def get_execution_time_per_simulator_plot_data(slice, results, sub_figure, key):
+    if slice is not None:
+        plot_results = results[key][slice[0] : slice[1]]
+        # The slice values can be negative, so we want to have the correct time steps
+        labels = range(len(results[key]))[slice[0] : slice[1]]
+        sub_figure.set_xticks(range(0, len(labels)), labels)
+    else:
+        plot_results = results[key]
+    return plot_results
+
+
+def finish_execution_time_per_simulator_plot(
+    folder, hdf5path, dpi, format, show_plot, plt, fig, simulator_name: str = ""
+):
+    fig.legend()
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "_" + "all" + ".png")
     else:
-        filename: str = get_filename(folder, "execution_time_simulator", format)
+        filename: str = get_filename(folder, "execution_time_simulator" + simulator_name, format)
 
     fig.savefig(
         filename,
@@ -504,11 +525,23 @@ def plot_execution_time_per_simulator(
         transparent=True,
         bbox_inches="tight",
     )
-    
+
     if show_plot is True:
         plt.show()
-        
+
     plt.close()
+
+
+def init_execution_time_per_simulator_plot(plt):
+    from matplotlib.ticker import MaxNLocator
+
+    fig = plt.figure()
+    sub_figure = fig.add_subplot()
+    sub_figure.set_title("Execution time")
+    sub_figure.set_ylabel("Execution time [s]")
+    sub_figure.set_xlabel("Simulation time [steps of the simulator]")
+    sub_figure.get_xaxis().set_major_locator(MaxNLocator(integer=True))
+    return fig, sub_figure
 
 
 def get_filename(dir: str, type: str, file_format: str) -> str:
