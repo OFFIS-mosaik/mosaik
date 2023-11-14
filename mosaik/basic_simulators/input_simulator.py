@@ -12,24 +12,18 @@ from mosaik_api_v3.types import (
 )
 
 META: Meta = {
-    'api_version': '3.0',
+    "api_version": "3.0",
     "type": "time-based",
     "models": {
         "Function": {
             "public": True,
             "params": ["function"],
             "attrs": ["value"],
-            "any_inputs": False,
-            "persistent": ["value"],
-            "trigger": [],
         },
         "Constant": {
             "public": True,
             "params": ["constant"],
             "attrs": ["value"],
-            "any_inputs": False,
-            "persistent": ["value"],
-            "trigger": [],
         }
     },
     "extra_methods": [],
@@ -48,52 +42,32 @@ class InputSimulator(mosaik_api_v3.Simulator):
         self.step_size = step_size
         self.functions = {}
         self.constants = {}
-        self.function_key = "function"
-        self.constant_key = "constant"
+        self.function_key = "Function"
+        self.constant_key = "Constant"
         self.time = 0
         return self.meta
 
     def create(
         self, num: int, model: ModelName, **model_params
     ) -> List[CreateResult]:
-        allowed_keys = [self.function_key, self.constant_key]
-        model_params_length = 1
-        if len(model_params.keys()) != model_params_length or not all(key in allowed_keys for key in model_params.keys()):
-            raise ValueError(f"Input needs to be specified to be of the following type: {allowed_keys}")
-        for key in model_params.keys():
-            if key == "function":
-                return self.create_function_entity(num, model, list(model_params.values())[0])
-            else:
-                return self.create_constant_entity(num, model, list(model_params.values())[0])
-        return [{"eid": "ERROR", "type": model}]
-    
-    def create_function_entity(self, num, model, function):
         new_entities = []
-        print("add function")
-        for i in range(len(self.functions), len(self.functions) + num):
-            eid = f"Function-{i}"
-            self.functions[eid] = function
-            new_entities.append(
-                {
-                    "eid": eid,
-                    "type": model,
-                }
-            )
+        if model == self.function_key:
+            for i in range(len(self.functions), len(self.functions) + num):
+                new_entities.append(self.create_function_entity(i, model, **model_params))
+        elif model == self.constant_key:
+            for i in range(len(self.constants), len(self.constants) + num):
+                new_entities.append(self.create_constant_entity(num, model, **model_params))
         return new_entities
     
-    def create_constant_entity(self, num, model, constant):
-        print("add constant")
-        new_entities = []
-        for i in range(len(self.constants), len(self.constants) + num):
-            eid = f"Constant-{i}"
-            self.constants[eid] = constant
-            new_entities.append(
-                {
-                    "eid": eid,
-                    "type": model,
-                }
-            )
-        return new_entities
+    def create_function_entity(self, id, model, **model_params):
+        eid = f"Function-{id}"
+        self.functions[eid] = list(model_params.values())[0]
+        return {"eid": eid, "type": model,}
+    
+    def create_constant_entity(self, id, model, **model_params):
+        eid = f"Constant-{id}"
+        self.constants[eid] = list(model_params.values())[0]
+        return {"eid": eid,"type": model}
 
     def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time | None:
         assert inputs == {}
@@ -101,11 +75,10 @@ class InputSimulator(mosaik_api_v3.Simulator):
         return time + self.step_size
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
-        const_dict = {}
-        func_dict = {}
+        data =  {}
         for eid in outputs:
-            if self.constant_key in eid.lower():
-                const_dict[eid] = {"value": self.constants}
+            if self.constant_key in eid:
+                data[eid] = {"value": self.constants[eid]}
             else:
-                func_dict[eid] = {"value": self.functions[eid](self.time)}
-        return {**const_dict, **func_dict}
+                data[eid] = {"value": self.functions[eid](self.time)}
+        return data
