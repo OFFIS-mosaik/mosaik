@@ -38,8 +38,7 @@ of the |mosaik| :ref:`external_components` we know here.
 
 .. _mosaik_core:
 
-|mosaik| mosaik-core
-====================
+|mosaik| **mosaik-core**
 
 The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the high-level API implementations are
 provided in the `API folder <https://gitlab.com/mosaik/api>`_.
@@ -54,8 +53,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 .. _mosaik_components:
 
-|mosaik| mosaik-components
-==========================
+|mosaik| **mosaik-components**
 
 - `energy <https://gitlab.com/mosaik/components/energy>`_ related components:
 
@@ -102,8 +100,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 .. _mosaik_examples:
 
-|mosaik| mosaik-examples
-========================
+|mosaik| **mosaik-examples**
 
 - The `mosaik-demo <https://gitlab.com/mosaik/examples/mosaik-demo>`_
   contains a simple demo scenario for mosaik.
@@ -116,8 +113,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 .. _mosaik_tools:
 
-|mosaik| mosaik-tools
-=====================
+|mosaik| **mosaik-tools**
 
 - `icons for the energy domain <https://gitlab.com/mosaik/tools/energy-icons>`_
 - `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_ is a visualization component, which is
@@ -125,8 +121,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 .. _external_components:
 
-|mosaik| external components
-============================
+|mosaik| **external components**
 
 These components are developed by external users of mosaik and we can not guarantee or support
 the flawless integration of these tools with mosaik.
@@ -145,5 +140,17 @@ feel free to contact us at `mosaik [ A T ] offis.de <mosaik@offis.de>`_ to be li
 - `ZDIN-ZLE <https://gitlab.com/zdin-zle>`_ contains the research and development of digitalized
   energy systems in ZLE using mosaik (collection of simulation models and scenarios).
 
+|mosaik| **component documentation**
+
+Introduction...
+
+mosaik-heatpump
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   components/mosaik-heatpump/index
 
 .. |mosaik| image:: /_static/favicon.png
+

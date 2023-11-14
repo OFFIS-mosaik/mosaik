@@ -14,6 +14,28 @@
 
 import mosaik
 import sphinx_rtd_theme
+from urllib.request import urlretrieve
+import os
+
+# Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
+# Files will be downloaded and integrated in mosaik documentation.
+# create subfolders to put the files there
+mosaik_heatpump_folder = "ecosystem/components/mosaik-heatpump"
+if not os.path.exists(mosaik_heatpump_folder):
+    os.makedirs(mosaik_heatpump_folder) 
+urlretrieve (
+    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/raw/10-improve-documentation/docs/source/index.rst",
+    mosaik_heatpump_folder + "/index.rst"
+)
+urlretrieve (
+    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/raw/10-improve-documentation/docs/source/overview.rst",
+    mosaik_heatpump_folder + "/overview.rst"
+)
+# To make download easier maybe download whole directory from git repository
+#urlretrieve (
+#    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/10-improve-documentation/mosaik-heatpump-10-improve-documentation.zip?path=docs/source",
+#    mosaik_heatpump_folder + "/doc.zip"
+#)
 
 # -- General configuration ----------------------------------------------------
 
