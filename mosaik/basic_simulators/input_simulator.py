@@ -57,7 +57,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
         elif model == self.constant_key:
             for i in range(len(self.constants), len(self.constants) + num):
                 new_entities.append(
-                    self.create_constant_entity(num, model, **model_params)
+                    self.create_constant_entity(i, model, **model_params)
                 )
         return new_entities
 
