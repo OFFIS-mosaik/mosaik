@@ -1,7 +1,7 @@
 import mosaik_api_v3
 from mosaik_api_v3.types import OutputData, OutputRequest
 import mosaik
-from mosaik import exceptions as MosaikException
+import mosaik.exceptions
 
 META = {
     "type": "time-based",
@@ -16,11 +16,11 @@ META = {
     },
 }
 
+
 class OutputSimulator(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
         self.entities = {}  # Maps EIDs to model instances/entities
-        self.results = {}
 
     def init(self, sid, time_resolution):
         return self.meta
@@ -38,11 +38,13 @@ class OutputSimulator(mosaik_api_v3.Simulator):
     def step(self, time, inputs, max_advance):
         for entity in self.entities.values():
             entity[time] = inputs
-        return time+1
-    
+        return time + 1
+
     def get_data(self, outputs: OutputRequest) -> OutputData:
-        raise MosaikException.ScenarioError("This function is not supposed to be used in this simulator. Use this simulator \n"+
-                                            "for input data only.")
+        raise mosaik.exceptions.ScenarioError(
+            "This function is not supposed to be used in this simulator. "
+            "Use this simulator for input data only."
+        )
 
     def get_dict(self, eid):
         return self.entities[eid]
