@@ -125,19 +125,8 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 
 .. _basic_simulators:
 
-|mosaik| basic simulators
-=========================
+.. include:: basic_simulators.rst
 
-In order to test custom-made simulators, two basic simulators are provided to use and connect to.
-
-- `The input simulator <https://gitlab.com/mosaik/mosaik/-/blob/basic_write_to_dict_sim/mosaik/basic_simulators/input_simulator.py?ref_type=heads>`_
-  is an input simulator that can be used to feed either a constant value or the value of a function into a designated simulator ready to handle the data.
-- `The output simulator <https://gitlab.com/mosaik/mosaik/-/blob/basic_write_to_dict_sim/mosaik/basic_simulators/output_simulator.py?ref_type=heads>`_ writes
-  data from a custom simulator into a python dictionary. Users can access this dictionary by calling ``get_dict()`` on a 
-  created output simulator entity.
-
-
-.. _external_components:
 
 |mosaik| external components
 ============================

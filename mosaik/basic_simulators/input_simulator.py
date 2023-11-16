@@ -31,6 +31,12 @@ META: Meta = {
 
 
 class InputSimulator(mosaik_api_v3.Simulator):
+    """
+    This simulator gives a steady input to a connected simulator. 
+    This input can either be an constant numerical value or a custom
+    function. It is passed along as parameter in the ``create()`` method of this simulator.
+    Using the ``get_data()`` function, the generated values can be retrieved.
+    """
     step_size: int
     functions: Dict[str, Callable[[Time], Any]]
     constants: Dict[str, int]
