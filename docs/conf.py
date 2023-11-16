@@ -26,6 +26,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
     'sphinx.ext.imgmath',
+    'sphinx.ext.linkcode',
     'sphinx_rtd_theme',
     'sphinxcontrib.plantuml',
 ]
@@ -263,3 +264,12 @@ intersphinx_mapping = {
 
 # Autodoc
 autodoc_member_order = 'bysource'
+
+# Linkcode
+def linkcode_resolve(domain, info):
+    if domain != 'py':
+        return
+    if not info['module']:
+        return
+    filename = info['module'].replace('.', '/')
+    return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"
