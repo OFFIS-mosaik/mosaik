@@ -11,16 +11,19 @@ from mosaik_api_v3.types import (
     Time,
 )
 
+FUNCTION_KEY = "Function"
+CONSTANT_KEY = "Constant"
+
 META: Meta = {
     "api_version": "3.0",
     "type": "time-based",
     "models": {
-        "Function": {
+        FUNCTION_KEY: {
             "public": True,
             "params": ["function"],
             "attrs": ["value"],
         },
-        "Constant": {
+        CONSTANT_KEY: {
             "public": True,
             "params": ["constant"],
             "attrs": ["value"],
@@ -32,11 +35,12 @@ META: Meta = {
 
 class InputSimulator(mosaik_api_v3.Simulator):
     """
-    This simulator gives a steady input to a connected simulator. 
+    This simulator gives a steady input to a connected simulator.
     This input can either be an constant numerical value or a custom
-    function. It is passed along as parameter in the ``create()`` method of this simulator.
-    Using the ``get_data()`` function, the generated values can be retrieved.
+    function. It is passed along as parameter in the :meth:`create()` method of this simulator.
+    Using the :meth:`get_data()` function, the generated values can be retrieved.
     """
+
     step_size: int
     functions: Dict[str, Callable[[Time], Any]]
     constants: Dict[str, int]
@@ -48,19 +52,17 @@ class InputSimulator(mosaik_api_v3.Simulator):
         self.step_size = step_size
         self.functions = {}
         self.constants = {}
-        self.function_key = "Function"
-        self.constant_key = "Constant"
         self.time = 0
         return self.meta
 
     def create(self, num: int, model: ModelName, **model_params) -> List[CreateResult]:
         new_entities = []
-        if model == self.function_key:
+        if model == FUNCTION_KEY:
             for i in range(len(self.functions), len(self.functions) + num):
                 new_entities.append(
                     self.create_function_entity(i, model, **model_params)
                 )
-        elif model == self.constant_key:
+        elif model == CONSTANT_KEY:
             for i in range(len(self.constants), len(self.constants) + num):
                 new_entities.append(
                     self.create_constant_entity(i, model, **model_params)
@@ -88,7 +90,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
     def get_data(self, outputs: OutputRequest) -> OutputData:
         data = {}
         for eid in outputs:
-            if self.constant_key in eid:
+            if CONSTANT_KEY in eid:
                 data[eid] = {"value": self.constants[eid]}
             else:
                 data[eid] = {"value": self.functions[eid](self.time)}
