@@ -1,9 +1,9 @@
 from pprint import pprint
 import mosaik
+from mosaik.scenario import SimConfig
 
 # Both simulators are added to the simulation configuration.
-SIM_CONFIG = {
-    "api_version": "3.0",
+SIM_CONFIG: SimConfig = {
     "OutputSim": {
         "python": "output_simulator:OutputSimulator",
     },

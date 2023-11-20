@@ -70,7 +70,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
         return new_entities
 
     def create_function_entity(self, id, model, function):
-        eid = f"Function-{id}"
+        eid = f"{FUNCTION_KEY}-{id}"
         self.functions[eid] = function
         return {
             "eid": eid,
@@ -78,7 +78,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
         }
 
     def create_constant_entity(self, id, model, constant):
-        eid = f"Constant-{id}"
+        eid = f"{CONSTANT_KEY}-{id}"
         self.constants[eid] = constant
         return {"eid": eid, "type": model}
 
