@@ -34,7 +34,9 @@ from time import sleep
 logger = logging.getLogger('test_simulator')
 
 
-sim_meta = {
+sim_meta: mosaik_api_v3.Meta = {
+    'api_version': '3.0',
+    'type': 'time-based',
     'models': {
         'A': {
             'public': True,
@@ -143,7 +145,9 @@ class TestSim(mosaik_api_v3.Simulator):
         self.event_setter_wait = wait_event
         yield wait_event.wait()
         for real_time, event_time in self.events.items():
+            print(f"Wait until {real_time - last_time}")
             yield asyncio.sleep(real_time - last_time)
+            print(f"reached, setting event")
             yield self.mosaik.set_event(event_time)
             last_time = real_time
 

@@ -22,7 +22,6 @@
 # this new adapter.
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from mosaik_api_v3.types import Meta, SimId

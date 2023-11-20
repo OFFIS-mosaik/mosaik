@@ -1,11 +1,11 @@
 import asyncio
-from loguru import logger
-from typing import Generic, Optional, Protocol, TypeVar
+from loguru import logger  # type: ignore  # noqa: F401
+from typing import Generic, Protocol, TypeVar
 from typing_extensions import Self
 
 class Comparable(Protocol):
     def __lt__(self, other: Self) -> bool: ...
-    def __ge__(self, other: Self) -> bool: ...
+    def __ge__(self, __value: Self) -> bool: ...
 
 T = TypeVar('T', bound=Comparable)
 

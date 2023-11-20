@@ -1,44 +1,78 @@
 from dataclasses import dataclass
 import functools
-from typing import Union
 from typing_extensions import Self
 
 
 @functools.total_ordering
 @dataclass(frozen=True)
 class DenseTime:
-	# __slots__ = ["time", "microstep"]
-	time: int
-	microstep: int = 0
+    """A pair consisting of a time and a microstep. Microsteps are used
+	to order events that happen at the same time.
+
+	There is a slightly surprising definition of addition for these:
+	.. math::
+	    (t, m) + (t', m') = \\begin{cases}
+			(t, m + m') & t' = 0 \\\\
+	        (t + t', m') & t' \\neq 0
+		\\end{cases}
+	This prevents microsteps from accumulating across time steps.
 	
-	def __post_init__(self):
-		assert isinstance(self.time, int)
-		assert isinstance(self.microstep, int)
+	As this addition is not always invertible (:math:`m` is discarded
+	if :math:`t' \\neq 0`), subtraction follows a “best effort”
+	principle: :math:`\\beta - \\delta` is the earliest time
+	:math:`\\alpha` such that :math:`\\alpha + \\delta` is
+	:math:`\\beta` or later.
 
-	def __add__(self, other: Union[Self, int]) -> Self:
-		if isinstance(other, int):
-			return self + DenseTime(other)
+    To support usage in networkx algorithms, some methods also take
+    ``int``s instead of ``DenseTime`` objects. An ``int`` ``a`` is
+    interpreted as ``DenseTime(a, 0)`` in these cases.
+	"""
 
-		if other.time == 0:
-			return DenseTime(self.time, self.microstep + other.microstep)
-		else:
-			return DenseTime(self.time + other.time, other.microstep)
+    time: int
+    microstep: int = 0
 
-	def __radd__(self, other: int) -> Self:
-		assert isinstance(other, int)
-		return DenseTime(self.time + other, self.microstep)
+    def __post_init__(self):
+        assert isinstance(self.time, int)
+        assert isinstance(self.microstep, int)
 
-	def __sub__(self, other: Self) -> Self:
-		if other.time == 0:
-			return DenseTime(self.time, self.microstep - other.microstep)
-		else:
-			return DenseTime(self.time - other.time, self.microstep)
+    def __add__(self, other: Self) -> Self:
+        # Giving an int as `other` is only here to support use in
+        # networkx algorithms
+        if isinstance(other, int):
+            return self + DenseTime(other)
 
-	def __lt__(self, other: Union[Self, int]) -> bool:
-		if isinstance(other, int):
-			return self.time < other
-		else:
-			return self.time < other.time or (self.time == other.time and self.microstep < other.microstep)
+        if other.time == 0:
+            return DenseTime(self.time, self.microstep + other.microstep)
+        else:
+            return DenseTime(self.time + other.time, other.microstep)
 
-	def __str__(self):
-		return f"{self.time}s{self.microstep}"
+    def __radd__(self, other: int) -> Self:
+        # Adding to ints is only here to support use in  networkx
+        # algorithms
+        assert isinstance(other, int)
+        return DenseTime(self.time + other, self.microstep)
+
+    def __sub__(self, other: Self) -> Self:
+        # dt_b - dt_delta should be the earliest DenseTime dt_a such
+        # that dt_a + dt_delta is dt_b or later. (Due to the way that
+        # DenseTime addition works, it is not always possible to
+        # ensure dt_a + dt_delta = dt_b.)
+        if other.time == 0:
+            return DenseTime(self.time, self.microstep - other.microstep)
+        elif other.microstep >= self.microstep:
+            return DenseTime(self.time - other.time, 0)
+        else:
+            return DenseTime(self.time - other.time + 1, 0)
+
+    def __lt__(self, other: Self) -> bool:
+        # Giving an int as `other` is only here to support use in
+        # networkx algorithms
+        if isinstance(other, int):
+            return self.time < other
+
+        return self.time < other.time or (
+            self.time == other.time and self.microstep < other.microstep
+        )
+
+    def __str__(self):
+        return f"{self.time}:{self.microstep}μ"

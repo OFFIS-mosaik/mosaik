@@ -2,7 +2,7 @@
 Test whether output data that consists of dictionaries is correctly
 overwritten.
 """
-XFAIL = [False]
+#XFAIL = [False]
 
 def create_scenario(world):
 	model_a = world.start('FixedOut').Entity(

@@ -1,7 +1,10 @@
+import warnings
+
 from unittest import mock
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
+from mosaik.scenario import ModelFactory, World
 from mosaik.exceptions import ScenarioError
 import pytest
 
@@ -14,13 +17,13 @@ sim_config: scenario.SimConfig = {
 
 @pytest.fixture(name='world')
 def world_fixture():
-    world = scenario.World(sim_config)
+    world = World(sim_config)
     yield world
     world.shutdown()
 
 
 @pytest.fixture
-def mf(world):
+def mf(world: World):
     return world.start('ExampleSim')
 
 
@@ -42,7 +45,7 @@ def test_entity():
 def test_world():
     sim_config = {'spam': 'eggs'}
     mosaik_config = {'start_timeout': 23}
-    world = scenario.World(sim_config, mosaik_config)
+    world = World(sim_config, mosaik_config)
     try:
         assert world.sim_config is sim_config
         assert world.time_resolution == 1.0
@@ -57,19 +60,19 @@ def test_world():
 
 
 def test_world_debug():
-    world = scenario.World(sim_config, debug=True)
+    world = World(sim_config, debug=True)
     try:
         assert world.execution_graph.adj == {}
     finally:
         world.shutdown()
 
 
-def test_world_start(world):
+def test_world_start(world: World):
     """
     Test starting new simulators and getting IDs for them.
     """
     fac = world.start('ExampleSim', step_size=2)
-    assert isinstance(fac, scenario.ModelFactory)
+    assert isinstance(fac, ModelFactory)
     assert len(world.sims) == 1
     assert world.sims['ExampleSim-0']._proxy == fac._proxy
     assert fac._proxy.sim.step_size == 2
@@ -93,7 +96,7 @@ def test_global_time_resolution():
     finally:
         world.shutdown()
 
-def test_world_connect(world):
+def test_world_connect(world: World):
     """
     Test connecting to single entities.
     """
@@ -102,6 +105,7 @@ def test_world_connect(world):
     for i, j in zip(a, b):
         world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
+    # TODO: check for connections in new place
     connections = [
         (str(a[0].eid), str(b[0].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
         (str(a[1].eid), str(b[1].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
@@ -113,8 +117,6 @@ def test_world_connect(world):
                 'async_requests': False,
                 'time_shifted': 0,
                 'weak': False,
-                'trigger': set(),
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -127,19 +129,18 @@ def test_world_connect(world):
     }
 
 
-def test_world_connect_same_simulator(world):
-    """
-    Connecting to entities belonging to the same simulator must fail.
+def test_world_connect_same_simulator(world: World):
+    """Connections to entities belonging to the same simulator must have
+    a delay (time-shifted or weak).
     """
     a = world.start('ExampleSim').A.create(2, init_val=0)
     with pytest.raises(ScenarioError) as err:
         world.connect(a[0], a[1], ('val_out', 'val_out'))
-    assert str(err.value) == ('Cannot connect entities sharing the same '
-                              'simulator.')
-    assert list(world.df_graph.edges()) == []
+        world.run(1)
+    assert "cycles that are not broken up" in str(err.value)
 
 
-def test_world_connect_cycle(world):
+def test_world_connect_cycle(world: World):
     """
     If connecting two entities results in a cycle in the dataflow graph,
     an error must be raised.
@@ -158,34 +159,31 @@ def test_world_connect_cycle(world):
     )
 
 
-def test_world_connect_wrong_attr_names(world):
+def test_world_connect_wrong_attr_names(world: World):
     """
     The entities to be connected must have the listed attributes.
     """
-    a = world.start('ExampleSim').A(init_val=0)
-    b = world.start('ExampleSim').B(init_val=0)
-    err = pytest.raises(ScenarioError, world.connect, a, b,
-                        ('val', 'val_in'))
-    assert str(err.value) == (
-        'At least one attribute does not exist: '
-        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val")
-    err = pytest.raises(ScenarioError, world.connect, a, b,
-                        ('val_out', 'val'))
-    assert str(err.value) == (
-        'At least one attribute does not exist: '
-        "Entity(model='B', eid='0.0', sid='ExampleSim-1').val")
-    err = pytest.raises(ScenarioError, world.connect, a, b, ('val', 'val_in'),
-                        'onoes')
-    assert str(err.value) == (
-        'At least one attribute does not exist: '
-        "Entity(model='A', eid='0.0', sid='ExampleSim-0').onoes, "
-        "Entity(model='A', eid='0.0', sid='ExampleSim-0').val, "
-        "Entity(model='B', eid='0.0', sid='ExampleSim-1').onoes"
-    )
-    assert list(world.df_graph.edges()) == []
+    a = world.start('ExampleSim', sim_id="A").A(init_val=0)
+    b = world.start('ExampleSim', sim_id="B").B(init_val=0)
+    with pytest.raises(ScenarioError) as err:
+        world.connect(a, b, ('val', 'val_in'))
+    assert "connecting A.0.0.val to B.0.0.val_in" in str(err.value)
+    assert "source attribute" in str(err.value)
+
+    with pytest.raises(ScenarioError) as err:
+        world.connect(a, b, ('val_out', 'val'))
+    assert "connecting A.0.0.val_out to B.0.0.val" in str(err.value)
+    assert "destination attribute"
+
+    with pytest.raises(ScenarioError) as err:
+        world.connect(a, b, ('val', 'val_in'), 'onoes')
+    assert "connecting A.0.0.val to B.0.0.val_in" in str(err.value)
+    assert "connecting A.0.0.onoes to B.0.0.onoes" in str(err.value)
+    assert "source attribute" in str(err.value)
+    assert "destination attribute" in str(err.value)
 
 
-def test_world_connect_no_attrs(world):
+def test_world_connect_no_attrs(world: World):
     """
     Connecting two entities without passing a list of attrs should work.
     """
@@ -199,8 +197,6 @@ def test_world_connect_no_attrs(world):
                 'async_requests': False,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': set(),
-                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
@@ -211,7 +207,7 @@ def test_world_connect_no_attrs(world):
     }
 
 
-def test_world_connect_any_inputs(world):
+def test_world_connect_any_inputs(world: World):
     """
     Check if a model sets ``'any_inputs': True`` in its meta data,
     everything can be connected to it.
@@ -221,6 +217,7 @@ def test_world_connect_any_inputs(world):
     b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
+    # TODO: check for connections in new place
     connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
     assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
@@ -228,8 +225,6 @@ def test_world_connect_any_inputs(world):
                 'async_requests': False,
                 'time_shifted': 0,
                 'weak': False,
-                'trigger': set(),
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -240,7 +235,8 @@ def test_world_connect_any_inputs(world):
     }
 
 
-def test_world_connect_async_requests(world):
+@pytest.mark.filterwarnings("ignore:Connections with async_requests")
+def test_world_connect_async_requests(world: World):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, async_requests=True)
@@ -251,19 +247,18 @@ def test_world_connect_async_requests(world):
                 'async_requests': True,
                 'time_shifted': False,
                 'weak': False,
-                'trigger': set(),
-                'cached_connections': [],
             },
         },
         'ExampleSim-1': {},
     }
 
 
-def test_world_connect_time_shifted(world):
+def test_world_connect_time_shifted(world: World):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
+    # TODO: check for connections in new place
     connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
     assert to_dict(world.df_graph) == {
         'ExampleSim-0': {
@@ -271,8 +266,6 @@ def test_world_connect_time_shifted(world):
                 'async_requests': False,
                 'time_shifted': 1,
                 'weak': False,
-                'trigger': set(),
-                'cached_connections': connections,
             },
         },
         'ExampleSim-1': {},
@@ -286,7 +279,7 @@ def test_world_connect_time_shifted(world):
 
 
 @pytest.mark.parametrize('ctype', ['time_shifted', 'async_requests'])
-def test_world_connect_different_types(world, ctype):
+def test_world_connect_different_types(world: World, ctype: str):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b)
@@ -297,7 +290,7 @@ def test_world_connect_different_types(world, ctype):
                               'ExampleSim-1')
 
 
-def test_world_get_data(world):
+def test_world_get_data(world: World):
     sim1 = world.start('ExampleSim')
     sim2 = world.start('ExampleSim')
 
@@ -312,21 +305,21 @@ def test_world_get_data(world):
     }
 
 
-def test_world_run_twice(world):
+def test_world_run_twice(world: World):
     world.start('ExampleSim')
     world.run(0)
     with pytest.raises(RuntimeError):
         world.run(1)
 
 
-def test_model_factory(world, mf):
+def test_model_factory(world: World, mf: ModelFactory):
     assert 'A' in dir(mf)
     assert 'B' in dir(mf)
     assert mf.A.name == 'A'
     assert mf.B.name == 'B'
 
 
-def test_model_factory_check_params(world, mf):
+def test_model_factory_check_params(world: World, mf: ModelFactory):
     einfo = pytest.raises(TypeError, mf.A, spam='eggs')
     assert str(einfo.value) == "create() got unexpected keyword arguments: 'spam'"
 
@@ -336,7 +329,7 @@ def async_mock(return_value):
     return f
 
 
-def test_model_factory_hierarchical_entities(world, mf):
+def test_model_factory_hierarchical_entities(world: World, mf: ModelFactory):
     ret = [{
         'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
             'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
@@ -358,7 +351,7 @@ def test_model_factory_hierarchical_entities(world, mf):
     assert len(c.children) == 0
 
 
-def test_model_factory_wrong_entity_count(world, mf):
+def test_model_factory_wrong_entity_count(world: World, mf: ModelFactory):
     ret = [None, None, None]
     mf.A._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
@@ -366,7 +359,7 @@ def test_model_factory_wrong_entity_count(world, mf):
     assert str(err.value) == '2 entities were requested but 3 were created.'
 
 
-def test_model_factory_wrong_model(world, mf):
+def test_model_factory_wrong_model(world: World, mf: ModelFactory):
     ret = [{'eid': 'spam_0', 'type': 'Spam'}]
     mf.A._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
@@ -375,7 +368,7 @@ def test_model_factory_wrong_model(world, mf):
                               '"A" required.')
 
 
-def test_model_factory_hierarchical_entities_illegal_type(world, mf):
+def test_model_factory_hierarchical_entities_illegal_type(world: World, mf: ModelFactory):
     ret = [{
         'eid': 'a', 'type': 'A', 'rel': [], 'children': [{
             'eid': 'b', 'type': 'B', 'rel': [], 'children': [{
@@ -391,13 +384,13 @@ def test_model_factory_hierarchical_entities_illegal_type(world, mf):
                               'meta data.')
 
 
-def test_model_factory_private_model(world, mf):
+def test_model_factory_private_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
         getattr(mf, 'C')
     assert str(err.value) == 'Model "C" is not public.'
 
 
-def test_model_factory_unkown_model(world, mf):
+def test_model_factory_unkown_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
         getattr(mf, 'D')
     assert (
@@ -406,7 +399,7 @@ def test_model_factory_unkown_model(world, mf):
     )
 
 
-def test_model_mock_entity_graph(world):
+def test_model_mock_entity_graph(world: World):
     """
     Test if related entities are added to the entity_graph.
     """

@@ -2,11 +2,12 @@
 Scenario 21::
    A() → B() → C()
 """
+from mosaik import World
 
-
-def create_scenario(world):
-    model_a = world.start('A', step_type='event-based', self_steps={0: 2},
-                          output_timing={}).A()
+def create_scenario(world: World):
+    model_a = world.start(
+        'A', step_type='event-based', self_steps={0: 2}, output_timing={}
+    ).A()
     model_b = world.start('B', step_type='event-based').A()
     model_c = world.start('C', step_type='hybrid', self_steps={0: 3}).A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))

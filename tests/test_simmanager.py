@@ -1,23 +1,23 @@
 import asyncio
+from asyncio import StreamReader, StreamWriter
 from loguru import logger
 import pytest
 import sys
+import time
+from typing import Optional
 
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3 import __api_version__ as api_version
 import mosaik_api_v3.connection
 from mosaik_api_v3.connection import RemoteException
 
-from mosaik import scenario
-from mosaik import simmanager
-from mosaik import proxies
+from mosaik import proxies, scenario, simmanager, World
 from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
-import mosaik
 from mosaik.proxies import BaseProxy, LocalProxy
 
 
-sim_config = {
+sim_config: scenario.SimConfig = {
     "ExampleSimA": {
         "python": "example_sim.mosaik:ExampleSim",
     },
@@ -28,7 +28,7 @@ sim_config = {
     "ExampleSimC": {
         "connect": "127.0.0.1:5556",
     },
-    "ExampleSimD": {},
+    "ExampleSimD": {},  # type: ignore  # this is used for testing for this error
     "Fail": {
         "cmd": 'python -c "import time; time.sleep(0.2)"',
     },
@@ -185,69 +185,64 @@ def test_start_connect(world: scenario.World):
         request = await channel.next_request()
         await request.set_result(ExampleSim().meta)
         await channel.next_request()
-        channel.close()
+        await channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
-    proxy = world.loop.run_until_complete(
-        simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
-    )
-    assert "api_version" in proxy.meta and "models" in proxy.meta
+    simC = world.start("ExampleSimC")
+    world.shutdown()
+    assert "api_version" in simC.meta and "models" in simC.meta
     server.close()
-    world.loop.run_until_complete(proxy.stop())
 
 
-def test_start_connect_timeout_init(world, caplog):
-    """
-    Test connecting to an already running simulator.
+def test_start_connect_timeout_init(world: World, caplog):
+    """Simulator takes too long to respond to the init call.
     """
     world.config["start_timeout"] = 0.1
 
-    writer_for_closing = None
-    async def mock_sim_server(reader, writer):
-        nonlocal writer_for_closing
-        writer_for_closing = writer
+    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
         await read_message(reader)
+        await asyncio.sleep(0.11)
+        writer.close()
+        await writer.wait_closed()
+        print("Writer closed")
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     with pytest.raises(SystemExit) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "ExampleSimC", "", 1.0, {})
-        )
+        world.start("ExampleSimC")
     assert (
         'Simulator "ExampleSimC" did not reply to the init() call in time.'
         == exc_info.value.args[0]
     )
+
+    world.loop.run_until_complete(asyncio.sleep(0.1))
     server.close()
 
 
-def test_start_connect_stop_timeout(world):
+def test_start_connect_stop_timeout(world: World):
     """
     Test connecting to an already running simulator.
 
     When asked to stop, the simulator times out.
     """
 
-    async def mock_sim_server(reader, writer):
+    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
         channel = mosaik_api_v3.connection.Channel(reader, writer)
         request = await channel.next_request()
         await request.set_result(ExampleSim().meta)
         await channel.next_request()  # Wait for stop message
-        channel.close()
+        await channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
 
-    proxy = world.loop.run_until_complete(
-        simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
-    )
-    proxy._stop_timeout = 0.01
-    assert "api_version" in proxy.meta and "models" in proxy.meta
-    world.loop.run_until_complete(proxy.stop())
+    sim = world.start("ExampleSimC")
+    assert "api_version" in sim.meta and "models" in sim.meta
+    world.shutdown()
     server.close()
 
 
@@ -539,7 +534,7 @@ def test_mosaik_remote(rpc, err):
             try:
                 await rpc(channel, world)
             finally:
-                channel.close()
+                await channel.close()
 
         async def greeter():
             channel = await world.incoming_connections_queue.get()

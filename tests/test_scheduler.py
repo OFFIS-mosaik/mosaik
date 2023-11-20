@@ -1,16 +1,15 @@
 import asyncio
 from heapq import heappop, heappush
-import sys
 import pytest
 from tqdm import tqdm
-from typing import Iterable
+from typing import Iterable, List
 
 from mosaik import exceptions, scenario, scheduler, simmanager, World
-import mosaik
 from mosaik.adapters import init_and_get_adapter
 from mosaik.dense_time import DenseTime
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
+from mosaik.simmanager import SimRunner
 
 from tests.mocks.simulator_mock import SimulatorMock
 
@@ -34,51 +33,32 @@ async def does_coroutine_stall(coro, pass_backs=0):
 
 @pytest.fixture(name='world')
 def world_fixture(request):
-    if request.param == 'time-based':
-        time_shifted = True
-        weak = False
-        trigger = set()
-    else:
-        time_shifted = False
-        weak = True
-        trigger = set([('1', 'x')]) # TODO: Is this correct?
+    event_based = request.param == 'event-based'
     world = scenario.World({})
+    sims: List[SimRunner] = []
     for i in range(6):
         sim_id = f"Sim-{i}"
         proxy = LocalProxy(SimulatorMock(request.param), simmanager.MosaikRemote(world, sim_id))
         proxy = world.loop.run_until_complete(
             init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
         )
-        world.sims[sim_id] = simmanager.SimRunner(sim_id, proxy)
+        sim = SimRunner(sim_id, proxy)
+        world.sims[sim_id] = sim
+        sims.append(sim)
     class DummyTask:
         def done(self):
             return False
     for sim in world.sims.values():
         sim.task = DummyTask()
     for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
-        world.df_graph.add_edge(
-            f"Sim-{src}",
-            f"Sim-{dest}",
-            async_requests=False,
-            pred_waiting=False,
-            time_shifted=False,
-            weak=False,
-            trigger=trigger,
-            cached_connections=[],
-        )
-    world.df_graph.add_edge(
-        "Sim-5",
-        "Sim-4",
-        async_requests=False,
-        pred_waiting=False,
-        time_shifted=time_shifted,
-        weak=weak,
-        trigger=trigger,
-        cached_connections=[],
-    )
-    world.build_simrunners()
-    world.cache_dependencies()
-    world.cache_related_sims()
+        sims[src].successors_to_wait_for_if_lazy.add(sims[dest])
+        sims[dest].input_delays[sims[src]] = DenseTime(0)
+        if event_based:
+            sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], DenseTime(0)))
+    sims[5].successors_to_wait_for_if_lazy.add(sims[4])
+    sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else DenseTime(1, 0)
+    if event_based:
+        sims[5].triggers[('1', 'x')] = [(sims[4], DenseTime(0, 1))]
     world.until = 4
     world.rt_factor = None
     world.cache_triggering_ancestors()
@@ -90,7 +70,6 @@ def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
     world.df_graph.add_nodes_from([0, 1], trigger=True)
-    world.df_multigraph.add_nodes_from([0, 1])
 
     async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True
@@ -109,7 +88,7 @@ def test_run(monkeypatch):
             'type': 'time-based'
         }
         
-    world.sims = {i: simmanager.SimRunner(i, proxy) for i in range(2)}
+    world.sims = {i: SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
@@ -163,15 +142,14 @@ def any_unset(events: Iterable[asyncio.Event]) -> bool:
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
 @pytest.mark.parametrize("weak,number_waiting", [(True, 2), (False, 2)])
-async def test_wait_for_dependencies(world: mosaik.World, weak, number_waiting):
+async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: int):
     """
     Test waiting for dependencies and triggering them.
     """
-    test_sim: simmanager.SimRunner = world.sims["Sim-2"]
-    pred_sim: simmanager.SimRunner = world.sims["Sim-1"]
+    test_sim: SimRunner = world.sims["Sim-2"]
+    pred_sim: SimRunner = world.sims["Sim-1"]
     heappush(test_sim.next_steps, DenseTime(0))
-    test_sim.predecessors[pred_sim].is_weak = True
-    pred_sim.successors[test_sim].is_weak = True
+    test_sim.input_delays[pred_sim] = DenseTime(0, 1)
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(test_sim, True)
     )
@@ -180,15 +158,16 @@ async def test_wait_for_dependencies(world: mosaik.World, weak, number_waiting):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-async def test_wait_for_dependencies_all_done(world):
+async def test_wait_for_dependencies_all_done(world: World):
     """
     All dependencies already stepped far enough. No waiting required.
     """
     heappush(world.sims["Sim-2"].next_steps, DenseTime(0))
     for dep_sid in ["Sim-0", "Sim-1"]:
-        world.sims[dep_sid].progress = DenseTime(1)
+        world.sims[dep_sid].progress.value = DenseTime(1)
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world.sims["Sim-2"], True)
+        scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
+        pass_backs=3,
     )
     assert not stalled
 
@@ -236,16 +215,18 @@ def test_get_input_data(world: World):
     """
     Simple test for get_input_data().
     """
-    world.sims["Sim-2"].current_step = DenseTime(0)
-    world.sims["Sim-0"].outputs = {0: {'1': {'x': 0, 'y': 1}}}
-    world.sims["Sim-1"].outputs = {0: {'2': {'x': 2, 'z': 4}}}
-    world.sims["Sim-2"].inputs_from_set_data = {
+    sim_0 = world.sims["Sim-0"]
+    sim_1 = world.sims["Sim-1"]
+    sim_2 = world.sims["Sim-2"]
+    sim_2.current_step = DenseTime(0)
+    sim_0.outputs = {0: {'1': {'x': 0, 'y': 1}}}
+    sim_1.outputs = {0: {'2': {'x': 2, 'z': 4}}}
+    sim_2.inputs_from_set_data = {
         '0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}
     }
-    world.df_graph["Sim-0"]["Sim-2"]['cached_connections'] = [('1', '0', [('x', 'in')])]
-    world.df_graph["Sim-1"]["Sim-2"]['cached_connections'] = [('2', '0', [('z', 'in')])]
-    world.cache_dependencies()
-    data = scheduler.get_input_data(world, world.sims["Sim-2"])
+    sim_2.pulled_inputs[(sim_0, 0)] = [(('1', 'x'), ('0', 'in'))]
+    sim_2.pulled_inputs[(sim_1, 0)] = [(('2', 'z'), ('0', 'in'))]
+    data = scheduler.get_input_data(world, sim_2)
     assert data == {'0': {
         'in': {'Sim-0.1': 0, 'Sim-1.2': 4, '3': 5},
         'spam': {'3': 'eggs'},
@@ -253,14 +234,15 @@ def test_get_input_data(world: World):
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_get_input_data_shifted(world):
+def test_get_input_data_shifted(world: World):
     """
     Getting input data transmitted via a shifted connection.
     """
-    world.sims["Sim-4"].current_step = DenseTime(0)
-    world.sims["Sim-5"].outputs = {-1: {'1': {'z': 7}}}
-    world.df_graph["Sim-5"]["Sim-4"]['cached_connections'] = [('1', '0', [('z', 'in')])]
-    world.cache_dependencies()
+    sim_4 = world.sims["Sim-4"]
+    sim_5 = world.sims["Sim-5"]
+    sim_4.current_step = DenseTime(0)
+    sim_5.outputs = {-1: {'1': {'z': 7}}}
+    sim_4.pulled_inputs[(sim_5, 1)] = [(('1', 'z'), ('0', 'in'))]
     data = scheduler.get_input_data(world, world.sims["Sim-4"])
     assert data == {'0': {'in': {'Sim-5.1': 7}}}
 
@@ -317,7 +299,6 @@ async def test_step(world):
                           ('event-based', False)], indirect=['world'])
 async def test_get_outputs(world, cache):
     world.use_cache = cache
-    world.df_graph["Sim-0"]["Sim-2"]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim = world.sims["Sim-0"]
     sim.outputs = {} if cache else None
     sim.output_request = {0: ['x', 'y']}
@@ -362,8 +343,8 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ['x', 'y', 'z']}
     sim.output_to_push = {
-        ('0', 'x'): [(world.sims["Sim-2"], 0, '0', 'in')],
-        ('0', 'z'): [(world.sims["Sim-1"], 0, '0', 'in')],
+        ('0', 'x'): [(world.sims["Sim-2"], 0, ('0', 'in'))],
+        ('0', 'z'): [(world.sims["Sim-1"], 0, ('0', 'in'))],
     }
 
     await scheduler.get_outputs(world, sim)
@@ -382,8 +363,6 @@ def test_notify_dependencies(world, output_time, next_steps, progress):
     sim = world.sims["Sim-0"]
     sim.progress = 0
 
-    world.df_graph["Sim-0"]["Sim-2"]['dataflows'] = [('1', '0', [('x', 'in')])]
-    world.cache_dependencies()
     sim.data = {'1': {'x': 1}}
     sim.output_time = output_time
 
@@ -399,8 +378,6 @@ def test_notify_dependencies_trigger(world):
     sim = world.sims["Sim-0"]
     sim.progress = 0
 
-    world.df_graph["Sim-0"]["Sim-2"]['dataflows'] = [('1', '0', [('x', 'in')])]
-    world.cache_dependencies()
     sim.data = {'1': {'x': 1}}
     sim.output_time = 1
     scheduler.notify_dependencies(sim)
@@ -431,7 +408,6 @@ async def test_get_outputs_shifted(world):
     sim = world.sims["Sim-5"]
     sim.outputs = {}
     sim.output_request = {0: ['x', 'y']}
-    world.cache_dependencies()
     sim.type = 'time-based'
     sim.progress = DenseTime(1)
     sim.last_step = DenseTime(1)

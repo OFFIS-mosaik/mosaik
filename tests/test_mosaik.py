@@ -3,19 +3,20 @@ Test a complete mosaik simulation using mosaik as a library.
 
 """
 import importlib
+import gc
 import glob
-from loguru import logger
 import os
 import time
-from tqdm import tqdm
-from typing import Dict
+from typing import Dict, List
+import warnings
 
+from loguru import logger
 import networkx as nx
 import pytest
+from tqdm import tqdm
 
 from mosaik import scenario
 
-import example_sim.mosaik
 
 sim_config: Dict[str, scenario.SimConfig] = {
     'local': {
@@ -57,9 +58,10 @@ test_cases = [os.path.basename(file)[0:-3]  # remove ".py" at the end
               if not file.startswith('__')]
 
 
+@pytest.mark.filterwarnings("ignore:Connections with async_requests")
 @pytest.mark.parametrize('scenario_name', test_cases)
 @pytest.mark.parametrize('cache', [True, False])
-def test_mosaik(scenario_name, cache):
+def test_mosaik(scenario_name: str, cache: bool):
     logger.remove()
     logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
     scenario_desc = importlib.import_module(f'tests.scenarios.{scenario_name}')
@@ -75,14 +77,64 @@ def test_mosaik(scenario_name, cache):
         else:
             world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR)
 
-        expected_graph = nx.parse_edgelist(scenario_desc.EXECUTION_GRAPH.split('\n'),
-                                           create_using=nx.DiGraph(), data=())
+        expected_graph = nx.parse_edgelist(
+            scenario_desc.EXECUTION_GRAPH.split('\n'),
+            create_using=nx.DiGraph(),
+            data=()
+        )
         
         for node, inputs in scenario_desc.INPUTS.items():
             expected_graph.add_node(node, inputs=inputs)
 
-        assert world.execution_graph.adj == expected_graph.adj
+        errors: List[str] = []
+        expected_nodes = set(expected_graph.nodes)
+        actual_nodes = set(world.execution_graph.nodes)
+        missing_nodes = expected_nodes - actual_nodes
+        if missing_nodes:
+            errors.append("The following expected simulator invocations did not happen:")
+            for node in sorted(missing_nodes):
+                errors.append(f"- {node}")
+            errors.append("\n")
 
+        extra_nodes = set(
+            n
+            for n in actual_nodes - expected_nodes
+            if "inputs" in world.execution_graph[n]
+        )
+        if extra_nodes:
+            errors.append("The following simulator invocations were not expected:")
+            for node in sorted(extra_nodes):
+                sources = world.execution_graph.predecessors(node)
+                if sources:
+                    sources_str = f"caused by: {', '.join(sources)}"
+                else:
+                    sources_str = "not caused by other simulators"
+                errors.append(f"- {node} ({sources_str})")
+            errors.append("\n")
+
+        predecessor_errors: List[str] = []
+        for node in sorted(actual_nodes & expected_nodes):
+            actual_pres = set(world.execution_graph.predecessors(node))
+            expected_pres = set(expected_graph.predecessors(node))
+            if actual_pres != expected_pres:
+                predecessor_errors.append(
+                    f"- {node} ("
+                    f"extraneous {', '.join(sorted(actual_pres - expected_pres))}; "
+                    f"missing {', '.join(sorted(expected_pres - actual_pres))})"
+                )
+        if predecessor_errors:
+            errors.append(
+                "The following simulator invocations had incorrect sources:"
+            )
+            errors.extend(predecessor_errors)
+            errors.append("\n")
+
+        if errors:
+            raise AssertionError(
+                "The following problems were detected in the execution graph:\n\n"
+                + "\n".join(errors)
+            )
+            
         for node, data in world.execution_graph.nodes.items():
             assert data['inputs'] == expected_graph.nodes[node].get(
                 'inputs', {}), f"Inputs for {node}"
@@ -92,6 +144,7 @@ def test_mosaik(scenario_name, cache):
             assert sim.progress.value.time == scenario_desc.UNTIL
     finally:
         world.shutdown()
+        gc.collect()
 
 
 @pytest.mark.parametrize('sim_config', [sim_config['local'], sim_config['remote']])

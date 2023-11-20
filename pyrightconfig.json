@@ -1,0 +1,9 @@
+{
+    "typeCheckingMode": "strict",
+    "reportIncompatibleMethodOverride": "warning",
+    "reportUninitializedInstanceVariable": "warning",
+    "reportUnnecessaryIsInstance": "none",
+    "reportUnusedImport": "warning",
+    "venvPath": "/home/eschulte/mosaik/develop",
+    "venv": ".venv311"
+}

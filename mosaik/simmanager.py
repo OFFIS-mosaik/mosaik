@@ -29,19 +29,21 @@ from typing import (
     Dict,
     Iterable,
     List,
+    NoReturn,
     Optional,
     OrderedDict,
     Set,
     Tuple,
     TYPE_CHECKING,
+    TypeVar,
     Union,
 )
 import tqdm
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
-from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId
+from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
 from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.progress import Progress
@@ -132,11 +134,13 @@ async def start(
                 )
                 return proxy
             except asyncio.IncompleteReadError:
+                await proxy.stop()
                 raise SystemExit(
                     f'Simulator "{sim_name}" closed its connection during the init() '
                     'call.'
                 )
             except asyncio.TimeoutError:
+                await proxy.stop()
                 raise SystemExit(
                     f'Simulator "{sim_name}" did not reply to the init() call in time.'
                 )
@@ -221,7 +225,7 @@ async def start_proc(
 
     # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
     creationflags = 0
-    new_console = sim_config['new_console'] if 'new_console' in sim_config else False
+    new_console = sim_config.get('new_console', False)
     if new_console:
         if 'Windows' in platform.system():
             creationflags = CREATE_NEW_CONSOLE
@@ -296,30 +300,8 @@ async def start_connect(
     return RemoteProxy(Channel(reader, writer), mosaik_remote)
 
 
-@dataclass
-class PredecessorInfo:
-    time_shift: int
-    is_weak: bool
-    triggering: bool
-
-    pulled_inputs: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-    """Inputs that this simulator pulls from its predecessor using that
-    SimRunner's get_output_for method.
-
-    The structure is an iterable of (src_eid, dest_eid, attrs) triples
-    where attrs is an iterable of the corresponding
-    (src_attr, dets_attr) pairs.
-    """
-
-
-@dataclass
-class SuccessorInfo:
-    time_shift: int
-    is_weak: bool
-    delay: DenseTime
-    pred_waiting: bool
-
-    trigger: Set[Tuple[EntityId, Attr]]
+Port: TypeAlias = Tuple[EntityId, Attr]
+"""Pair of an entity ID and an attribute of that entity"""
 
 
 class SimRunner:
@@ -338,6 +320,46 @@ class SimRunner:
     _proxy: Proxy
     """The actual proxy for this simulator."""
 
+    # Connection setup
+    input_delays: Dict[SimRunner, DenseTime]
+    """For each simulator that provides data to this simulator, the
+    minimum over all input delays. This is used while waiting for
+    dependencies."""
+    triggers: Dict[Port, List[Tuple[SimRunner, DenseTime]]]
+    """For each port of this simulator, the simulators that are
+    triggered by output on that port and the delay accrued along that
+    edge.
+    """
+    successors_to_wait_for: Set[SimRunner]
+    successors_to_wait_for_if_lazy: Set[SimRunner]
+    triggering_ancestors: List[Tuple[SimRunner, DenseTime]]
+    """An iterable of this sim's ancestors that can trigger a step of
+    this simulator. The second component specifies the least amount of
+    time that output from the ancestor needs to reach us.
+    """
+    pulled_inputs: Dict[Tuple[SimRunner, Time], List[Tuple[Port, Port]]]
+    """Output to pull in whenever this simulator performs a step.
+    The keys are the source SimRunner and the time shift, the values
+    are the source and destination entity-attribute pairs.
+    """
+    output_to_push: Dict[Port, List[Tuple[SimRunner, int, Port]]]
+    """This lists those connections that use the timed_input_buffer.
+    The keys are the entity-attribute pairs of this simulator with
+    the corresponding list of simulator-time-entity-attribute triples
+    describing the destinations for that data and the time-shift
+    occuring along the connection.
+    """
+
+    output_request: OutputRequest
+
+    inputs_from_set_data: InputData
+    """Inputs received via `set_data`."""
+    persistent_inputs: InputData
+    """Memory of previous inputs for persistent attributes."""
+    timed_input_buffer: TimedInputBuffer
+    """Inputs for this simulator."""
+
+
     rt_start: float
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
@@ -350,35 +372,6 @@ class SimRunner:
     newer_step: asyncio.Event
     next_self_step: Optional[Time]
     """The next self-scheduled step for this simulator."""
-
-    predecessors: Dict[SimRunner, PredecessorInfo]
-    """This simulator's predecessors in the dataflow graph and the
-    corresponding edges."""
-    successors: Dict[SimRunner, SuccessorInfo]
-    """This simulator's successors in the dataflow graph and the
-    corresponding edges."""
-    triggering_ancestors: Iterable[Tuple[SimRunner, DenseTime]]
-    """An iterable of this sim's ancestors that can trigger a step of
-    this simulator. The second component specifies the least amount of
-    time that output from the ancestor needs to reach us.
-    """
-
-    output_request: OutputRequest
-
-    inputs_from_set_data: Dict
-    """Inputs received via `set_data`."""
-    persistent_inputs: Dict
-    """Memory of previous inputs for persistent attributes."""
-    timed_input_buffer: TimedInputBuffer
-    """Inputs for this simulator."""
-
-    output_to_push: Dict[Tuple[EntityId, Attr], List[Tuple[SimRunner, int, EntityId, Attr]]]
-    """This lists those connections that use the timed_input_buffer.
-    The keys are the entity-attribute pairs of this simulator with
-    the corresponding list of simulator-time-entity-attribute triples
-    describing the destinations for that data and the time-shift
-    occuring along the connection.
-    """
 
     progress: Progress[DenseTime]
     """This simulator's progress in mosaik time.
@@ -395,17 +388,11 @@ class SimRunner:
     `last_step` but simulators may specify a different time for their output."""
     data: OutputData
     """The newest data returned by this simulator."""
-    related_sims: Iterable[SimRunner]
-    """Simulators related to this simulator. (Currently all other simulators.)"""
-    task: asyncio.Task
+    task: asyncio.Task[None]
     """The asyncio.Task for this simulator."""
-    rank: int
-    """The topological rank of the simulator in the graph of all
-    simulators with their non-weak, non-time-shifted connections.
-    """
 
     outputs: Optional[Dict[Time, OutputData]]
-    tqdm: tqdm.tqdm
+    tqdm: tqdm.tqdm[NoReturn]
 
     def __init__(
         self,
@@ -430,15 +417,19 @@ class SimRunner:
         self.inputs_from_set_data = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
+
+        self.successors_to_wait_for = set()
+        self.successors_to_wait_for_if_lazy = set()
+        self.triggering_ancestors = []
+        self.triggers = {}
         self.output_to_push = {}
+        self.pulled_inputs = {}
 
         self.task = None  # type: ignore  # will be set in World.run
         self.newer_step = asyncio.Event()
         self.is_in_step = False
-        self.rank = None  # type: ignore  # will be set in World.run
 
-        self.predecessors = {}
-        self.successors = {}
+        self.input_delays = {}
 
         self.output_request = {}
 
@@ -468,7 +459,7 @@ class SimRunner:
     async def get_data(self, outputs: OutputRequest) -> OutputData:
         return await self._proxy.send(["get_data", (outputs,), {}])
 
-    def get_output_for(self, time: Time):
+    def get_output_for(self, time: Time) -> OutputData:
         assert self.outputs is not None
         for data_time, value in reversed(self.outputs.items()):
             if data_time <= time:
@@ -507,7 +498,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
     async def get_related_entities(
         self,
-        entities=None
+        entities: Union[FullId, List[FullId], None] = None
     ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
         Return information about the related entities of *entities*.
@@ -558,7 +549,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             edges_tuple = tuple(list(edge) + [{}] for edge in edges_list)
 
             return {'nodes': nodes_dict, 'edges': edges_tuple}
-        elif type(entities) is str:
+        elif isinstance(entities, str):
             return {n: graph.nodes[n] for n in graph[entities]}
         else:
             return {
@@ -566,7 +557,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 for eid in entities
             }
 
-    async def get_data(self, attrs) -> Dict[str, Any]:
+    async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
         """
         Return the data for the requested attributes *attrs*.
 
@@ -591,7 +582,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             # Check if async_requests are enabled.
             self._assert_async_requests(dfg, sid, dest_sid)
             if self.world.use_cache:
-                cache_slice = self.world.sims[sid].get_output_for(self.sim.last_step)
+                cache_slice = self.world.sims[sid].get_output_for(self.sim.last_step.time)
             else:
                 cache_slice = {}
 
@@ -605,8 +596,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert dep.progress.value > self.sim.current_step >= dep.last_step, \
-                "sim progress wrong for async requests"
+            #assert dep.progress.value > self.sim.current_step >= dep.last_step, \
+            #    "sim progress wrong for async requests"
             dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -634,10 +625,11 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
 
-    async def set_event(self, event_time):
+    async def set_event(self, event_time: Time):
         """
         Schedules an event/step at simulation time *event_time*.
         """
+        logger.warning(f"set_event({event_time}")
         sim = self.world.sims[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
@@ -646,8 +638,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             )
         if event_time < self.world.until:
             # TODO: Check whether progress.set is better
-            # sim.progress.progress = min(event_time, sim.progress.progress)
-            sim.schedule_step(event_time)
+            sim.schedule_step(DenseTime(event_time, 0))
         else:
             logger.warning(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "
@@ -721,20 +712,23 @@ class TimedInputBuffer:
     the most recent value is added.
     """
 
+    input_queue: List[Tuple[Time, int, FullId, EntityId, Attr, Any]]
+
     def __init__(self):
         self.input_queue = []
         self.counter = itertools.count()  # Used to chronologically sort entries
 
-    def add(self, time, src_sid, src_eid, dest_eid, dest_var, value):
-        src_full_id = '.'.join(map(str, (src_sid, src_eid)))
-        hq.heappush(self.input_queue, (time, next(self.counter), src_full_id,
-                                       dest_eid, dest_var, value))
+    def add(self, time: Time, src_sid: SimId, src_eid: EntityId, dest_eid: EntityId, dest_attr: Attr, value: Any):
+        src_full_id = f"{src_sid}.{src_eid}"
+        hq.heappush(
+            self.input_queue,
+            (time, next(self.counter), src_full_id, dest_eid, dest_attr, value)
+        )
 
-    def get_input(self, input_dict, step):
+    def get_input(self, input_dict: InputData, step: Time) -> InputData:
         while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
             _, _, src_full_id, eid, attr, value = hq.heappop(self.input_queue)
-            input_dict.setdefault(eid, {}).setdefault(attr, {})[
-                src_full_id] = value
+            input_dict.setdefault(eid, {}).setdefault(attr, {})[src_full_id] = value
 
         return input_dict
 

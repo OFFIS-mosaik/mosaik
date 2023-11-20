@@ -9,8 +9,7 @@ from loguru import logger
 
 from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
 from mosaik_api_v3.connection import Channel, EndOfRequests
-from mosaik_api_v3.types import Meta, SimId, OutputData, InputData
-from mosaik import _version
+from mosaik_api_v3.types import Meta, SimId
 from mosaik.exceptions import ScenarioError
 
 
@@ -60,7 +59,7 @@ class BaseProxy(Proxy):
 
     @abstractmethod
     async def init(
-        self, sid: SimId, *, time_resolution: float, **sim_params
+        self, sid: SimId, *, time_resolution: float, **sim_params: Any
     ) -> List[int]:
         """Initialize the simulator by sending the ``init`` call. The
         ``meta`` returned by the simulator will be saved to be retrieved
@@ -89,14 +88,14 @@ class LocalProxy(BaseProxy):
         self.sim = sim
         sim.mosaik = mosaik_remote
 
-    async def init(self, sid, **kwargs) -> List[int]:
+    async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
         if check_api_compliance(self.sim):
             forced_old_api = False
         else:
             forced_old_api = True
             del kwargs["time_resolution"]
 
-        meta = await self.send(["init", (sid,), kwargs])
+        meta = await self.send(("init", (sid,), kwargs))
         self._meta = deepcopy(meta)
         version = extract_version(meta)
         if forced_old_api and version >= [3]:
@@ -113,7 +112,7 @@ class LocalProxy(BaseProxy):
     def meta(self):
         return self._meta
 
-    async def send(self, request):
+    async def send(self, request: Tuple[str, Tuple[Any, ...], Dict[str, Any]]):
         func_name, args, kwargs = request
         func = getattr(self.sim, func_name)
         # A simulator that makes requests back to mosaik (like set_data or set_event)
@@ -140,8 +139,7 @@ class LocalProxy(BaseProxy):
 
 class RemoteProxy(BaseProxy):
     _channel: Channel
-    _reader_task: asyncio.Task
-    _pending_requests: Dict[int, asyncio.Future]
+    _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikProxy
 
@@ -150,10 +148,11 @@ class RemoteProxy(BaseProxy):
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
-            self._handle_remote_requests()
+            self._handle_remote_requests(),
+            name="handle remote requests for ???"
         )
 
-    async def _handle_remote_requests(self):
+    async def _handle_remote_requests(self) -> None:
         try:
             while True:
                 request = await self._channel.next_request()
@@ -178,7 +177,7 @@ class RemoteProxy(BaseProxy):
                 f"exception type {type(e)}")
             await self.stop()
 
-    async def init(self, sid: SimId, **kwargs) -> List[int]:
+    async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
         self._meta = await self.send(["init", (sid,), kwargs])
         return extract_version(self._meta)
     
@@ -190,19 +189,20 @@ class RemoteProxy(BaseProxy):
         return await self._channel.send(request)
 
     async def stop(self) -> None:
+        if not hasattr(self, "_channel"):
+            return
         try:
             await asyncio.wait_for(
                 self._channel.send(["stop", [], {}]),
                 0.1,
             )
-        except asyncio.IncompleteReadError:
+        except (asyncio.IncompleteReadError, asyncio.TimeoutError):
             pass
-        except asyncio.TimeoutError:
-            self._channel.close()
+        await self._channel.close()
         await self._reader_task
 
 
-def extract_version(meta) -> List[int]:
+def extract_version(meta: Meta) -> List[int]:
     if "api_version" not in meta:
         return [1]
     else:

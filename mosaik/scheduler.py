@@ -3,23 +3,21 @@ This module is responsible for performing the simulation of a scenario.
 """
 from __future__ import annotations
 
-from heapq import heappush, heappop
-from icecream import ic
-from loguru import logger
-import networkx as nx
-from time import perf_counter
 import asyncio
+from heapq import heappop
+from loguru import logger
+from math import ceil
+from time import perf_counter
 
-from mosaik_api_v3.types import InputData, OutputData, SimId, Time
-from tqdm import tqdm
+from mosaik_api_v3 import InputData, SimId, Time
+
 from mosaik.dense_time import DenseTime
-
-from mosaik.exceptions import (ScenarioError, SimulationError, WakeUpException, NoStepException)
+from mosaik.exceptions import SimulationError
+from mosaik.internal_util import recursive_merge_all, recursive_merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 
-from typing import TYPE_CHECKING, Coroutine, Tuple
+from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
     from mosaik.scenario import World
 
 
@@ -51,7 +49,7 @@ async def run(
         rt_factor *= world.time_resolution
     world.rt_factor = rt_factor
 
-    setup_done_events: List[asyncio.Task] = []
+    setup_done_events: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
         sim.tqdm.set_postfix_str('setup')
         # Send a setup_done event to all simulators
@@ -61,10 +59,11 @@ async def run(
     await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
-    processes: List[asyncio.Task] = []
+    processes: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
         process = world.loop.create_task(
-            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping)
+            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping),
+            name=f"Runner for {sim.sid}"
         )
 
         sim.task = process
@@ -90,9 +89,8 @@ async def sim_process(
 
     try:
         advance_progress(sim, world)
-        while await next_step_settled(sim, world.until):
-            warn_if_successors_terminated(world, sim)
-            await rt_sleep(rt_factor, rt_start, sim, world)
+        while await next_step_settled(sim, world):
+            #await rt_sleep(rt_factor, rt_start, sim, world)
             sim.tqdm.set_postfix_str('await input')
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
@@ -113,7 +111,6 @@ async def sim_process(
             await step(world, sim, input_data, max_advance)
             rt_check(rt_factor, rt_start, rt_strict, sim)
             await get_outputs(world, sim)
-            logger.trace("{sim.sid} completed step {step}", sim=sim, step=sim.current_step)
             sim.current_step = None
             notify_dependencies(sim)
             # TODO: Reduce the number of sims that need to be advanced
@@ -132,7 +129,7 @@ async def sim_process(
                               sim.sid, e)
 
 
-async def next_step_settled(sim: SimRunner, until: Time) -> bool:
+async def next_step_settled(sim: SimRunner, world: World) -> bool:
     # When deciding when the next step will happen, we have two numbers
     # that approach each other: The earliest currently scheduled next
     # step (which might still go down) and the earliest potential next
@@ -144,47 +141,37 @@ async def next_step_settled(sim: SimRunner, until: Time) -> bool:
     # of the simulation. Once that is reached, we also return, albeit
     # without having found a next step.
     sim.tqdm.set_postfix_str('await step')
-    while sim.progress.value.time < until:
+    while sim.progress.value.time < world.until:
         if sim.next_steps and sim.next_steps[0] == sim.progress.value:
             return True
         else:
-            await_time = sim.next_steps[0] if sim.next_steps else DenseTime(until)
+            await_time = sim.next_steps[0] if sim.next_steps else DenseTime(world.until)
             _, pending = await asyncio.wait(
                 [
                     asyncio.create_task(sim.progress.has_reached(await_time)),
                     asyncio.create_task(sim.newer_step.wait()),
                 ],
-                return_when="FIRST_COMPLETED"
+                return_when="FIRST_COMPLETED",
+                timeout=world.rt_factor,
             )
             sim.newer_step.clear()
-            for task in pending: task.cancel()
+            for task in pending:
+                task.cancel()
+            if world.rt_factor:
+                advance_progress(sim, world)
     return False
 
 
-def warn_if_successors_terminated(world: World, sim: SimRunner):
-    if 'warn_if_successors_terminated' in world.config:
-        should_warn = world.config['warn_if_successors_terminated']
-    else:
-        should_warn = bool(sim.successors)
-
-    if should_warn and all(suc_sim.task.done() for suc_sim in sim.successors):
-        logger.warning(
-            f"Simulator {sim.sid}'s output is not used anymore put it is still running."
-        )
-
-
 async def rt_sleep(
-    rt_factor: Optional[float],
-    rt_start: float,
     sim: SimRunner,
     world: World
 ) -> None:
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
-    if rt_factor:
-        rt_passed = perf_counter() - rt_start
-        sleep = (rt_factor * sim.next_steps[0].time) - rt_passed
+    if world.rt_factor:
+        rt_passed = perf_counter() - sim.rt_start
+        sleep = (world.rt_factor * sim.next_steps[0].time) - rt_passed
         if sleep > 0:
             sim.tqdm.set_postfix_str('sleeping')
             await asyncio.sleep(sleep)
@@ -202,23 +189,19 @@ async def wait_for_dependencies(
 
     *world* is a mosaik :class:`~mosaik.scenario.World`.
     """
-    futures: List[Coroutine] = []
+    futures: List[Coroutine[Any, Any, DenseTime]] = []
     next_step = sim.next_steps[0]
 
-    # Check if all predecessors have stepped far enough to provide the
-    # required input data for us:
-    for pre_sim, info in sim.predecessors.items():
-        # Wait for pre_sim if it hasn't progressed until current time step:
-        if info.is_weak:
-            futures.append(pre_sim.progress.has_reached(next_step))
-        else:
-            futures.append(
-                pre_sim.progress.has_passed(next_step - DenseTime(info.time_shift))
-            )
+    for pre_sim, delay in sim.input_delays.items():
+        # Wait for pre_sim if it hasn't progressed enough to provide
+        # the input for our current step.
+        futures.append(pre_sim.progress.has_passed(next_step - delay))
 
-    for post_sim, info in sim.successors.items():
-        if lazy_stepping or info.pred_waiting:
-            futures.append(post_sim.progress.has_reached(next_step))
+    for suc_sim in sim.successors_to_wait_for:
+        futures.append(suc_sim.progress.has_reached(next_step))
+    if lazy_stepping:
+        for suc_sim in sim.successors_to_wait_for_if_lazy:
+            futures.append(suc_sim.progress.has_reached(next_step))
 
     await asyncio.gather(*futures)
 
@@ -248,55 +231,49 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     assert sim.current_step is not None
     input_data = sim.inputs_from_set_data
     sim.inputs_from_set_data = {}
-    recursive_union(input_data, sim.persistent_inputs)
+    recursive_merge_all(
+        lambda attrs_new, attrs_old: recursive_merge_all(
+            lambda data_new, data_old: recursive_merge_all(
+                lambda val_new, val_old: val_new, data_new, data_old
+            ),
+            attrs_new,
+            attrs_old,
+        ),
+        input_data,
+        sim.persistent_inputs,
+    )
     input_data = sim.timed_input_buffer.get_input(input_data, sim.current_step.time)
 
-    for src_sim, info in sim.predecessors.items():
-        dataflows = info.pulled_inputs
-        if not dataflows:
-            continue
-        t = sim.current_step.time - info.time_shift
-        cache_slice = src_sim.get_output_for(t)
-        for src_eid, dest_eid, attrs in dataflows:
-            for src_attr, dest_attr in attrs:
-                try:
-                    val = cache_slice[src_eid][src_attr]
-                except KeyError:
-                    logger.warning(
-                        f"Simulator {src_sim.sid}'s entity {src_eid} did not "
-                        f"produce output on its persistent attribute {src_attr} "
-                        "during its last step. However, this value is now required "
-                        f"by simulator {sim.sid}. This usually results from "
-                        "attributes that are marked persistent despite working "
-                        "like events. This will be an error in future versions of "
-                        "mosaik."
-                    )
-                    val = None
-                input_vals = input_data.setdefault(dest_eid, {}) \
-                    .setdefault(dest_attr, {})
-                input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
+    for (src_sim, delay), dataflows in sim.pulled_inputs.items():
+        cache = src_sim.get_output_for(sim.current_step.time - delay)
+        for (src_eid, src_attr), (dest_eid, dest_attr) in dataflows:
+            try:
+                val = cache[src_eid][src_attr]
+            except KeyError:
+                logger.warning(
+                    f"Simulator {src_sim.sid}'s entity {src_eid} did not produce "
+                    f"output on its persistent attribute {src_attr} during its last "
+                    "step. However, this value is now required by simulator "
+                    f"{sim.sid}. This usually results from attributes that are marked "
+                    "persistent despite working like events. Supplying `None` for now. "
+                    "This will be an error in future versions of mosaik."
+                )
+                val = None
+            input_vals = input_data.setdefault(dest_eid, {}).setdefault(dest_attr, {})
+            input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
 
-    recursive_update(sim.persistent_inputs, input_data)
-
+    recursive_merge_existing(
+        lambda attrs_old, attrs_new: recursive_merge_existing(
+            lambda data_old, data_new: recursive_merge_existing(
+                lambda val_old, val_new: val_new, data_old, data_new
+            ),
+            attrs_old,
+            attrs_new,
+        ),
+        sim.persistent_inputs,
+        input_data,
+    )
     return input_data
-
-
-def recursive_union(d, u):
-    for k, v in u.items():
-        if isinstance(v, dict):
-            d[k] = recursive_union(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
-
-
-def recursive_update(d, u):
-    for k, v in d.items():
-        if isinstance(v, dict):
-            d[k] = recursive_update(v, u[k])
-        else:
-            d[k] = u[k]
-    return d
 
 
 def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
@@ -311,8 +288,8 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
 
     own_next_step = [sim.next_steps[0]] if sim.next_steps else []
 
-    # The +1, -1 shenanigans exists due to max_advance was originally
-    # designed.
+    # The +1, -1 shenanigans exists due to how max_advance was
+    # originally designed.
     return min([*ancs_next_steps, *own_next_step, DenseTime(until + 1)]).time - 1
 
 
@@ -339,9 +316,8 @@ async def step(
     sim.last_step = sim.current_step
     sim.is_in_step = False
 
-
     if next_step_time is not None:
-        if type(next_step_time) != int:
+        if not isinstance(next_step_time, int):
             raise SimulationError(
                 f'the next step time returned by the step method must be of type int, '
                 f'but is of type {type(next_step_time)} for simulator "{sim.sid}"'
@@ -422,7 +398,7 @@ async def get_outputs(world: World, sim: SimRunner):
         for (src_eid, src_attr), destinations in sim.output_to_push.items():
             try:
                 val = data[src_eid][src_attr]
-                for dest_sim, time_shift, dest_eid, dest_attr in destinations:
+                for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
                     dest_sim.timed_input_buffer.add(
                         output_time + time_shift, sid, src_eid, dest_eid, dest_attr, val
                     )
@@ -435,14 +411,10 @@ def notify_dependencies(sim: SimRunner) -> None:
     """
     Notify all simulators waiting for us.
     """
-    # Notify simulators waiting for inputs from us.
-    for dest_sim, info in sim.successors.items():
-        for eid, attr in info.trigger:
-            data_eid = sim.data.get(eid, {})
-            if attr in data_eid:
-                dest_input_time = sim.output_time + info.delay
-                dest_sim.schedule_step(dest_input_time)
-                break  # Further triggering attributes would only schedule the same event
+    for (eid, attr), triggered in sim.triggers.items():
+        if attr in sim.data.get(eid, {}):
+            for dest_sim, delay in triggered:
+                dest_sim.schedule_step(sim.output_time + delay)
 
 
 def prune_dataflow_cache(world: World):
@@ -485,10 +457,16 @@ def advance_progress(sim: SimRunner, world: World):
 
     next_step_progress: List[DenseTime] = [sim.next_steps[0]] if sim.next_steps else []
     current_step_prog = [sim.current_step] if sim.current_step else []
+    if world.rt_factor:
+        rt_passed = perf_counter() - sim.rt_start
+        rt_progress = [DenseTime(ceil(rt_passed / world.rt_factor), 0)]
+    else:
+        rt_progress = []
     new_progress = min([
         *pre_sim_induced_progress,
         *next_step_progress,
         *current_step_prog,
+        *rt_progress,
         DenseTime(world.until),
     ])
     sim.progress.set(new_progress)
