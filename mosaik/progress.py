@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 from loguru import logger  # type: ignore  # noqa: F401
-from typing import Generic, Protocol, TypeVar
+from typing import Generic, List, Protocol, Tuple, TypeVar
 from typing_extensions import Self
 
 class Comparable(Protocol):
@@ -19,7 +21,7 @@ class Progress(Generic[T]):
     """
     value: T
     """The current value of the progress."""
-    _futures: list[tuple[T, bool, asyncio.Future[T]]]
+    _futures: List[Tuple[T, bool, asyncio.Future[T]]]
     """Futures representing all currently waiting has_reached and
     has_passed calls.
 
