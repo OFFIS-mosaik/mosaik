@@ -129,7 +129,10 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_ is a visualization component, which is
   not maintained anymore.
 
-.. _external_components:
+.. _basic_simulators:
+
+.. include:: basic_simulators.rst
+
 
 |mosaik| external components
 ============================
