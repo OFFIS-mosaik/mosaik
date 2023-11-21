@@ -100,6 +100,7 @@ Async. requests:
 - :ref:`rpc.get_related_entities`
 - :ref:`rpc.get_data`
 - :ref:`rpc.set_data`
+- :ref:`rpc.set_event`
 
 
 .. _api-calls:
