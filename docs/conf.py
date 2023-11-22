@@ -16,26 +16,27 @@ import mosaik
 import sphinx_rtd_theme
 from urllib.request import urlretrieve
 import os
+import shutil
 
 # Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
 # Files will be downloaded and integrated in mosaik documentation.
-# create subfolders to put the files there
-mosaik_heatpump_folder = "ecosystem/components/mosaik-heatpump"
-if not os.path.exists(mosaik_heatpump_folder):
-    os.makedirs(mosaik_heatpump_folder) 
+
+# The directory for the component documentation
+component_docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ecosystem', 'components')
+# The directory for the mosaik-heatpump documentation
+mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, 'mosaik-heatpump')
+if os.path.exists(mosaik_heatpump_docs_dir):
+    shutil.rmtree(mosaik_heatpump_docs_dir)
+zip_file_dir = os.path.join(component_docs_dir, "doc.zip")
 urlretrieve (
-    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/raw/10-improve-documentation/docs/source/index.rst",
-    mosaik_heatpump_folder + "/index.rst"
+   "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/10-improve-documentation/mosaik-heatpump-10-improve-documentation.zip?path=docs",
+   zip_file_dir
 )
-urlretrieve (
-    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/raw/10-improve-documentation/docs/source/overview.rst",
-    mosaik_heatpump_folder + "/overview.rst"
-)
-# To make download easier maybe download whole directory from git repository
-#urlretrieve (
-#    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/10-improve-documentation/mosaik-heatpump-10-improve-documentation.zip?path=docs/source",
-#    mosaik_heatpump_folder + "/doc.zip"
-#)
+shutil.unpack_archive(zip_file_dir, component_docs_dir)
+os.remove(zip_file_dir)
+shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'), 'docs'),
+            mosaik_heatpump_docs_dir)
+os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'))
 
 # -- General configuration ----------------------------------------------------
 
