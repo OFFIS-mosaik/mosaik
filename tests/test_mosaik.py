@@ -7,7 +7,7 @@ import gc
 import glob
 import os
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import warnings
 
 from loguru import logger
@@ -15,7 +15,8 @@ import networkx as nx
 import pytest
 from tqdm import tqdm
 
-from mosaik import scenario
+from mosaik import scenario, _debug
+from mosaik.dense_time import DenseTime
 
 
 sim_config: Dict[str, scenario.SimConfig] = {
@@ -77,40 +78,36 @@ def test_mosaik(scenario_name: str, cache: bool):
         else:
             world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR)
 
-        expected_graph = nx.parse_edgelist(
-            scenario_desc.EXECUTION_GRAPH.split('\n'),
-            create_using=nx.DiGraph(),
-            data=()
-        )
+        expected_graph = _debug.parse_execution_graph(scenario_desc.EXECUTION_GRAPH)
         
         for node, inputs in scenario_desc.INPUTS.items():
-            expected_graph.add_node(node, inputs=inputs)
+            expected_graph.add_node(_debug.parse_node(node), inputs=inputs)
 
         errors: List[str] = []
         expected_nodes = set(expected_graph.nodes)
         actual_nodes = set(world.execution_graph.nodes)
         missing_nodes = expected_nodes - actual_nodes
+
+        def format_node(node: Tuple[str, DenseTime]) -> str:
+            return f"{node[0]} @ {node[1]}"
+        
         if missing_nodes:
             errors.append("The following expected simulator invocations did not happen:")
             for node in sorted(missing_nodes):
-                errors.append(f"- {node}")
-            errors.append("\n")
+                errors.append(f"- {format_node(node)}")
+            errors.append("")
 
-        extra_nodes = set(
-            n
-            for n in actual_nodes - expected_nodes
-            if "inputs" in world.execution_graph[n]
-        )
+        extra_nodes = actual_nodes - expected_nodes
         if extra_nodes:
             errors.append("The following simulator invocations were not expected:")
             for node in sorted(extra_nodes):
                 sources = world.execution_graph.predecessors(node)
                 if sources:
-                    sources_str = f"caused by: {', '.join(sources)}"
+                    sources_str = f"caused by: {', '.join(map(format_node, sources))}"
                 else:
                     sources_str = "not caused by other simulators"
-                errors.append(f"- {node} ({sources_str})")
-            errors.append("\n")
+                errors.append(f"- {format_node(node)} ({sources_str})")
+            errors.append("")
 
         predecessor_errors: List[str] = []
         for node in sorted(actual_nodes & expected_nodes):
@@ -118,16 +115,16 @@ def test_mosaik(scenario_name: str, cache: bool):
             expected_pres = set(expected_graph.predecessors(node))
             if actual_pres != expected_pres:
                 predecessor_errors.append(
-                    f"- {node} ("
-                    f"extraneous {', '.join(sorted(actual_pres - expected_pres))}; "
-                    f"missing {', '.join(sorted(expected_pres - actual_pres))})"
+                    f"- {format_node(node)} ("
+                    f"extraneous {', '.join(map(format_node, sorted(actual_pres - expected_pres)))}; "
+                    f"missing {', '.join(map(format_node, sorted(expected_pres - actual_pres)))})"
                 )
         if predecessor_errors:
             errors.append(
                 "The following simulator invocations had incorrect sources:"
             )
             errors.extend(predecessor_errors)
-            errors.append("\n")
+            errors.append("")
 
         if errors:
             raise AssertionError(
@@ -135,9 +132,11 @@ def test_mosaik(scenario_name: str, cache: bool):
                 + "\n".join(errors)
             )
             
+        assert world.execution_graph.adj == expected_graph.adj
+
         for node, data in world.execution_graph.nodes.items():
             assert data['inputs'] == expected_graph.nodes[node].get(
-                'inputs', {}), f"Inputs for {node}"
+                'inputs', {}), f"Inputs for {format_node(node)}"
 
         for sim in world.sims.values():
             assert sim.last_step.time < scenario_desc.UNTIL

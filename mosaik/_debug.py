@@ -2,12 +2,18 @@
 This module allows you to activate some debugging functionality that makes
 mosaik collect more data when the simulation is being executed.
 """
+from __future__ import annotations
+
 from copy import deepcopy
 from time import perf_counter
+from typing import Optional, Tuple
 
-from mosaik_api_v3 import InputData
+from loguru import logger  # noqa: F401  # type: ignore
+from mosaik_api_v3 import InputData, SimId
+import networkx as nx
 
 from mosaik import scheduler
+from mosaik.dense_time import DenseTime
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
 
@@ -39,6 +45,24 @@ def disable():
         setattr(scheduler, k, v)
 
 
+def parse_node(node_str: str) -> Tuple[SimId, DenseTime]:
+    # networkx will call the parser on already-parsed nodes occasionally
+    # So we make sure that we only try to parse strings.
+    if isinstance(node_str, str):
+        sid, time = node_str.rsplit("-", 1)
+        return (sid, DenseTime.parse(time.replace("~", ":")))
+    return node_str
+
+
+def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, DenseTime]]:
+    return nx.parse_edgelist(
+        graph_string.split("\n"),
+        create_using=nx.DiGraph(),
+        nodetype=parse_node,
+        data=(),
+    )
+
+
 def pre_step(world: World, sim: SimRunner, inputs: InputData):
     """
     Add a node for the current step and edges from all dependencies to the
@@ -47,23 +71,22 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
     Also perform some checks and annotate the graph with the dataflows.
     """
     eg = world.execution_graph
-    dfg = world.df_graph
     sims = world.sims
 
     sid = sim.sid
-    next_step = sim.current_step.time
-    node = '%s-%s'
-    node_id = node % (sid, next_step)
+    assert sim.current_step is not None
+    next_step = sim.current_step
+    node_id = (sid, next_step)
 
-    if hasattr(sim, 'last_node'):
-        last_node = sim.last_node
-        time_last_node = int(last_node.split('~')[0].split('-')[-1])
-    else:
-        time_last_node = -1
+    # if hasattr(sim, 'last_node'):
+    #     last_node = sim.last_node
+    #     time_last_node = last_node[1]
+    # else:
+    #     time_last_node = DenseTime(-1)
 
-    if next_step == time_last_node:
-        n_rep = int(last_node.split('~')[-1]) if '~' in last_node else 0
-        node_id = f'{node_id}~{n_rep + 1}'
+    # if next_step == time_last_node:
+    #     n_rep = int(last_node.split('~')[-1]) if '~' in last_node else 0
+    #     node_id = f'{node_id}~{n_rep + 1}'
 
     sim.last_node = node_id
 
@@ -71,34 +94,31 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
 
     input_pres = {kk.split('.')[0] for ii in inputs.values()
                   for jj in ii.values() for kk in jj.keys()}
-    for pre in dfg.predecessors(sid):
-        if pre in input_pres or dfg[pre][sid]['async_requests']:
-            pre_node = None
-            pre_time = -1
+    for pre_sim in sim.input_delays:
+        pre = pre_sim.sid
+        if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
+            pre_node: Optional[Tuple[str, DenseTime]] = None
+            pre_time = DenseTime(-1)
             # We check for all nodes if it is from the predecessor and it its
             # step time is before the current step of sim. There might be cases
             # where this simple procedure is wrong, e.g. when the pred has
             # stepped but didn't provide the connected output.
             for inode in eg.nodes:
-                node_sid, itime = inode.rsplit('-', 1)
+                node_sid, itime = inode
                 if node_sid == pre:
-                    try:
-                        itime = int(itime)
-                    except ValueError:
-                        itime = int(itime.split('~')[0])
-                    if (next_step - dfg[pre][sid]['time_shifted'] >= itime >= pre_time):
+                    if (next_step - sim.input_delays[pre_sim] >= itime >= pre_time):
                         pre_node = inode
                         pre_time = itime
             if pre_node is not None:
                 eg.add_edge(pre_node, node_id)
                 assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
 
-    for suc in dfg.successors(sid):
-        if dfg[sid][suc]['async_requests'] and sim.last_step >= 0:
-            suc_node = node % (suc, sims[suc].last_step.time)
+    for suc_sim in sim.successors_to_wait_for:
+        suc = suc_sim.sid
+        if sim.last_step >= DenseTime(0):
+            suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            print(f"{suc_node=}")
-            #assert sims[suc].progress.value.time + 1 >= next_step
+            assert sims[suc].progress.value + DenseTime(1) >= next_step
 
 
 def post_step(world: World, sim: SimRunner):
@@ -110,7 +130,6 @@ def post_step(world: World, sim: SimRunner):
     eg.nodes[last_node]['t_end'] = perf_counter()
     next_self_step = sim.next_self_step
     if next_self_step is not None and next_self_step < world.until:
-        node = '%s-%s'
-        node_id = node % (sim.sid, next_self_step)
+        node_id = (sim.sid, DenseTime(next_self_step))
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None

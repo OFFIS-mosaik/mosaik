@@ -75,4 +75,12 @@ class DenseTime:
         )
 
     def __str__(self):
-        return f"{self.time}:{self.microstep}μ"
+        return f"{self.time}:{self.microstep}"
+
+    @classmethod
+    def parse(cls, input: str) -> Self:
+        try:
+            time_str, microstep_str = input.split(":")
+            return DenseTime(int(time_str), int(microstep_str))
+        except ValueError:
+            return DenseTime(int(input))
