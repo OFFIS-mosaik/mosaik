@@ -200,7 +200,7 @@ async def wait_for_dependencies(
     for suc_sim in sim.successors_to_wait_for:
         futures.append(suc_sim.progress.has_reached(next_step))
     if lazy_stepping:
-        for suc_sim in sim.successors_to_wait_for_if_lazy:
+        for suc_sim in sim.successors:
             futures.append(suc_sim.progress.has_reached(next_step))
 
     await asyncio.gather(*futures)

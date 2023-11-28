@@ -330,14 +330,14 @@ class SimRunner:
     triggered by output on that port and the delay accrued along that
     edge.
     """
+    successors: Set[SimRunner]
     successors_to_wait_for: Set[SimRunner]
-    successors_to_wait_for_if_lazy: Set[SimRunner]
     triggering_ancestors: List[Tuple[SimRunner, DenseTime]]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, Time], List[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, Time], Set[Tuple[Port, Port]]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.
@@ -419,7 +419,7 @@ class SimRunner:
         self.timed_input_buffer = TimedInputBuffer()
 
         self.successors_to_wait_for = set()
-        self.successors_to_wait_for_if_lazy = set()
+        self.successors = set()
         self.triggering_ancestors = []
         self.triggers = {}
         self.output_to_push = {}
@@ -574,15 +574,14 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
         data = {}
         missing = collections.defaultdict(lambda: collections.defaultdict(list))
-        dfg = self.world.df_graph
-        dest_sid = self.sim.sid
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
+            src_sim = self.world.sims[sid]
             # Check if async_requests are enabled.
-            self._assert_async_requests(dfg, sid, dest_sid)
+            self._assert_async_requests(src_sim, self.sim)
             if self.world.use_cache:
-                cache_slice = self.world.sims[sid].get_output_for(self.sim.last_step.time)
+                cache_slice = src_sim.get_output_for(self.sim.last_step.time)
             else:
                 cache_slice = {}
 
@@ -614,14 +613,12 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         IDs with dictionaries of attributes and values (``{'src_full_id':
         {'dest_full_id': {'attr1': 'val1', 'attr2': 'val2'}}}``).
         """
-        sims = self.world.sims
-        dfg = self.world.df_graph
-        dest_sid = self.sim.sid
         for src_full_id, dest in data.items():
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
-                self._assert_async_requests(dfg, sid, dest_sid)
-                inputs = sims[sid].inputs_from_set_data.setdefault(eid, {})
+                src_sim = self.world.sims[sid]
+                self._assert_async_requests(src_sim, self.sim)
+                inputs = src_sim.inputs_from_set_data.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
 
@@ -648,26 +645,22 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 until=self.world.until,
             )
 
-    def _assert_async_requests(self, dfg, src_sid, dest_sid):
+    def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):
         """
         Check if async. requests are allowed from *dest_sid* to *src_sid*
         and raise a :exc:`ScenarioError` if not.
         """
-        data = {
-            'src': src_sid,
-            'dest': dest_sid,
-        }
-        if dest_sid not in dfg[src_sid]:
+        if dest_sim not in src_sim.successors:
             raise ScenarioError(
-                'No connection from "%(src)s" to "%(dest)s": You need to '
-                'connect entities from both simulators and set '
-                '"async_requests=True".' % data)
-        if dfg[src_sid][dest_sid]['async_requests'] is not True:
+                f"No connection from {src_sim.sid} to {dest_sim.sid}: You need to "
+                "connect entities from both simulators and set `async_requests=True`."
+            )
+        if dest_sim not in src_sim.successors_to_wait_for:
             raise ScenarioError(
-                'Async. requests not enabled for the connection from '
-                '"%(src)s" to "%(dest)s". Add the argument '
-                '"async_requests=True" to the connection of entities from '
-                '"%(src)s" to "%(dest)s".' % data)
+                f"Async. requests not enabled for the connection from {src_sim.sid} to "
+                f"{dest_sim.sid}. Add the argument `async_requests=True` to the "
+                f"connection of entities from {src_sim.sid} to {dest_sim.sid}."
+            )
 
 
 class StarterCollection(object):

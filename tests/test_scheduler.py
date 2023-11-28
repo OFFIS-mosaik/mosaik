@@ -51,11 +51,11 @@ def world_fixture(request):
     for sim in world.sims.values():
         sim.task = DummyTask()
     for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
-        sims[src].successors_to_wait_for_if_lazy.add(sims[dest])
+        sims[src].successors.add(sims[dest])
         sims[dest].input_delays[sims[src]] = DenseTime(0)
         if event_based:
             sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], DenseTime(0)))
-    sims[5].successors_to_wait_for_if_lazy.add(sims[4])
+    sims[5].successors.add(sims[4])
     sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else DenseTime(1, 0)
     if event_based:
         sims[5].triggers[('1', 'x')] = [(sims[4], DenseTime(0, 1))]
@@ -69,7 +69,6 @@ def world_fixture(request):
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
-    world.df_graph.add_nodes_from([0, 1], trigger=True)
 
     async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True

@@ -1,10 +1,12 @@
+from typing import List, cast
 import warnings
 
 from unittest import mock
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.scenario import ModelFactory, World
+from mosaik.dense_time import DenseTime
+from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
 import pytest
 
@@ -52,8 +54,6 @@ def test_world():
         assert world.config['start_timeout'] == 23
         assert world.sims == {}
         assert world.loop
-        assert list(world.df_graph.nodes()) == []
-        assert list(world.df_graph.edges()) == []
         assert not hasattr(world, 'execution_graph')
     finally:
         world.shutdown()
@@ -77,11 +77,11 @@ def test_world_start(world: World):
     assert world.sims['ExampleSim-0']._proxy == fac._proxy
     assert fac._proxy.sim.step_size == 2
     assert world.time_resolution == 1.0
-    assert 'ExampleSim-0' in world.df_graph
+    assert 'ExampleSim-0' in world.sims
 
     world.start('ExampleSim')
     assert list(sorted(world.sims)) == ['ExampleSim-0', 'ExampleSim-1']
-    assert 'ExampleSim-1' in world.df_graph
+    assert 'ExampleSim-1' in world.sims
 
 def test_global_time_resolution():
     """
@@ -100,27 +100,29 @@ def test_world_connect(world: World):
     """
     Test connecting to single entities.
     """
-    a = world.start('ExampleSim').A.create(2, init_val=0)
-    b = world.start('ExampleSim').B.create(2, init_val=0)
+    sim_0 = world.start("ExampleSim")
+    sim_1 = world.start("ExampleSim")
+    a = cast(List[Entity], sim_0.A.create(2, init_val=0))
+    b = cast(List[Entity], sim_1.B.create(2, init_val=0))
     for i, j in zip(a, b):
         world.connect(i, j, ('val_out', 'val_in'), ('dummy_out', 'dummy_in'))
 
+    sim_0 = world.sims[sim_0._sid]
+    sim_1 = world.sims[sim_1._sid]
+    
     # TODO: check for connections in new place
-    connections = [
-        (str(a[0].eid), str(b[0].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
-        (str(a[1].eid), str(b[1].eid), {('val_out', 'val_in'), ('dummy_out', 'dummy_in')}),
-     ]
+    assert sim_0.successors == set((sim_1,))
+    assert sim_0.successors_to_wait_for == set()
+    assert sim_1.successors == set()
+    assert sim_1.input_delays[sim_0] == DenseTime(0, 0)
 
-    assert to_dict(world.df_graph) == {
-        'ExampleSim-0': {
-            'ExampleSim-1': {
-                'async_requests': False,
-                'time_shifted': 0,
-                'weak': False,
-            },
-        },
-        'ExampleSim-1': {},
-    }
+    assert sim_1.pulled_inputs[(sim_0, 0)] == set([
+        ((a[0].eid, 'val_out'), (b[0].eid, 'val_in')),
+        ((a[0].eid, 'dummy_out'), (b[0].eid, 'dummy_in')),
+        ((a[1].eid, 'val_out'), (b[1].eid, 'val_in')),
+        ((a[1].eid, 'dummy_out'), (b[1].eid, 'dummy_in')),
+    ])
+    
     assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a[0].eid: {'ExampleSim-1.' + b[0].eid: {}},
         'ExampleSim-1.' + b[0].eid: {'ExampleSim-0.' + a[0].eid: {}},
@@ -191,16 +193,12 @@ def test_world_connect_no_attrs(world: World):
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b)
 
-    assert to_dict(world.df_graph) == {
-        'ExampleSim-0': {
-            'ExampleSim-1': {
-                'async_requests': False,
-                'time_shifted': False,
-                'weak': False,
-            },
-        },
-        'ExampleSim-1': {},
-    }
+    sim_0 = world.sims["ExampleSim-0"]
+    sim_1 = world.sims["ExampleSim-1"]
+
+    sim_0.successors = set((sim_1,))
+    sim_1.successors = set()
+    sim_1.input_delays = {sim_0: DenseTime(0)}
     assert world.entity_graph.adj == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
@@ -212,23 +210,19 @@ def test_world_connect_any_inputs(world: World):
     Check if a model sets ``'any_inputs': True`` in its meta data,
     everything can be connected to it.
     """
-    a = world.start('ExampleSim').A(init_val=0)
-    b = world.start('ExampleSim').B(init_val=0)
+    a = cast(Entity, world.start('ExampleSim').A(init_val=0))
+    b = cast(Entity, world.start('ExampleSim').B(init_val=0))
+    sim_a = world.sims[a.sid]
+    sim_b = world.sims[b.sid]
     b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
-    # TODO: check for connections in new place
-    connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
-    assert to_dict(world.df_graph) == {
-        'ExampleSim-0': {
-            'ExampleSim-1': {
-                'async_requests': False,
-                'time_shifted': 0,
-                'weak': False,
-            },
-        },
-        'ExampleSim-1': {},
-    }
+    assert sim_b.pulled_inputs[(sim_a, 0)] == set([
+        ((a.eid, "val_out"), (b.eid, "val_out")),
+    ])
+    
+    assert sim_a.successors == set((sim_b,))
+    assert sim_b.input_delays[sim_a] == DenseTime(0)
     assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
@@ -240,37 +234,23 @@ def test_world_connect_async_requests(world: World):
     a = world.start('ExampleSim').A(init_val=0)
     b = world.start('ExampleSim').B(init_val=0)
     world.connect(a, b, async_requests=True)
-
-    assert to_dict(world.df_graph) == {
-        'ExampleSim-0': {
-            'ExampleSim-1': {
-                'async_requests': True,
-                'time_shifted': False,
-                'weak': False,
-            },
-        },
-        'ExampleSim-1': {},
-    }
+    sim_a = world.sims[a.sid]
+    sim_b = world.sims[b.sid]
+    sim_a.successors_to_wait_for = set((sim_b,))
 
 
 def test_world_connect_time_shifted(world: World):
-    a = world.start('ExampleSim').A(init_val=0)
-    b = world.start('ExampleSim').B(init_val=0)
+    a = cast(Entity, world.start('ExampleSim').A(init_val=0))
+    b = cast(Entity, world.start('ExampleSim').B(init_val=0))
+    sim_a = world.sims[a.sid]
+    sim_b = world.sims[b.sid]
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    # TODO: check for connections in new place
-    connections = [(a.eid, b.eid, {('val_out', 'val_out')})]
-    assert to_dict(world.df_graph) == {
-        'ExampleSim-0': {
-            'ExampleSim-1': {
-                'async_requests': False,
-                'time_shifted': 1,
-                'weak': False,
-            },
-        },
-        'ExampleSim-1': {},
-    }
-
+    assert sim_b.pulled_inputs[(sim_a, 1)] == set([
+        ((a.eid, 'val_out'), (b.eid, 'val_out')),
+    ])
+    assert sim_a.successors == set((sim_b,))
+    assert sim_b.input_delays[sim_a] == DenseTime(1, 0)
     assert world.sims['ExampleSim-0'].outputs[-1] == {
         a.eid: {
             'val_out': 1.0
@@ -278,6 +258,7 @@ def test_world_connect_time_shifted(world: World):
     }
 
 
+@pytest.mark.skip("This is now legal (provided no 0-time cycles exist)")
 @pytest.mark.parametrize('ctype', ['time_shifted', 'async_requests'])
 def test_world_connect_different_types(world: World, ctype: str):
     a = world.start('ExampleSim').A(init_val=0)

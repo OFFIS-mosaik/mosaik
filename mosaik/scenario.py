@@ -15,7 +15,6 @@ from copy import copy
 import itertools
 from loguru import logger
 import networkx
-import time
 from tqdm import tqdm
 from typing import (
     Any,
@@ -38,7 +37,7 @@ from mosaik_api_v3.types import EntityId, Attr, ModelName, SimId, FullId
 from mosaik import simmanager
 from mosaik.dense_time import DenseTime
 from mosaik.proxies import Proxy
-from mosaik.simmanager import Port, SimRunner
+from mosaik.simmanager import SimRunner
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
 
@@ -165,7 +164,6 @@ class World(object):
     """A dictionary of already started simulators instances."""
     _sim_ids: Dict[ModelName, itertools.count[int]]
 
-    df_graph: networkx.DiGraph[SimId]
     entity_graph: networkx.Graph[FullId]
 
     def __init__(
@@ -218,10 +216,6 @@ class World(object):
             )
         )
 
-        self.df_graph = networkx.DiGraph()
-        """The directed data-flow :func:`graph <networkx.DiGraph>` for this
-        scenario."""
-
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
         ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
@@ -239,7 +233,7 @@ class World(object):
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[str] = networkx.DiGraph()
+            self.execution_graph: networkx.DiGraph[Tuple[SimId, DenseTime]] = networkx.DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
@@ -274,7 +268,6 @@ class World(object):
         self.sims[sim_id] = SimRunner(sim_id, proxy)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
-        self.df_graph.add_node(sim_id)
         return ModelFactory(self, sim_id, proxy)
 
     def connect_one(
@@ -349,11 +342,11 @@ class World(object):
         src_sim.output_request.setdefault(src.eid, []).append(src_attr)
 
         if is_pulled:
-            dest_sim.pulled_inputs.setdefault((src_sim, time_shifted), []).append((src_port, dest_port))
+            dest_sim.pulled_inputs.setdefault((src_sim, time_shifted), set()).add((src_port, dest_port))
         else:
             src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, time_shifted, dest_port))
 
-        src_sim.successors_to_wait_for_if_lazy.add(dest_sim)
+        src_sim.successors.add(dest_sim)
 
         if dest.triggered_by(dest_attr):
             src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
@@ -377,6 +370,7 @@ class World(object):
         )
         src_sim = self.sims[src._sid]
         dest_sim = self.sims[dest._sid]
+        src_sim.successors.add(dest_sim)
         src_sim.successors_to_wait_for.add(dest_sim)
         dest_sim.input_delays[src_sim] = DenseTime(0)  # DenseTime(0) is always minimal
          
@@ -420,14 +414,6 @@ class World(object):
         simulator at the first step (e.g. *{'src_attr': value}*).
         """
 
-        if self.df_graph.has_edge(src.sid, dest.sid):
-            for ctype in ['time_shifted', 'async_requests', 'weak']:
-                if eval(ctype) != self.df_graph[src.sid][dest.sid][ctype]:
-                    raise ScenarioError(f'{ctype.capitalize()} and standard '
-                                        'connections are mutually exclusive, '
-                                        'but you have set both between '
-                                        f'simulators {src.sid} and {dest.sid}')
-
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs: Set[Tuple[Attr, Attr]] = set(
             (a, a) if isinstance(a, str) else a for a in attr_pairs
@@ -460,32 +446,6 @@ class World(object):
         for src_attr, dest_attr in attr_pairs:
             if (dest.triggered_by(dest_attr)):
                 trigger.add((src.eid, src_attr))
-
-        try:
-            edge = self.df_graph[src.sid][dest.sid]
-            if not edge['weak'] == weak:
-                raise ScenarioError(
-                    f"There is already a connection between the simulators {src.sid} "
-                    f"and {dest.sid} with weak={edge['weak']}. Further connections "
-                    f"must specify the same value, but you gave weak={weak}."
-                )
-            edge['time_shifted'] = edge['time_shifted'] and time_shifted
-            if not edge['time_shifted'] == int(time_shifted):
-                raise ScenarioError(
-                    f"There is already a connection between the simulators {src.sid} "
-                    f"and {dest.sid} with time_shifted={edge['time_shifted']}. Further "
-                    f"connections must specify the same value, but you gave "
-                    f"time_shifted={time_shifted}."
-                )
-            edge['async_requests'] = edge['async_requests'] or async_requests
-        except KeyError:
-            self.df_graph.add_edge(
-                src.sid,
-                dest.sid,
-                async_requests=async_requests,
-                time_shifted=bool(time_shifted),
-                weak=weak,
-            )
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
@@ -602,9 +562,8 @@ class World(object):
             )
 
         # Check if a simulator is not connected to anything:
-        for sid, deg in sorted(list(networkx.degree(self.df_graph))):
-            if deg == 0:
-                logger.warning('{sim_id} has no connections.', sim_id=sid)
+        # TODO: Rebuild this test without df_graph (or maybe check for
+        # connectedness instead).
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
