@@ -4,12 +4,12 @@ from loguru import logger
 import pytest
 import sys
 import time
-from typing import Optional
+from typing import Any, Callable, Coroutine, Optional, Type
 
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3 import __api_version__ as api_version
 import mosaik_api_v3.connection
-from mosaik_api_v3.connection import RemoteException
+from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
 from mosaik.dense_time import DenseTime
@@ -376,7 +376,7 @@ def test_local_process_finalized(world):
     assert simulator._proxy.sim.finalized is True
 
 
-async def _rpc_get_progress(channel, world):
+async def _rpc_get_progress(channel: Channel, world: World):
     """ 
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
@@ -385,7 +385,7 @@ async def _rpc_get_progress(channel, world):
     assert progress == 23
 
 
-async def _rpc_get_related_entities(channel, world):
+async def _rpc_get_related_entities(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the
     "get_related_entities()" RPC.
@@ -432,7 +432,7 @@ async def _rpc_get_related_entities(channel, world):
     }
 
 
-async def _rpc_get_data(channel, world):
+async def _rpc_get_data(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
     RPC.
@@ -441,7 +441,7 @@ async def _rpc_get_data(channel, world):
     assert data == {"X.2": {"attr": "val"}}
 
 
-async def _rpc_set_data(channel, world: scenario.World):
+async def _rpc_set_data(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC.
@@ -457,7 +457,7 @@ async def _rpc_set_data(channel, world: scenario.World):
     }
 
 
-async def _rpc_get_data_err1(channel, world):
+async def _rpc_get_data_err1(channel: Channel, world: World):
     """
     Required simulator not connected to us.
     """
@@ -468,14 +468,7 @@ async def _rpc_get_data_err1(channel, world):
             raise ScenarioError
 
 
-def _remote_exception_type(exception):
-    return "mosaik.exceptions.ScenarioError"
-    # TODO: Get remote_traceback back
-    remote_exception_type = exception.remote_traceback.split("\n")[-2].split(":")[0]
-    return remote_exception_type
-
-
-async def _rpc_get_data_err2(channel, world):
+async def _rpc_get_data_err2(channel: Channel, world: World):
     """
     Async-requests flag not set for connection.
     """
@@ -486,21 +479,20 @@ async def _rpc_get_data_err2(channel, world):
             raise ScenarioError
 
 
-async def _rpc_set_data_err1(channel, world):
+async def _rpc_set_data_err1(channel: Channel, world: World):
     """
     Required simulator not connected to us.
     """
     await channel.send(["set_data", [{"src": {"Z.2": {"val": 42}}}], {}])
 
 
-async def _rpc_set_data_err2(channel, world):
+async def _rpc_set_data_err2(channel: Channel, world: World):
     """
     Async-requests flag not set for connection.
     """
     await channel.send(["set_data", [{"src": {"Y.2": {"val": 42}}}], {}])
 
 
-@pytest.mark.skip()
 @pytest.mark.parametrize(
     ("rpc", "err"),
     [
@@ -514,7 +506,10 @@ async def _rpc_set_data_err2(channel, world):
         (_rpc_set_data_err2, RemoteException),
     ],
 )
-def test_mosaik_remote(rpc, err):
+def test_mosaik_remote(
+    rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
+    err: Type[Exception],
+):
     world = scenario.World({})
     world.use_cache = True
 
@@ -539,14 +534,27 @@ def test_mosaik_remote(rpc, err):
 
         async def greeter():
             channel = await world.incoming_connections_queue.get()
-            proxy = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
-            proxy._meta = {"type": "time-based", "models": {}}
-            sim = simmanager.SimRunner("X", proxy)
-            sim.last_step = DenseTime(1)
-            sim.current_step = DenseTime(0)
-            sim.is_in_step = True
-            world.sims["X"] = sim
-            world.sims["X"].outputs = {1: {"2": {"attr": "val"}}}
+            proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
+            proxy_x._meta = {"type": "time-based", "models": {}}
+            sim_x = simmanager.SimRunner("X", proxy_x)
+            sim_x.successors.add(sim_x)
+            sim_x.successors_to_wait_for.add(sim_x)
+            sim_x.last_step = DenseTime(1)
+            sim_x.current_step = DenseTime(0)
+            sim_x.is_in_step = True
+            sim_x.outputs = {1: {"2": {"attr": "val"}}}
+            world.sims["X"] = sim_x
+            class DummyProxy:
+                @property
+                def meta(self):
+                    return {"type": "time-based", "models": {}}
+            sim_y = simmanager.SimRunner("Y", DummyProxy())
+            world.sims["Y"] = sim_y
+            sim_z = simmanager.SimRunner("Z", DummyProxy())
+            world.sims["Z"] = sim_z
+
+            sim_x.successors.add(sim_y)
+            
 
         async def run():
             sim_exc, greeter_exc = await asyncio.gather(

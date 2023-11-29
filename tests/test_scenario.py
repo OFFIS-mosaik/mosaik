@@ -258,19 +258,6 @@ def test_world_connect_time_shifted(world: World):
     }
 
 
-@pytest.mark.skip("This is now legal (provided no 0-time cycles exist)")
-@pytest.mark.parametrize('ctype', ['time_shifted', 'async_requests'])
-def test_world_connect_different_types(world: World, ctype: str):
-    a = world.start('ExampleSim').A(init_val=0)
-    b = world.start('ExampleSim').B(init_val=0)
-    world.connect(a, b)
-    err = pytest.raises(ScenarioError, world.connect, a, b, **{ctype: True})
-    assert str(err.value) == (f'{ctype.capitalize()} and standard connections '
-                              'are mutually exclusive, but you have set both '
-                              'between simulators ExampleSim-0 and '
-                              'ExampleSim-1')
-
-
 def test_world_get_data(world: World):
     sim1 = world.start('ExampleSim')
     sim2 = world.start('ExampleSim')
