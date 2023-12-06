@@ -22,7 +22,10 @@ import shutil
 # Files will be downloaded and integrated in mosaik documentation.
 
 # The directory for the component documentation
+os.system('pip uninstall mosaik-heatpump -y')
+os.system('pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git@10-improve-documentation')
 component_docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ecosystem', 'components')
+os.makedirs(component_docs_dir, exist_ok=True)
 # The directory for the mosaik-heatpump documentation
 mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, 'mosaik-heatpump')
 if os.path.exists(mosaik_heatpump_docs_dir):
