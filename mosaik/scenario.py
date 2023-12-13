@@ -350,6 +350,8 @@ class World(object):
                 dest_sim.persistent_inputs.setdefault(
                     dest.eid, {}
                 ).setdefault(dest_attr, {})[src.full_id] = initial_data
+
+        self.entity_graph.add_edge(src.full_id, dest.full_id)
     
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
         warnings.warn(
