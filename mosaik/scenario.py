@@ -97,16 +97,6 @@ class CmdModel(ModelOptionals):
 SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
 
 
-class DataflowEdge(TypedDict):
-    """The information associated with an edge in the dataflow graph."""
-    async_requests: bool
-    """Whether there can be async requests along this edge."""
-    time_shifted: int
-    """How much dataflow along this edge is time shifted."""
-    weak: bool
-    """Whether this edge is weak (used for same-time loops)."""
-
-
 class World(object):
     """
     The world holds all data required to specify and run the scenario.
