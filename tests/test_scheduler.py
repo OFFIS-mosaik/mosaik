@@ -92,12 +92,10 @@ def test_run(monkeypatch):
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
         world.run(until=1)
-    except:
-        world.shutdown()
-        raise
-    else:
         for sim in world.sims.values():
             assert sim.proc_started
+    finally:
+        world.shutdown()
 
 
 @pytest.mark.asyncio

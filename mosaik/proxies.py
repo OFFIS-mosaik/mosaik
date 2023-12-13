@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from copy import deepcopy
-from inspect import isgeneratorfunction
+from inspect import iscoroutinefunction, isgeneratorfunction
 from typing import Any, Dict, Iterator, List, Tuple
 from loguru import logger
 
@@ -189,8 +189,6 @@ class RemoteProxy(BaseProxy):
         return await self._channel.send(request)
 
     async def stop(self) -> None:
-        if not hasattr(self, "_channel"):
-            return
         try:
             await asyncio.wait_for(
                 self._channel.send(["stop", [], {}]),

@@ -657,14 +657,13 @@ class World(object):
         """
         Shut-down all simulators and close the server socket.
         """
-        if self.loop.is_closed():
-            return
+        if self.server.is_serving():
+            self.server.close()
 
-        for sim in self.sims.values():
-            self.loop.run_until_complete(sim.stop())
-
-        self.server.close()
-        self.loop.close()
+        if not self.loop.is_closed():
+            for sim in self.sims.values():
+                self.loop.run_until_complete(sim.stop())
+            self.loop.close()
 
 
 MOSAIK_METHODS = set(
