@@ -10,7 +10,7 @@ A
 
 def create_scenario(world):
     model_a = world.start('A', step_type='time-based', step_size=1).A()
-    model_b = world.start('B', step_type='event-based', trigger=['val_in']).A()
+    model_b = world.start('B', step_type='event-based').A()
     model_c = world.start('C', step_type='time-based', step_size=1).A()
     model_d = world.start('D', step_type='time-based', step_size=1).A()
     world.connect(model_c, model_b, ('val_out', 'val_in'))

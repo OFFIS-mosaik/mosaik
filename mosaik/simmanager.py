@@ -29,26 +29,32 @@ from typing import (
     Dict,
     Iterable,
     List,
+    NoReturn,
     Optional,
     OrderedDict,
     Set,
     Tuple,
     TYPE_CHECKING,
+    TypeVar,
     Union,
 )
-from typing_extensions import Literal
+import tqdm
+from typing_extensions import Literal, TypeAlias
+
+import mosaik_api_v3
+from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
+from mosaik.dense_time import DenseTime
+from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.progress import Progress
+from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
+from mosaik.adapters import init_and_get_adapter
 
 if 'Windows' in platform.system():
-    from subprocess import CREATE_NEW_CONSOLE
-
-from mosaik import _version
-import mosaik_api_v3
-
-from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.proxies import LocalProxy, APIProxy, RemoteProxy
+    from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import Meta, OutputData, SimId, World, DataflowEdge
+    from mosaik.scenario import World
 
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
@@ -60,7 +66,7 @@ async def start(
     sim_id: SimId,
     time_resolution: float,
     sim_params: Dict[str, Any],
-):
+) -> Proxy:
     """
     Start the simulator *sim_name* based on the configuration im
     *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
@@ -122,17 +128,19 @@ async def start(
         if sim_type in sim_config:
             proxy = await starter(world, sim_name, sim_config, MosaikRemote(world, sim_id))
             try:
-                await asyncio.wait_for(
-                    proxy.init(sim_id, time_resolution=time_resolution, **sim_params),
+                proxy = await asyncio.wait_for(
+                    init_and_get_adapter(proxy, sim_id, {"time_resolution": time_resolution, **sim_params}),
                     world.config['start_timeout']
                 )
-                return SimRunner(sim_name, sim_id, world, proxy)
+                return proxy
             except asyncio.IncompleteReadError:
+                await proxy.stop()
                 raise SystemExit(
                     f'Simulator "{sim_name}" closed its connection during the init() '
                     'call.'
                 )
             except asyncio.TimeoutError:
+                await proxy.stop()
                 raise SystemExit(
                     f'Simulator "{sim_name}" did not reply to the init() call in time.'
                 )
@@ -147,7 +155,7 @@ async def start_inproc(
     sim_name: str,
     sim_config: Dict[Literal['python', 'env'], str],
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Import and instantiate the Python simulator *sim_name* based on its
     config entry *sim_config*.
@@ -166,6 +174,10 @@ async def start_inproc(
             ValueError: 'Malformed Python class name: Expected "module:Class"',
             ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
             AttributeError: 'Class not found in module',
+            ImportError: f"Error importing the requested class: {err.args[0]}",
+            KeyError:
+                "'python' key not found in sim_config. "
+                "(This is an error in mosaik, please report it.)",
         }
         details = detail_msgs[type(err)]
         origerr = err.args[0]
@@ -176,7 +188,7 @@ async def start_inproc(
     if int(mosaik_api_v3.__version__.split('.')[0]) < 3:
         raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
-    return LocalProxy(mosaik_remote, sim)
+    return LocalProxy(sim, mosaik_remote)
 
 
 async def start_proc(
@@ -184,7 +196,7 @@ async def start_proc(
     sim_name: str,
     sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Start a new process for simulator *sim_name* based on its config entry
     *sim_config*.
@@ -201,7 +213,7 @@ async def start_proc(
     cmd = sim_config['cmd'] % replacements
     if 'posix' in sim_config.keys():
         posix = sim_config.pop('posix')
-        cmd = shlex.split(cmd, posix=posix)
+        cmd = shlex.split(cmd, posix=bool(posix))
     else:
         cmd = shlex.split(cmd, posix=(os.name != 'nt'))
     cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
@@ -213,7 +225,7 @@ async def start_proc(
 
     # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
     creationflags = 0
-    new_console = sim_config['new_console'] if 'new_console' in sim_config else False
+    new_console = sim_config.get('new_console', False)
     if new_console:
         if 'Windows' in platform.system():
             creationflags = CREATE_NEW_CONSOLE
@@ -242,11 +254,11 @@ async def start_proc(
                             % (sim_name, eout)) from None
 
     try:
-        (reader, writer) = await asyncio.wait_for(
+        channel = await asyncio.wait_for(
             world.incoming_connections_queue.get(),
             world.config['start_timeout'],
         )
-        return RemoteProxy(mosaik_remote, reader, writer)
+        return RemoteProxy(channel, mosaik_remote)
     except asyncio.TimeoutError:
         raise SimulationError(
             f'Simulator "{sim_name}" did not connect to mosaik in time.'
@@ -258,7 +270,7 @@ async def start_connect(
     sim_name: str,
     sim_config,
     mosaik_remote: MosaikRemote,
-) -> APIProxy:
+) -> BaseProxy:
     """
     Connect to the already running simulator *sim_name* based on its config
     entry *sim_config*.
@@ -285,7 +297,11 @@ async def start_connect(
             f'Simulator "{sim_name}" could not be started: Could not connect to '
             f'"{sim_config["connect"]}"'
         )
-    return RemoteProxy(mosaik_remote, reader, writer)
+    return RemoteProxy(Channel(reader, writer), mosaik_remote)
+
+
+Port: TypeAlias = Tuple[EntityId, Attr]
+"""Pair of an entity ID and an attribute of that entity"""
 
 
 class SimRunner:
@@ -296,138 +312,172 @@ class SimRunner:
     simulator.
     """
 
-    name: str
-    """The name of this simulator (in the SIM_CONFIG)."""
     sid: SimId
     """This simulator's ID."""
-    meta: Meta
-    """This simulator's meta."""
     type: Literal['time-based', 'event-based', 'hybrid']
+    supports_set_events: bool
 
-    proxy: APIProxy
+    _proxy: Proxy
     """The actual proxy for this simulator."""
+
+    # Connection setup
+    input_delays: Dict[SimRunner, DenseTime]
+    """For each simulator that provides data to this simulator, the
+    minimum over all input delays. This is used while waiting for
+    dependencies."""
+    triggers: Dict[Port, List[Tuple[SimRunner, DenseTime]]]
+    """For each port of this simulator, the simulators that are
+    triggered by output on that port and the delay accrued along that
+    edge.
+    """
+    successors: Set[SimRunner]
+    successors_to_wait_for: Set[SimRunner]
+    triggering_ancestors: List[Tuple[SimRunner, DenseTime]]
+    """An iterable of this sim's ancestors that can trigger a step of
+    this simulator. The second component specifies the least amount of
+    time that output from the ancestor needs to reach us.
+    """
+    pulled_inputs: Dict[Tuple[SimRunner, Time], Set[Tuple[Port, Port]]]
+    """Output to pull in whenever this simulator performs a step.
+    The keys are the source SimRunner and the time shift, the values
+    are the source and destination entity-attribute pairs.
+    """
+    output_to_push: Dict[Port, List[Tuple[SimRunner, int, Port]]]
+    """This lists those connections that use the timed_input_buffer.
+    The keys are the entity-attribute pairs of this simulator with
+    the corresponding list of simulator-time-entity-attribute triples
+    describing the destinations for that data and the time-shift
+    occuring along the connection.
+    """
+
+    output_request: OutputRequest
+
+    inputs_from_set_data: InputData
+    """Inputs received via `set_data`."""
+    persistent_inputs: InputData
+    """Memory of previous inputs for persistent attributes."""
+    timed_input_buffer: TimedInputBuffer
+    """Inputs for this simulator."""
+
 
     rt_start: float
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
     started: bool
 
-    next_steps: List[int]
+    next_steps: List[DenseTime]
     """The scheduled next steps this simulator will take, organized as a heap.
     Once the immediate next step has been chosen (and the `has_next_step` event
     has been triggered), the step is moved to `next_step` instead."""
-    next_step: Optional[int]
-    """This simulator's immediate next step once it has been determined. The
-    step is removed from the `next_steps` heap at that point and the
-    `has_next_step` event is triggered."""
-    has_next_step: asyncio.Event
-    """An event that is triggered once this simulator's next step has been
-    determined."""
-    next_self_step: Optional[int]
+    newer_step: asyncio.Event
+    next_self_step: Optional[Time]
     """The next self-scheduled step for this simulator."""
-    interruptable: bool
-    """Set when this simulator's next step has been scheduled but it is still
-    waiting for dependencies which might trigger earlier steps for this
-    simulator."""
 
-    predecessors: Dict[Any, Tuple[SimRunner, DataflowEdge]]
-    """This simulator's predecessors in the dataflow graph and the corresponding
-    edges."""
-    successors: Dict[Any, Tuple[SimRunner, DataflowEdge]]
-    """This simulator's successors in the dataflow graph and the corresponding
-    edge.."""
-    triggering_ancestors: Iterable[Tuple[SimId, bool]]
-    """
-    An iterable of this sim's ancestors that can trigger a step of this
-    simulator. The second component specifies whether the connecting is weak or
-    time-shifted (False) or immediate (True).
-    """
-
-    input_buffer: Dict
-    """Inputs received via `set_data`."""
-    input_memory: Dict
-    """Memory of previous inputs for persistent attributes."""
-    timed_input_buffer: TimedInputBuffer
-    """'Usual' inputs. (But also see `world._df_cache`.)"""
-
-    progress: int
+    progress: Progress[DenseTime]
     """This simulator's progress in mosaik time.
 
-    This simulator has done all its work before time `progress`; its next stept will be
-    at time `progress` or later. For time-based simulators, the next step will happen
-    at time `progress`."""
-    last_step: int
+    This simulator has done all its work before time `progress`, so
+    other simulator can rely on this simulator's output until this time.
+    """
+    last_step: DenseTime
     """The most recent step this simulator performed."""
+    current_step: Optional[DenseTime]
 
-    output_time: int
+    output_time: DenseTime
     """The output time associated with `data`. Usually, this will be equal to
     `last_step` but simulators may specify a different time for their output."""
     data: OutputData
     """The newest data returned by this simulator."""
-    related_sims: Iterable[SimRunner]
-    """Simulators related to this simulator. (Currently all other simulators.)"""
-    sim_proc: asyncio.Task
+    task: asyncio.Task[None]
     """The asyncio.Task for this simulator."""
-    wait_events: List[asyncio.Event]
-    """The event (usually an AllOf event) this simulator is waiting for."""
-    trigger_cycles: List[TriggerCycle]
-    """Triggering cycles in a simulation"""
+
+    outputs: Optional[Dict[Time, OutputData]]
+    tqdm: tqdm.tqdm[NoReturn]
 
     def __init__(
         self,
-        name: str,
         sid: SimId,
-        world: World,
-        proxy: APIProxy,
+        connection: Proxy,
     ):
-        self.name = name
         self.sid = sid
-        self._world = world
-        self.proxy = proxy
+        self._proxy = connection
 
-        self.type = proxy.meta.get('type', 'time-based')
+        self.type = connection.meta['type']
+        self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
-        self.last_step = -1
+        self.last_step = DenseTime(-1)
+        self.current_step = None
         if self.type != 'event-based':
-            self.next_steps = [0]
+            self.next_steps = [DenseTime(0)]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress = 0
-        self.input_buffer = {}  # Buffer used by "MosaikRemote.set_data()"
-        self.input_memory = {}
+        self.progress = Progress(DenseTime(0))
+        self.inputs_from_set_data = {}
+        self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
-        self.buffered_output = {}
-        self.sim_proc = None  # type: ignore  # will be set in Mosaik's init
-        self.has_next_step = asyncio.Event()
-        self.wait_events = []
-        self.interruptable = False
+
+        self.successors_to_wait_for = set()
+        self.successors = set()
+        self.triggering_ancestors = []
+        self.triggers = {}
+        self.output_to_push = {}
+        self.pulled_inputs = {}
+
+        self.task = None  # type: ignore  # will be set in World.run
+        self.newer_step = asyncio.Event()
         self.is_in_step = False
-        self.trigger_cycles = []
-        self.rank = None  # topological rank
 
-    def schedule_step(self, time: int):
-        """Schedule a step for this simulator at the given time. This will wake this
-        simulator and if the new step is earlier than previously scheduled steps, the
-        sim_process will be interrupted with an 'Earlier step' message."""
-        if time in self.next_steps:
-            return
+        self.input_delays = {}
 
-        is_earlier = self.next_steps and time < self.next_steps[0]
-        hq.heappush(self.next_steps, time)
-        self.has_next_step.set()
-        if is_earlier and self.interruptable:
-            self.sim_proc.cancel()
+        self.output_request = {}
+
+        self.outputs = None
+
+    def schedule_step(self, dense_time: DenseTime):
+        """Schedule a step for this simulator at the given time. This
+        will trigger a re-evaluation whether this simulator's next
+        step is settled, provided that the new step is earlier than the
+        old one and the simulator is currently awaiting it's next
+        settled step.
+        """
+        if dense_time in self.next_steps:
+            return dense_time
+
+        is_earlier = not self.next_steps or dense_time < self.next_steps[0]
+        hq.heappush(self.next_steps, dense_time)
+        if is_earlier:
+            self.newer_step.set()
+
+    async def setup_done(self):
+        return await self._proxy.send(["setup_done", (), {}])
+
+    async def step(self, time: Time, inputs: InputData, max_advance: Time) -> Optional[Time]:
+        return await self._proxy.send(["step", (time, inputs, max_advance), {}])
+
+    async def get_data(self, outputs: OutputRequest) -> OutputData:
+        return await self._proxy.send(["get_data", (outputs,), {}])
+
+    def get_output_for(self, time: Time) -> OutputData:
+        assert self.outputs is not None
+        for data_time, value in reversed(self.outputs.items()):
+            if data_time <= time:
+                return value
+
+        return {}
 
     async def stop(self):
         """
         Stop the simulator behind the proxy.
         """
-        await self.proxy.stop()
+        await self._proxy.stop()
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} sid={self.sid!r}>"
 
 
-class MosaikRemote:
+class MosaikRemote(mosaik_api_v3.MosaikProxy):
     world: World
     sid: SimId
 
@@ -448,7 +498,7 @@ class MosaikRemote:
 
     async def get_related_entities(
         self,
-        entities=None
+        entities: Union[FullId, List[FullId], None] = None
     ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
         Return information about the related entities of *entities*.
@@ -499,7 +549,7 @@ class MosaikRemote:
             edges_tuple = tuple(list(edge) + [{}] for edge in edges_list)
 
             return {'nodes': nodes_dict, 'edges': edges_tuple}
-        elif type(entities) is str:
+        elif isinstance(entities, str):
             return {n: graph.nodes[n] for n in graph[entities]}
         else:
             return {
@@ -507,7 +557,7 @@ class MosaikRemote:
                 for eid in entities
             }
 
-    async def get_data(self, attrs) -> Dict[str, Any]:
+    async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
         """
         Return the data for the requested attributes *attrs*.
 
@@ -519,36 +569,37 @@ class MosaikRemote:
         respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
-        assert self.sim.is_in_step
-        cache_slice = (
-            self.world._df_cache[self.sim.last_step]
-            if self.world._df_cache is not None
-            else {}
-        )
+        logger.warning(f"get_data from {self.sim}, requesting {attrs}")
+        assert self.sim.is_in_step, "get_data must happen in step"
+        assert self.sim.current_step is not None, "no current step time"
 
         data = {}
-        missing = collections.defaultdict(
-            lambda: collections.defaultdict(list))
-        dfg = self.world.df_graph
-        dest_sid = self.sim.sid
+        missing = collections.defaultdict(lambda: collections.defaultdict(list))
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
+            src_sim = self.world.sims[sid]
             # Check if async_requests are enabled.
-            self._assert_async_requests(dfg, sid, dest_sid)
+            logger.warning(f"{src_sim=}")
+            self._assert_async_requests(src_sim, self.sim)
+            if self.world.use_cache:
+                cache_slice = src_sim.get_output_for(self.sim.last_step.time)
+            else:
+                cache_slice = {}
 
             data[full_id] = {}
             for attr in attr_names:
                 try:
-                    data[full_id][attr] = cache_slice[sid][eid][attr]
+                    data[full_id][attr] = cache_slice[eid][attr]
                 except KeyError:
                     missing[sid][eid].append(attr)
 
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            assert (dep.progress > self.sim.last_step >= dep.last_step)
-            dep_data = await dep.proxy.get_data(attrs)
+            #assert dep.progress.value > self.sim.current_step >= dep.last_step, \
+            #    "sim progress wrong for async requests"
+            dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
                 # to update the dict in that case.
@@ -564,21 +615,20 @@ class MosaikRemote:
         IDs with dictionaries of attributes and values (``{'src_full_id':
         {'dest_full_id': {'attr1': 'val1', 'attr2': 'val2'}}}``).
         """
-        sims = self.world.sims
-        dfg = self.world.df_graph
-        dest_sid = self.sim.sid
         for src_full_id, dest in data.items():
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
-                self._assert_async_requests(dfg, sid, dest_sid)
-                inputs = sims[sid].input_buffer.setdefault(eid, {})
+                src_sim = self.world.sims[sid]
+                self._assert_async_requests(src_sim, self.sim)
+                inputs = src_sim.inputs_from_set_data.setdefault(eid, {})
                 for attr, val in attributes.items():
                     inputs.setdefault(attr, {})[src_full_id] = val
 
-    async def set_event(self, event_time):
+    async def set_event(self, event_time: Time):
         """
         Schedules an event/step at simulation time *event_time*.
         """
+        logger.warning(f"set_event({event_time}")
         sim = self.world.sims[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
@@ -586,8 +636,8 @@ class MosaikRemote:
                 "mode."
             )
         if event_time < self.world.until:
-            sim.progress = min(event_time, sim.progress)
-            sim.schedule_step(event_time)
+            # TODO: Check whether progress.set is better
+            sim.schedule_step(DenseTime(event_time, 0))
         else:
             logger.warning(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "
@@ -597,26 +647,22 @@ class MosaikRemote:
                 until=self.world.until,
             )
 
-    def _assert_async_requests(self, dfg, src_sid, dest_sid):
+    def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):
         """
         Check if async. requests are allowed from *dest_sid* to *src_sid*
         and raise a :exc:`ScenarioError` if not.
         """
-        data = {
-            'src': src_sid,
-            'dest': dest_sid,
-        }
-        if dest_sid not in dfg[src_sid]:
+        if dest_sim not in src_sim.successors:
             raise ScenarioError(
-                'No connection from "%(src)s" to "%(dest)s": You need to '
-                'connect entities from both simulators and set '
-                '"async_requests=True".' % data)
-        if dfg[src_sid][dest_sid]['async_requests'] is not True:
+                f"No connection from {src_sim.sid} to {dest_sim.sid}: You need to "
+                "connect entities from both simulators and set `async_requests=True`."
+            )
+        if dest_sim not in src_sim.successors_to_wait_for:
             raise ScenarioError(
-                'Async. requests not enabled for the connection from '
-                '"%(src)s" to "%(dest)s". Add the argument '
-                '"async_requests=True" to the connection of entities from '
-                '"%(src)s" to "%(dest)s".' % data)
+                f"Async. requests not enabled for the connection from {src_sim.sid} to "
+                f"{dest_sim.sid}. Add the argument `async_requests=True` to the "
+                f"connection of entities from {src_sim.sid} to {dest_sim.sid}."
+            )
 
 
 class StarterCollection(object):
@@ -638,7 +684,7 @@ class StarterCollection(object):
     # Singleton instance of the starter collection.
     __instance = None
 
-    def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, APIProxy]]]:
+    def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:
             # Create collection with default starters (i.e., starters defined
             # my mosaik core).
@@ -661,42 +707,25 @@ class TimedInputBuffer:
     the most recent value is added.
     """
 
+    input_queue: List[Tuple[Time, int, FullId, EntityId, Attr, Any]]
+
     def __init__(self):
         self.input_queue = []
         self.counter = itertools.count()  # Used to chronologically sort entries
 
-    def add(self, time, src_sid, src_eid, dest_eid, dest_var, value):
-        src_full_id = '.'.join(map(str, (src_sid, src_eid)))
-        hq.heappush(self.input_queue, (time, next(self.counter), src_full_id,
-                                       dest_eid, dest_var, value))
+    def add(self, time: Time, src_sid: SimId, src_eid: EntityId, dest_eid: EntityId, dest_attr: Attr, value: Any):
+        src_full_id = f"{src_sid}.{src_eid}"
+        hq.heappush(
+            self.input_queue,
+            (time, next(self.counter), src_full_id, dest_eid, dest_attr, value)
+        )
 
-    def get_input(self, input_dict, step):
+    def get_input(self, input_dict: InputData, step: Time) -> InputData:
         while len(self.input_queue) > 0 and self.input_queue[0][0] <= step:
             _, _, src_full_id, eid, attr, value = hq.heappop(self.input_queue)
-            input_dict.setdefault(eid, {}).setdefault(attr, {})[
-                src_full_id] = value
+            input_dict.setdefault(eid, {}).setdefault(attr, {})[src_full_id] = value
 
         return input_dict
 
     def __bool__(self):
         return bool(len(self.input_queue))
-
-
-@dataclass
-class TriggerCycle:
-    """
-    Stores the information of triggering cycles of a simulator
-    """
-
-    sids: List[SimId]
-    activators: Set[Tuple[str, str]]
-    """List of all attributes that trigger the destination simulator if the given edge"""
-    min_length: int
-    """
-    If connections between simulators are time-shifted, the cycle needs more time for
-    a trigger round. If no edge is timeshifted, the minimum length is 0.
-    """
-    in_edge: DataflowEdge
-    """The edge that is going into the simulator"""
-    time: int
-    count: int
