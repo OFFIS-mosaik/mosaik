@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from copy import deepcopy
-from inspect import iscoroutinefunction, isgeneratorfunction
+from inspect import isgeneratorfunction
 from typing import Any, Dict, Iterator, List, Tuple
 from loguru import logger
 
