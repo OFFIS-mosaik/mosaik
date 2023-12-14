@@ -409,7 +409,6 @@ def test_extra_methods(world: World):
     assert hasattr(sim, "bar")
 
 
-@pytest.mark.xfail
 def test_no_extra_methods(world: World):
     # This should not throw an exception, despite not having
     # "extra_methods" in the meta, as it is optional.

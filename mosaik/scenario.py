@@ -718,7 +718,7 @@ class ModelFactory():
                 setattr(self, model, self.models[model])
 
         # Bind extra_methods to this instance:
-        for meth_name in self.meta["extra_methods"]:
+        for meth_name in self.meta.get("extra_methods", []):
             # We need get_wrapper() in order to avoid problems with scoping
             # of the name "meth". Without it, "meth" would be the same for all
             # wrappers.
