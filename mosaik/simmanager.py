@@ -569,7 +569,6 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         respective values:
         (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
         """
-        logger.warning(f"get_data from {self.sim}, requesting {attrs}")
         assert self.sim.is_in_step, "get_data must happen in step"
         assert self.sim.current_step is not None, "no current step time"
 
@@ -580,7 +579,6 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             sid, eid = full_id.split(FULL_ID_SEP, 1)
             src_sim = self.world.sims[sid]
             # Check if async_requests are enabled.
-            logger.warning(f"{src_sim=}")
             self._assert_async_requests(src_sim, self.sim)
             if self.world.use_cache:
                 cache_slice = src_sim.get_output_for(self.sim.last_step.time)
@@ -628,7 +626,6 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         """
         Schedules an event/step at simulation time *event_time*.
         """
-        logger.warning(f"set_event({event_time}")
         sim = self.world.sims[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
