@@ -1,7 +1,5 @@
 from typing import List, cast
-import warnings
 
-from unittest import mock
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
@@ -13,6 +11,9 @@ import pytest
 sim_config: scenario.SimConfig = {
     'ExampleSim': {
         'python': 'example_sim.mosaik:ExampleSim',
+    },
+    'MetaMirror': {
+        'python': 'tests.simulators.meta_mirror:MetaMirror',
     },
 }
 
@@ -392,3 +393,32 @@ def test_model_mock_entity_graph(world: World):
     assert world.entity_graph.nodes['ExampleSim-0.1']['sid'] == 'ExampleSim-0'
     assert world.entity_graph.nodes['ExampleSim-0.0']['type'] == 'A'
     assert world.entity_graph.nodes['ExampleSim-0.1']['type'] == 'A'
+
+
+def test_extra_methods(world: World):
+    sim = world.start(
+        'MetaMirror', 
+        meta={
+            "api_version": "3.0",
+            "type": "time-based",
+            "models": {},
+            "extra_methods": ["foo", "bar"],
+        },
+    )
+    assert hasattr(sim, "foo")
+    assert hasattr(sim, "bar")
+
+
+def test_no_extra_methods(world: World):
+    # This should not throw an exception, despite not having
+    # "extra_methods" in the meta, as it is optional.
+    world.start(
+        'MetaMirror',
+        meta={
+            "api_version": "3.0",
+            "type": "time-based",
+            "models": {},
+        },
+    )
+    
+    
