@@ -66,7 +66,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
       analysis library.
 
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
-      contains different models for simulation of heatpumps.
+      contains different models for simulation of heatpump systems.
 
 - `data <https://gitlab.com/mosaik/components/data>`_ related components:
 
@@ -144,7 +144,7 @@ feel free to contact us at `mosaik [ A T ] offis.de <mosaik@offis.de>`_ to be li
 
 Introduction...
 
-mosaik-heatpump
+:doc:`mosaik-heatpump <./components/mosaik-heatpump/overview>`
 
 .. toctree::
    :maxdepth: 2
