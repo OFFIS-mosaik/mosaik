@@ -144,7 +144,7 @@ feel free to contact us at `mosaik [ A T ] offis.de <mosaik@offis.de>`_ to be li
 
 Introduction...
 
-:doc:`mosaik-heatpump <./components/mosaik-heatpump/overview>`
+- :doc:`mosaik-heatpump <./components/mosaik-heatpump/overview>`
 
 .. toctree::
    :maxdepth: 2
