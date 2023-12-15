@@ -89,7 +89,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
         self.constants[eid] = constant
         return {"eid": eid, "type": model}
 
-    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time | None:
+    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time:
         assert inputs == {}
         self.time = time
         return time + self.step_size
