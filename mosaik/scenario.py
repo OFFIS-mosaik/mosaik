@@ -32,7 +32,7 @@ import warnings
 from typing_extensions import Literal, TypedDict
 
 from mosaik_api_v3.connection import Channel
-from mosaik_api_v3.types import EntityId, Attr, ModelName, SimId, FullId
+from mosaik_api_v3.types import EntityId, Attr, ModelDescription, ModelName, SimId, FullId
 
 from mosaik import simmanager
 from mosaik.dense_time import DenseTime
@@ -40,6 +40,7 @@ from mosaik.proxies import Proxy
 from mosaik.simmanager import SimRunner
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
 
 
 class MosaikConfig(TypedDict, total=False):
@@ -364,7 +365,9 @@ class World(object):
         dest_sim = self.sims[dest._sid]
         src_sim.successors.add(dest_sim)
         src_sim.successors_to_wait_for.add(dest_sim)
-        dest_sim.input_delays[src_sim] = DenseTime(0)  # DenseTime(0) is always minimal
+        # DenseTime(0) is always minimal, so we dont need to compare to
+        # previous value of input_delays[src_sim]
+        dest_sim.input_delays[src_sim] = DenseTime(0)  
          
     def connect(
         self,
@@ -755,6 +758,57 @@ class ModelFactory():
             )
 
 
+def parse_attrs(
+    model_desc: ModelDescription,
+    type: Literal['time-based', 'event-based', 'hybrid']
+) -> Tuple[InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr]]:
+    if model_desc.get('any_inputs', False):
+        inputs: Optional[InOrOutSet[Attr]] = OutSet()
+    else:
+        inputs = wrap_set(model_desc.get('attrs'))
+    default_measurements = None if type == 'event-based' or 'trigger' in model_desc else inputs
+    measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
+    default_events = inputs if type == 'event-based' and 'non-trigger'not in model_desc else None
+    event_inputs = wrap_set(model_desc.get('trigger', default_events))
+    measurement_inputs, event_inputs = parse_set_triple(
+        inputs, measurement_inputs, event_inputs,
+        "attrs", "non-trigger", "trigger"
+    )
+    if type == 'time-based' and event_inputs != frozenset():
+        raise ValueError(
+            "time-based simulators may not specify trigger attrs (use a hybrid "
+            "simulator, instead)"
+        )
+    if type == 'event-based' and measurement_inputs != frozenset():
+        raise ValueError(
+            "event-based simulators may not specify non-trigger attrs (use a hybrid "
+            "simulator, instead)"
+        )
+    
+    outputs = wrap_set(model_desc.get('attrs'))
+    default_measurements = None if type == 'event-based' or 'non-persistent' in model_desc else outputs
+    measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
+    default_events = outputs if type == 'event-based' and not 'persistent' in model_desc else None
+    event_outputs = wrap_set(model_desc.get('non-persistent', default_events))
+    measurement_outputs, event_outputs = parse_set_triple(
+        outputs, measurement_outputs, event_outputs,
+        "attrs", "persistent", "non-persistent"
+    )
+    if type == 'time-based' and event_outputs != frozenset():
+        raise ValueError(
+            "time-based simulators may not specify non-persistent attrs (use a hybrid "
+            "simulator, instead)"
+        )
+    if type == 'event-based' and measurement_outputs != frozenset():
+        raise ValueError(
+            "event-based simulators may not specify persistent attrs (use a hybrid "
+            "simulator, instead)"
+        )
+
+    return measurement_inputs, event_inputs, measurement_outputs, event_outputs
+
+
+
 class ModelMock(object):
     """
     Instances of this class are exposed as attributes of
@@ -771,12 +825,10 @@ class ModelMock(object):
     _proxy: Proxy
     params: FrozenSet[str]
     any_inputs: bool
-    # TODO: Maybe introduce a "UniversalSet" abstraction to deal with
-    # any_inputs in a more unified way?
-    event_inputs: FrozenSet[Attr]
-    measurement_inputs: FrozenSet[Attr]
-    event_outputs: FrozenSet[Attr]
-    measurement_outputs: FrozenSet[Attr]
+    event_inputs: InOrOutSet[Attr]
+    measurement_inputs: InOrOutSet[Attr]
+    event_outputs: InOrOutSet[Attr]
+    measurement_outputs: InOrOutSet[Attr]
 
     def __init__(self, world: World, factory: ModelFactory, model: ModelName, proxy: Proxy):
         self._world = world
@@ -785,64 +837,17 @@ class ModelMock(object):
         self._proxy = proxy
         model_desc = proxy.meta['models'][model]
         self.params = frozenset(model_desc.get('params', []))
+
+        if model == 'C' and 'attrs' not in model_desc: return
+        self.measurement_inputs, self.event_inputs, self.measurement_outputs, self.event_outputs = parse_attrs(model_desc, self._factory.type)
         self.any_inputs = model_desc.get('any_inputs', False)
-        attrs = frozenset(model_desc.get('attrs', []))
-        if self._factory.type != "hybrid":
-            for special_key in ["trigger", "non-persistent"]:
-                if special_key in model_desc:
-                    raise ScenarioError(
-                        f'The key "{special_key}" in the model description is only '
-                        f'valid for hybrid simulators, but your {self._factory.type} '
-                        f'simulator {self._factory._sid} uses it in its model '
-                        f'"{model}". Remove the key or turn it into a hybrid simulator.'
-                    )
-        for invalid_key, alternative in [
-            ("non-trigger", "trigger"),
-            ("persistent", "non-persistent"),
-        ]:
-            if invalid_key in model_desc:
-                raise ScenarioError(
-                    f'The key "{invalid_key}" is not supported in model '
-                    f'descriptions, but your simulator {self._factory._sid} uses it '
-                    f'in its model "{model}". Specify the "{alternative}" attributes, '
-                    'instead.'
-                )
-            
-        if proxy.meta['type'] == 'event-based':
-            self.event_inputs = attrs
-            self.measurement_inputs = frozenset()
-            self.event_outputs = attrs
-            self.measurement_outputs = frozenset()
-        elif proxy.meta['type'] == 'time-based':
-            self.event_inputs = frozenset()
-            self.measurement_inputs = attrs
-            self.event_outputs = frozenset()
-            self.measurement_outputs = attrs
-        else:
-            self.event_inputs = frozenset(model_desc.get('trigger', []))
-            if not self.event_inputs.issubset(attrs):
-                raise ScenarioError(
-                    'Attributes in "trigger" must be a subset of attributes in '
-                    f'"attrs", but for model "{model}", the following attributes only '
-                    f'appear in "trigger": {", ".join(self.event_inputs - attrs)}.'
-                )
-            self.measurement_inputs = attrs - self.event_inputs
-            self.event_outputs = frozenset(model_desc.get("non-persistent", []))
-            if not self.event_outputs.issubset(attrs):
-                raise ScenarioError(
-                    'Attributes in "non-persistent" must be a subset of attributes in '
-                    f'"attrs", but for model "{model}", the following attributes only '
-                    'appear in "non-persistent": '
-                    f'{", ".join(self.event_outputs - attrs)}.'
-                )
-            self.measurement_outputs = attrs - self.event_outputs
 
     @property
-    def input_attrs(self) -> FrozenSet[Attr]:
+    def input_attrs(self) -> InOrOutSet[Attr]:
         return self.event_inputs | self.measurement_inputs
 
     @property
-    def output_attrs(self) -> FrozenSet[Attr]:
+    def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
     
     def __call__(self, **model_params):

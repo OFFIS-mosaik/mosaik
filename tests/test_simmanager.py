@@ -36,7 +36,7 @@ sim_config: scenario.SimConfig = {
         "python": "tests.mocks.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
-        "python": "tests.mocks.meta_mock:MetaMock",
+        "python": "tests.simulators.meta_mirror:MetaMirror",
     },
 }
 
@@ -89,14 +89,12 @@ def test_start(world, monkeypatch):
     assert ret == Proxy
 
 
-def test_start_wrong_api_version(world, monkeypatch):
+def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
     with pytest.raises(ScenarioError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "MetaMock", "MetaMock-0", 1.0, {"meta": {"api_version": "1000.0"}})
-        )
+        world.start("MetaMock", meta={"api_version": "1000.0"})
 
     assert str(exc_info.value) == (
         "There was an error during the initialization of MetaMock-0: The API version "
@@ -332,9 +330,9 @@ def test_sim_proxy_illegal_model_names(world):
 
 def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["step"]})
+        world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["A"]})
+        world.start("MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]})
 
 
 def test_sim_proxy_stop_impl(world):
