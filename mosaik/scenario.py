@@ -762,13 +762,43 @@ def parse_attrs(
     model_desc: ModelDescription,
     type: Literal['time-based', 'event-based', 'hybrid']
 ) -> Tuple[InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr]]:
+    """Parse the attrs and their trigger/persistent state.
+
+    The guiding principle is this: The user can specify as little
+    information as possible and the rest will be inferred, but
+    inconsistent information will lead to an error.
+
+    If attrs, trigger and non-trigger are all given, trigger and
+    non-trigger must form a partition of attrs. If only two are given,
+    the third in inferred, provided this can be done in such a way that
+    trigger and non-trigger form a partition of attrs. If
+    any_inputs=True, the set of all possible attrs is used instead of
+    the ones specified in attrs. If only attrs is given, a default
+    is chosen for the others, based on the type of the simulator.
+
+    The same applieds to attrs, persistent and non-persistent, except
+    that any_inputs is not considered (as these are outputs).
+
+    :param model_desc: The `ModelDescription` to parse
+    :param type: The simulator's type (for setting default attribute
+        types).
+    :return: A four-tuple of :class:`InOrOutSet`, giving the
+        measurement inputs, event inputs, measurement outputs, and event
+        outputs.        
+    :raises ValueError: if the information is insufficient or
+        inconsistent
+    """
     if model_desc.get('any_inputs', False):
         inputs: Optional[InOrOutSet[Attr]] = OutSet()
     else:
         inputs = wrap_set(model_desc.get('attrs'))
-    default_measurements = None if type == 'event-based' or 'trigger' in model_desc else inputs
+    default_measurements = (
+        None if type == 'event-based' or 'trigger' in model_desc else inputs
+    )
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = inputs if type == 'event-based' and 'non-trigger'not in model_desc else None
+    default_events = (
+        inputs if type == 'event-based' and 'non-trigger'not in model_desc else None
+    )
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
@@ -786,9 +816,13 @@ def parse_attrs(
         )
     
     outputs = wrap_set(model_desc.get('attrs'))
-    default_measurements = None if type == 'event-based' or 'non-persistent' in model_desc else outputs
+    default_measurements = (
+        None if type == 'event-based' or 'non-persistent' in model_desc else outputs
+    )
     measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
-    default_events = outputs if type == 'event-based' and not 'persistent' in model_desc else None
+    default_events = (
+        outputs if type == 'event-based' and not 'persistent' in model_desc else None
+    )
     event_outputs = wrap_set(model_desc.get('non-persistent', default_events))
     measurement_outputs, event_outputs = parse_set_triple(
         outputs, measurement_outputs, event_outputs,
@@ -806,7 +840,6 @@ def parse_attrs(
         )
 
     return measurement_inputs, event_inputs, measurement_outputs, event_outputs
-
 
 
 class ModelMock(object):
@@ -829,7 +862,13 @@ class ModelMock(object):
     event_outputs: InOrOutSet[Attr]
     measurement_outputs: InOrOutSet[Attr]
 
-    def __init__(self, world: World, factory: ModelFactory, model: ModelName, proxy: Proxy):
+    def __init__(
+        self,
+        world: World,
+        factory: ModelFactory,
+        model: ModelName,
+        proxy: Proxy,
+    ):
         self._world = world
         self._factory = factory
         self.name = model
@@ -838,7 +877,12 @@ class ModelMock(object):
         self.params = frozenset(model_desc.get('params', []))
 
         if model == 'C' and 'attrs' not in model_desc: return
-        self.measurement_inputs, self.event_inputs, self.measurement_outputs, self.event_outputs = parse_attrs(model_desc, self._factory.type)
+        (
+            self.measurement_inputs,
+            self.event_inputs,
+            self.measurement_outputs,
+            self.event_outputs,
+        ) = parse_attrs(model_desc, self._factory.type)
 
     @property
     def input_attrs(self) -> InOrOutSet[Attr]:
