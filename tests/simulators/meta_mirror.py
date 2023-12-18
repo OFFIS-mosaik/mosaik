@@ -7,7 +7,10 @@ class MetaMirror(mosaik_api_v3.Simulator):
     return the meta that it receives as part of its init call.
     """
     def create(self, num, model, **model_params):
-        raise NotImplementedError()
+        return [
+            {"eid": f"{model}-{i}", "type": model}
+            for i in range(num)
+        ]
 
     def __init__(self):
         super().__init__(meta={})

@@ -286,7 +286,7 @@ class World(object):
             problems.append(
                 "the source attribute does not exist"
             )
-        if dest_attr not in dest.model_mock.input_attrs and not dest.model_mock.any_inputs:
+        if dest_attr not in dest.model_mock.input_attrs:
             problems.append(
                 "the destination attribute does not exist"
             )
@@ -824,7 +824,6 @@ class ModelMock(object):
     _factory: ModelFactory
     _proxy: Proxy
     params: FrozenSet[str]
-    any_inputs: bool
     event_inputs: InOrOutSet[Attr]
     measurement_inputs: InOrOutSet[Attr]
     event_outputs: InOrOutSet[Attr]
@@ -840,7 +839,6 @@ class ModelMock(object):
 
         if model == 'C' and 'attrs' not in model_desc: return
         self.measurement_inputs, self.event_inputs, self.measurement_outputs, self.event_outputs = parse_attrs(model_desc, self._factory.type)
-        self.any_inputs = model_desc.get('any_inputs', False)
 
     @property
     def input_attrs(self) -> InOrOutSet[Attr]:
@@ -973,13 +971,10 @@ class Entity(object):
         return FULL_ID % (self.sid, self.eid)
 
     def triggered_by(self, attr: Attr) -> bool:
-        return (attr in self.model_mock.event_inputs) or (
-            self.model_mock._factory.type == "event-based"
-            and self.model_mock.any_inputs
-        )
+        return attr in self.model_mock.event_inputs
 
     def is_persistent(self, attr: Attr) -> bool:
-        return (attr in self.model_mock.measurement_outputs)
+        return attr in self.model_mock.measurement_outputs
 
     def __str__(self):
         return (
