@@ -876,7 +876,6 @@ class ModelMock(object):
         model_desc = proxy.meta['models'][model]
         self.params = frozenset(model_desc.get('params', []))
 
-        if model == 'C' and 'attrs' not in model_desc: return
         (
             self.measurement_inputs,
             self.event_inputs,

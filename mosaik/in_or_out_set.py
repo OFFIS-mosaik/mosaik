@@ -1,5 +1,13 @@
-from typing import FrozenSet, Generic, Iterable, Optional, Tuple, TypeAlias, TypeVar, Union
-from typing_extensions import Self
+from typing import (
+    FrozenSet,
+    Generic,
+    Iterable,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from typing_extensions import Self, TypeAlias
 
 E = TypeVar("E")
 
@@ -81,7 +89,7 @@ def parse_set_triple(
     missing_value_error = ValueError(
         f"at least two of {union_name}, {part_a_name} and {part_b_name} must be given"
     )
-    
+
     if union is None:
         if part_a is not None and part_b is not None:
             union = part_a | part_b
@@ -96,10 +104,10 @@ def parse_set_triple(
 
     if part_b is None:
         part_b = union - part_a
-            
+
     if not part_a & part_b == frozenset():
         raise ValueError(f"{part_a_name} and {part_b_name} are not disjoint")
-    
+
     if not union == (part_a | part_b):
         raise ValueError(
             f"{part_a_name} and {part_b_name} must be subsets of {union_name}, "
@@ -110,6 +118,9 @@ def parse_set_triple(
 
 
 def wrap_set(set: Union[Iterable[E], OutSet[E], None]) -> Optional[InOrOutSet[E]]:
+    """Wrap an iterable or OutSet, resulting in an InOrOutSet. Pass
+    through None unchanged.
+    """
     if set is None or isinstance(set, OutSet):
         return set
     return frozenset(set)
