@@ -89,6 +89,10 @@ class LocalProxy(BaseProxy):
         sim.mosaik = mosaik_remote
 
     async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
+        # This in an ugly place for these checks. However, we cannot
+        # put them in mosaik.adapters because we need to determine
+        # API compliance before sending the init method and thus before
+        # receiving the version number to build the adapter.
         if check_api_compliance(self.sim):
             forced_old_api = False
         else:
