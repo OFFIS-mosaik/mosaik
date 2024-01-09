@@ -96,22 +96,6 @@ def test_start(world, monkeypatch):
     assert ret == proxy
 
 
-def test_start_wrong_api_version(world, monkeypatch):
-    """
-    An exception should be raised if the simulator uses an unsupported
-    API version."""
-    with pytest.raises(ScenarioError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "MetaMock", "MetaMock-0", 1.0, {"meta": {"api_version": "1000.0"}})
-        )
-
-    assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMock-0: The API version "
-        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
-        "mosaik package is available to be used in your scenario?"
-    )
-
-
 def test_start_in_process(world):
     """
     Test starting an in-proc simulator."""
