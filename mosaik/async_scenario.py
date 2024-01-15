@@ -1,11 +1,14 @@
 """
-This module provides the interface for users to create simulation scenarios for
-mosaik.
+This module provides the async interface for users to create simulation
+scenarios for mosaik. For a version that handles the asynchronicity
+itself (but cannot be used within an existing event loop), see
+scenario.py.
 
-The :class:`World` holds all necessary data for the simulation and allows the
-user to start simulators. It provides a :class:`ModelFactory` (and
-a :class:`ModelMock`) via which the user can instantiate model instances
-(*entities*). The method :meth:`World.run()` finally starts the simulation.
+The :class:`AsyncWorld` holds all necessary data for the simulation and
+allows the user to start simulators. It provides a
+:class:`AsyncModelFactory` (and a :class:`AsyncModelMock`) via which the
+user can instantiate model instances (*entities*). The method
+:meth:`AsyncWorld.run` finally starts the simulation.
 """
 
 from __future__ import annotations
@@ -17,26 +20,18 @@ from copy import copy
 from dataclasses import dataclass
 from mosaik.greetings_util import print_greetings
 import itertools
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+import warnings
 from loguru import logger
-from mosaik_api_v3 import OutputData, OutputRequest
 import networkx
 from tqdm import tqdm
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
-    Dict,
     FrozenSet,
-    Iterable,
-    List,
     NoReturn,
-    Optional,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
 )
-import warnings
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik_api_v3.types import (
@@ -47,6 +42,7 @@ from mosaik_api_v3.types import (
     ModelDescription,
     ModelName,
     SimId,
+    OutputRequest,
 )
 from mosaik_api_v3.connection import RemoteException
 
@@ -69,16 +65,23 @@ class MosaikConfig(TypedDict, total=False):
     stop_timeout: float
 
 
-base_config: MosaikConfigTotal = {
+class _MosaikConfigTotal(TypedDict):
+    """A total version for :cls:`MosaikConfig` for internal use."""
+
+    addr: Tuple[str, int | None]
+    start_timeout: float
+    stop_timeout: float
+
+
+base_config: _MosaikConfigTotal = {
     "addr": ("127.0.0.1", None),
     "start_timeout": 10,  # seconds
     "stop_timeout": 10,  # seconds
 }
 
-FULL_ID = simmanager.FULL_ID
 
 SENTINEL = object()
-"""Sentinel for initial data call (we can't use None as the user might
+"""Sentinel for initial data call (we can't  use None as the user might
 want to supply that value.)
 """
 
@@ -173,7 +176,7 @@ def connect_interval(
     return TieredInterval(*list_tiers, cutoff=cutoff, pre_length=pre_length)
 
 
-class World(object):
+class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
@@ -227,10 +230,9 @@ class World(object):
     sim_progress: float
     """The progress of the entire simulation (in percent)."""
     use_cache: bool
-    loop: asyncio.AbstractEventLoop
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
-    _sim_ids: Dict[ModelName, itertools.count[int]]
+    _sim_ids: Dict[ModelName, Iterable[int]]
 
     main_group: SimGroup
     current_group: SimGroup
@@ -252,7 +254,6 @@ class World(object):
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
-        asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
         skip_greetings: bool = False,
     ):
         if not skip_greetings:
@@ -270,14 +271,9 @@ class World(object):
         self.time_resolution = time_resolution
         self.max_loop_iterations = max_loop_iterations
 
-        if asyncio_loop:
-            self.loop = asyncio_loop
-        else:
-            self.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
-
         self.entity_graph = networkx.Graph()
-        self.sim_progress = 0
+
+        self.sim_progress = 0.0
 
         self._debug = False
         if debug:
@@ -304,12 +300,12 @@ class World(object):
         yield
         self.current_group = parent_group
 
-    def start(
+    async def start(
         self,
         sim_name: str,
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
-    ) -> ModelFactory:
+    ) -> AsyncModelFactory:
         """
         Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
@@ -327,12 +323,12 @@ class World(object):
             sim_name=sim_name,
             sim_id=sim_id,
         )
-        proxy = self.loop.run_until_complete(
-            simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
+        proxy = await simmanager.start(
+            self, sim_name, sim_id, self.time_resolution, sim_params
         )
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
-        model_factory = ModelFactory(self, self.current_group, sim_id, proxy)
+        model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
@@ -438,7 +434,7 @@ class World(object):
 
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
-    def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
+    def connect_async_requests(self, src: AsyncModelFactory, dest: AsyncModelFactory):
         warnings.warn(
             "Connections with async_requests are deprecated. They and the set_data "
             "function will be removed in a future release. Use time_shifted and weak "
@@ -496,9 +492,9 @@ class World(object):
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+        attr_pairs: Set[Tuple[Attr, Attr]] = {
             (a, a) if isinstance(a, str) else a for a in attr_pairs
-        )
+        }
         errors: List[ScenarioError] = []
         for src_attr, dest_attr in attr_pairs:
             try:
@@ -540,7 +536,7 @@ class World(object):
         sim = self.sims[sid]
         sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
-    def get_data(
+    async def get_data(
         self,
         entity_set: Iterable[Entity],
         *attributes: Attr,
@@ -565,41 +561,37 @@ class World(object):
         for entity in entity_set:
             outputs_by_sim[entity.sid][entity.eid] = list(attributes)
 
-        async def request_data() -> Dict[SimId, OutputData]:
-            requests = {
-                sid: asyncio.create_task(self.sims[sid].get_data(outputs))
-                for sid, outputs in outputs_by_sim.items()
-            }
-            try:
-                await asyncio.gather(*requests.values())
-            except ConnectionError as e:
-                # Try to find the simulator that closed its connection
-                for sid, task in requests.items():
-                    if task.exception():
-                        raise SimulationError(
-                            f"Simulator '{sid}' closed its connection while executing "
-                            "`World.get_data()`.",
-                            e,
-                        ) from None
-                else:
-                    raise RuntimeError(
-                        "Could not determine which simulator closed its connection."
-                    )
-
-            results_by_sim: Dict[SimId, OutputData] = {}
+        requests = {
+            sid: asyncio.create_task(self.sims[sid].get_data(outputs))
+            for sid, outputs in outputs_by_sim.items()
+        }
+        try:
+            await asyncio.gather(*requests.values())
+        except ConnectionError as e:
+            # Try to find the simulator that closed its connection
             for sid, task in requests.items():
-                results_by_sim[sid] = task.result()
+                if task.exception():
+                    raise SimulationError(
+                        f"Simulator '{sid}' closed its connection while executing "
+                        "`World.get_data()`.",
+                        e,
+                    ) from None
+            else:
+                raise RuntimeError(
+                    "Could not determine which simulator closed its connection."
+                )
 
-            return results_by_sim
+        results_by_sim = {}
+        for sid, task in requests.items():
+            results_by_sim[sid] = task.result()
 
-        results_by_sim = self.loop.run_until_complete(request_data())
-        results: Dict[Entity, Dict[Attr, Any]] = {}
+        results = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
 
         return results
 
-    def run(
+    async def run(
         self,
         until: int,
         rt_factor: Optional[float] = None,
@@ -701,9 +693,7 @@ class World(object):
             dbg.enable()
         success = False
         try:
-            self.loop.run_until_complete(
-                scheduler.run(self, until, rt_factor, rt_strict, lazy_stepping)
-            )
+            await scheduler.run(self, until, rt_factor, rt_strict, lazy_stepping)
             success = True
         except KeyboardInterrupt:
             logger.info("Simulation canceled. Terminating ...")
@@ -721,7 +711,6 @@ class World(object):
             for sid, sim in self.sims.items():
                 sim.tqdm.close()
             self.tqdm.close()
-            self.shutdown()
             if self._debug:
                 dbg.disable()
             if success:
@@ -810,17 +799,12 @@ class World(object):
                     f"Your scenario contains cycles, for example: {path}."
                 )
 
-    def shutdown(self):
+    async def shutdown(self):
         """
         Shut-down all simulators and close the server socket.
         """
-        if not self.loop.is_closed():
-            for sim in self.sims.values():
-                self.loop.run_until_complete(sim.stop())
-
-            self.loop.stop()
-            self.loop.run_forever()
-            self.loop.close()
+        for sim in self.sims.values():
+            await sim.stop()
 
 
 if TYPE_CHECKING:
@@ -835,12 +819,21 @@ def update_min(a: T | None, b: T) -> T | None:
     return b
 
 
-MOSAIK_METHODS = set(
-    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
-)
+MOSAIK_METHODS = {
+    "init",
+    "create",
+    "setup_done",
+    "step",
+    "get_data",
+    "finalize",
+    "stop",
+}
 
 
-class ModelFactory:
+FULL_ID = "%s.%s"
+
+
+class AsyncModelFactory:
     """
     This is a facade for a simulator *sim* that allows the user to create
     new model instances (entities) within that simulator.
@@ -853,9 +846,9 @@ class ModelFactory:
     """
 
     type: Literal["event-based", "time-based", "hybrid"]
-    models: Dict[ModelName, ModelMock]
+    models: Dict[ModelName, AsyncModelMock]
 
-    def __init__(self, world: World, group: SimGroup, sid: SimId, proxy: Proxy):
+    def __init__(self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy):
         self.meta = proxy.meta
         self._world = world
         self._group = group
@@ -883,16 +876,13 @@ class ModelFactory:
                     f"Simulator {sid} uses an illegal model name: {model}. This name "
                     "is already the name of a mosaik API method."
                 )
-            self.models[model] = ModelMock(self._world, self, model, self._proxy)
+            self.models[model] = AsyncModelMock(self._world, self, model, self._proxy)
             # Make public models accessible
             if props.get("public", True):
                 setattr(self, model, self.models[model])
 
         # Bind extra_methods to this instance:
         for meth_name in self.meta.get("extra_methods", []):
-            # We need get_wrapper() in order to avoid problems with scoping
-            # of the name "meth". Without it, "meth" would be the same for all
-            # wrappers.
             if meth_name in MOSAIK_METHODS:
                 raise ScenarioError(
                     f"Simulator {sid} uses an illegal name for an extra method: "
@@ -905,11 +895,12 @@ class ModelFactory:
                     "simulator."
                 )
 
+            # We need get_wrapper() in order to avoid problems with
+            # scoping of the name `meth_name`. Without it, `meth_name`
+            # would be the same for all wrappers.
             def get_wrapper(connection: Proxy, meth_name: str) -> Callable[..., Any]:
-                def wrapper(*args: Any, **kwargs: Any):
-                    return world.loop.run_until_complete(
-                        connection.send([meth_name, args, kwargs])
-                    )
+                async def wrapper(*args: Any, **kwargs: Any):
+                    return await connection.send([meth_name, args, kwargs])
 
                 wrapper.__name__ = meth_name
                 return wrapper
@@ -1016,7 +1007,7 @@ def parse_attrs(
     return measurement_inputs, event_inputs, measurement_outputs, event_outputs
 
 
-class ModelMock(object):
+class AsyncModelMock(object):
     """
     Instances of this class are exposed as attributes of
     :class:`ModelFactory` and allow the instantiation of simulator models.
@@ -1028,8 +1019,8 @@ class ModelMock(object):
     """
 
     name: ModelName
-    _world: World
-    _factory: ModelFactory
+    _world: AsyncWorld
+    _factory: AsyncModelFactory
     _proxy: Proxy
     params: FrozenSet[str]
     event_inputs: InOrOutSet[Attr]
@@ -1039,8 +1030,8 @@ class ModelMock(object):
 
     def __init__(
         self,
-        world: World,
-        factory: ModelFactory,
+        world: AsyncWorld,
+        factory: AsyncModelFactory,
         model: ModelName,
         proxy: Proxy,
     ):
@@ -1072,13 +1063,13 @@ class ModelMock(object):
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
 
-    def __call__(self, **model_params: Any):
+    async def __call__(self, **model_params):
         """
         Call :meth:`create()` to instantiate one model.
         """
-        return self.create(1, **model_params)[0]
+        return (await self.create(1, **model_params))[0]
 
-    def create(self, num: int, **model_params: Any):
+    async def create(self, num: int, **model_params: Any):
         """
         Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.
@@ -1089,9 +1080,7 @@ class ModelMock(object):
         """
         self._check_params(**model_params)
 
-        entities = self._world.loop.run_until_complete(
-            self._proxy.send(["create", (num, self.name), model_params])
-        )
+        entities = await self._proxy.send(["create", (num, self.name), model_params])
         assert (
             len(entities) == num
         ), f"{num} entities were requested but {len(entities)} were created."
@@ -1167,7 +1156,7 @@ class Entity(object):
     """The entity's ID."""
     sim_name: str
     """The entity's simulator name."""
-    model_mock: ModelMock
+    model_mock: AsyncModelMock
     """The entity's type (or class)."""
     children: List[Entity]
     """An entity set containing subordinate entities."""
@@ -1178,7 +1167,7 @@ class Entity(object):
         sid: SimId,
         eid: EntityId,
         sim_name: str,
-        model_mock: ModelMock,
+        model_mock: AsyncModelMock,
         children: Optional[Iterable[Entity]],
         extra_info: Any = None,
     ):

@@ -15,7 +15,6 @@
 from typing import cast
 import mosaik
 import mosaik_components.heatpump
-import sphinx_rtd_theme
 from urllib.request import urlretrieve
 import os
 import shutil

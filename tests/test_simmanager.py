@@ -176,13 +176,13 @@ async def test_start_proc_no_port_conflict():
 
 
 @pytest.mark.cmd_process
-def test_start_external_process_with_environment_variables(world, tmpdir):
+def test_start_external_process_with_environment_variables(world: World, tmpdir):
     """
     Assert that you can set environment variables for a new sub-process.
     """
     # Replace sim_config for this test:z
     print(tmpdir.strpath)
-    world.sim_config = {
+    world._async_world.sim_config = {
         "SimulatorMockTmp": {
             "cmd": "%(python)s -m simulator_mock %(addr)s",
             "env": {
@@ -643,13 +643,13 @@ def test_timed_input_buffer():
     assert input_dict == {"dest_eid": {"dest_var": {"src_sid.src_eid": 1}}}
 
 
-def test_global_time_resolution(world):
+def test_global_time_resolution(world: World):
     # Default time resolution set to 1.0
     simulator = world.start("SimulatorMock")
     assert simulator._proxy.sim.time_resolution == 1.0
 
     # Set global time resolution to 60.0
-    world.time_resolution = 60.0
+    world._async_world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
     assert simulator_2._proxy.sim.time_resolution == 60.0
 
