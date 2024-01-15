@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 from asyncio import StreamReader, StreamWriter
-from loguru import logger
 import pytest
 import sys
-import time
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, Type
 
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3 import __api_version__ as api_version
@@ -137,13 +137,13 @@ def test_start_proc_timeout_accept(world, caplog):
 
 
 @pytest.mark.cmd_process
-def test_start_external_process_with_environment_variables(world, tmpdir):
+def test_start_external_process_with_environment_variables(world: World, tmpdir):
     """
     Assert that you can set environment variables for a new sub-process.
     """
     # Replace sim_config for this test:
     print(tmpdir.strpath)
-    world.sim_config = {
+    world._async_world.sim_config = {
         "SimulatorMockTmp": {
             "cmd": "%(python)s -m simulator_mock %(addr)s",
             "env": {
@@ -532,8 +532,8 @@ def test_mosaik_remote(
             finally:
                 await channel.close()
 
-        async def greeter():
-            channel = await world.incoming_connections_queue.get()
+        async def greeter(channel_future: asyncio.Future[Channel]):
+            channel = await channel_future
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             sim_x = simmanager.SimRunner("X", proxy_x)
@@ -548,20 +548,25 @@ def test_mosaik_remote(
                 @property
                 def meta(self):
                     return {"type": "time-based", "models": {}}
+                async def stop(self):
+                    pass
             sim_y = simmanager.SimRunner("Y", DummyProxy())
             world.sims["Y"] = sim_y
             sim_z = simmanager.SimRunner("Z", DummyProxy())
             world.sims["Z"] = sim_z
 
             sim_x.successors.add(sim_y)
-            
 
         async def run():
-            sim_exc, greeter_exc = await asyncio.gather(
-                simulator(),
-                greeter(),
-                return_exceptions=True,
-            )
+            channel_future: asyncio.Future[Channel] = asyncio.Future()
+            async def connected_cb(r: asyncio.StreamReader, w: asyncio.StreamWriter):
+                channel_future.set_result(Channel(r, w))
+            async with await asyncio.start_server(connected_cb, "0.0.0.0", 5555):
+                greeter_exc, sim_exc = await asyncio.gather(
+                    greeter(channel_future),
+                    simulator(),
+                    return_exceptions=True,
+                )
             assert greeter_exc is None
             if sim_exc:
                 raise sim_exc
@@ -573,9 +578,7 @@ def test_mosaik_remote(
             world.loop.run_until_complete(run())
 
     finally:
-        world.loop.run_until_complete(world.sims["X"].stop())
-        world.server.close()
-        world.loop.close()
+        world.shutdown()
 
 
 def test_timed_input_buffer():
@@ -592,12 +595,12 @@ def test_timed_input_buffer():
     assert input_dict == {"dest_eid": {"dest_var": {"src_sid.src_eid": 1}}}
 
 
-def test_global_time_resolution(world):
+def test_global_time_resolution(world: World):
     # Default time resolution set to 1.0
     simulator = world.start("SimulatorMock")
     assert simulator._proxy.sim.time_resolution == 1.0
 
     # Set global time resolution to 60.0
-    world.time_resolution = 60.0
+    world._async_world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
     assert simulator_2._proxy.sim.time_resolution == 60.0

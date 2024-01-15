@@ -206,63 +206,73 @@ async def start_proc(
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
     """
-    replacements = {
-        'addr': '%s:%s' % (world.config['addr'][0], world.config['addr'][1]),
-        'python': sys.executable,
-    }
-    cmd = sim_config['cmd'] % replacements
-    if 'posix' in sim_config.keys():
-        posix = sim_config.pop('posix')
-        cmd = shlex.split(cmd, posix=bool(posix))
-    else:
-        cmd = shlex.split(cmd, posix=(os.name != 'nt'))
-    cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
+    channel_future: asyncio.Future[Channel] = asyncio.Future()
+    async def connected_cb(r: asyncio.StreamReader, w: asyncio.StreamWriter):
+        channel_future.set_result(Channel(r, w))
 
-    # Make a copy of the current env. vars dictionary and update it with the
-    # user provided values (or an empty dict as a default):
-    env = dict(os.environ)
-    env.update(sim_config.get('env', {}))  # type: ignore
-
-    # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
-    creationflags = 0
-    new_console = sim_config.get('new_console', False)
-    if new_console:
-        if 'Windows' in platform.system():
-            creationflags = CREATE_NEW_CONSOLE
+    async with await asyncio.start_server(connected_cb, *world.config["addr"]) as server:
+        actual_addr = server.sockets[0].getsockname()
+        
+        replacements = {
+            'addr': '%s:%s' % actual_addr,
+            'python': sys.executable,
+        }
+        cmd = sim_config['cmd'] % replacements
+        if 'posix' in sim_config.keys():
+            posix = sim_config.pop('posix')
+            cmd = shlex.split(cmd, posix=bool(posix))
         else:
-            logger.warning('Simulator "{sim_name}" could not be started in a new console: '
-                           'Only available on Windows', sim_name=sim_name)
+            cmd = shlex.split(cmd, posix=(os.name != 'nt'))
+        cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
 
-    kwargs = {
-        'bufsize': 1,
-        'cwd': cwd,
-        'universal_newlines': True,
-        'env': env,  # pass the new env dict to the sub process
-        'creationflags': creationflags,
-    }
-    try:
-        subprocess.Popen(cmd, **kwargs)
-    except (FileNotFoundError, NotADirectoryError) as e:
-        # This distinction has to be made due to a change in python 3.8.0.
-        # It might become unecessary for future releases supporting
-        # python >= 3.8 only.
-        if str(e).count(':') == 2:
-            eout = e.args[1]
-        else:
-            eout = str(e).split('] ')[1]
-        raise ScenarioError('Simulator "%s" could not be started: %s'
-                            % (sim_name, eout)) from None
+        # Make a copy of the current env. vars dictionary and update it with the
+        # user provided values (or an empty dict as a default):
+        env = dict(os.environ)
+        env.update(sim_config.get('env', {}))  # type: ignore
 
-    try:
-        channel = await asyncio.wait_for(
-            world.incoming_connections_queue.get(),
-            world.config['start_timeout'],
-        )
-        return RemoteProxy(channel, mosaik_remote)
-    except asyncio.TimeoutError:
-        raise SimulationError(
-            f'Simulator "{sim_name}" did not connect to mosaik in time.'
-        )
+        # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+        creationflags = 0
+        new_console = sim_config.get('new_console', False)
+        if new_console:
+            if 'Windows' in platform.system():
+                creationflags = CREATE_NEW_CONSOLE
+            else:
+                logger.warning(
+                    'Simulator "{sim_name}" could not be started in a new console: '
+                    'Only available on Windows',
+                    sim_name=sim_name,
+                )
+
+        kwargs = {
+            'bufsize': 1,
+            'cwd': cwd,
+            'universal_newlines': True,
+            'env': env,  # pass the new env dict to the sub process
+            'creationflags': creationflags,
+        }
+        try:
+            subprocess.Popen(cmd, **kwargs)
+        except (FileNotFoundError, NotADirectoryError) as e:
+            # This distinction has to be made due to a change in python 3.8.0.
+            # It might become unecessary for future releases supporting
+            # python >= 3.8 only.
+            if str(e).count(':') == 2:
+                eout = e.args[1]
+            else:
+                eout = str(e).split('] ')[1]
+            raise ScenarioError('Simulator "%s" could not be started: %s'
+                                % (sim_name, eout)) from None
+
+        try:
+            channel = await asyncio.wait_for(
+                channel_future,
+                world.config['start_timeout'],
+            )
+            return RemoteProxy(channel, mosaik_remote)
+        except asyncio.TimeoutError:
+            raise SimulationError(
+                f'Simulator "{sim_name}" did not connect to mosaik in time.'
+            )
 
 
 async def start_connect(

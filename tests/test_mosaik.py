@@ -147,11 +147,11 @@ def test_mosaik(scenario_name: str, cache: bool):
 
 
 @pytest.mark.parametrize('sim_config', [sim_config['local'], sim_config['remote']])
-def test_call_extra_methods(sim_config):
+def test_call_extra_methods(sim_config: scenario.SimConfig):
     world = scenario.World(sim_config)
     try:
-        model_a = world.start('A')
-        ret = model_a.example_method(23)
+        sim_a = world.start('A')
+        ret = sim_a.example_method(23)
     finally:
         world.shutdown()
 

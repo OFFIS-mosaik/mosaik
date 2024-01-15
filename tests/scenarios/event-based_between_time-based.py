@@ -8,7 +8,10 @@ A
 """
 
 
-def create_scenario(world):
+from mosaik.scenario import World
+
+
+def create_scenario(world: World):
     model_a = world.start('A', step_type='time-based', step_size=1).A()
     model_b = world.start('B', step_type='event-based').A()
     model_c = world.start('C', step_type='time-based', step_size=1).A()

@@ -59,9 +59,9 @@ def world_fixture(request):
     sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else DenseTime(1, 0)
     if event_based:
         sims[5].triggers[('1', 'x')] = [(sims[4], DenseTime(0, 1))]
-    world.until = 4
-    world.rt_factor = None
-    world.cache_triggering_ancestors()
+    world._async_world.until = 4
+    world._async_world.rt_factor = None
+    world._async_world.cache_triggering_ancestors()
     yield world
     world.shutdown()
 
@@ -87,7 +87,7 @@ def test_run(monkeypatch):
             'type': 'time-based'
         }
         
-    world.sims = {i: SimRunner(i, proxy) for i in range(2)}
+    world._async_world.sims = {i: SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
@@ -274,7 +274,7 @@ def test_get_max_advance(world, next_steps, next_step_s1, expected):
 # TODO: Implement test/parameter for new API (passing max_advance)
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
-async def test_step(world):
+async def test_step(world: World):
     inputs = {}
     sim = world.sims["Sim-0"]
     sim.tqdm = tqdm(disable=True)
@@ -283,7 +283,7 @@ async def test_step(world):
     assert (sim.last_step, sim.next_steps[0]) == (DenseTime(-1), DenseTime(0))
     sim.current_step = heappop(sim.next_steps)
 
-    await scheduler.step(world, sim, inputs, 0)
+    await scheduler.step(world._async_world, sim, inputs, 0)
     assert (sim.last_step, sim.next_steps) == (
         DenseTime(0), [DenseTime(1)] if sim.type == 'time-based' else []
     )
@@ -383,7 +383,7 @@ def test_notify_dependencies_trigger(world):
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_prune_dataflow_cache(world):
+def test_prune_dataflow_cache(world: World):
     world._df_cache = True
     world.sims["Sim-0"].outputs = {
         0: {'spam': 'eggs'},
@@ -392,7 +392,7 @@ def test_prune_dataflow_cache(world):
     for s in world.sims.values():
         s.last_step = DenseTime(1)
         s.tqdm = tqdm(disable=True)
-    scheduler.prune_dataflow_cache(world)
+    scheduler.prune_dataflow_cache(world._async_world)
 
     assert world.sims["Sim-0"].outputs == {
         1: {'foo': 'bar'},
@@ -401,7 +401,7 @@ def test_prune_dataflow_cache(world):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-async def test_get_outputs_shifted(world):
+async def test_get_outputs_shifted(world: World):
     sim = world.sims["Sim-5"]
     sim.outputs = {}
     sim.output_request = {0: ['x', 'y']}
@@ -412,9 +412,9 @@ async def test_get_outputs_shifted(world):
     heappush(world.sims["Sim-4"].next_steps, 2)
     
     sim.current_step = heappop(sim.next_steps)
-    await scheduler.get_outputs(world, sim)
+    await scheduler.get_outputs(world._async_world, sim)
     scheduler.notify_dependencies(sim)
-    scheduler.prune_dataflow_cache(world)
+    scheduler.prune_dataflow_cache(world._async_world)
     assert sim.outputs[1] == {
         '0': {'x': 0, 'y': 1},
     }
