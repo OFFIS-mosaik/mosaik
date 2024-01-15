@@ -40,7 +40,7 @@ sim_meta: mosaik_api_v3.Meta = {
     'models': {
         'A': {
             'public': True,
-            'params': [],
+            'params': ['extra_info'],
             'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
@@ -86,11 +86,14 @@ class TestSim(mosaik_api_v3.Simulator):
 
         return self.meta
 
-    def create(self, num, model):
+    def create(self, num, model, extra_info=None):
         n_entities = len(self.entities)
         new_entities = [str(eid) for eid in range(n_entities, n_entities + num)]
         self.entities.extend(new_entities)
-        return [{'eid': eid, 'type': model} for eid in new_entities]
+        return [
+            {'eid': eid, 'type': model, 'extra_info': extra_info}
+            for eid in new_entities
+        ]
 
     def step(self, time, inputs, max_advance):
         self.time = time
