@@ -6,6 +6,8 @@ import random
 import networkx as nx
 import datetime
 
+from mosaik.scenario import World
+
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"
@@ -295,13 +297,14 @@ def plot_dataflow_graph(
 
 
 def plot_execution_graph(
-    world,
-    title="",
+    world: World,
+    title: str ="",
     folder=STANDARD_FOLDER,
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
     show_plot=True,
+    save_plot: bool = True,
     slice=None,
 ):
     """
@@ -404,14 +407,15 @@ def plot_execution_graph(
     else:
         filename: str = get_filename(folder, "executionGraph", format)
 
-    fig.savefig(
-        filename,
-        format=format,
-        dpi=dpi,
-        facecolor="white",
-        transparent=True,
-        bbox_inches="tight",
-    )
+    if save_plot:
+        fig.savefig(
+            filename,
+            format=format,
+            dpi=dpi,
+            facecolor="white",
+            transparent=True,
+            bbox_inches="tight",
+        )
 
 
 def arrow_is_not_in_slice(labels, t0, t1):
@@ -419,22 +423,8 @@ def arrow_is_not_in_slice(labels, t0, t1):
 
 
 def split_node(node):
-    """
-
-    :param node:
-    :return:
-    """
-    isid, t = node.rsplit("-", 1)
-    try:
-        t = int(t)
-        n_rep = 0
-    except ValueError:
-        t, n_rep = map(int, t.split("~"))
-
-    if isid.endswith("-"):
-        isid = isid.strip("-")
-        t = -1
-    return isid, t, n_rep
+    isid, dt = node
+    return isid, dt.time, dt.microstep
 
 
 def plot_execution_time_per_simulator(
@@ -471,7 +461,7 @@ def plot_execution_time_per_simulator(
         execution_time = (
             execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
         )
-        sim_id = node.split("-")[0] + "-" + node.split("-")[1]
+        sim_id = node[0]
         if sim_id not in results:
             results[sim_id] = []
         results[sim_id].append(execution_time)
