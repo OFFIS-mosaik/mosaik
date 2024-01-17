@@ -15,7 +15,7 @@ build:
       - pip install poetry
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install --only docs
+      - poetry install --only docs, main
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
