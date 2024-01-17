@@ -74,7 +74,7 @@ Currently, we test mosaik and mosaik simulators with example scenarios with know
 ## Development
 This part describes the workflow we use when publishing mosaik code.
 
-![gitflow-hotfix-branch-diagram](docs/_static//gitflow-hotfix-branch-diagram.jpg)
+![gitflow-hotfix-branch-diagram](./docs/_static//gitflow-hotfix-branch-diagram.jpg)
 
 Figure: Overview of git worklfow [1](https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/init-Gitflow-example-workflow-tutorial)
 

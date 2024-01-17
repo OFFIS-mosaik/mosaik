@@ -78,6 +78,12 @@ This lists the mosaik components that are available on pypi. There are always co
     - `mosaik-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
       is a simple PV Simulator based on PyPVSim.
 
+    - `mosaik-pvlib <https://gitlab.com/mosaik/components/energy/mosaik-pvlib>`_
+      is a simple PV Simulator based on pvlib.
+
+    - `mosaik-pvgis <https://gitlab.com/mosaik/components/energy/mosaik-pvgis>`_
+      is a simple PV Simulator based on PVGIS.
+
     - `mosaik-householdsim <https://gitlab.com/mosaik/components/energy/mosaik-householdsim>`_
       is a househol simulator that simulate households by serving residual load profiles.
 
@@ -154,8 +160,8 @@ This lists the mosaik components that are available on pypi. There are always co
   not maintained anymore.
 
 
-|mosaik| mosaik-basic simulators
-================================
+|mosaik| mosaik simulators
+==========================
 
 .. include:: basic_simulators.rst
 
