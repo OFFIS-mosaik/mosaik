@@ -1,5 +1,9 @@
+from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+
+from mosaik_api_v3.types import SimId
+from mosaik.dense_time import DenseTime
 
 
 def plot_execution_graph(world):
@@ -26,18 +30,9 @@ def plot_execution_graph(world):
     plt.show()
 
 
-def split_node(node):
-    isid, t = node.rsplit('-', 1)
-    try:
-        t = int(t)
-        n_rep = 0
-    except ValueError:
-        t, n_rep = map(int, t.split('~'))
-
-    if isid.endswith('-'):
-        isid = isid.strip('-')
-        t = -1
-    return isid, t, n_rep
+def split_node(node: Tuple[SimId, DenseTime]):
+    isid, dt = node
+    return isid, dt.time, dt.microstep
 
 
 def plot_execution_graph_st(world, title=''):
