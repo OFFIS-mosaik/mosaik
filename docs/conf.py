@@ -270,11 +270,15 @@ intersphinx_mapping = {
 # Autodoc
 autodoc_member_order = 'bysource'
 
-# Linkcode
+# This method is used to generate links to the source code in the
+# documentation.
 def linkcode_resolve(domain, info):
+    # Don't create links for non-Python code.
     if domain != 'py':
         return
+    # Cannot create link if we don't know the Python module of the code
     if not info['module']:
         return
+    # Turn the module name into the URL on gitlab
     filename = info['module'].replace('.', '/')
     return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"
