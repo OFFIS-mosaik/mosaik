@@ -1,23 +1,30 @@
 import asyncio
-from heapq import heappush
-from typing import Iterable
-
-from tqdm import tqdm
-from mosaik import exceptions, scenario, scheduler, simmanager
+from heapq import heappop, heappush
 import pytest
+from tqdm import tqdm
+from typing import Iterable, List
+
+from mosaik import exceptions, scenario, scheduler, simmanager, World
+from mosaik.adapters import init_and_get_adapter
+from mosaik.dense_time import DenseTime
+from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
+from mosaik.simmanager import SimRunner
 
 from tests.mocks.simulator_mock import SimulatorMock
 
 
-async def does_coroutine_stall(coro):
-    """
-    Executes the given coroutine until it first passes control back to
-    the event loop (or until it's done otherwise). Returns whether
-    control is ever passed back to the event loop.
+async def does_coroutine_stall(coro, pass_backs=0):
+    """Executes the given coroutine as a task and give control back
+    to it `pass_backs` times. If it doesn't complete in that time,
+    the task is cancelled.
+    
+    Returns whether the task is completed in the given time.
     """
     task = asyncio.create_task(coro)
     async def canceller():
+        for _ in range(pass_backs):
+            await asyncio.sleep(0)
         if not task.done():
             task.cancel()
     await asyncio.gather(task, canceller(), return_exceptions=True)
@@ -26,67 +33,34 @@ async def does_coroutine_stall(coro):
 
 @pytest.fixture(name='world')
 def world_fixture(request):
-    if request.param == 'time-based':
-        time_shifted = True
-        weak = False
-        trigger = set()
-    else:
-        time_shifted = False
-        weak = True
-        trigger = set([('1', 'x')]) # TODO: Is this correct?
+    event_based = request.param == 'event-based'
     world = scenario.World({})
+    sims: List[SimRunner] = []
     for i in range(6):
-        proxy = LocalProxy(simmanager.MosaikRemote(world, i), SimulatorMock(request.param))
-        world.loop.run_until_complete(proxy.init(i, time_resolution=1.0))
-        world.sims[i] = simmanager.SimRunner(
-                '',
-                i,
-                world,
-                proxy,
-            )
+        sim_id = f"Sim-{i}"
+        proxy = LocalProxy(SimulatorMock(request.param), simmanager.MosaikRemote(world, sim_id))
+        proxy = world.loop.run_until_complete(
+            init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
+        )
+        sim = SimRunner(sim_id, proxy)
+        world.sims[sim_id] = sim
+        sims.append(sim)
     class DummyTask:
         def done(self):
             return False
     for sim in world.sims.values():
-        sim.sim_proc = DummyTask()
-    def mk_set_event():
-        event = asyncio.Event()
-        event.set()
-        return event
+        sim.task = DummyTask()
     for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
-        world.df_graph.add_edge(
-            src,
-            dest,
-            async_requests=False,
-            pred_waiting=False,
-            time_shifted=False,
-            weak=False,
-            trigger=trigger,
-            wait_event=mk_set_event(),
-            wait_lazy=mk_set_event(),
-            wait_async=mk_set_event(),
-        )
-    world.df_graph.add_edge(
-        5,
-        4,
-        async_requests=False,
-        pred_waiting=False,
-        time_shifted=time_shifted,
-        weak=weak,
-        trigger=trigger,
-        wait_lazy=mk_set_event(),
-        wait_event=mk_set_event(),
-        wait_async=mk_set_event(),
-    )
-    world.cache_dependencies()
-    world.cache_related_sims()
-    world.df_graph[0][2]['wait_event'].clear()
+        sims[src].successors.add(sims[dest])
+        sims[dest].input_delays[sims[src]] = DenseTime(0)
+        if event_based:
+            sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], DenseTime(0)))
+    sims[5].successors.add(sims[4])
+    sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else DenseTime(1, 0)
+    if event_based:
+        sims[5].triggers[('1', 'x')] = [(sims[4], DenseTime(0, 1))]
     world.until = 4
     world.rt_factor = None
-    if request.param == 'time-based':
-        world.trigger_graph.add_nodes_from(range(6))
-    else:
-        world.trigger_graph = world.df_graph
     world.cache_triggering_ancestors()
     yield world
     world.shutdown()
@@ -95,43 +69,33 @@ def world_fixture(request):
 def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
-    world.df_graph.add_nodes_from([0, 1])
-    world.trigger_graph.add_node('dummy')
 
     async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
         sim.proc_started = True
 
-    class Sim:
-        class proxy:
-            @classmethod
-            async def setup_done(cls):
-                return None
+    class proxy:
+        @classmethod
+        async def send(cls, *args, **kwargs):
+            return None
 
-            @classmethod
-            async def stop(cls):
-                return
+        @classmethod
+        async def stop(cls):
+            return None
 
-        proc_started = False
         meta = {
-            'api_version': (2, 2),
+            'api_version': '2.2',
+            'type': 'time-based'
         }
-        sid = 'dummy'
-        next_steps = []
-
-        async def stop(self):
-            pass
-
-    world.sims = {i: Sim() for i in range(2)}
+        
+    world.sims = {i: SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
     try:
         world.run(until=1)
-    except:
-        world.shutdown()
-        raise
-    else:
         for sim in world.sims.values():
             assert sim.proc_started
+    finally:
+        world.shutdown()
 
 
 @pytest.mark.asyncio
@@ -154,37 +118,15 @@ async def test_sim_process_error(monkeypatch):
     class Sim:
         sid = 'spam'
 
-    def get_keep_running_func(world, sim, until, rt_factor, rt_start):
+    def advance_progress(sim, world):
         raise ConnectionError(1337, 'noob')
 
-    monkeypatch.setattr(scheduler, 'get_keep_running_func',
-                        get_keep_running_func)
+    monkeypatch.setattr(scheduler, 'advance_progress', advance_progress)
 
     with pytest.raises(exceptions.SimulationError) as excinfo:
         await scheduler.sim_process(None, Sim(), None, 1, False, False)
     assert str(excinfo.value) == ('[Errno 1337] noob: Simulator "spam" closed '
                                   'its connection.')
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
-@pytest.mark.parametrize('next_steps_empty', [True, False])
-async def test_has_next_step(world, next_steps_empty, monkeypatch):
-    """
-    Test has_next_step without and with next_steps.
-    """
-    sim = world.sims[0]
-    sim.next_steps = ([] if next_steps_empty else [1])
-    sim.tqdm = tqdm(disable=True)
-
-    def dummy_check(*args):
-        pass
-
-    monkeypatch.setattr(scheduler, 'check_and_resolve_deadlocks', dummy_check)
-
-    stalled = await does_coroutine_stall(scheduler.wait_for_next_step(world, sim))
-    assert stalled == next_steps_empty
-    assert sim.has_next_step.is_set() == (not next_steps_empty)
 
 
 def any_unset(events: Iterable[asyncio.Event]) -> bool:
@@ -197,126 +139,133 @@ def any_unset(events: Iterable[asyncio.Event]) -> bool:
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
 @pytest.mark.parametrize("weak,number_waiting", [(True, 2), (False, 2)])
-async def test_wait_for_dependencies(world, weak, number_waiting):
+async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: int):
     """
     Test waiting for dependencies and triggering them.
     """
-    test_sim = world.sims[2]
-    heappush(test_sim.next_steps, 0)
-    world.df_graph[1][2]['weak'] = weak
+    test_sim: SimRunner = world.sims["Sim-2"]
+    pred_sim: SimRunner = world.sims["Sim-1"]
+    heappush(test_sim.next_steps, DenseTime(0))
+    test_sim.input_delays[pred_sim] = DenseTime(0, 1)
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world, test_sim, True)
+        scheduler.wait_for_dependencies(test_sim, True)
     )
-    assert len(test_sim.wait_events) == number_waiting
     assert stalled
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-async def test_wait_for_dependencies_all_done(world):
+async def test_wait_for_dependencies_all_done(world: World):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    heappush(world.sims[2].next_steps, 0)
-    for dep_sid in [0, 1]:
-        world.sims[dep_sid].progress = 1
+    heappush(world.sims["Sim-2"].next_steps, DenseTime(0))
+    for dep_sid in ["Sim-0", "Sim-1"]:
+        world.sims[dep_sid].progress.value = DenseTime(1)
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world, world.sims[2], True)
+        scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
+        pass_backs=3,
     )
     assert not stalled
-    assert len(world.sims[2].wait_events) == 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-@pytest.mark.parametrize("progress,number_waiting", [(0, 1), (1, 0)])
-async def test_wait_for_dependencies_shifted(world, progress, number_waiting):
+@pytest.mark.parametrize("progress, should_stall", [(0, True), (1, False)])
+async def test_wait_for_dependencies_shifted(world: World, progress: int, should_stall: bool):
     """
     Shifted dependency has not/has stepped far enough. Waiting is/is not
     required.
     """
-    world.sims[5].progress = progress
+    world.sims["Sim-5"].progress = Progress(DenseTime(progress))
     # Move this simulators first step to 1
-    sim_under_test = world.sims[4]
-    sim_under_test.next_steps = [1]
+    sim_under_test = world.sims["Sim-4"]
+    sim_under_test.next_steps = [DenseTime(1)]
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world, sim_under_test, False)
+        scheduler.wait_for_dependencies(sim_under_test, lazy_stepping=False),
+        pass_backs=3,
     )
-    assert stalled == bool(number_waiting)
-    assert len(sim_under_test.wait_events) == number_waiting
-    assert any_unset(sim_under_test.wait_events) == bool(number_waiting)
+    assert stalled == should_stall
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 @pytest.mark.parametrize("lazy_stepping", [True, False])
-async def test_wait_for_dependencies_lazy(world, lazy_stepping):
+async def test_wait_for_dependencies_lazy(world: World, lazy_stepping: bool):
     """
     Test waiting for dependencies and triggering them.
     """
-    sim_under_test = world.sims[1]
-    sim_under_test.next_steps = [1]
+    sim_under_test = world.sims["Sim-1"]
+    sim_under_test.next_steps = [DenseTime(1)]
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world, sim_under_test, lazy_stepping)
+        scheduler.wait_for_dependencies(sim_under_test, lazy_stepping)
     )
     assert stalled == lazy_stepping
-    assert len(sim_under_test.wait_events) == (1 if lazy_stepping else 0)
-    assert any_unset(sim_under_test.wait_events) == lazy_stepping
     if lazy_stepping:
-        assert 'wait_lazy' in world.df_graph[1][2]
-        await does_coroutine_stall(scheduler.wait_for_dependencies(world, sim_under_test, True))
-        assert len(sim_under_test.wait_events) == 1
-        assert any_unset(sim_under_test.wait_events) == True
+        await does_coroutine_stall(
+            scheduler.wait_for_dependencies(sim_under_test, True)
+        )
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_get_input_data(world):
+def test_get_input_data(world: World):
     """
     Simple test for get_input_data().
     """
-    heappush(world.sims[2].next_steps, 0)
-    world._df_cache = {0: {
-        0: {'1': {'x': 0, 'y': 1}},
-        1: {'2': {'x': 2, 'z': 4}},
-    }}
-    world.sims[2].input_buffer = {'0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}}
-    world.df_graph[0][2]['cached_connections'] = [('1', '0', [('x', 'in')])]
-    world.df_graph[1][2]['cached_connections'] = [('2', '0', [('z', 'in')])]
-    data = scheduler.get_input_data(world, world.sims[2])
+    sim_0 = world.sims["Sim-0"]
+    sim_1 = world.sims["Sim-1"]
+    sim_2 = world.sims["Sim-2"]
+    sim_2.current_step = DenseTime(0)
+    sim_0.outputs = {0: {'1': {'x': 0, 'y': 1}}}
+    sim_1.outputs = {0: {'2': {'x': 2, 'z': 4}}}
+    sim_2.inputs_from_set_data = {
+        '0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}
+    }
+    sim_2.pulled_inputs[(sim_0, 0)] = [(('1', 'x'), ('0', 'in'))]
+    sim_2.pulled_inputs[(sim_1, 0)] = [(('2', 'z'), ('0', 'in'))]
+    data = scheduler.get_input_data(world, sim_2)
     assert data == {'0': {
-        'in': {'0.1': 0, '1.2': 4, '3': 5},
+        'in': {'Sim-0.1': 0, 'Sim-1.2': 4, '3': 5},
         'spam': {'3': 'eggs'},
     }}
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_get_input_data_shifted(world):
+def test_get_input_data_shifted(world: World):
     """
     Getting input data transmitted via a shifted connection.
     """
-    heappush(world.sims[4].next_steps, 0)
-    world._df_cache = {-1: {
-        5: {'1': {'z': 7}}
-    }}
-    world.df_graph[5][4]['cached_connections'] = [('1', '0', [('z', 'in')])]
-    data = scheduler.get_input_data(world, world.sims[4])
-    assert data == {'0': {'in': {'5.1': 7}}}
+    sim_4 = world.sims["Sim-4"]
+    sim_5 = world.sims["Sim-5"]
+    sim_4.current_step = DenseTime(0)
+    sim_5.outputs = {-1: {'1': {'z': 7}}}
+    sim_4.pulled_inputs[(sim_5, 1)] = [(('1', 'z'), ('0', 'in'))]
+    data = scheduler.get_input_data(world, world.sims["Sim-4"])
+    assert data == {'0': {'in': {'Sim-5.1': 7}}}
 
 
-@pytest.mark.parametrize('world,next_steps,next_step_s1,expected',
-                         [('time-based', [], 2, 5), ('time-based', [4], 2, 3),
-                             ('event-based', [3], None, 2),
-                             ('event-based', [3], 2, 1)], indirect=['world'])
+@pytest.mark.parametrize(
+    'world, next_steps, next_step_s1, expected',
+    [
+        ('time-based', [], DenseTime(2), 5),
+        ('time-based', [DenseTime(4)], DenseTime(2), 3),
+        ('event-based', [DenseTime(3)], None, 2),
+        ('event-based', [DenseTime(3)], DenseTime(2), 1),
+    ],
+    indirect=['world'],
+)
 def test_get_max_advance(world, next_steps, next_step_s1, expected):
-    sim = world.sims[2]
+    sim = world.sims["Sim-2"]
     sim.next_steps = next_steps
     sim.tqdm = tqdm(disable=True)
-    heappush(sim.next_steps, 1)
+    heappush(sim.next_steps, DenseTime(1))
+    sim.current_step = heappop(sim.next_steps)
 
-    # In the event-based world, sims 0 and 1 are triggering ancestors of sim 2:
-    world.sims[0].next_steps = [3]
+    # In the event-based world, Sim-0 and Sim-1 are triggering ancestors
+    # of Sim-2:
+    world.sims["Sim-0"].next_steps = [DenseTime(3)]
     if next_step_s1 is not None:
-        heappush(world.sims[1].next_steps, next_step_s1)
+        heappush(world.sims["Sim-1"].next_steps, next_step_s1)
 
     max_advance = scheduler.get_max_advance(world, sim, until=5)
     assert max_advance == expected
@@ -327,153 +276,125 @@ def test_get_max_advance(world, next_steps, next_step_s1, expected):
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
 async def test_step(world):
     inputs = {}
-    sim = world.sims[0]
+    sim = world.sims["Sim-0"]
     sim.tqdm = tqdm(disable=True)
-    sim.proxy._old_api = True
-    heappush(sim.next_steps, 0)
-    assert (sim.last_step, sim.next_steps[0]) == (-1, 0)
+    if sim.type == 'event-based':
+        heappush(sim.next_steps, DenseTime(0))
+    assert (sim.last_step, sim.next_steps[0]) == (DenseTime(-1), DenseTime(0))
+    sim.current_step = heappop(sim.next_steps)
 
-    progress = await scheduler.step(world, sim, inputs, 0)
-    assert (sim.last_step, progress) == (0, 1)
+    await scheduler.step(world, sim, inputs, 0)
+    assert (sim.last_step, sim.next_steps) == (
+        DenseTime(0), [DenseTime(1)] if sim.type == 'time-based' else []
+    )
 
 
 # TODO: Test also for output_time if 'time' is indicated by event-based sims
 @pytest.mark.asyncio
-@pytest.mark.parametrize('world, cache_t1',
+@pytest.mark.parametrize('world, cache',
                          [('time-based', True),
                           ('event-based', False)], indirect=['world'])
-async def test_get_outputs(world, cache_t1):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_outattr[0][0] = ['x', 'y']
-    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
-    sim = world.sims[0]
-    sim.last_step = 0 
+async def test_get_outputs(world, cache):
+    world.use_cache = cache
+    sim = world.sims["Sim-0"]
+    sim.outputs = {} if cache else None
+    sim.output_request = {0: ['x', 'y']}
+    sim.last_step = DenseTime(0) 
     sim.output_time = -1
     sim.tqdm = tqdm(disable=True)
 
-    await scheduler.get_outputs(world, sim, progress=2)
+    if sim.type == 'time-based':
+        sim.current_step = heappop(sim.next_steps)
+    else:
+        sim.current_step = DenseTime(0)
+    await scheduler.get_outputs(world, sim)
 
-    expected_cache = {
+    expected_output_cache = {
         0: {
-            0: {'0': {'x': 0, 'y': 1}},
-            'spam': 'eggs',
+            '0': {'x': 0, 'y': 1},
         },
+        1: {
+            '0': {'x': 0, 'y': 1},
+        }
     }
-    if cache_t1:
-        expected_cache[1] = {0: {'0': {'x': 0, 'y': 1}}}
 
-    assert world._df_cache == expected_cache
+    if cache:
+        assert sim.get_output_for(0) == expected_output_cache[0]
+        assert sim.get_output_for(1) == expected_output_cache[1]
+    else:
+        with pytest.raises(AssertionError):
+            sim.get_output_for(0)
+        with pytest.raises(AssertionError):
+            sim.get_output_for(1)
 
-    assert sim.output_time == 0
+    assert sim.output_time == DenseTime(0)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-async def test_get_outputs_buffered(world):
-    sim = world.sims[0]
-    sim.last_step = 0
+async def test_get_outputs_buffered(world: scenario.World):
+    sim = world.sims["Sim-0"]
+    sim.outputs = {}
+    sim.last_step = DenseTime(0)
+    sim.current_step = DenseTime(0)
     sim.tqdm = tqdm(disable=True)
-    world._df_outattr[0][0] = ['x', 'y', 'z']
-    sim.buffered_output.setdefault(('0', 'x'), []).append((2, '0', 'in'))
-    sim.buffered_output = {
-        ('0', 'x'): [(2, '0', 'in')],
-        ('0', 'z'): [(1, '0', 'in')],
+    sim.output_request = {0: ['x', 'y', 'z']}
+    sim.output_to_push = {
+        ('0', 'x'): [(world.sims["Sim-2"], 0, ('0', 'in'))],
+        ('0', 'z'): [(world.sims["Sim-1"], 0, ('0', 'in'))],
     }
 
-    await scheduler.get_outputs(world, sim, progress=0)
-    assert world.sims[2].timed_input_buffer.input_queue == [(0, 0, '0.0', '0', 'in', 0)]
-    assert world.sims[1].timed_input_buffer.input_queue == []
-
-
-@pytest.mark.parametrize("world", ["event-based"], indirect=True)
-@pytest.mark.parametrize(
-    "too_many_iterations",
-    #[0, pytest.param(100, marks=pytest.mark.xfail(raises=exceptions.SimulationError))],
-    [True, False],
-)
-def test_treat_cycling_output(
-    world: scenario.World, 
-    too_many_iterations: bool,
-):
-    """
-    Tests if progress is adjusted when a triggering cycle could cause
-    an earlier step than predicted by get_max_advance function, or if an error
-    is risen if the maximum iteration count is reached.
-    """
-    sim = world.sims[4]
-
-    for src, dest in [(4, 5), (5, 4)]:
-        world.df_graph[src][dest]["dataflows"] = [("1", "0", [("x", "in")])]
-        world.entity_graph.add_node(f"{dest}.0", sim=None, type="dummy_type")
-        world.sims[dest].proxy.meta["models"] = {"dummy_type": {"trigger": ["in"]}}
-    world.cache_trigger_cycles()
-
-    sim.trigger_cycles[0].time = 1
-    if too_many_iterations:
-        sim.trigger_cycles[0].count = world.max_loop_iterations
-    else:
-        sim.trigger_cycles[0].count = 0
-
-    sim.last_step = output_time = 1
-    data = {"1": {"x": 1}}
-    if too_many_iterations:
-        with pytest.raises(exceptions.SimulationError):
-            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2)
-    else:
-        assert (
-            scheduler.treat_cycling_output(world, sim, data, output_time, progress=2) == 1
-        )
+    await scheduler.get_outputs(world, sim)
+    assert world.sims["Sim-2"].timed_input_buffer.input_queue == [(0, 0, 'Sim-0.0', '0', 'in', 0)]
+    assert world.sims["Sim-1"].timed_input_buffer.input_queue == []
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-@pytest.mark.parametrize('output_time, next_steps', [(1, [1, 2]), (2, [2]), (3, [2, 3])])
-@pytest.mark.parametrize('progress, pop_wait', [(2, False), (3, True)])
-def test_notify_dependencies(world, output_time, next_steps, progress, pop_wait):
-    sim = world.sims[0]
+@pytest.mark.parametrize('output_time, next_steps', [
+    (DenseTime(1), [DenseTime(1), DenseTime(2)]),
+    (DenseTime(2), [DenseTime(2)]),
+    (DenseTime(3), [DenseTime(2), DenseTime(3)])],
+)
+@pytest.mark.parametrize('progress', [2, 3])
+def test_notify_dependencies(world, output_time, next_steps, progress):
+    sim = world.sims["Sim-0"]
     sim.progress = 0
 
-    world.df_graph[0][2]['wait_event'].clear()
-    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim.data = {'1': {'x': 1}}
     sim.output_time = output_time
 
-    heappush(world.sims[2].next_steps, 2)
-    world.sims[2].has_next_step.set()
+    heappush(world.sims["Sim-2"].next_steps, DenseTime(2))
 
-    scheduler.notify_dependencies(world, sim, progress)
+    scheduler.notify_dependencies(sim)
 
-    assert sim.progress == progress
-    assert world.sims[2].next_steps == next_steps
+    assert world.sims["Sim-2"].next_steps == next_steps
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
 def test_notify_dependencies_trigger(world):
-    sim = world.sims[0]
+    sim = world.sims["Sim-0"]
     sim.progress = 0
 
-    world.df_graph[0][2]['wait_event'].set()
-    world.df_graph[0][2]['dataflows'] = [('1', '0', [('x', 'in')])]
     sim.data = {'1': {'x': 1}}
     sim.output_time = 1
+    scheduler.notify_dependencies(sim)
 
-    world.sims[2].has_next_step.clear()
-
-    scheduler.notify_dependencies(world, sim, progress=1)
-
-    assert world.sims[2].next_steps == [1]
-    assert world.sims[2].has_next_step.is_set()
+    assert world.sims["Sim-2"].next_steps == [DenseTime(1)]
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 def test_prune_dataflow_cache(world):
-    world._df_cache[0] = {'spam': 'eggs'}
-    world._df_cache[1] = {'foo': 'bar'}
+    world._df_cache = True
+    world.sims["Sim-0"].outputs = {
+        0: {'spam': 'eggs'},
+        1: {'foo': 'bar'},
+    }
     for s in world.sims.values():
-        s.last_step = 1
+        s.last_step = DenseTime(1)
         s.tqdm = tqdm(disable=True)
     scheduler.prune_dataflow_cache(world)
 
-    assert world._df_cache == {
+    assert world.sims["Sim-0"].outputs == {
         1: {'foo': 'bar'},
     }
 
@@ -481,43 +402,42 @@ def test_prune_dataflow_cache(world):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
 async def test_get_outputs_shifted(world):
-    world._df_cache[1] = {'spam': 'eggs'}
-    world._df_outattr[5][0] = ['x', 'y']
-    world.df_graph[5][4]['wait_event'].clear()
-    sim = world.sims[5]
+    sim = world.sims["Sim-5"]
+    sim.outputs = {}
+    sim.output_request = {0: ['x', 'y']}
     sim.type = 'time-based'
-    sim.progress = 1
-    sim.last_step = 1
+    sim.progress = DenseTime(1)
+    sim.last_step = DenseTime(1)
     sim.tqdm = tqdm(disable=True)
-    heappush(world.sims[4].next_steps, 2)
-
-    await scheduler.get_outputs(world, sim, progress=2)
-    scheduler.notify_dependencies(world, sim, progress=2)
+    heappush(world.sims["Sim-4"].next_steps, 2)
+    
+    sim.current_step = heappop(sim.next_steps)
+    await scheduler.get_outputs(world, sim)
+    scheduler.notify_dependencies(sim)
     scheduler.prune_dataflow_cache(world)
-    assert world.df_graph[5][4]['wait_event'].is_set()
-    assert world._df_cache == {
-        1: {'spam': 'eggs', 5: {'0': {'x': 0, 'y': 1}}},
+    assert sim.outputs[1] == {
+        '0': {'x': 0, 'y': 1},
     }
 
 
 def test_get_progress():
     class Sim:
         def __init__(self, time):
-            self.progress = time
+            self.progress = Progress(DenseTime(time))
 
     sims = {i: Sim(0) for i in range(2)}
     assert scheduler.get_progress(sims, 4) == 0
 
-    sims[0].progress = 1
+    sims[0].progress.value = DenseTime(1)
     assert scheduler.get_progress(sims, 4) == 12.5
 
-    sims[0].progress = 2
+    sims[0].progress.value = DenseTime(2)
     assert scheduler.get_progress(sims, 4) == 25
 
-    sims[1].progress = 3
-    sims[0].progress = 3
+    sims[1].progress.value = DenseTime(3)
+    sims[0].progress.value = DenseTime(3)
     assert scheduler.get_progress(sims, 4) == 75
 
-    sims[0].progress = 4
-    sims[1].progress = 4
+    sims[0].progress.value = DenseTime(4)
+    sims[1].progress.value = DenseTime(4)
     assert scheduler.get_progress(sims, 4) == 100

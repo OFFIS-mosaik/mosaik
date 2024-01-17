@@ -82,3 +82,10 @@ Visualize scenarios
    :maxdepth: 1
 
    graphs
+
+Connecting mosaik with Apache Superset
+
+.. toctree::
+   :maxdepth: 1
+
+   apache-superset

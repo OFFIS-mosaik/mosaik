@@ -4,6 +4,15 @@ Use mosaik with Jupyter Notebooks
 
 You can use mosaik with Jupyter notebooks to have an interactive experience and to write or use tutorials or to document your steps. We have pre-created tutorials written in Jupyter notebooks which you can use. This page gives a short explanation on how to use those.
 
+.. note:: Starting from version 3.2, mosaik uses asyncio, which does not support nested event loops natively. This leads to an error when using mosaik in a Jupyter notebook. Luckily, the issue can be resolved by installing the library `nest_asyncio <https://pypi.org/project/nest-asyncio/>`_ and calling
+
+.. code-block:: python
+   
+   import nest_asyncio
+   nest_asyncio.apply()
+
+at the beginning of your notebook (before creating the mosaik ``World``).
+
 **Step 1 - Use Jupyter in VS Code:** Jupyter notebooks can be used with different UIs. A simple approach is to use Visual Studio Code with its Jupyter extension. You can find detailed information on how to use Jupyter in VS Code in the `VS Code documentation <https://code.visualstudio.com/docs/datascience/jupyter-notebooks>`_.
 
 **Step 2 - mosaik Jupyter repository:** Checkout our Jupyter notebook examples `repository <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_, e.g. via :code:`git clone https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder.git` and open the folder in VS Code.

@@ -28,8 +28,4 @@ INPUTS = {
     'B-0-0': {'0': {'trigger_in': {'A-0.0': None}, 'val_in': {'A-0.0': 0}}},
 }
 
-INPUTS_WITH_CACHE = {
-    'B-0-0': {'0': {'val_in': {'A-0.0': 0}}},
-}
-
 UNTIL = 2

@@ -49,8 +49,8 @@ world.connect(b, a, ('val_out', 'val_in'), **connection_args)
 world.run(**run_args)
 
 if args.plot:
-    from plotting.execution_graph_tools import plot_execution_graph_st
-    plot_execution_graph_st(world)
+    from mosaik.util import plot_execution_graph
+    plot_execution_graph(world, save_plot=False)
 
 if args.compare:
     compare_execution_graph(world, __file__)

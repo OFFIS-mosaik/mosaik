@@ -25,17 +25,20 @@ CONFIG = 'generic'
 EXECUTION_GRAPH = """
 A-0-0 A-0-1
 A-0-0 LoopSim-0-0
+A-0-0 C-0-0
 LoopSim-0-0 A-0-0~1
+LoopSim-0-0 C-0-0
 A-0-0~1 A-0-1
 A-0-0~1 LoopSim-0-0~1
-A-0-0~1 C-0-0
+A-0-0~1 C-0-0~1
 LoopSim-0-0~1 LoopSim-0-1
-LoopSim-0-0~1 C-0-0
 A-0-1 LoopSim-0-1
+A-0-1 C-0-1
 LoopSim-0-1 A-0-1~1
-A-0-1~1 C-0-1
+LoopSim-0-1 C-0-1
+A-0-1~1 C-0-1~1
 A-0-1~1 LoopSim-0-1~1
-LoopSim-0-1~1 C-0-1
+LoopSim-0-1~1
 """
 
 INPUTS = {
@@ -47,6 +50,8 @@ INPUTS = {
     'A-0-1~1': {'0': {'val_in': {'LoopSim-0.Loop': 1}}},
     'LoopSim-0-1~1': {'Loop': {'loop_in': {'A-0.0': 1}}},
     'C-0-1': {'0': {'val_in': {'A-0.0': 1, 'LoopSim-0.Loop': 1}}},
+    'C-0-0~1': {'0': {'val_in': {'A-0.0': 0}}},
+    'C-0-1~1': {'0': {'val_in': {'A-0.0': 1}}},
 }
 
 UNTIL = 2
