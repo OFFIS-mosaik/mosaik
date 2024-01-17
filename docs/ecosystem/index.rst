@@ -50,22 +50,24 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `generics for Java API <https://gitlab.com/mosaik/api/mosaik-api-java-generics>`_
 -  :doc:`Java tutorial </tutorials/tutorial_api-java>`
 - `API for Matlab <https://gitlab.com/mosaik/matlab-mosaik-toolbox>`_
+- `API for Matlab via Java <https://gitlab.com/mosaik/api/mosaik-api-matlab-over-java>`_
 - `API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`_
 
 .. _mosaik_components:
 
 |mosaik| mosaik-components
 ==========================
+This lists the mosaik components that are available on pypi. There are always component in work that are not released yet but are in working condition so if you don't find what you are searching for here take a look in the repository.
 
 - `energy <https://gitlab.com/mosaik/components/energy>`_ related components:
 
     - `mosaik-pandapower <https://gitlab.com/mosaik/components/energy/mosaik-pandapower>`_
       is an adapter for the `pandapower <http://www.pandapower.org/>`_ power system
-      modeling, analysis and optimization tool.
+      modeling, analysis and optimization tool. Not maintained anymore, please install the `mosaik-pandapower2 <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2>`_ adapter.
 
     - `mosaik-pypower <https://gitlab.com/mosaik/components/energy/mosaik-pypower>`_ is an
       adapter for the `PYPOWER <https://github.com/rwl/PYPOWER>`_ load flow
-      analysis library.
+      analysis library. Not maintained anymore, please install the `mosaik-pandapower2 <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2>`_ adapter.
 
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
       contains different models for simulation of heatpumps.
@@ -73,15 +75,18 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
     - `mosaik-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
       is a simple PV Simulator based on PyPVSim.
 
+    - `mosaik-householdsim <https://gitlab.com/mosaik/components/energy/mosaik-householdsim>`_
+      is a househol simulator that simulate households by serving residual load profiles.
+
+
 - `data <https://gitlab.com/mosaik/components/data>`_ related components:
 
     - `mosaik-web <https://gitlab.com/mosaik/components/data/mosaik-web>`_ is a web
       visualization for mosaik simulations.
 
-    - `mosaik-csv <https://gitlab.com/mosaik/components/data/mosaik-csv>`_ and
-      `mosaik-householdsim <https://gitlab.com/mosaik/components/energy/mosaik-householdsim>`_
-      are simple demo simulators that you can use to integrate CSV data sets and
-      load-profile based households into simulation.
+    - `mosaik-csv <https://gitlab.com/mosaik/components/data/mosaik-csv>`_ 
+      is a simple demo simulators that you can use to integrate CSV data sets into simulation.
+      It can also write data into CSV data sets.
 
     - `mosaik-hdf5 <https://gitlab.com/mosaik/components/data/mosaik-hdf5>`_ allows
       to write simulation results to a HDF5 file for further analysis.
@@ -92,20 +97,29 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
     - `InfluxDB 2 adapter <https://gitlab.com/mosaik/components/data/mosaik-influxdb2>`_ to store simulation
       results into InfluxDB 2 time series database.
 
+    - `mosaik-sql adapter <https://gitlab.com/mosaik/components/data/mosaik-sql>`_ to store simulation
+      results into SQL database.
+    
+    - `mosaik-timescaledb adapter <https://gitlab.com/mosaik/components/data/mosaik-timescaledb>`_ to store simulation
+      results into a postgres or timescale database.
+
     - `ZeroMQ adapter <https://gitlab.com/mosaik/components/data/mosaik-zmq>`_ to connect components
       with the messaging library ZeroMQ.
 
     - :doc:`Odysseus-adapter </tutorials/odysseus>` to write results to the data stream management system
       `Odysseus <https://odysseus.informatik.uni-oldenburg.de/>`_ to mosaik.
+      
+- `communication <https://gitlab.com/mosaik/components/energy>`_ related components:
+    
+    - `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_ is a
+      basic communication suite using delays.
+
+    - `mosaik-104 <https://gitlab.com/mosaik/components/communication/mosaik-104>`_ contains an adapter to receive IEC 60870-5-104 protocol
+      messages and hands it over to mosaik.
 
 - `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_ allows to couple Functional Mockup Units (FMU),
   which are based on the `FMI standard <https://fmi-standard.org>`_.
-- `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_ is a
-  basic communication suite using delays.
-
-- `mosaik-104 <https://gitlab.com/mosaik/components/communication/mosaik-104>`_ contains an adapter to receive IEC 60870-5-104 protocol
-  messages and hands it over to mosaik.
-
+    
 .. _mosaik_examples:
 
 |mosaik| mosaik-examples
@@ -120,6 +134,13 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `COmmunication SIMulation for Agents (cosima) <https://gitlab.com/mosaik/examples/cosima>`_ is an example scenario
   with integrated communication simulation based on OMNeT++.
 
+- The `aiomas demo <https://gitlab.com/mosaik/examples/mosaik-aiomas-demo>`_ is an example project, demonstrating how to couple a 
+  multi-agent system written in aiomas to mosaik.
+
+- The `mango demo <https://gitlab.com/mosaik/examples/mosaik-mango-demo>`_ is an example project, demonstrating how to couple a 
+  multi-agent system written in mango to mosaik.
+
+- The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains python notebooks with example scenraios that can be executed on mybinder.
 .. _mosaik_tools:
 
 |mosaik| mosaik-tools
@@ -129,7 +150,9 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_ is a visualization component, which is
   not maintained anymore.
 
-.. _basic_simulators:
+
+|mosaik| mosaik-basic simulators
+================================
 
 .. include:: basic_simulators.rst
 
