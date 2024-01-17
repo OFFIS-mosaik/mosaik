@@ -32,7 +32,7 @@ import warnings
 from typing_extensions import Literal, TypedDict
 
 from mosaik_api_v3.connection import Channel
-from mosaik_api_v3.types import EntityId, Attr, ModelName, SimId, FullId
+from mosaik_api_v3.types import CreateResult, EntityId, Attr, ModelName, SimId, FullId
 
 from mosaik import simmanager
 from mosaik.dense_time import DenseTime
@@ -891,7 +891,9 @@ class ModelMock(object):
                 f"{sep.join(unexpected_params)}'"
             )
 
-    def _make_entities(self, entity_dicts, assert_type=None):
+    def _make_entities(
+        self, entity_dicts: List[CreateResult], assert_type: Optional[ModelName] = None
+    ) -> List[Entity]:
         """
         Recursively create lists of :class:`Entity` instance from a list
         of *entity_dicts*.
@@ -899,15 +901,17 @@ class ModelMock(object):
         sid = self._factory._sid
         entity_graph = self._world.entity_graph
 
-        entity_set = []
+        entity_set: List[Entity] = []
         for e in entity_dicts:
             self._assert_model_type(assert_type, e)
 
-            children = e.get('children', [])
-            if children:
+            children = e.get('children')
+            if children is not None:
                 children = self._make_entities(children)
             model = self._factory.models[e['type']]
-            entity = Entity(sid, e['eid'], self.name, model, children)
+            entity = Entity(
+                sid, e['eid'], self.name, model, children, e.get("extra_info")
+            )
 
             entity_set.append(entity)
             entity_graph.add_node(entity.full_id, sid=sid, type=e['type'])
@@ -916,10 +920,12 @@ class ModelMock(object):
 
         return entity_set
 
-    def _assert_model_type(self, assert_type, e):
-        """
-        Assert that entity *e* has entity type *assert_type* )ifs not none
- ]       or else any valid type.
+    def _assert_model_type(
+        self, assert_type: Optional[ModelName], e: CreateResult
+    ) -> None:
+        """Assert that entity ``e`` has entity type ``assert_type``, or
+        any valid model type of the simulator if ``assert_type`` is
+        ``None``.
         """
         if assert_type is not None:
             assert e['type'] == assert_type, (
@@ -937,7 +943,7 @@ class Entity(object):
     """
     An entity represents an instance of a simulation model within mosaik.
     """
-    __slots__ = ['sid', 'eid', 'sim_name', 'model_mock', 'children', 'connection']
+    __slots__ = ['sid', 'eid', 'sim_name', 'model_mock', 'children', 'extra_info']
     sid: SimId
     """The ID of the simulator this entity belongs to."""
     eid: EntityId
@@ -946,8 +952,9 @@ class Entity(object):
     """The entity's simulator name."""
     model_mock: ModelMock
     """The entity's type (or class)."""
-    children: Iterable[Entity]
+    children: List[Entity]
     """An entity set containing subordinate entities."""
+    extra_info: Any
 
     def __init__(
         self,
@@ -955,13 +962,15 @@ class Entity(object):
         eid: EntityId,
         sim_name: str,
         model_mock: ModelMock,
-        children: Iterable[Entity],
+        children: Optional[Iterable[Entity]],
+        extra_info: Any = None,
     ):
         self.sid = sid
         self.eid = eid
         self.sim_name = sim_name
         self.model_mock = model_mock
-        self.children = children if children is not None else set()
+        self.children = list(children) if children is not None else []
+        self.extra_info = extra_info
 
     @property
     def type(self) -> ModelName:

@@ -15,6 +15,9 @@ sim_config: scenario.SimConfig = {
     'MetaMirror': {
         'python': 'tests.simulators.meta_mirror:MetaMirror',
     },
+    'GenericTestSimulator': {
+        'python': 'tests.simulators.generic_test_simulator:TestSim',
+    }
 }
 
 
@@ -420,5 +423,9 @@ def test_no_extra_methods(world: World):
             "models": {},
         },
     )
-    
-    
+
+
+def test_extra_info(world: World):
+    sim = world.start("GenericTestSimulator")
+    entity = sim.A(extra_info=42)
+    assert entity.extra_info == 42
