@@ -1,6 +1,14 @@
 Changelog
 =========
 
+3.3.0 - 2024-01-17
+-------------------
+- [NEW] A simulator can now be connected to itself if the connection is weak or time_shifted (https://gitlab.com/mosaik/mosaik/-/issues/156)
+- [NEW] mosaik now provides a couple of basic simulators (https://gitlab.com/mosaik/mosaik/-/issues/192 , https://mosaik.readthedocs.io/en/latest/ecosystem/index.html#mosaik-basic-simulators)
+- [NEW] Simulators can return extra_info for their entities to be used in scenario script (https://gitlab.com/mosaik/mosaik/-/issues/197)
+- [IMPROVEMENT] Internal rework and refactoring of the time handling in mosaik (https://gitlab.com/mosaik/mosaik/-/issues/162)
+
+
 3.2.0 - 2023-08-31
 ------------------
 - [NEW] Visualizations for the simulation debug information (https://gitlab.com/mosaik/mosaik/-/issues/173)
