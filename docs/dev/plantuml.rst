@@ -1,3 +1,5 @@
+:orphan:
+
 ===================
 Extensions Examples
 ===================
@@ -24,7 +26,7 @@ Since Pythagoras, we know that :math:`a^2 + b^2 = c^2`.
    (a - b)^2 = a^2 - 2ab + b^2
 
 
-..    digraph packages_mosaik {
+.. digraph packages_mosaik {
     charset="utf-8"
     rankdir=BT
     "0" [label="mosaik", shape="box"];

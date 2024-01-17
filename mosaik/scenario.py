@@ -516,36 +516,47 @@ class World(object):
         print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
     ):
-        """
-        Start the simulation until the simulation time *until* is reached.
+        """Start the simulation until the simulation time *until* is
+        reached.
 
-        In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. A rt-factor of 1. means that 1 second in simulated time
-        takes 1 second in real-time. An rt-factor 0f 0.5 will let the
-        simulation run twice as fast as real-time. For correct behavior of the
-        rt_factor the time_resolution of the scenario has to be set adequately,
-        which is 1. [second] by default.
+        Before this method returns, it stops all simulators and closes
+        mosaik's server socket. So this method should only be called
+        once.
 
-        If the simulators are too slow for the rt-factor you chose, mosaik
-        prints by default only a warning. In order to raise
-        a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
+        :param until: The end of the simulation in mosaik time steps
+            (exclusive).
 
-        ``print_progress`` controls whether progress bars are printed while the
-        simulation is running. The default is to print one bar representing the
-        global progress of the simulation. You can also set
-        ``print_progress='individual'`` to get one bar per simulator in your
-        simulation (in addition to the global one). ``print_progress=False`
-        turns off the progress bars completely. The progress bars use
-        `tqdm <https://pypi.org/project/tqdm/>`_; see their documentation
-        on how to write to the console without interfering with the bars.
+        :param rt_factor: The real-time factor. If set to a number > 0,
+            the simulation will run in real-time mode. A real-time 
+            factor of 1. means that 1 second in simulated time takes
+            1 second in real time. An real-time factor of 0.5 will let
+            the simulation run twice as fast as real time. For correct
+            behavior of the real-time factor, the time resolution of the
+            scenario has to be set adequately (the default is 1 second).
 
-        You can also set the *lazy_stepping* flag (default: ``True``). If
-        ``True`` a simulator can only run ahead one step of it's successors. If
-        ``False`` a simulator always steps as long all input is provided. This
-        might decrease the simulation time but increase the memory consumption.
+        :param rt_strict: If the simulators are too slow for the
+            real-time factor you chose, mosaik will only print a warning
+            by default. In order to raise a :exc:`RuntimeError` instead,
+            you can set *rt_strict* to ``True``.
 
-        Before this method returns, it stops all simulators and closes mosaik's
-        server socket. So this method should only be called once.
+        :param print_progress: Whether progress bars are printed while
+            the simulation is running. The default is to print one bar
+            representing the global progress of the simulation. You can
+            also set the value to ``'individual'`` to get one bar per
+            simulator in your simulation (in addition to the global
+            one). A value of ``False`` turns off the progress bars
+            completely.
+            
+            The progress bars use
+            `tqdm <https://pypi.org/project/tqdm/>`_; see their
+            documentation on how to write to the console without
+            interfering with the bars.
+
+        :param lazy_stepping: Whether to prevent simulators from running
+            ahead of their successors by more than one step. If
+            ``False`` a simulator always steps as long all input is
+            provided. This might decrease the simulation time but
+            increase the memory consumption.
         """
         if hasattr(self, "until"):
             raise RuntimeError(
