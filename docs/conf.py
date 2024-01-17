@@ -256,7 +256,12 @@ texinfo_documents = [
 #texinfo_show_urls = 'footnote'
 
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# Intersphinx configuration to automatically link to the documentation
+# of other projects when we use their methods and types.
+# Each key is the name of the linked project. The corresponding value
+# is the root of their documentation (and the location of their
+# "inventory file" if not in the standard location; here they are, so
+# we use None).
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'networkx': ('https://networkx.org/documentation/stable/', None),
