@@ -65,6 +65,9 @@ This lists the mosaik components that are available on pypi. There are always co
       is an adapter for the `pandapower <http://www.pandapower.org/>`_ power system
       modeling, analysis and optimization tool. Not maintained anymore, please install the `mosaik-pandapower2 <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2>`_ adapter.
 
+    - `mosaik-pandapipes <https://gitlab.com/mosaik/components/energy/mosaik-pandapipes>`_
+      is an adapter for the `pandapipes <https://www.pandapipes.org/>`_ fluid system modeling, analysis and optimization tool.
+
     - `mosaik-pypower <https://gitlab.com/mosaik/components/energy/mosaik-pypower>`_ is an
       adapter for the `PYPOWER <https://github.com/rwl/PYPOWER>`_ load flow
       analysis library. Not maintained anymore, please install the `mosaik-pandapower2 <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2>`_ adapter.
