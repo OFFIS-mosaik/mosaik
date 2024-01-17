@@ -144,7 +144,7 @@ def plot_execution_time(
         slices_steps = range(world.until)[slice[0] : slice[1]]
         all_nodes_sliced = []
         for node in all_nodes:
-            if int(node[0].split("-")[-1]) in slices_steps:
+            if node[0][1].time in slices_steps:
                 all_nodes_sliced.append(node)
         all_nodes = all_nodes_sliced
 
@@ -154,7 +154,7 @@ def plot_execution_time(
     for isid in world.sims.keys():
         steps[isid] = []
         for node in all_nodes:
-            if node[0].startswith(isid):
+            if node[0][0] == isid:
                 steps[isid].append(
                     (node[1]["t"] - t_min, (node[1]["t_end"] - node[1]["t"]))
                 )
