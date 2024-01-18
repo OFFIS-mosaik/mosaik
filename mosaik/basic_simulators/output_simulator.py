@@ -1,10 +1,22 @@
-import mosaik_api_v3
-from mosaik_api_v3.types import OutputData, OutputRequest
 import mosaik
 import mosaik.exceptions
 from copy import deepcopy
 
-META = {
+from typing import Any, Dict, List
+import mosaik_api_v3
+from mosaik_api_v3.types import (
+    CreateResult,
+    Meta,
+    ModelName,
+    InputData,
+    OutputData,
+    OutputRequest,
+    SimId,
+    Time,
+)
+
+META: Meta = {
+    "api_version": "3.0",
     "type": "event-based",
     "extra_methods": ["get_dict"],
     "models": {
@@ -26,16 +38,19 @@ class OutputSimulator(mosaik_api_v3.Simulator):
     The dictionary can be retrieved using the :meth:`get_dict()` method.
     """
 
+    entities: Dict[str, Dict[Time, Any]]
+
     def __init__(self):
         super().__init__(META)
         self.entities = {}  # Maps EIDs to model instances/entities
 
-    def init(self, sid, time_resolution):
+    def init(self, sid: SimId, time_resolution:float = 1):
         return self.meta
 
-    def create(self, num, model):
+    def create(self, num: int, model: ModelName, **model_params: Any
+    ) -> List[CreateResult]:
         next_eid = len(self.entities)
-        entities = []
+        entities: List[CreateResult] = []
         for i in range(next_eid, next_eid + num):
             model_instance = {}
             eid = f"{model}-{i}"
@@ -43,9 +58,10 @@ class OutputSimulator(mosaik_api_v3.Simulator):
             entities.append({"eid": eid, "type": model})
         return entities
 
-    def step(self, time, inputs, max_advance):
-        for entity in self.entities.values():
-            entity[time] = deepcopy(inputs)
+    def step(self, time: Time, inputs:InputData, max_advance: Time):
+        print(inputs)
+        for receiver, input in inputs.items():
+            self.entities[receiver][time] = deepcopy(input) 
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
         raise mosaik.exceptions.ScenarioError(
@@ -53,7 +69,7 @@ class OutputSimulator(mosaik_api_v3.Simulator):
             "Use this simulator for input data only."
         )
 
-    def get_dict(self, eid):
+    def get_dict(self, eid:str) -> Dict[Time, Any]:
         """
         Returns the dict of the simulator entity specified by the ``eid``.
 

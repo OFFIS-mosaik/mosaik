@@ -26,7 +26,9 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
     'sphinx.ext.imgmath',
+    'sphinx.ext.linkcode',
     'sphinx_rtd_theme',
+    'sphinxcontrib.plantuml',
 ]
 
 # -- Options for Graphviz -------------------------------------------------
@@ -254,12 +256,29 @@ texinfo_documents = [
 #texinfo_show_urls = 'footnote'
 
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# Intersphinx configuration to automatically link to the documentation
+# of other projects when we use their methods and types.
+# Each key is the name of the linked project. The corresponding value
+# is the root of their documentation (and the location of their
+# "inventory file" if not in the standard location; here they are, so
+# we use None).
 intersphinx_mapping = {
-    'https://docs.python.org/3/': None,
-    'https://simpy.readthedocs.io/en/latest/': None,
-    'https://networkx.github.io/': None,
+    'python': ('https://docs.python.org/3/', None),
+    'networkx': ('https://networkx.org/documentation/stable/', None),
 }
 
 # Autodoc
 autodoc_member_order = 'bysource'
+
+# This method is used to generate links to the source code in the
+# documentation.
+def linkcode_resolve(domain, info):
+    # Don't create links for non-Python code.
+    if domain != 'py':
+        return
+    # Cannot create link if we don't know the Python module of the code
+    if not info['module']:
+        return
+    # Turn the module name into the URL on gitlab
+    filename = info['module'].replace('.', '/')
+    return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"

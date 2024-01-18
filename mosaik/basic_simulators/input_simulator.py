@@ -43,20 +43,23 @@ class InputSimulator(mosaik_api_v3.Simulator):
 
     step_size: int
     functions: Dict[str, Callable[[Time], Any]]
-    constants: Dict[str, int]
+    constants: Dict[str, Any]
 
     def __init__(self):
         super().__init__(META)
+        self.functions = {}
+        self.constants = {}
+        self.step_size = 1
+        self.time = 0
 
     def init(self, sid: SimId, time_resolution: float = 1, step_size: int = 1) -> Meta:
         self.step_size = step_size
-        self.functions = {}
-        self.constants = {}
-        self.time = 0
         return self.meta
 
-    def create(self, num: int, model: ModelName, **model_params) -> List[CreateResult]:
-        new_entities = []
+    def create(
+        self, num: int, model: ModelName, **model_params: Any
+    ) -> List[CreateResult]:
+        new_entities: List[CreateResult] = []
         if model == FUNCTION_KEY:
             for i in range(len(self.functions), len(self.functions) + num):
                 new_entities.append(
@@ -69,7 +72,9 @@ class InputSimulator(mosaik_api_v3.Simulator):
                 )
         return new_entities
 
-    def create_function_entity(self, id, model, function):
+    def create_function_entity(
+        self, id: int, model: str, function: Callable[[Time], Any]
+    ) -> CreateResult:
         eid = f"{FUNCTION_KEY}-{id}"
         self.functions[eid] = function
         return {
@@ -77,18 +82,20 @@ class InputSimulator(mosaik_api_v3.Simulator):
             "type": model,
         }
 
-    def create_constant_entity(self, id, model, constant):
+    def create_constant_entity(
+        self, id: int, model: str, constant: Any
+    ) -> CreateResult:
         eid = f"{CONSTANT_KEY}-{id}"
         self.constants[eid] = constant
         return {"eid": eid, "type": model}
 
-    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time | None:
+    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time:
         assert inputs == {}
         self.time = time
         return time + self.step_size
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
-        data = {}
+        data: OutputData = {}
         for eid in outputs:
             if CONSTANT_KEY in eid:
                 data[eid] = {"value": self.constants[eid]}
