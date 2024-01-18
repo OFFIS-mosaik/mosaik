@@ -3,11 +3,10 @@ import logging
 from copy import deepcopy
 import mosaik.util
 import pytest
-from mosaik.scenario import SimConfig
+from mosaik.scenario import SimConfig, World
 from mosaik_api_v3.types import (
     Meta,
 )
-
 
 META: Meta =  {
     'api_version': '3.0',
@@ -27,57 +26,64 @@ SIM_CONFIG: SimConfig = {
     },
 }
 
+@pytest.fixture(name='world')
+def world_fixture():
+    world = World(SIM_CONFIG)
+    yield world
+    world.shutdown()
+
 # Create World
-world = mosaik.World(SIM_CONFIG)
+@pytest.mark.xfail
+def test_union_is_created_successfully_event_based(world:World):
+    new_meta = deepcopy(META)
+    new_meta['type'] = 'event-based'
+    del new_meta['models']['ModelName']['attrs']
+    new_meta['models']['ModelName']['trigger'] = ['attr_1']
+    # the missing part
+    new_meta['models']['ModelName']['persistent'] = ['attr_1']
+    new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
+    sim = world.start("MetaMirror", meta=new_meta)  
+    print(sim.ModelName.event_inputs)
+    print(sim.ModelName.event_outputs)
+    print(sim.ModelName.measurement_inputs)
+    print(sim.ModelName.attrs)
+    assert False
 
-# def test_union_is_created_successfully_event_based():
-#     new_meta = deepcopy(META)
-#     new_meta['type'] = 'event-based'
-#     del new_meta['models']['ModelName']['attrs']
-#     new_meta['models']['ModelName']['trigger'] = ['attr_1']
-#     # the missing part
-#     new_meta['models']['ModelName']['persistent'] = ['attr_1']
-#     new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
-#     sim = world.start("MetaMirror", meta=new_meta)  
-#     print(sim.ModelName.event_inputs)
-#     print(sim.ModelName.event_outputs)
-#     print(sim.ModelName.measurement_inputs)
-#     print(sim.ModelName.attrs)
-#     assert False
+@pytest.mark.xfail
+def test_union_is_created_successfully_time_based(world:World):
+    new_meta = deepcopy(META)
+    new_meta['type'] = 'time-based'
+    del new_meta['models']['ModelName']['attrs']
+    new_meta['models']['ModelName']['trigger'] = ['attr_1']
+    # the missing part
+    new_meta['models']['ModelName']['non-trigger'] = ['attr_2']
+    new_meta['models']['ModelName']['persistent'] = ['attr_1']
+    new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
+    sim = world.start("MetaMirror", meta=new_meta)  
+    print(sim.ModelName.event_inputs)
+    print(sim.ModelName.event_outputs)
+    print(sim.ModelName.measurement_inputs)
+    print(sim.ModelName.attrs)
+    assert False
 
-# def test_union_is_created_successfully_time_based():
-#     new_meta = deepcopy(META)
-#     new_meta['type'] = 'time-based'
-#     del new_meta['models']['ModelName']['attrs']
-#     new_meta['models']['ModelName']['trigger'] = ['attr_1']
-#     # the missing part
-#     new_meta['models']['ModelName']['non-trigger'] = ['attr_2']
-#     new_meta['models']['ModelName']['persistent'] = ['attr_1']
-#     new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
-#     sim = world.start("MetaMirror", meta=new_meta)  
-#     print(sim.ModelName.event_inputs)
-#     print(sim.ModelName.event_outputs)
-#     print(sim.ModelName.measurement_inputs)
-#     print(sim.ModelName.attrs)
-#     assert False
+@pytest.mark.xfail
+def test_union_is_created_successfully_hybrid(world:World):
+    new_meta = deepcopy(META)
+    new_meta['type'] = 'hybrid'
+    del new_meta['models']['ModelName']['attrs']
+    new_meta['models']['ModelName']['trigger'] = ['attr_1']
+    # the missing part
+    new_meta['models']['ModelName']['non-trigger'] = ['attr_2']
+    new_meta['models']['ModelName']['persistent'] = ['attr_1']
+    new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
+    sim = world.start("MetaMirror", meta=new_meta)  
+    print(sim.ModelName.event_inputs)
+    print(sim.ModelName.event_outputs)
+    print(sim.ModelName.measurement_inputs)
+    print(sim.ModelName.attrs)
+    assert False
 
-# def test_union_is_created_successfully_hybrid():
-#     new_meta = deepcopy(META)
-#     new_meta['type'] = 'hybrid'
-#     del new_meta['models']['ModelName']['attrs']
-#     new_meta['models']['ModelName']['trigger'] = ['attr_1']
-#     # the missing part
-#     new_meta['models']['ModelName']['non-trigger'] = ['attr_2']
-#     new_meta['models']['ModelName']['persistent'] = ['attr_1']
-#     new_meta['models']['ModelName']['non-persistent'] = ['attr_2']
-#     sim = world.start("MetaMirror", meta=new_meta)  
-#     print(sim.ModelName.event_inputs)
-#     print(sim.ModelName.event_outputs)
-#     print(sim.ModelName.measurement_inputs)
-#     print(sim.ModelName.attrs)
-#     assert False
-
-def test_cant_create_union_one_part_missing():
+def test_cant_create_union_one_part_missing(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'event-based'
     # attrs is deleted to create the need for creating a union
@@ -88,35 +94,35 @@ def test_cant_create_union_one_part_missing():
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)    
 
-def test_no_attrs():
+def test_no_attrs(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'time-based'
     new_meta['models']['ModelName']['trigger'] = ['attr_1']
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)
 
-def test_time_based_with_trigger_attrs():
+def test_time_based_with_trigger_attrs(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'time-based'
     del new_meta['models']['ModelName']['attrs']
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)
 
-def test_event_based_with_non_trigger_attrs():
+def test_event_based_with_non_trigger_attrs(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'event-based'
     new_meta['models']['ModelName']['non-trigger'] = ['attr_1']
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)
 
-def test_time_based_with_non_persistent_attrs():
+def test_time_based_with_non_persistent_attrs(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'time-based'
     new_meta['models']['ModelName']['non-persistent'] = ['attr_1']
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)
 
-def test_event_based_with_persistent_attrs():
+def test_event_based_with_persistent_attrs(world:World):
     new_meta = deepcopy(META)
     new_meta['type'] = 'event-based'
     new_meta['models']['ModelName']['persistent'] = ['attr_1']
@@ -124,7 +130,7 @@ def test_event_based_with_persistent_attrs():
     with pytest.raises(ValueError):
         world.start("MetaMirror", meta=new_meta)
 
-def test_persistent_non_persistent():
+def test_persistent_non_persistent(world:World):
     new_meta = deepcopy(META)
     new_meta['models']['ModelName']['persistent'] = ['attr_1']
     new_meta['models']['ModelName']['non-persistent'] = ['attr_1']
@@ -132,7 +138,7 @@ def test_persistent_non_persistent():
         world.start("MetaMirror", meta=new_meta)
 
 # tests the incompatibility of the same attr as a trigger and as a non-trigger
-def test_trigger_non_trigger():
+def test_trigger_non_trigger(world:World):
     new_meta = deepcopy(META)
     new_meta['models']['ModelName']['trigger'] = ['attr_1']
     new_meta['models']['ModelName']['non-trigger'] = ['attr_1']
