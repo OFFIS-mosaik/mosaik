@@ -29,12 +29,14 @@ mosaik-api-v3 = "^3.0.4"
 [tool.poetry.group.dev.dependencies]
 flake8 = "3.7.9"
 pep8 = "1.7.1"
+tox = "^3.20.1"
+
+[tool.poetry.group.test.dependencies]
 pytest = "7.2.2"
 pytest-cov = "^2.8.1"
 pytest-benchmark = "^3.4.1"
 pytest-asyncio = "^0.20.3"
-tox = "^3.20.1"
-
+hypothesis = "^6.96.1"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = {version = "^7.2.5", python = "^3.9"}
