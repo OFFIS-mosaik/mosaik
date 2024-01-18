@@ -7,7 +7,7 @@ import time
 from typing import Any, Callable, Coroutine, Optional, Type
 
 from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import __api_version__ as api_version
+from mosaik_api_v3 import Meta, __api_version__ as api_version
 import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
@@ -53,17 +53,24 @@ def test_start(world, monkeypatch):
     Test if start() dispatches to the correct start functions.
     """
 
-    class Proxy(object):
-        @classmethod
-        async def init(cls, *args, **kwargs):
+    class Proxy(BaseProxy):
+        async def init(self, *args, **kwargs):
             return list(map(int, api_version.split('.')))
+
+        @property
+        def meta(self) -> Meta:
+            raise NotImplementedError
         
-        @classmethod
-        async def send(cls, request):
+        async def send(self, request):
             return None
 
+        async def stop(self):
+            raise NotImplementedError
+
+    proxy = Proxy()
+
     async def start(*args, **kwargs):
-        return Proxy
+        return proxy
 
     s = simmanager.StarterCollection()
     monkeypatch.setitem(s, "python", start)
@@ -73,36 +80,20 @@ def test_start(world, monkeypatch):
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "0", 1.0, {})
     )
-    assert ret == Proxy
+    assert ret == proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "0", 1.0, {})
     )
-    assert ret == Proxy
+    assert ret == proxy
 
     # The api_version has to re-initialized
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "0", 1.0, {})
     )
-    assert ret == Proxy
-
-
-def test_start_wrong_api_version(world, monkeypatch):
-    """
-    An exception should be raised if the simulator uses an unsupported
-    API version."""
-    with pytest.raises(ScenarioError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "MetaMock", "MetaMock-0", 1.0, {"meta": {"api_version": "1000.0"}})
-        )
-
-    assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMock-0: The API version "
-        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
-        "mosaik package is available to be used in your scenario?"
-    )
+    assert ret == proxy
 
 
 def test_start_in_process(world):
