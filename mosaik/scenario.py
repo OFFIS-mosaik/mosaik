@@ -799,17 +799,20 @@ def parse_attrs(
     :raises ValueError: if the information is insufficient or
         inconsistent
     """
+    error_template = (
+            "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
+            "if you need both types of %s attributes), and they must list all their "
+            "attrs as %s if that key is present"
+    )
+    
     if model_desc.get('any_inputs', False):
         inputs: Optional[InOrOutSet[Attr]] = OutSet()
     else:
         inputs = wrap_set(model_desc.get('attrs'))
-    default_measurements = (
-        None if type == 'event-based' or 'trigger' in model_desc else inputs
-    )
+    empty: FrozenSet[Attr] = frozenset()
+    default_measurements = empty if type == 'event-based' else None
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = (
-        inputs if type == 'event-based' and 'non-trigger'not in model_desc else None
-    )
+    default_events = None if type == 'event-based' else empty
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
@@ -817,23 +820,17 @@ def parse_attrs(
     )
     if type == 'time-based' and event_inputs != frozenset():
         raise ValueError(
-            "time-based simulators may not specify trigger attrs (use a hybrid "
-            "simulator, instead)"
+            error_template % ("time-based", "trigger", "input", "non-trigger")
         )
     if type == 'event-based' and measurement_inputs != frozenset():
         raise ValueError(
-            "event-based simulators may not specify non-trigger attrs (use a hybrid "
-            "simulator, instead)"
+            error_template % ("event-based", "non-trigger", "inpus", "trigger")
         )
     
     outputs = wrap_set(model_desc.get('attrs'))
-    default_measurements = (
-        None if type == 'event-based' or 'non-persistent' in model_desc else outputs
-    )
+    default_measurements = empty if type == 'event-based' else None
     measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
-    default_events = (
-        outputs if type == 'event-based' and not 'persistent' in model_desc else None
-    )
+    default_events = None if type == 'event-based' else empty
     event_outputs = wrap_set(model_desc.get('non-persistent', default_events))
     measurement_outputs, event_outputs = parse_set_triple(
         outputs, measurement_outputs, event_outputs,
@@ -841,13 +838,11 @@ def parse_attrs(
     )
     if type == 'time-based' and event_outputs != frozenset():
         raise ValueError(
-            "time-based simulators may not specify non-persistent attrs (use a hybrid "
-            "simulator, instead)"
+            error_template % ("time-based", "non-persistent", "output", "persistent")
         )
     if type == 'event-based' and measurement_outputs != frozenset():
         raise ValueError(
-            "event-based simulators may not specify persistent attrs (use a hybrid "
-            "simulator, instead)"
+            error_template % ("event-based", "persistent", "output", "non-persistent")
         )
 
     return measurement_inputs, event_inputs, measurement_outputs, event_outputs
