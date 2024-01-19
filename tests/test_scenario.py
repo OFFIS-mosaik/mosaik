@@ -215,10 +215,9 @@ def test_world_connect_any_inputs(world: World):
     everything can be connected to it.
     """
     a = cast(Entity, world.start('ExampleSim').A(init_val=0))
-    b = cast(Entity, world.start('ExampleSim').B(init_val=0))
+    b = cast(Entity, world.start('MetaMirror', meta={"api_version": "3.0", "models": {"B": {"any_inputs": True, "attrs": []}}}).B())
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
     assert sim_b.pulled_inputs[(sim_a, 0)] == set([
@@ -228,8 +227,8 @@ def test_world_connect_any_inputs(world: World):
     assert sim_a.successors == set((sim_b,))
     assert sim_b.input_delays[sim_a] == DenseTime(0)
     assert to_dict(world.entity_graph) == {
-        'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
-        'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
+        'ExampleSim-0.' + a.eid: {'MetaMirror-0.' + b.eid: {}},
+        'MetaMirror-0.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
 
 
