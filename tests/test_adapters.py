@@ -7,11 +7,11 @@ from mosaik.scenario import SimConfig, World
 
 
 sim_config: SimConfig = {
-    "MetaMock": {
-        "python": "tests.mocks.meta_mock:MetaMock",
+    "MetaMirror": {
+        "python": "tests.simulators.meta_mirror:MetaMirror",
     },
-    "MetaMock2.0": {
-        "python": "tests.mocks.meta_mock:MetaMock",
+    "MetaMirror2.0": {
+        "python": "tests.simulators.meta_mirror:MetaMirror",
         "api_version": "2.0",
     }
 }
@@ -31,8 +31,8 @@ def test_old_api_version_warning(world: World):
         world.loop.run_until_complete(
             simmanager.start(
                 world,
-                "MetaMock",
-                "MetaMock-0",
+                "MetaMirror",
+                "MetaMirror-0",
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "2.0"}},
             )
@@ -47,8 +47,8 @@ def test_old_api_version_no_warning(world: World):
         world.loop.run_until_complete(
             simmanager.start(
                 world,
-                "MetaMock2.0",
-                "MetaMock-0",
+                "MetaMirror2.0",
+                "MetaMirror-0",
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "2.0"}},
             )
@@ -63,15 +63,15 @@ def test_start_wrong_api_version(world: World):
         world.loop.run_until_complete(
             simmanager.start(
                 world,
-                "MetaMock",
-                "MetaMock-0",
+                "MetaMirror",
+                "MetaMirror-0",
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "1000.0"}},
             )
         )
 
     assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMock-0: The API version "
+        "There was an error during the initialization of MetaMirror-0: The API version "
         "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
         "mosaik package is available to be used in your scenario?"
     )
