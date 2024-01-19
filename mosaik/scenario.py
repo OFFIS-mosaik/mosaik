@@ -260,10 +260,13 @@ class World(object):
         proxy = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
+        # Create the ModelFactory before the SimRunner as it performs
+        # some checks on the simulator's meta.
+        model_factory = ModelFactory(self, sim_id, proxy)
         self.sims[sim_id] = SimRunner(sim_id, proxy)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
-        return ModelFactory(self, sim_id, proxy)
+        return model_factory
 
     def connect_one(
         self,

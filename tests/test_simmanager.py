@@ -330,11 +330,13 @@ def test_start_init_error(caplog):
         world.shutdown()
 
 
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_model_names(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {"step": {}}})
 
 
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
