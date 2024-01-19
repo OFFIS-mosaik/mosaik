@@ -75,6 +75,10 @@ class ModelOptionals(TypedDict, total=False):
     """The environment variables to set for this simulator."""
     cwd: str
     """The current working directory for this simulator."""
+    api_version: str
+    """The API version of the connected simulator. Set this to suppress
+    warnings about this simulator being outdated.
+    """
 
 
 class PythonModel(ModelOptionals):
