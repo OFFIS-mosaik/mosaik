@@ -3,6 +3,8 @@ This module contains some utility functions and classes.
 
 """
 import random
+from typing import Optional
+from typing_extensions import Literal
 import networkx as nx
 import datetime
 
@@ -186,36 +188,52 @@ def plot_execution_time(
 
 
 def plot_dataflow_graph(
-    world,
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
+    world: World,
+    folder: str = STANDARD_FOLDER,
+    hdf5path: Optional[str] = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
 ):
-    """
-    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
-    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
+    """Creates an image visualizing the data flow graph of a mosaik
+    scenario. Using the spring_layout from Matplotlib (Fruchterman-
+    Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is 
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
     :show_plot: open a window to show the plot
-    :return: no return object, but image file will be written to file system
+    :return: no return object, but image file will be written to file
+        system
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
-    df_graph = world.df_graph
+    # Recreate the df_graph for plotting. There might be additional
+    # useful information to be extracted from the SimRunners.
+    df_graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, dt in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=dt.time>0,
+                weak=dt.microstep>0,
+            )
     positions = nx.spring_layout(df_graph)
+
     fig, ax = plt.subplots()
     for node in df_graph.nodes:
         # Draw a dot for the simulator
         ax.plot(positions[node][0], positions[node][1], "o")
-        # Put the name of the simulator on the dot. If we put an absolute distance, we depend on the scaling, which
-        # can effect seemingly random distances from the dot
+        # Put the name of the simulator on the dot. If we put an
+        # absolute distance, we depend on the scaling, which can effect
+        # seemingly random distances from the dot
         text_x = positions[node][0]
         text_y = positions[node][1]
         label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
