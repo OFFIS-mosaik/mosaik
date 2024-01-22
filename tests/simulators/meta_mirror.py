@@ -16,7 +16,9 @@ class MetaMirror(mosaik_api_v3.Simulator):
         super().__init__(meta={})
     
     def init(self, sid, meta, time_resolution=1.0):
-        self.meta.update(meta)
+        # Don't call self.meta.update(meta) as usual here because we
+        # want to set the exact meta returned to mosaik 
+        self.meta = meta
         return self.meta
 
     def step(self, time, inputs, max_advance=None):
