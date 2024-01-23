@@ -150,7 +150,7 @@ Introduction...
    :maxdepth: 2
    :hidden:
 
-   components/mosaik-heatpump/index
+   components/mosaik-heatpump/overview
 
 .. |mosaik| image:: /_static/favicon.png
 
