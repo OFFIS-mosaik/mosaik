@@ -5,8 +5,9 @@ to create scenarios and run simulations.
 Currently, this is only :class:`mosaik.scenario.World`.
 
 """
-from mosaik.scenario import SimConfig, World
-from mosaik import _version
+from importlib import metadata
 
-__version__ = _version.VERSION
+from mosaik.scenario import SimConfig, World
+
+__version__ = metadata.version("mosaik")
 __all__ = ['SimConfig', 'World']

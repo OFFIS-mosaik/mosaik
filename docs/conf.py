@@ -60,7 +60,7 @@ copyright = '2012-2024 OFFIS'
 # built documents.
 #
 # The short X.Y version.
-version = '.'.join(mosaik.__version__.split('.')[:2])
+version = mosaik.__version__
 # The full version, including alpha/beta/rc tags.
 release = mosaik.__version__
 
