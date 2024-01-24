@@ -7,7 +7,7 @@ import time
 from typing import Any, Callable, Coroutine, Optional, Type
 
 from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import __api_version__ as api_version
+from mosaik_api_v3 import Meta, __api_version__ as api_version
 import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
@@ -36,7 +36,7 @@ sim_config: scenario.SimConfig = {
         "python": "tests.mocks.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
-        "python": "tests.mocks.meta_mock:MetaMock",
+        "python": "tests.simulators.meta_mirror:MetaMirror",
     },
 }
 
@@ -53,17 +53,24 @@ def test_start(world, monkeypatch):
     Test if start() dispatches to the correct start functions.
     """
 
-    class Proxy(object):
-        @classmethod
-        async def init(cls, *args, **kwargs):
+    class Proxy(BaseProxy):
+        async def init(self, *args, **kwargs):
             return list(map(int, api_version.split('.')))
+
+        @property
+        def meta(self) -> Meta:
+            raise NotImplementedError
         
-        @classmethod
-        async def send(cls, request):
+        async def send(self, request):
             return None
 
+        async def stop(self):
+            raise NotImplementedError
+
+    proxy = Proxy()
+
     async def start(*args, **kwargs):
-        return Proxy
+        return proxy
 
     s = simmanager.StarterCollection()
     monkeypatch.setitem(s, "python", start)
@@ -73,30 +80,28 @@ def test_start(world, monkeypatch):
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "0", 1.0, {})
     )
-    assert ret == Proxy
+    assert ret == proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "0", 1.0, {})
     )
-    assert ret == Proxy
+    assert ret == proxy
 
     # The api_version has to re-initialized
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "0", 1.0, {})
     )
-    assert ret == Proxy
+    assert ret == proxy
 
 
-def test_start_wrong_api_version(world, monkeypatch):
+def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
     with pytest.raises(ScenarioError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "MetaMock", "MetaMock-0", 1.0, {"meta": {"api_version": "1000.0"}})
-        )
+        world.start("MetaMock", meta={"api_version": "1000.0"})
 
     assert str(exc_info.value) == (
         "There was an error during the initialization of MetaMock-0: The API version "
@@ -325,16 +330,18 @@ def test_start_init_error(caplog):
         world.shutdown()
 
 
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_model_names(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {"step": {}}})
 
 
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["step"]})
+        world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["A"]})
+        world.start("MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]})
 
 
 def test_sim_proxy_stop_impl(world):

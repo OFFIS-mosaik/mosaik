@@ -15,6 +15,10 @@ sim_config: scenario.SimConfig = {
     'MetaMirror': {
         'python': 'tests.simulators.meta_mirror:MetaMirror',
     },
+    'MetaMirror2.0': {
+        'python': 'tests.simulators.meta_mirror:MetaMirror',
+        'api_version': '2.0',
+    },
     'GenericTestSimulator': {
         'python': 'tests.simulators.generic_test_simulator:TestSim',
     }
@@ -215,10 +219,16 @@ def test_world_connect_any_inputs(world: World):
     everything can be connected to it.
     """
     a = cast(Entity, world.start('ExampleSim').A(init_val=0))
-    b = cast(Entity, world.start('ExampleSim').B(init_val=0))
+    b = cast(Entity, world.start(
+        'MetaMirror',
+        meta={
+            "api_version": "3.0",
+            "type": "time-based",
+            "models": {"B": {"any_inputs": True, "attrs": []}},
+        }
+    ).B())
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
     assert sim_b.pulled_inputs[(sim_a, 0)] == set([
@@ -228,8 +238,8 @@ def test_world_connect_any_inputs(world: World):
     assert sim_a.successors == set((sim_b,))
     assert sim_b.input_delays[sim_a] == DenseTime(0)
     assert to_dict(world.entity_graph) == {
-        'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
-        'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
+        'ExampleSim-0.' + a.eid: {'MetaMirror-0.' + b.eid: {}},
+        'MetaMirror-0.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
 
 
@@ -429,3 +439,39 @@ def test_extra_info(world: World):
     sim = world.start("GenericTestSimulator")
     entity = sim.A(extra_info=42)
     assert entity.extra_info == 42
+
+
+def test_missing_type_in_meta(world: World):
+    with pytest.raises(ScenarioError) as exc:
+        world.start(
+            "MetaMirror",
+            meta={
+                "api_version": "3.0",
+                "models": {},
+            }
+        )
+    assert "missing a type specification" in str(exc)
+
+
+def test_typo_in_type_in_meta(world: World):
+    with pytest.raises(ScenarioError) as exc:
+        world.start(
+            "MetaMirror",
+            meta={
+                "api_version": "3.0",
+                "type": "timebased",
+                "models": {},
+            }
+        )
+    assert "not a valid type" in str(exc)
+
+
+def test_missing_type_in_old_api(world: World):
+    sim = world.start(
+        "MetaMirror2.0",
+        meta={
+            "api_version": "2.0",
+            "models": {},
+        }
+    )
+    assert sim.type == "time-based"

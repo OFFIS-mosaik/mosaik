@@ -20,7 +20,7 @@ setup(
     url='https://mosaik.offis.de',
     install_requires=[
         'networkx>=2.5',
-        'mosaik-api-v3>=3.0.6',
+        'mosaik-api-v3>=3.0.7',
         'loguru>=0.6.0',
         'tqdm>=4.64.1',
         'typing-extensions>=4.5.0',

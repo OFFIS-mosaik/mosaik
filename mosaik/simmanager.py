@@ -126,10 +126,17 @@ async def start(
 
     for sim_type, starter in starters.items():
         if sim_type in sim_config:
-            proxy = await starter(world, sim_name, sim_config, MosaikRemote(world, sim_id))
+            proxy = await starter(
+                world, sim_name, sim_config, MosaikRemote(world, sim_id)
+            )
             try:
                 proxy = await asyncio.wait_for(
-                    init_and_get_adapter(proxy, sim_id, {"time_resolution": time_resolution, **sim_params}),
+                    init_and_get_adapter(
+                        proxy,
+                        sim_id,
+                        {"time_resolution": time_resolution, **sim_params},
+                        explicit_version_str=sim_config.get('api_version'),
+                    ),
                     world.config['start_timeout']
                 )
                 return proxy
