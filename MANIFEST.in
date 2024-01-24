@@ -1,5 +1,0 @@
-include *.cfg
-include *.ini
-include *.txt
-recursive-include docs *
-recursive-include mosaik/test/data *

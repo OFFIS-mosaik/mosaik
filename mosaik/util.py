@@ -3,8 +3,12 @@ This module contains some utility functions and classes.
 
 """
 import random
+from typing import Optional
+from typing_extensions import Literal
 import networkx as nx
 import datetime
+
+from mosaik.scenario import World
 
 
 STANDARD_DPI = 600
@@ -142,7 +146,7 @@ def plot_execution_time(
         slices_steps = range(world.until)[slice[0] : slice[1]]
         all_nodes_sliced = []
         for node in all_nodes:
-            if int(node[0].split("-")[-1]) in slices_steps:
+            if node[0][1].time in slices_steps:
                 all_nodes_sliced.append(node)
         all_nodes = all_nodes_sliced
 
@@ -152,7 +156,7 @@ def plot_execution_time(
     for isid in world.sims.keys():
         steps[isid] = []
         for node in all_nodes:
-            if node[0].startswith(isid):
+            if node[0][0] == isid:
                 steps[isid].append(
                     (node[1]["t"] - t_min, (node[1]["t_end"] - node[1]["t"]))
                 )
@@ -184,36 +188,52 @@ def plot_execution_time(
 
 
 def plot_dataflow_graph(
-    world,
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
+    world: World,
+    folder: str = STANDARD_FOLDER,
+    hdf5path: Optional[str] = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
 ):
-    """
-    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
-    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
+    """Creates an image visualizing the data flow graph of a mosaik
+    scenario. Using the spring_layout from Matplotlib (Fruchterman-
+    Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is 
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
     :show_plot: open a window to show the plot
-    :return: no return object, but image file will be written to file system
+    :return: no return object, but image file will be written to file
+        system
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
-    df_graph = world.df_graph
+    # Recreate the df_graph for plotting. There might be additional
+    # useful information to be extracted from the SimRunners.
+    df_graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, dt in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=dt.time>0,
+                weak=dt.microstep>0,
+            )
     positions = nx.spring_layout(df_graph)
+
     fig, ax = plt.subplots()
     for node in df_graph.nodes:
         # Draw a dot for the simulator
         ax.plot(positions[node][0], positions[node][1], "o")
-        # Put the name of the simulator on the dot. If we put an absolute distance, we depend on the scaling, which
-        # can effect seemingly random distances from the dot
+        # Put the name of the simulator on the dot. If we put an
+        # absolute distance, we depend on the scaling, which can effect
+        # seemingly random distances from the dot
         text_x = positions[node][0]
         text_y = positions[node][1]
         label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
@@ -295,13 +315,14 @@ def plot_dataflow_graph(
 
 
 def plot_execution_graph(
-    world,
-    title="",
+    world: World,
+    title: str ="",
     folder=STANDARD_FOLDER,
     hdf5path=None,
     dpi=STANDARD_DPI,
     format=STANDARD_FORMAT,
     show_plot=True,
+    save_plot: bool = True,
     slice=None,
 ):
     """
@@ -404,14 +425,15 @@ def plot_execution_graph(
     else:
         filename: str = get_filename(folder, "executionGraph", format)
 
-    fig.savefig(
-        filename,
-        format=format,
-        dpi=dpi,
-        facecolor="white",
-        transparent=True,
-        bbox_inches="tight",
-    )
+    if save_plot:
+        fig.savefig(
+            filename,
+            format=format,
+            dpi=dpi,
+            facecolor="white",
+            transparent=True,
+            bbox_inches="tight",
+        )
 
 
 def arrow_is_not_in_slice(labels, t0, t1):
@@ -419,22 +441,8 @@ def arrow_is_not_in_slice(labels, t0, t1):
 
 
 def split_node(node):
-    """
-
-    :param node:
-    :return:
-    """
-    isid, t = node.rsplit("-", 1)
-    try:
-        t = int(t)
-        n_rep = 0
-    except ValueError:
-        t, n_rep = map(int, t.split("~"))
-
-    if isid.endswith("-"):
-        isid = isid.strip("-")
-        t = -1
-    return isid, t, n_rep
+    isid, dt = node
+    return isid, dt.time, dt.microstep
 
 
 def plot_execution_time_per_simulator(
@@ -471,7 +479,7 @@ def plot_execution_time_per_simulator(
         execution_time = (
             execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
         )
-        sim_id = node.split("-")[0] + "-" + node.split("-")[1]
+        sim_id = node[0]
         if sim_id not in results:
             results[sim_id] = []
         results[sim_id].append(execution_time)

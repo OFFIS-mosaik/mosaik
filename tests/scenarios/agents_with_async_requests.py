@@ -5,13 +5,14 @@ Scenario 6
   A(2) ⇄ C(2)
        ⇄ D(3)
 """
+from mosaik import World
 
 
-def create_scenario(world):
-    simulator_a = world.start('A', step_size=2)
-    mas_b = world.start('MAS', step_size=1)
-    mas_c = world.start('MAS', step_size=2)
-    mas_d = world.start('MAS', step_size=3)
+def create_scenario(world: World):
+    simulator_a = world.start('A', sim_id="A", step_size=2)
+    mas_b = world.start('MAS', sim_id="B", step_size=1)
+    mas_c = world.start('MAS', sim_id="C", step_size=2)
+    mas_d = world.start('MAS', sim_id="D", step_size=3)
     model_a = simulator_a.B(init_val=0)
     agent_b = mas_b.Agent()
     agent_c = mas_c.Agent()
@@ -30,39 +31,39 @@ def create_scenario(world):
 CONFIG = 'remote'
 
 EXECUTION_GRAPH = """
-A-0-0 A-0-2
-A-0-0 MAS-0-0
-A-0-0 MAS-0-1
-A-0-0 MAS-1-0
-A-0-0 MAS-2-0
-A-0-2 A-0-4
-A-0-2 MAS-0-2
-A-0-2 MAS-0-3
-A-0-2 MAS-1-2
-A-0-2 MAS-2-3
-A-0-4 MAS-0-4
-A-0-4 MAS-1-4
-MAS-0-0 MAS-0-1
-MAS-0-1 A-0-2
-MAS-0-1 MAS-0-2
-MAS-0-2 MAS-0-3
-MAS-0-3 A-0-4
-MAS-0-3 MAS-0-4
-MAS-1-0 A-0-2
-MAS-1-0 MAS-1-2
-MAS-1-2 A-0-4
-MAS-1-2 MAS-1-4
-MAS-2-0 A-0-2
-MAS-2-0 MAS-2-3
-MAS-2-3 A-0-4
+A-0 A-2
+A-0 B-0
+A-0 B-1
+A-0 C-0
+A-0 D-0
+A-2 A-4
+A-2 B-2
+A-2 B-3
+A-2 C-2
+A-2 D-3
+A-4 B-4
+A-4 C-4
+B-0 B-1
+B-1 A-2
+B-1 B-2
+B-2 B-3
+B-3 A-4
+B-3 B-4
+C-0 A-2
+C-0 C-2
+C-2 A-4
+C-2 C-4
+D-0 A-2
+D-0 D-3
+D-3 A-4
 """
 
 INPUTS = {
-    'A-0-0': {},  # Initially, there cannot be any inputs.
-    'A-0-2': {'0.0': {'val_in': {'MAS-0.0': 23, 'MAS-1.0': 23,
-                                 'MAS-2.0': 23}}},
-    'A-0-4': {'0.0': {'val_in': {'MAS-0.0': 23, 'MAS-1.0': 23,
-                                 'MAS-2.0': 23}}},
+    'A-0': {},  # Initially, there cannot be any inputs.
+    'A-2': {'0.0': {'val_in': {'B.0': 23, 'C.0': 23,
+                                 'D.0': 23}}},
+    'A-4': {'0.0': {'val_in': {'B.0': 23, 'C.0': 23,
+                                 'D.0': 23}}},
 }
 
 UNTIL = 5

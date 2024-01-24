@@ -1,18 +1,23 @@
 import asyncio
+from asyncio import StreamReader, StreamWriter
+from loguru import logger
 import pytest
 import sys
+import time
+from typing import Any, Callable, Coroutine, Optional, Type
 
 from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import __api_version__ as api_version
+from mosaik_api_v3 import Meta, __api_version__ as api_version
+import mosaik_api_v3.connection
+from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import scenario
-from mosaik import simmanager
-from mosaik import proxies
+from mosaik import proxies, scenario, simmanager, World
+from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
-import mosaik
-from mosaik.proxies import APIProxy, LocalProxy, RemoteException
+from mosaik.proxies import BaseProxy, LocalProxy
 
-sim_config = {
+
+sim_config: scenario.SimConfig = {
     "ExampleSimA": {
         "python": "example_sim.mosaik:ExampleSim",
     },
@@ -23,7 +28,7 @@ sim_config = {
     "ExampleSimC": {
         "connect": "127.0.0.1:5556",
     },
-    "ExampleSimD": {},
+    "ExampleSimD": {},  # type: ignore  # this is used for testing for this error
     "Fail": {
         "cmd": 'python -c "import time; time.sleep(0.2)"',
     },
@@ -31,7 +36,7 @@ sim_config = {
         "python": "tests.mocks.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
-        "python": "tests.mocks.meta_mock:MetaMock",
+        "python": "tests.simulators.meta_mirror:MetaMirror",
     },
 }
 
@@ -48,15 +53,24 @@ def test_start(world, monkeypatch):
     Test if start() dispatches to the correct start functions.
     """
 
-    class Proxy(object):
-        meta = {"api_version": api_version, "models": {}}
+    class Proxy(BaseProxy):
+        async def init(self, *args, **kwargs):
+            return list(map(int, api_version.split('.')))
 
-        @classmethod
-        async def init(cls, *args, **kwargs):
-            return cls.meta
+        @property
+        def meta(self) -> Meta:
+            raise NotImplementedError
+        
+        async def send(self, request):
+            return None
+
+        async def stop(self):
+            raise NotImplementedError
+
+    proxy = Proxy()
 
     async def start(*args, **kwargs):
-        return Proxy
+        return proxy
 
     s = simmanager.StarterCollection()
     monkeypatch.setitem(s, "python", start)
@@ -66,64 +80,56 @@ def test_start(world, monkeypatch):
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == proxy
 
     # The api_version has to be re-initialized, because it is changed in
     # simmanager.start()
-    Proxy.meta["api_version"] = api_version
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == proxy
 
     # The api_version has to re-initialized
-    Proxy.meta["api_version"] = api_version
     ret = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimC", "0", 1.0, {})
     )
-    assert ret.proxy == Proxy
+    assert ret == proxy
 
 
-def test_start_wrong_api_version(world, monkeypatch):
+def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
-    monkeypatch.setattr(mosaik.proxies, "API_MAJOR", 1000)
-    monkeypatch.setattr(mosaik.proxies, "API_MINOR", 5)
     with pytest.raises(ScenarioError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "ExampleSimA", "0", 1.0, {})
-        )
+        world.start("MetaMock", meta={"api_version": "1000.0"})
 
-    assert str(exc_info.value) in (
-        f'Simulator "ExampleSimA" could not be started: Invalid version '
-        '"{api_version}": Version must be between 1000.0 and 1000.5'
+    assert str(exc_info.value) == (
+        "There was an error during the initialization of MetaMock-0: The API version "
+        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
+        "mosaik package is available to be used in your scenario?"
     )
 
 
 def test_start_in_process(world):
     """
     Test starting an in-proc simulator."""
-    sp = world.loop.run_until_complete(
+    connection = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimA", "ExampleSim-0", 1.0, {"step_size": 2})
     )
-    assert sp.sid == "ExampleSim-0"
-    assert sp.type
-    assert isinstance(sp.proxy, LocalProxy)
-    assert isinstance(sp.proxy.sim, ExampleSim)
-    assert sp.proxy.sim.step_size == 2
+    assert isinstance(connection, LocalProxy)
+    assert isinstance(connection.sim, ExampleSim)
+    assert connection.sim.step_size == 2
 
 
 @pytest.mark.cmd_process
 def test_start_external_process(world):
     """
     Test starting a simulator as external process."""
-    sp = world.loop.run_until_complete(
+    proxy = world.loop.run_until_complete(
         simmanager.start(world, "ExampleSimB", "ExampleSim-0", 1.0, {})
     )
-    assert sp.sid == "ExampleSim-0"
-    assert "api_version" in sp.proxy.meta and "models" in sp.proxy.meta
-    world.loop.run_until_complete(sp.stop())
+    assert "api_version" in proxy.meta and "models" in proxy.meta
+    world.loop.run_until_complete(proxy.stop())
 
 
 def test_start_proc_timeout_accept(world, caplog):
@@ -180,76 +186,68 @@ def test_start_connect(world: scenario.World):
     """
 
     async def mock_sim_server(reader, writer):
-        await read_message(reader)
-        writer.write(proxies.encode([1, 0, ExampleSim().meta]))
-        await writer.drain()
-        await read_message(reader)
-        writer.close()
+        channel = mosaik_api_v3.connection.Channel(reader, writer)
+        request = await channel.next_request()
+        await request.set_result(ExampleSim().meta)
+        await channel.next_request()
+        await channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
-    sim = world.loop.run_until_complete(
-        simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
-    )
-    assert sim.sid == "ExampleSim-0"
-    assert "api_version" in sim.proxy.meta and "models" in sim.proxy.meta
+    simC = world.start("ExampleSimC")
+    world.shutdown()
+    assert "api_version" in simC.meta and "models" in simC.meta
     server.close()
-    world.loop.run_until_complete(sim.stop())
 
 
-def test_start_connect_timeout_init(world, caplog):
-    """
-    Test connecting to an already running simulator.
+def test_start_connect_timeout_init(world: World, caplog):
+    """Simulator takes too long to respond to the init call.
     """
     world.config["start_timeout"] = 0.1
 
-    async def mock_sim_server(reader, writer):
+    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
         await read_message(reader)
-        import time
-
-        time.sleep(0.15)
+        await asyncio.sleep(0.11)
         writer.close()
+        await writer.wait_closed()
+        print("Writer closed")
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     with pytest.raises(SystemExit) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(world, "ExampleSimC", "", 1.0, {})
-        )
+        world.start("ExampleSimC")
     assert (
         'Simulator "ExampleSimC" did not reply to the init() call in time.'
         == exc_info.value.args[0]
     )
+
+    world.loop.run_until_complete(asyncio.sleep(0.1))
     server.close()
 
 
-def test_start_connect_stop_timeout(world):
+def test_start_connect_stop_timeout(world: World):
     """
     Test connecting to an already running simulator.
 
     When asked to stop, the simulator times out.
     """
 
-    async def mock_sim_server(reader, writer):
-        await read_message(reader)
-        writer.write(proxies.encode([1, 0, ExampleSim().meta]))
-        await writer.drain()
-        await read_message(reader)  # Wait for stop message
-        writer.close()
+    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
+        channel = mosaik_api_v3.connection.Channel(reader, writer)
+        request = await channel.next_request()
+        await request.set_result(ExampleSim().meta)
+        await channel.next_request()  # Wait for stop message
+        await channel.close()
 
     server = world.loop.run_until_complete(
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
 
-    sim = world.loop.run_until_complete(
-        simmanager.start(world, "ExampleSimC", "ExampleSim-0", 1.0, {})
-    )
-    sim._stop_timeout = 0.01
-    assert sim.sid == "ExampleSim-0"
-    assert "api_version" in sim.proxy.meta and "models" in sim.proxy.meta
-    world.loop.run_until_complete(sim.stop())
+    sim = world.start("ExampleSimC")
+    assert "api_version" in sim.meta and "models" in sim.meta
+    world.shutdown()
     server.close()
 
 
@@ -332,74 +330,47 @@ def test_start_init_error(caplog):
         world.shutdown()
 
 
-@pytest.mark.parametrize(
-    ["version", "result"],
-    [
-        ("3.0", (3, 0)),
-        (3.0, (3, 0)),
-    ],
-)
-def test_validate_api_version(version, result):
-    assert proxies.validate_api_version(version) == result
-
-
-@pytest.mark.parametrize(
-    "version",
-    [
-        "1",
-        "1.2",
-        "2",
-        "2,1",
-        2,
-        2.11,
-        "3.99",
-        "4.1",
-        "3a",
-    ],
-)
-def test_validate_api_version_wrong_version(version):
-    with pytest.raises(ScenarioError) as se:
-        proxies.validate_api_version(version)
-    assert "Version" in str(se.value)
-
-
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_model_names(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {"step": {}}})
 
 
+@pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["step"]})
+        world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {}}, "extra_methods": ["A"]})
+        world.start("MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]})
 
 
 def test_sim_proxy_stop_impl(world):
-    class Test(APIProxy):
+    class Test(BaseProxy):
+        def init(self):
+            raise NotImplementedError()
+
         def stop(self):
             raise NotImplementedError()
 
-        async def _send(self, *args, **kwargs):
+        async def send(self, *args, **kwargs):
             raise NotImplementedError()
 
-        meta = {"models": {}}
+        meta = {"type": "time-based", "models": {}}
 
-    sim = simmanager.SimRunner("spam", "id", world, Test(None))
+    sim = simmanager.SimRunner("id", Test())
     with pytest.raises(NotImplementedError):
         world.loop.run_until_complete(sim.stop())
 
 
 def test_local_process(world):
     es = ExampleSim()
-    proxy = LocalProxy(None, es)
+    proxy = LocalProxy(es, None)
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
-    sim = simmanager.SimRunner("ExampleSim", "ExampleSim-0", world, proxy)
-    assert sim.name == "ExampleSim"
+    sim = simmanager.SimRunner("ExampleSim-0", proxy)
     assert sim.sid == "ExampleSim-0"
-    assert sim.proxy.sim is es
-    assert sim.last_step == -1
-    assert sim.next_steps == [0]
+    assert sim._proxy.sim is es
+    assert sim.last_step == DenseTime(-1)
+    assert sim.next_steps == [DenseTime(0)]
 
 
 def test_local_process_finalized(world):
@@ -407,37 +378,27 @@ def test_local_process_finalized(world):
     Test that ``finalize()`` is called for local processes (issue #23).
     """
     simulator = world.start("SimulatorMock")
-    assert simulator._sim.proxy.sim.finalized is False
+    assert simulator._proxy.sim.finalized is False
     world.run(until=1)
-    assert simulator._sim.proxy.sim.finalized is True
+    assert simulator._proxy.sim.finalized is True
 
 
-async def _rpc_request(reader, writer, func, *args, **kwargs):
-    writer.write(proxies.encode([proxies.REQUEST, 0, [func, args, kwargs]]))
-    await writer.drain()
-    msg_type, _, result = await proxies.decode(reader)
-    if msg_type == proxies.SUCCESS:
-        return result
-    else:
-        raise RemoteException(result)
-
-
-async def _rpc_get_progress(reader, writer, world):
-    """
+async def _rpc_get_progress(channel: Channel, world: World):
+    """ 
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
-    progress = await _rpc_request(reader, writer, "get_progress")
+    progress = await channel.send(["get_progress", [], {}])
     assert progress == 23
 
 
-async def _rpc_get_related_entities(reader, writer, world):
+async def _rpc_get_related_entities(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the
     "get_related_entities()" RPC.
     """
     # No param yields complete entity graph
-    entities = await _rpc_request(reader, writer, "get_related_entities")
+    entities = await channel.send(["get_related_entities", [], {}])
     for edge in entities["edges"]:
         edge[:2] = sorted(edge[:2])
     entities["edges"].sort()
@@ -457,16 +418,14 @@ async def _rpc_get_related_entities(reader, writer, world):
     }
 
     # Single string yields dict with related entities
-    entities = await _rpc_request(reader, writer, "get_related_entities", "X.0")
+    entities = await channel.send(["get_related_entities", ["X.0"], {}])
     assert entities == {
         "X.1": {"sim": "ExampleSim", "type": "A"},
         "X.2": {"sim": "ExampleSim", "type": "A"},
     }
 
     # List of strings yields dicts with related entities grouped by input ids
-    entities = await _rpc_request(
-        reader, writer, "get_related_entities", ["X.1", "X.2"]
-    )
+    entities = await channel.send(["get_related_entities", [["X.1", "X.2"]], {}])
     assert entities == {
         "X.1": {
             "X.0": {"sim": "ExampleSim", "type": "A"},
@@ -480,72 +439,65 @@ async def _rpc_get_related_entities(reader, writer, world):
     }
 
 
-async def _rpc_get_data(reader, writer, world):
+async def _rpc_get_data(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "get_data()"
     RPC.
     """
-    data = await _rpc_request(reader, writer, "get_data", {"X.2": ["attr"]})
+    data = await channel.send(["get_data", [{"X.2": ["attr"]}], {}])
     assert data == {"X.2": {"attr": "val"}}
 
 
-async def _rpc_set_data(reader, writer, world):
+async def _rpc_set_data(channel: Channel, world: World):
     """
     Helper for :func:`test_mosaik_remote()` that checks the "set_data()"
     RPC.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"X.2": {"val": 23}}})
-    assert world.sims["X"].input_buffer == {
+    await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
+    assert world.sims["X"].inputs_from_set_data == {
         "2": {"val": {"src": 23}},
     }
 
-    await _rpc_request(reader, writer, "set_data", {"src": {"X.2": {"val": 42}}})
-    assert world.sims["X"].input_buffer == {
+    await channel.send(["set_data", [{"src": {"X.2": {"val": 42}}}], {}])
+    assert world.sims["X"].inputs_from_set_data == {
         "2": {"val": {"src": 42}},
     }
 
 
-async def _rpc_get_data_err1(reader, writer, world):
+async def _rpc_get_data_err1(channel: Channel, world: World):
     """
     Required simulator not connected to us.
     """
     try:
-        await _rpc_request(reader, writer, "get_data", {"Z.2": []})
-    except RemoteException as exception:
-        if _remote_exception_type(exception) == "mosaik.exceptions.ScenarioError":
+        await channel.send(["get_data", [{"Z.2": []}], {}])
+    except mosaik_api_v3.connection.RemoteException as exception:
+        if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
 
-def _remote_exception_type(exception):
-    return "mosaik.exceptions.ScenarioError"
-    # TODO: Get remote_traceback back
-    remote_exception_type = exception.remote_traceback.split("\n")[-2].split(":")[0]
-    return remote_exception_type
-
-
-async def _rpc_get_data_err2(reader, writer, world):
+async def _rpc_get_data_err2(channel: Channel, world: World):
     """
     Async-requests flag not set for connection.
     """
     try:
-        await _rpc_request(reader, writer, "get_data", {"Y.2": []})
-    except RemoteException as exception:
-        if _remote_exception_type(exception) == "mosaik.exceptions.ScenarioError":
+        await channel.send(["get_data", [{"Y.2": []}], {}])
+    except mosaik_api_v3.connection.RemoteException as exception:
+        if exception.remote_type == "ScenarioError":
             raise ScenarioError
 
 
-async def _rpc_set_data_err1(reader, writer, world):
+async def _rpc_set_data_err1(channel: Channel, world: World):
     """
     Required simulator not connected to us.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"Z.2": {"val": 42}}})
+    await channel.send(["set_data", [{"src": {"Z.2": {"val": 42}}}], {}])
 
 
-async def _rpc_set_data_err2(reader, writer, world):
+async def _rpc_set_data_err2(channel: Channel, world: World):
     """
     Async-requests flag not set for connection.
     """
-    await _rpc_request(reader, writer, "set_data", {"src": {"Y.2": {"val": 42}}})
+    await channel.send(["set_data", [{"src": {"Y.2": {"val": 42}}}], {}])
 
 
 @pytest.mark.parametrize(
@@ -561,42 +513,55 @@ async def _rpc_set_data_err2(reader, writer, world):
         (_rpc_set_data_err2, RemoteException),
     ],
 )
-def test_mosaik_remote(rpc, err):
+def test_mosaik_remote(
+    rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
+    err: Type[Exception],
+):
     world = scenario.World({})
+    world.use_cache = True
 
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
         edges = [("X.%s" % x, "X.%s" % y) for x, y in edges]
-        world.df_graph.add_edge("X", "X", async_requests=True)
-        world.df_graph.add_edge("Y", "X", async_requests=False)
-        world.df_graph.add_node("Z")
+        # world.df_graph.add_edge("X", "X", async_requests=True)
+        # world.df_graph.add_edge("Y", "X", async_requests=False)
+        # world.df_graph.add_node("Z")
         world.entity_graph.add_edges_from(edges)
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim="ExampleSim", type="A")
         world.sim_progress = 23
-        world._df_cache = {
-            1: {
-                "X": {"2": {"attr": "val"}},
-            },
-        }
 
         async def simulator():
-            reader, writer = await asyncio.open_connection("127.0.0.1", 5555)
+            reader, writer = await asyncio.open_connection("localhost", 5555)
+            channel = mosaik_api_v3.connection.Channel(reader, writer)
             try:
-                await rpc(reader, writer, world)
+                await rpc(channel, world)
             finally:
-                writer.close()
+                await channel.close()
 
         async def greeter():
-            reader, writer = await world.incoming_connections_queue.get()
-            proxy = proxies.RemoteProxy(
-                simmanager.MosaikRemote(world, "X"), reader, writer
-            )
-            proxy.meta = {"models": {}}
-            sim = simmanager.SimRunner("X", "X", world, proxy)
-            sim.last_step = 1
-            sim.is_in_step = True
-            world.sims["X"] = sim
+            channel = await world.incoming_connections_queue.get()
+            proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
+            proxy_x._meta = {"type": "time-based", "models": {}}
+            sim_x = simmanager.SimRunner("X", proxy_x)
+            sim_x.successors.add(sim_x)
+            sim_x.successors_to_wait_for.add(sim_x)
+            sim_x.last_step = DenseTime(1)
+            sim_x.current_step = DenseTime(0)
+            sim_x.is_in_step = True
+            sim_x.outputs = {1: {"2": {"attr": "val"}}}
+            world.sims["X"] = sim_x
+            class DummyProxy:
+                @property
+                def meta(self):
+                    return {"type": "time-based", "models": {}}
+            sim_y = simmanager.SimRunner("Y", DummyProxy())
+            world.sims["Y"] = sim_y
+            sim_z = simmanager.SimRunner("Z", DummyProxy())
+            world.sims["Z"] = sim_z
+
+            sim_x.successors.add(sim_y)
+            
 
         async def run():
             sim_exc, greeter_exc = await asyncio.gather(
@@ -604,10 +569,10 @@ def test_mosaik_remote(rpc, err):
                 greeter(),
                 return_exceptions=True,
             )
-            assert greeter_exc == None
+            assert greeter_exc is None
             if sim_exc:
                 raise sim_exc
-            
+
         if err:
             with pytest.raises(err):
                 world.loop.run_until_complete(run())
@@ -615,7 +580,9 @@ def test_mosaik_remote(rpc, err):
             world.loop.run_until_complete(run())
 
     finally:
+        world.loop.run_until_complete(world.sims["X"].stop())
         world.server.close()
+        world.loop.close()
 
 
 def test_timed_input_buffer():
@@ -635,9 +602,9 @@ def test_timed_input_buffer():
 def test_global_time_resolution(world):
     # Default time resolution set to 1.0
     simulator = world.start("SimulatorMock")
-    assert simulator._sim._world.time_resolution == 1.0
+    assert simulator._proxy.sim.time_resolution == 1.0
 
     # Set global time resolution to 60.0
     world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
-    assert simulator_2._sim._world.time_resolution == 60.0
+    assert simulator_2._proxy.sim.time_resolution == 60.0

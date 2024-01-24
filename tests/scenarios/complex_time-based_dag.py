@@ -5,9 +5,9 @@ Scenario 5
          B(2)
   D(4) ↗      ↘ E(3)
 """
+from mosaik import World
 
-
-def create_scenario(world):
+def create_scenario(world: World):
     simulator_a = world.start('A', step_size=1)
     simulator_b = world.start('B', step_size=2)
     simulator_c = world.start('C', step_size=1)

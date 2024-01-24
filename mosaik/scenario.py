@@ -11,29 +11,52 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+from copy import copy
 import itertools
 from loguru import logger
 import networkx
 from tqdm import tqdm
 from typing import (
     Any,
+    Callable,
     Dict,
+    FrozenSet,
     Iterable,
     List,
     Optional,
     Set,
     Tuple,
     Union,
-    TYPE_CHECKING,
 )
+import warnings
 from typing_extensions import Literal, TypedDict
 
+from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
+
 from mosaik import simmanager
+from mosaik.dense_time import DenseTime
+from mosaik.proxies import Proxy
+from mosaik.simmanager import SimRunner
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
 
 
-base_config = {
+class MosaikConfig(TypedDict, total=False):
+    addr: Tuple[str, int]
+    start_timeout: float
+    stop_timeout: float
+
+class _MosaikConfigTotal(TypedDict):
+    """A total version for :cls:`MosaikConfig` for internal use.
+    """
+
+    addr: Tuple[str, int]
+    start_timeout: float
+    stop_timeout: float
+
+base_config: _MosaikConfigTotal = {
     'addr': ('127.0.0.1', 5555),
     'start_timeout': 10,  # seconds
     'stop_timeout': 10,  # seconds
@@ -41,102 +64,42 @@ base_config = {
 
 FULL_ID = simmanager.FULL_ID
 
+SENTINEL = object()
+"""Sentinel for initial data call (we can't use None as the user might
+want to supply that value.)
+"""
 
-if TYPE_CHECKING:
-    Attr = str
-    """An attribute name"""
-    SimId = str
-    """A simulator ID"""
-    EntityId = str
-    """An entity ID"""
-    FullId = str
-    """A full ID of the form "sim_id.entity_id" """
-    InputData = Dict[EntityId, Dict[Attr, Dict[FullId, Any]]]
-    """The format of input data for simulator's step methods."""
-    OutputData = Dict[EntityId, Dict[Attr, Any]]
-    """The format of output data as return by `get_data`"""
 
-    class ModelDescription(TypedDict):
-        """Description of a single model in `Meta`"""
-        public: bool
-        """Whether the model can be created directly."""
-        params: List[str]
-        """The parameters given during creating of this model."""
-        any_inputs: bool
-        """Whether this model accepts inputs other than those specified in `attrs`."""
-        attrs: List[Attr]
-        """The input and output attributes of this model."""
-        trigger: Iterable[Attr]
-        """The input attributes that trigger a step of the associated simulator.
+class ModelOptionals(TypedDict, total=False):
+    env: Dict[str, str]
+    """The environment variables to set for this simulator."""
+    cwd: str
+    """The current working directory for this simulator."""
+    api_version: str
+    """The API version of the connected simulator. Set this to suppress
+    warnings about this simulator being outdated.
+    """
 
-        (Non-trigger attributes are collected and supplied to the simulator when it
-        steps next.)"""
-        persistent: Iterable[Attr]
-        """The output attributes that are persistent."""
 
-    class Meta(TypedDict):
-        """The meta-data for a simulator."""
-        api_version: str
-        """The API version that this simulator supports in the format "major.minor"."""
-        old_api: bool
-        """Whether this simulator uses the old API (without the `max_advance` parameter
-        in `step`. Only used internally. Optional, if unset, treat as `false`."""
-        type: Literal['time-based', 'event-based', 'hybrid']
-        """The simulator's stepping type."""
-        models: Dict[str, ModelDescription]
-        """The descriptions of this simulator's models."""
-        extra_methods: List[str]
-        """The extra methods this simulator supports."""
+class PythonModel(ModelOptionals):
+    python: str
+    """The Simulator subclass for this simulator, encoded as a string
+    `module_name:ClassName`."""
 
-    class ModelOptionals(TypedDict, total=False):
-        env: Dict[str, str]
-        """The environment variables to set for this simulator."""
-        cwd: str
-        """The current working directory for this simulator."""
 
-    class PythonModel(ModelOptionals):
-        python: str
-        """The Simulator subclass for this simulator, encoded as a string
-        `module_name:ClassName`."""
+class ConnectModel(ModelOptionals):
+    connect: str
+    """The `host:port` address for this simulator."""
 
-    class ConnectModel(ModelOptionals):
-        connect: str
-        """The `host:port` address for this simulator."""
 
-    class CmdModel(ModelOptionals):
-        cmd: str
-        """The command to start this simulator. String %(python)s will be replaced
-        by the python command used to start this scenario, %(addr)s will be replaced
-        by the `host:port` combination to which the simulator should connect."""
+class CmdModel(ModelOptionals):
+    cmd: str
+    """The command to start this simulator. String %(python)s will be replaced
+    by the python command used to start this scenario, %(addr)s will be replaced
+    by the `host:port` combination to which the simulator should connect."""
 
-    SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
 
-    # The events can be unset. By splitting them into their own class, we
-    # can make them optional.
-    class DataflowEgdeOptionals(TypedDict):
-        wait_event: asyncio.Event
-        """Event on which destination simulator is waiting for its inputs."""
-        wait_lazy: asyncio.Event
-        """Event on which source simulator is waiting in case of lazy stepping."""
-        wait_async: asyncio.Event
-        """Event on which source simulator is waiting to support async requests."""
-
-    class DataflowEdge(DataflowEgdeOptionals):
-        """The information associated with an edge in the dataflow graph."""
-        async_requests: bool
-        """Whether there can be async requests along this edge."""
-        time_shifted: bool
-        """Whether dataflow along this edge is time shifted."""
-        weak: bool
-        """Whether this edge is weak (used for same-time loops)."""
-        trigger: Set[Tuple[EntityId, Attr]]
-        """Those pairs of entities and attributes of the source simulator that can
-        trigger a step of the destination simulator."""
-        pred_waiting: bool
-        """Whether the source simulator of this edge has to wait for the destination
-        simulator."""
-        cached_connections: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
-        dataflows: Iterable[Tuple[EntityId, EntityId, Iterable[Tuple[Attr, Attr]]]]
+SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
 
 
 class World(object):
@@ -168,23 +131,40 @@ class World(object):
     that this increases the memory consumption and simulation time.
     """
 
+    sim_config: SimConfig
+    config: _MosaikConfigTotal
     until: int
     """The time until which this simulation will run."""
     rt_factor: Optional[float]
     """The number of real-time seconds corresponding to one mosaik step."""
+
+    time_resolution: float
+    """The number of seconds that correspond to one mosaik time step in
+    this situation. The default value is 1.0, meaning that one integer
+    step corresponds to one second simulated time.
+    """
+    max_loop_iterations: int
+    """The number of iterations allowed for same-time loops within one
+    time step. This is checked to prevent accidental infinite loops.
+    Increase this value if your same-time loops require many iterations
+    to converge.
+    """
+
     sim_progress: float
     """The progress of the entire simulation (in percent)."""
-    _df_cache: Optional[Dict[int, Dict[SimId, Dict[EntityId, Dict[Attr, Any]]]]]
-    """Cache for faster dataflow. (Used if `cache=True` is set during World creation."""
+    use_cache: bool
     loop: asyncio.AbstractEventLoop
-    incoming_connections_queue: asyncio.Queue[Tuple[asyncio.StreamReader, asyncio.StreamWriter]]
+    incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
+    _sim_ids: Dict[ModelName, itertools.count[int]]
+
+    entity_graph: networkx.Graph[FullId]
 
     def __init__(
         self,
         sim_config: SimConfig,
-        mosaik_config=None,
+        mosaik_config: Optional[MosaikConfig] = None,
         time_resolution: float = 1.,
         debug: bool = False,
         cache: bool = True,
@@ -194,38 +174,34 @@ class World(object):
         self.sim_config = sim_config
         """The config dictionary that tells mosaik how to start a simulator."""
 
-        self.config = dict(base_config)
+        self.config = copy(base_config)
         """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
 
-        self.time_resolution = time_resolution
-        """An optional global *time_resolution* (in seconds) for the scenario,
-        which tells the simulators what the integer time step means in seconds.
-        Its default value is 1., meaning one integer step corresponds to one
-        second simulated time."""
-
-        self.max_loop_iterations = max_loop_iterations
-
         self.sims = {}
+        self.time_resolution = time_resolution
+        self.max_loop_iterations = max_loop_iterations
 
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
             self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
         # When simulators are started using `cmd`, they will connect
         # back to mosaik using a TCP connection. Here we start the
         # server that accepts these connections. Whenever an external
-        # simulator connects, the (reader, writer) pair is written to
-        # the incoming_connections_queue so that the function starting
-        # the simulator can .get() the connection information.
-        async def setup_queue():
+        # simulator connects, a Channel is created from the 
+        # (reader, writer) pair and written to the 
+        # incoming_connections_queue so that the function starting the
+        # simulator can .get() the connection information.
+        async def setup_queue() -> asyncio.Queue[Channel]:
             return asyncio.Queue()
         self.incoming_connections_queue = self.loop.run_until_complete(setup_queue())
 
-        async def connected_cb(reader, writer):
-            await self.incoming_connections_queue.put((reader, writer))
+        async def connected_cb(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+            await self.incoming_connections_queue.put(Channel(reader, writer))
 
         self.server = self.loop.run_until_complete(
             asyncio.start_server(
@@ -234,14 +210,6 @@ class World(object):
                 self.config['addr'][1],
             )
         )
-
-        self.df_graph = networkx.DiGraph()
-        """The directed data-flow :func:`graph <networkx.DiGraph>` for this
-        scenario."""
-
-        self.trigger_graph = networkx.DiGraph()
-        """The directed :func:`graph <networkx.DiGraph>` from all triggering
-        connections for this scenario."""
 
         self.entity_graph = networkx.Graph()
         """The :func:`graph <networkx.Graph>` of related entities. Nodes are
@@ -253,50 +221,168 @@ class World(object):
 
         self._debug = False
         if debug:
+            logger.warning(
+                "You are running your simulation in debug mode. This can lead to "
+                "significant slow-downs, as it will create a graph of the entire "
+                "execution. Only use this mode if you intend to analyze the execution "
+                "graph afterwards."
+            )
             self._debug = True
-            self.execution_graph = networkx.DiGraph()
+            self.execution_graph: networkx.DiGraph[Tuple[SimId, DenseTime]] = networkx.DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
-        # List of outputs for each simulator and model:
-        # _df_outattr[sim_id][entity_id] = [attr_1, attr2, ...]
-        self._df_outattr = defaultdict(lambda: defaultdict(list))
-        if cache:
-            self.persistent_outattrs = defaultdict(lambda: defaultdict(list))
-            # Cache for simulation results
-            self._df_cache = defaultdict(dict)
-            self._df_cache_min_time = 0
-        else:
-            self.persistent_outattrs = {}
-            self._df_cache = None
+        self.use_cache = cache
 
-    def start(self, sim_name: str, **sim_params) -> ModelFactory:
+    def start(
+        self,
+        sim_name: str,
+        sim_id: Optional[SimId] = None,
+        **sim_params: Any,
+    ) -> ModelFactory:
         """
         Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
         """
-        counter = self._sim_ids[sim_name]
-        sim_id = '%s-%s' % (sim_name, next(counter))
+        if not sim_id:
+            counter = self._sim_ids[sim_name]
+            sim_id = '%s-%s' % (sim_name, next(counter))
+        if sim_id in self.sims:
+            raise ScenarioError(
+                f"A simulator with sim_id '{sim_id}' has already been started. "
+                "Choose a different sim_id."
+            )
         logger.info(
             'Starting "{sim_name}" as "{sim_id}" ...',
             sim_name=sim_name,
             sim_id=sim_id,
         )
-        sim = self.loop.run_until_complete(
+        proxy = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
-        self.sims[sim_id] = sim
-        self.df_graph.add_node(sim_id)
-        self.trigger_graph.add_node(sim_id)
-        return ModelFactory(self, sim)
+        # Create the ModelFactory before the SimRunner as it performs
+        # some checks on the simulator's meta.
+        model_factory = ModelFactory(self, sim_id, proxy)
+        self.sims[sim_id] = SimRunner(sim_id, proxy)
+        if self.use_cache:
+            self.sims[sim_id].outputs = {}
+        return model_factory
 
+    def connect_one(
+        self,
+        src: Entity,
+        dest: Entity,
+        src_attr: Attr,
+        dest_attr: Optional[Attr] = None,
+        time_shifted: Union[bool, int] = False,
+        weak: bool = False,
+        initial_data: Any = SENTINEL,
+    ):
+        if not dest_attr:
+            dest_attr = src_attr
+
+        src_sim = self.sims[src.sid]
+        dest_sim = self.sims[dest.sid]
+        
+        src_port = (src.eid, src_attr)
+        dest_port = (dest.eid, dest_attr)
+
+        problems: List[str] = []
+        
+        if src_attr not in src.model_mock.output_attrs:
+            problems.append(
+                "the source attribute does not exist"
+            )
+        if dest_attr not in dest.model_mock.input_attrs:
+            problems.append(
+                "the destination attribute does not exist"
+            )
+
+        if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs:
+            if initial_data is SENTINEL:
+                problems.append(
+                    "weak or time-shifted connection into non-trigger attribute "
+                    "requires initial data"
+                )
+        elif initial_data is not SENTINEL:
+            logger.warning(
+                f"Gave initial data for connection from {src.full_id}.{src_attr} to "
+                f"{dest.full_id}.{dest_attr} where it is not needed"
+            )
+
+        if problems:
+            raise ScenarioError(
+                f"The are problems connecting {src.full_id}.{src_attr} to "
+                f"{dest.full_id}.{dest_attr}:\n- "
+                + "\n- ".join(problems)
+            )
+
+        if (
+            dest_attr in dest.model_mock.measurement_inputs
+            and src_attr in src.model_mock.event_outputs
+        ):
+            logger.warning(
+                f"A connection between the non-persistent attribute {src_attr} of "
+                f"{src.sid} and the non-trigger attribute {dest_attr} of "
+                f"{dest.sid} is not recommended. This might cause problems in the "
+                "simulation! See also: https://mosaik.readthedocs.io/en/latest/"
+                "scenario-definition.html#connecting-entities"
+            )
+
+        delay = DenseTime(time_shifted, weak)
+        dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
+
+        is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
+        
+        if src.is_persistent(src_attr) and not self.use_cache:
+            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(src.full_id, None)
+
+        src_sim.output_request.setdefault(src.eid, []).append(src_attr)
+
+        if is_pulled:
+            dest_sim.pulled_inputs.setdefault((src_sim, time_shifted), set()).add((src_port, dest_port))
+        else:
+            src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, time_shifted, dest_port))
+
+        src_sim.successors.add(dest_sim)
+
+        if dest.triggered_by(dest_attr):
+            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
+
+        if initial_data is not SENTINEL:
+            if is_pulled:
+                src_sim.outputs.setdefault(
+                    -int(time_shifted), {}
+                ).setdefault(src.eid, {})[src_attr] = initial_data
+            else:
+                dest_sim.persistent_inputs.setdefault(
+                    dest.eid, {}
+                ).setdefault(dest_attr, {})[src.full_id] = initial_data
+
+        self.entity_graph.add_edge(src.full_id, dest.full_id)
+    
+    def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
+        warnings.warn(
+            "Connections with async_requests are deprecated. They and the set_data "
+            "function will be removed in a future release. Use time_shifted and weak "
+            "connections instead.",
+            category=DeprecationWarning,
+        )
+        src_sim = self.sims[src._sid]
+        dest_sim = self.sims[dest._sid]
+        src_sim.successors.add(dest_sim)
+        src_sim.successors_to_wait_for.add(dest_sim)
+        # DenseTime(0) is always minimal, so we dont need to compare to
+        # previous value of input_delays[src_sim]
+        dest_sim.input_delays[src_sim] = DenseTime(0)  
+         
     def connect(
         self,
         src: Entity,
         dest: Entity,
-        *attr_pairs: Union[str, Tuple[str, str]],
+        *attr_pairs: Union[str, Tuple[str, str]],  # type: ignore
         async_requests: bool = False,
-        time_shifted: bool = False,
+        time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False
     ):
@@ -327,152 +413,50 @@ class World(object):
         is given by the time_shifted kwarg. If set to ``True`` it marks the
         connection as cycle-closing (e.g. C → A). It must always be used with
         initial_data specifying a dict with the data sent to the destination
-        simulator at the first step (e.g. *{‘src_attr’: value}*).
+        simulator at the first step (e.g. *{'src_attr': value}*).
         """
-        if src.sid == dest.sid:
-            raise ScenarioError('Cannot connect entities sharing the same '
-                                'simulator.')
-        if async_requests:
-            logger.warning(
-                'DEPRECATION: Connections with async_request connections are and will '
-                'be removed with set_data() in future releases. Use time_shifted and '
-                'weak connections instead'
-            )
-
-        if async_requests and time_shifted:
-            raise ScenarioError('Async_requests and time_shifted connections '
-                                'are incongruous methods for handling of cyclic '
-                                'data-flow. Choose one!')
-
-        if self.df_graph.has_edge(src.sid, dest.sid):
-            for ctype in ['time_shifted', 'async_requests', 'weak']:
-                if eval(ctype) != self.df_graph[src.sid][dest.sid][ctype]:
-                    raise ScenarioError(f'{ctype.capitalize()} and standard '
-                                        'connections are mutually exclusive, '
-                                        'but you have set both between '
-                                        f'simulators {src.sid} and {dest.sid}')
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        expanded_attrs = tuple((a, a) if isinstance(a, str) else a for a in attr_pairs)
+        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+            (a, a) if isinstance(a, str) else a for a in attr_pairs
+        )
+        errors: List[ScenarioError] = []
+        for src_attr, dest_attr in attr_pairs:
+            try:
+                self.connect_one(
+                    src,
+                    dest,
+                    src_attr,
+                    dest_attr,
+                    time_shifted=time_shifted,
+                    weak=weak,
+                    initial_data=initial_data.get(src_attr, SENTINEL),
+                )
+            except ScenarioError as e:
+                errors.append(e)
 
-        missing_attrs = self._check_attributes(src, dest, expanded_attrs)
-        if missing_attrs:
-            raise ScenarioError('At least one attribute does not exist: %s' %
-                                ', '.join('%s.%s' % x for x in missing_attrs))
+        if async_requests:
+            self.connect_async_requests(src.model_mock._factory, dest.model_mock._factory)
 
-        # Check dataflow connection (non-)persistent --> (non-)trigger
-        self._check_attributes_values(src, dest, expanded_attrs)
+        if errors:
+            raise ScenarioError(
+                "While connecting entities, the following errors occurred:\n - "
+                + "\n - ".join(str(e) for e in errors)
+            )
 
-        if self._df_cache is not None:
-            trigger, cached, time_buffered, memorized, persistent = \
-                self._classify_connections_with_cache(src, dest, expanded_attrs)
-        else:
-            trigger, time_buffered, memorized, persistent = \
-                self._classify_connections_without_cache(src, dest, expanded_attrs)
-            cached = []
-
-        if time_shifted:
-            if type(initial_data) is not dict or initial_data == {}:
-                raise ScenarioError('Time shifted connections have to be '
-                                    'set with default inputs for the first step.')
-            # list for assertion of correct assignment:
-            check_attrs = [a[0] for a in expanded_attrs]
-            # Set default values for first data exchange:
-            for attr, val in initial_data.items():
-                if attr not in check_attrs:
-                    raise ScenarioError('Incorrect attr "%s" in "initial_data".'
-                                        % attr)
-
-                if self._df_cache is not None:
-                    self._df_cache[-1].setdefault(src.sid, {})
-                    self._df_cache[-1][src.sid].setdefault(src.eid, {})
-                    self._df_cache[-1][src.sid][src.eid][attr] = val
-
-        pred_waiting = async_requests
-
-        trigger = set()
-        for src_attr, dest_attr in expanded_attrs:
+        trigger: Set[Tuple[EntityId, Attr]] = set()
+        for src_attr, dest_attr in attr_pairs:
             if (dest.triggered_by(dest_attr)):
                 trigger.add((src.eid, src_attr))
 
-        try:
-            edge = self.df_graph[src.sid][dest.sid]
-            edge['trigger'].update(trigger)
-            edge['weak'] = edge['weak'] and weak
-            edge['time_shifted'] = edge['time_shifted'] and time_shifted
-            edge['async_requests'] = edge['async_requests'] or async_requests
-            edge['pred_waiting'] = edge['pred_waiting'] or pred_waiting
-        except KeyError:
-            async def create_events():
-                wait_event = asyncio.Event()
-                wait_event.set()
-                wait_lazy = asyncio.Event()
-                wait_lazy.set()
-                wait_async = asyncio.Event()
-                wait_async.set()
-                return wait_event, wait_lazy, wait_async
-            wait_event, wait_lazy, wait_async = self.loop.run_until_complete(create_events())
-            self.df_graph.add_edge(
-                src.sid,
-                dest.sid,
-                async_requests=async_requests,
-                time_shifted=time_shifted,
-                weak=weak,
-                trigger=trigger,
-                pred_waiting=pred_waiting,
-                wait_event=wait_event,
-                wait_lazy=wait_lazy,
-                wait_async=wait_async,
-            )
-
-        dfs = self.df_graph[src.sid][dest.sid].setdefault('dataflows', [])
-        dfs.append((src.eid, dest.eid, expanded_attrs))
-
-        cached_connections = self.df_graph[src.sid][dest.sid].setdefault(
-            'cached_connections', [])
-        if cached:
-            cached_connections.append((src.eid, dest.eid, cached))
-
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-
-        # Cache the attribute names which we need output data for after a
-        # simulation step to reduce the number of df graph queries.
-        outattr = [a[0] for a in expanded_attrs]
-        if outattr:
-            self._df_outattr[src.sid][src.eid].extend(outattr)
-
-        for src_attr, dest_attr in time_buffered:
-            src.sim.buffered_output.setdefault((src.eid, src_attr), []).append(
-                (dest.sid, dest.eid, dest_attr))
-
-        if weak:
-            for src_attr, dest_attr in persistent:
-                try:
-                    dest.sim.input_buffer.setdefault(dest.eid, {}).setdefault(
-                        dest_attr, {})[
-                        FULL_ID % (src.sid, src.eid)] = initial_data[src_attr]
-                except KeyError:
-                    raise ScenarioError('Weak connections of persistent '
-                                        'attributes have to be set with '
-                                        'default inputs for the first step. '
-                                        f'{src_attr} is missing for connection'
-                                        f' from {FULL_ID % (src.sid, src.eid)} '
-                                        f'to {FULL_ID % (dest.sid, dest.eid)}.')
-
-        for src_attr, dest_attr in memorized:
-            if weak or time_shifted:
-                init_val = initial_data[src_attr]
-            else:
-                init_val = None
-            dest.sim.input_memory.setdefault(dest.eid, {}).setdefault(
-                dest_attr, {})[FULL_ID % (src.sid, src.eid)] = init_val
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
-        self.sims[sid].next_steps = [time]
+        self.sims[sid].next_steps = [DenseTime(time)]
 
     def get_data(
         self,
@@ -501,7 +485,7 @@ class World(object):
 
         async def request_data():
             requests = {
-                sid: asyncio.create_task(self.sims[sid].proxy.get_data(outputs))
+                sid: asyncio.create_task(self.sims[sid].get_data(outputs))
                 for sid, outputs in outputs_by_sim.items()
             }
             try:
@@ -533,6 +517,7 @@ class World(object):
 
         return results
 
+    
     def run(
         self,
         until: int,
@@ -541,59 +526,64 @@ class World(object):
         print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
     ):
+        """Start the simulation until the simulation time *until* is
+        reached.
+
+        Before this method returns, it stops all simulators and closes
+        mosaik's server socket. So this method should only be called
+        once.
+
+        :param until: The end of the simulation in mosaik time steps
+            (exclusive).
+
+        :param rt_factor: The real-time factor. If set to a number > 0,
+            the simulation will run in real-time mode. A real-time 
+            factor of 1. means that 1 second in simulated time takes
+            1 second in real time. An real-time factor of 0.5 will let
+            the simulation run twice as fast as real time. For correct
+            behavior of the real-time factor, the time resolution of the
+            scenario has to be set adequately (the default is 1 second).
+
+        :param rt_strict: If the simulators are too slow for the
+            real-time factor you chose, mosaik will only print a warning
+            by default. In order to raise a :exc:`RuntimeError` instead,
+            you can set *rt_strict* to ``True``.
+
+        :param print_progress: Whether progress bars are printed while
+            the simulation is running. The default is to print one bar
+            representing the global progress of the simulation. You can
+            also set the value to ``'individual'`` to get one bar per
+            simulator in your simulation (in addition to the global
+            one). A value of ``False`` turns off the progress bars
+            completely.
+            
+            The progress bars use
+            `tqdm <https://pypi.org/project/tqdm/>`_; see their
+            documentation on how to write to the console without
+            interfering with the bars.
+
+        :param lazy_stepping: Whether to prevent simulators from running
+            ahead of their successors by more than one step. If
+            ``False`` a simulator always steps as long all input is
+            provided. This might decrease the simulation time but
+            increase the memory consumption.
         """
-        Start the simulation until the simulation time *until* is reached.
-
-        In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. A rt-factor of 1. means that 1 second in simulated time
-        takes 1 second in real-time. An rt-factor 0f 0.5 will let the
-        simulation run twice as fast as real-time. For correct behavior of the
-        rt_factor the time_resolution of the scenario has to be set adequately,
-        which is 1. [second] by default.
-
-        If the simulators are too slow for the rt-factor you chose, mosaik
-        prints by default only a warning. In order to raise
-        a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
-
-        ``print_progress`` controls whether progress bars are printed while the
-        simulation is running. The default is to print one bar representing the
-        global progress of the simulation. You can also set
-        ``print_progress='individual'`` to get one bar per simulator in your
-        simulation (in addition to the global one). ``print_progress=False`
-        turns off the progress bars completely. The progress bars use
-        `tqdm <https://pypi.org/project/tqdm/>`_; see their documentation
-        on how to write to the console without interfering with the bars.
-
-        You can also set the *lazy_stepping* flag (default: ``True``). If
-        ``True`` a simulator can only run ahead one step of it's successors. If
-        ``False`` a simulator always steps as long all input is provided. This
-        might decrease the simulation time but increase the memory consumption.
-
-        Before this method returns, it stops all simulators and closes mosaik's
-        server socket. So this method should only be called once.
-        """
-        if self.loop.is_closed():
+        if hasattr(self, "until"):
             raise RuntimeError(
                 "Simulation has already been run and can only be run once for a World "
                 "instance."
             )
 
         # Check if a simulator is not connected to anything:
-        for sid, deg in sorted(list(networkx.degree(self.df_graph))):
-            if deg == 0:
-                logger.warning('{sim_id} has no connections.', sim_id=sid)
+        # TODO: Rebuild this test without df_graph (or maybe check for
+        # connectedness instead).
 
-        self.detect_unresolved_cycles()
+        # Creating the topological ranking will ensure that there are no
+        # cycles in the dataflow graph that are not resolved using
+        # time-shifted or weak connections.
+        self.ensure_no_dataflow_cycles()
 
-        trigger_edges = [(u, v) for (u, v, w) in self.df_graph.edges.data(True)
-                         if w['trigger']]
-        self.trigger_graph.add_edges_from(trigger_edges)
-
-        self.cache_trigger_cycles()
-        self.cache_dependencies()
-        self.cache_related_sims()
         self.cache_triggering_ancestors()
-        self.create_simulator_ranking()
 
         logger.info('Starting simulation.')
         # 11 is the length of "Total: 100%"
@@ -645,304 +635,61 @@ class World(object):
             if success:
                 logger.info('Simulation finished successfully.')
 
-    def detect_unresolved_cycles(self):
-        """
-        Searches for unresolved cycles, i.e. cycles that do not have a weak or
-        time_shifted connection. Raises an error if an unresolved cycle is found.
-        """
-        cycles = list(networkx.simple_cycles(self.df_graph))
-        for cycle in cycles:
-            sim_pairs = list(zip(cycle, cycle[1:] + [cycle[0]]))
-            self._detect_missing_loop_breakers(cycle, sim_pairs)
-
-    def _detect_missing_loop_breakers(
-        self,
-        cycle: List[SimId],
-        sim_pairs: List[Tuple[SimId, SimId]],
-    ):
-        """
-        Searches for loop breakers, i.e. weak or time_shifted connections in
-        a loop. If no such loop breaker is present, the cycle is unresolved
-        and an error is raised.
-        """
-        loop_breaker = [
-            self.df_graph[src_id][dest_id]["weak"]
-            or self.df_graph[src_id][dest_id]["time_shifted"]
-            for src_id, dest_id in sim_pairs
-        ]
-        if not any(loop_breaker):
-            raise ScenarioError(
-                "Scenario has unresolved cyclic "
-                f"dependencies: {sorted(cycle)}. Use options "
-                '"time-shifted" or "weak" for resolution.'
-            )
-
-    def cache_trigger_cycles(self):
-        """
-        For all simulators, if they are part of a cycle, add information
-        about trggers in the cycle(s) to the simulator object
-        """
-        # Get the cycles from the networkx package
-        cycles = list(networkx.simple_cycles(self.trigger_graph))
-        # For every simulator go through all cycles in which the simulator is a node
-        for sim in self.sims.values():
-            for cycle in cycles:
-                if sim.sid in cycle:
-                    index_of_simulator = cycle.index(sim.sid)
-                    successor_sid, cycle_edges = self._get_cycle_info(
-                        cycle, index_of_simulator
-                    )
-                    ingoing_edge, outgoing_edge = self._get_in_out_edges(
-                        index_of_simulator, cycle_edges
-                    )
-                    sids: List[SimId] = sorted(cycle)
-                    # If connections between simulators are time-shifted, the cycle
-                    # needs more time for a trigger round. If no edge is timeshifted,
-                    # the minimum length is 0.
-                    min_length: int = sum(
-                        [edge["time_shifted"] for edge in cycle_edges]
-                    )
-                    trigger_cycle = simmanager.TriggerCycle(
-                        sids=sids,
-                        activators=outgoing_edge["trigger"],
-                        min_length=min_length,
-                        in_edge=ingoing_edge,
-                        time=-1,
-                        count=0,
-                    )
-                    # Store the trigger cycle in the simulation object
-                    sim.trigger_cycles.append(trigger_cycle)
-
-    def _get_cycle_info(
-        self,
-        cycle: List[SimId],
-        index_of_simulator: int,
-    ) -> Tuple[SimId, List[DataflowEdge]]:
-        """
-        Returns the sid of the successor and all the edges from the cycle.
-        """
-        # Combine the ids of the cycle elements to get the edge ids and edges
-        edge_ids = list(zip(cycle, cycle[1:] + [cycle[0]]))
-        successor_sid = edge_ids[index_of_simulator][1]
-        cycle_edges = [
-            self.df_graph.get_edge_data(src_id, dest_id) for src_id, dest_id in edge_ids
-        ]
-        return successor_sid, cycle_edges  # type: ignore
-
-    def _get_in_out_edges(
-        self,
-        index_of_simulator: int,
-        cycle_edges: List[DataflowEdge],
-    ) -> Tuple[DataflowEdge, DataflowEdge]:
-        """
-        Returns the ingoing and outgoing edge in the cycle from the given simulator
-        """
-        ingoing_edge = cycle_edges[(index_of_simulator - 1) % len(cycle_edges)]
-        outgoing_edge = cycle_edges[index_of_simulator]
-        return ingoing_edge, outgoing_edge
-
-    def cache_dependencies(self):
-        """
-        Loops through all simulations and adds predecessors and successors to the
-        simulations.
-        """
-        for sid, sim in self.sims.items():
-            sim.predecessors = {}
-            for pre_sid in self.df_graph.predecessors(sid):
-                pre_sim = self.sims[pre_sid]
-                edge = self.df_graph[pre_sid][sid]
-                sim.predecessors[pre_sid] = (pre_sim, edge)
-
-            sim.successors = {}
-            for suc_sid in self.df_graph.successors(sid):
-                suc_sim = self.sims[suc_sid]
-                edge = self.df_graph[sid][suc_sid]
-                sim.successors[suc_sid] = (suc_sim, edge)
-
-    def cache_related_sims(self):
-        """
-        Stores the related simulators for a simulator in the simulator object.
-        The related simulators are all simulators in the scenario that are not
-        the simulator itself.
-        """
-        all_sims = self.sims.values()
-        for sim in all_sims:
-            sim.related_sims = [isim for isim in all_sims if isim != sim]
-
     def cache_triggering_ancestors(self):
         """
         Collects the ancestors of each simulator and stores them in the
         respective simulator object.
         """
-        for sim in self.sims.values():
-            triggering_ancestors = sim.triggering_ancestors = []
-            ancestors = list(networkx.ancestors(self.trigger_graph, sim.sid))
-            for ancestors_sid in ancestors:
-                distance = self._get_shortest_distance_from_edges(sim, ancestors_sid)
-                is_immediate_connection: bool = distance == 0
-                triggering_ancestors.append((ancestors_sid, is_immediate_connection))
+        trigger_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
+        for src_sim in self.sims.values():
+            for successors in src_sim.triggers.values():
+                for (dest_sim, delay) in successors:
+                    min_delay = delay
+                    if trigger_graph.has_edge(src_sim, dest_sim):
+                        min_delay = min(delay, trigger_graph[src_sim][dest_sim]["delay"])
+                    trigger_graph.add_edge(src_sim, dest_sim, delay=min_delay)
+        for dest_sim in trigger_graph.nodes:
+            for src_sim in networkx.ancestors(trigger_graph, dest_sim):
+                distance = networkx.shortest_path_length(trigger_graph, src_sim, dest_sim, weight="delay")
+                dest_sim.triggering_ancestors.append((src_sim, distance))
 
-    def _get_shortest_distance_from_edges(
-        self,
-        simulator: simmanager.SimRunner,
-        ancestors_sid: str,
-    ) -> int:
-        """
-        Returns the minimum distance of all edges on the paths from the
-        ancestors to the given simulator.
-        """
-        paths = networkx.all_simple_edge_paths(
-            self.trigger_graph, ancestors_sid, simulator.sid
-        )
-        distances = []
-        for edges in paths:
-            distance = 0
-            for edge in edges:
-                edge = self.df_graph[edge[0]][edge[1]]
-                distance += edge["time_shifted"] or edge["weak"]
-            distances.append(distance)
-        return min(distances)
-
-    def create_simulator_ranking(self):
+    def ensure_no_dataflow_cycles(self):
         """
         Deduce a simulator ranking from a topological sort of the df_graph.
         """
-        graph_tmp = self.df_graph.copy()
-        loop_edges = [(u, v) for (u, v, w) in graph_tmp.edges.data(True) if
-                      w['time_shifted'] or w['weak']]
-        graph_tmp.remove_edges_from(loop_edges)
-        topo_sort = list(networkx.topological_sort(graph_tmp))
-        for rank, sid in enumerate(topo_sort):
-            self.sims[sid].rank = rank
+        immediate_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
+        for sim in self.sims.values():
+            for pred_sim, delay in sim.input_delays.items():
+                if delay == DenseTime(0):
+                    immediate_graph.add_edge(pred_sim, sim)
+        # If there are performance problems, it might be faster to first try sorting
+        # this graph topologically. If that succeeds, there will be no cycles, so the
+        # cycles computation can be skipped.
+        for cycle in networkx.simple_cycles(immediate_graph):
+            # If we run into any cycles, we raise, thus not computing all cycles.
+            raise ScenarioError(
+                "Your scenario contains cycles that are not broken up using "
+                "time-shifted or weak connections. mosaik is unable to determine which "
+                "simulator to run first in these cases. Here is an example of one such "
+                f"cycle: {cycle}."
+            )
 
     def shutdown(self):
         """
         Shut-down all simulators and close the server socket.
         """
-        if self.loop.is_closed():
-            return
+        if self.server.is_serving():
+            self.server.close()
 
-        for sim in self.sims.values():
-            self.loop.run_until_complete(sim.stop())
+        if not self.loop.is_closed():
+            for sim in self.sims.values():
+                self.loop.run_until_complete(sim.stop())
+            self.loop.close()
 
-        self.server.close()
-        self.loop.close()
 
-    def _check_attributes(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ) -> Iterable[Tuple[Entity, Attr]]:
-        """
-        Check if *src* and *dest* have the attributes in *attr_pairs*.
-
-        Raise a :exc:`~mosaik.exceptions.ScenarioError` if an attribute does
-        not exist. Exception: If the meta data for *dest* declares
-        ``'any_inputs': True``.
-        """
-        attr_errors = []
-        for src_attr, dest_attr in attr_pairs:
-            if src_attr not in src.meta['attrs']:
-                attr_errors.append((src, src_attr))
-            if not (dest.meta['any_inputs'] or dest_attr in dest.meta['attrs']):
-                attr_errors.append((dest, dest_attr))
-        return attr_errors
-
-    def _check_attributes_values(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ):
-        """
-        Check if *src* and *dest* attributes in *attr_pairs* are a combination of
-        persistent and trigger or non-persistent and non-trigger.
-
-        """
-        non_persistent = set(src.meta['attrs']).difference(src.meta['persistent'])
-        non_trigger = set(dest.meta['attrs']).difference(dest.meta['trigger'])
-        for src_attr, dest_attr in attr_pairs:
-            if (dest_attr in non_trigger) and (src_attr in non_persistent):
-                logger.warning(
-                    'A connection between non-persistent ({src_sid}:{src_attr}) and non-trigger ({dest_sid}:{dest_attr}) '
-                    'attributes is not recommended. This might cause problems in the simulation! See also: '
-                    'https://mosaik.readthedocs.io/en/latest/scenario-definition.html#connecting-entities',
-                    src_attr=src_attr, dest_attr=dest_attr, src_sid=src.sim.sid, dest_sid=dest.sim.sid
-                )
-
-    def _classify_connections_with_cache(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ) -> Tuple[
-        bool,
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-    ]:
-        """
-        Classifies the connection by analyzing the model's meta data with
-        enabled cache, i.e. if it triggers a step of the destination, how the
-        data is cached, and if it's persistent and need's to be saved in the
-         input_memory.
-        """
-        any_trigger = False
-        cached = []
-        time_buffered = []
-        memorized = []
-        persistent = []
-
-        for attr_pair in attr_pairs:
-            src_attr, dest_attr = attr_pair
-            trigger = (dest_attr in dest.meta['trigger'] or (
-                dest.meta['any_inputs'] and dest.sim.proxy.meta['type'] == 'event-based'))
-            if trigger:
-                any_trigger = True
-
-            is_persistent = src_attr in src.meta['persistent']
-            if is_persistent:
-                persistent.append(attr_pair)
-            if src.sim.proxy.meta['type'] != 'time-based':
-                time_buffered.append(attr_pair)
-                if is_persistent:
-                    memorized.append(attr_pair)
-            else:
-                cached.append(attr_pair)
-        return (any_trigger, tuple(cached), tuple(time_buffered),
-                tuple(memorized), tuple(persistent))
-
-    def _classify_connections_without_cache(
-        self,
-        src: Entity,
-        dest: Entity,
-        attr_pairs: Iterable[Tuple[Attr, Attr]],
-    ) -> Tuple[
-        bool,
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-        Iterable[Tuple[Attr, Attr]],
-    ]:
-        """
-        Classifies the connection by analyzing the model's meta data with
-        disabled cache, i.e. if it triggers a step of the destination, if the
-        attributes are persistent and need to be saved in the input_memory.
-        """
-        trigger = False
-        persistent = []
-        for attr_pair in attr_pairs:
-            src_attr, dest_attr = attr_pair
-            if (dest_attr in dest.meta['trigger'] or (
-                    dest.meta['any_inputs'] and dest.sim.proxy.meta['type'] == 'event-based')):
-                trigger = True
-            is_persistent = src_attr in src.meta['persistent']
-            if is_persistent:
-                persistent.append(attr_pair)
-        memorized = persistent
-
-        return trigger, tuple(attr_pairs), tuple(memorized), tuple(persistent)
+MOSAIK_METHODS = set(
+    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
+)
 
 
 class ModelFactory():
@@ -956,41 +703,156 @@ class ModelFactory():
     If you access an attribute that is not a model or if the model is not
     marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
     """
+    type: Literal['event-based', 'time-based', 'hybrid']
+    models: Dict[ModelName, ModelMock]
 
-    def __init__(self, world: World, sim: simmanager.SimRunner):
-        self.meta = sim.proxy.meta
+    def __init__(self, world: World, sid: SimId, proxy: Proxy):
+        self.meta = proxy.meta
         self._world = world
-        self._sim = sim
+        self._proxy = proxy
+        self._sid = sid
 
-        # Create a ModelMock for every public model
-        for model, props in self.meta['models'].items():
-            if props['public']:
-                setattr(self, model, ModelMock(self._world, model, self._sim))
+        if "type" not in proxy.meta:
+            raise ScenarioError(
+                'The simulator is missing a type specification ("time-based", '
+                '"event-based" or "hybrid"). This is required starting from API '
+                'version 3.'
+            )
+        self.type = proxy.meta["type"]
+        if self.type not in ["time-based", "event-based", "hybrid"]:
+            raise ScenarioError(
+                f"The type '{self.type}' is not a valid type. (It should be one of"
+                "'time-based', 'event-based' and 'hybrid'.) Please check for typos "
+                f"in your simulator's init function and meta."
+            )
+
+        self.models = {}
+        for model, props in self.meta["models"].items():
+            if model in MOSAIK_METHODS:
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal model name: {model}. This name "
+                    "is already the name of a mosaik API method."
+                )               
+            self.models[model] = ModelMock(self._world, self, model, self._proxy)
+            # Make public models accessible
+            if props.get("public", True):
+                setattr(self, model, self.models[model])
 
         # Bind extra_methods to this instance:
-        for meth_name in self.meta['extra_methods']:
+        for meth_name in self.meta.get("extra_methods", []):
             # We need get_wrapper() in order to avoid problems with scoping
             # of the name "meth". Without it, "meth" would be the same for all
             # wrappers.
-            def get_wrapper(sim, meth_name):
-                meth = getattr(sim.proxy, meth_name)
-                def wrapper(*args, **kwargs):
+            if meth_name in MOSAIK_METHODS:
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal name for an extra method: "
+                    f'"{meth_name}". This is already the name of a mosaik API method.'
+                )
+            if meth_name in self.models.keys():
+                raise ScenarioError(
+                    f"Simulator {sid} uses an illegal name for an extra method: "
+                    f'"{meth_name}". This is already the name of a model of this '
+                    "simulator."
+                )
+            def get_wrapper(connection: Proxy, meth_name: str) -> Callable[..., Any]:
+                def wrapper(*args: Any, **kwargs: Any):
                     return world.loop.run_until_complete(
-                        meth(*args, **kwargs)
+                        connection.send([meth_name, args, kwargs])
                     )
                 wrapper.__name__ = meth_name
                 return wrapper
 
-            setattr(self, meth_name, get_wrapper(sim, meth_name))
+            setattr(self, meth_name, get_wrapper(proxy, meth_name))
 
     def __getattr__(self, name):
         # Implemented in order to improve error messages.
-        models = self.meta['models']
-        if name in models and not models[name]['public']:
-            raise AttributeError('Model "%s" is not public.' % name)
+        models = self.meta["models"]
+        if name in models:
+            raise AttributeError(f'Model "{name}" is not public.')
         else:
-            raise AttributeError('Model factory for "%s" has no model and no '
-                                 'function "%s".' % (self._sim.sid, name))
+            raise AttributeError(
+                f'Model factory for "{self._sid}" has no model and no function '
+                f'"{name}".'
+            )
+
+
+def parse_attrs(
+    model_desc: ModelDescription,
+    type: Literal['time-based', 'event-based', 'hybrid']
+) -> Tuple[InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr]]:
+    """Parse the attrs and their trigger/persistent state.
+
+    The guiding principle is this: The user can specify as little
+    information as possible and the rest will be inferred, but
+    inconsistent information will lead to an error.
+
+    If attrs, trigger and non-trigger are all given, trigger and
+    non-trigger must form a partition of attrs. If only two are given,
+    the third in inferred, provided this can be done in such a way that
+    trigger and non-trigger form a partition of attrs. If
+    any_inputs=True, the set of all possible attrs is used instead of
+    the ones specified in attrs. If only attrs is given, a default
+    is chosen for the others, based on the type of the simulator.
+
+    The same applieds to attrs, persistent and non-persistent, except
+    that any_inputs is not considered (as these are outputs).
+
+    :param model_desc: The `ModelDescription` to parse
+    :param type: The simulator's type (for setting default attribute
+        types).
+    :return: A four-tuple of :class:`InOrOutSet`, giving the
+        measurement inputs, event inputs, measurement outputs, and event
+        outputs.        
+    :raises ValueError: if the information is insufficient or
+        inconsistent
+    """
+    error_template = (
+            "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
+            "if you need both types of %s attributes), and they must list all their "
+            "attrs as %s if that key is present"
+    )
+    
+    if model_desc.get('any_inputs', False):
+        inputs: Optional[InOrOutSet[Attr]] = OutSet()
+    else:
+        inputs = wrap_set(model_desc.get('attrs'))
+    empty: FrozenSet[Attr] = frozenset()
+    default_measurements = empty if type == 'event-based' else None
+    measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
+    default_events = None if type == 'event-based' else empty
+    event_inputs = wrap_set(model_desc.get('trigger', default_events))
+    measurement_inputs, event_inputs = parse_set_triple(
+        inputs, measurement_inputs, event_inputs,
+        "attrs", "non-trigger", "trigger"
+    )
+    if type == 'time-based' and event_inputs != frozenset():
+        raise ValueError(
+            error_template % ("time-based", "trigger", "input", "non-trigger")
+        )
+    if type == 'event-based' and measurement_inputs != frozenset():
+        raise ValueError(
+            error_template % ("event-based", "non-trigger", "inpus", "trigger")
+        )
+    
+    outputs = wrap_set(model_desc.get('attrs'))
+    default_measurements = empty if type == 'event-based' else None
+    measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
+    default_events = None if type == 'event-based' else empty
+    event_outputs = wrap_set(model_desc.get('non-persistent', default_events))
+    measurement_outputs, event_outputs = parse_set_triple(
+        outputs, measurement_outputs, event_outputs,
+        "attrs", "persistent", "non-persistent"
+    )
+    if type == 'time-based' and event_outputs != frozenset():
+        raise ValueError(
+            error_template % ("time-based", "non-persistent", "output", "persistent")
+        )
+    if type == 'event-based' and measurement_outputs != frozenset():
+        raise ValueError(
+            error_template % ("event-based", "persistent", "output", "non-persistent")
+        )
+
+    return measurement_inputs, event_inputs, measurement_outputs, event_outputs
 
 
 class ModelMock(object):
@@ -1003,19 +865,49 @@ class ModelMock(object):
     method to create multiple entities with the same set of parameters at once:
     ``sim.ModelName.create(3, x=23)``.
     """
+    name: ModelName
+    _world: World
+    _factory: ModelFactory
+    _proxy: Proxy
+    params: FrozenSet[str]
+    event_inputs: InOrOutSet[Attr]
+    measurement_inputs: InOrOutSet[Attr]
+    event_outputs: InOrOutSet[Attr]
+    measurement_outputs: InOrOutSet[Attr]
 
-    def __init__(self, world: World, name: str, sim: simmanager.SimRunner):
+    def __init__(
+        self,
+        world: World,
+        factory: ModelFactory,
+        model: ModelName,
+        proxy: Proxy,
+    ):
         self._world = world
-        self._name = name
-        self._sim = sim
-        self._sim_id = sim.sid
-        self._params = sim.proxy.meta['models'][name]['params']
+        self._factory = factory
+        self.name = model
+        self._proxy = proxy
+        model_desc = proxy.meta['models'][model]
+        self.params = frozenset(model_desc.get('params', []))
 
+        (
+            self.measurement_inputs,
+            self.event_inputs,
+            self.measurement_outputs,
+            self.event_outputs,
+        ) = parse_attrs(model_desc, self._factory.type)
+
+    @property
+    def input_attrs(self) -> InOrOutSet[Attr]:
+        return self.event_inputs | self.measurement_inputs
+
+    @property
+    def output_attrs(self) -> InOrOutSet[Attr]:
+        return self.event_outputs | self.measurement_outputs
+    
     def __call__(self, **model_params):
         """
         Call :meth:`create()` to instantiate one model.
         """
-        self._check_params(**model_params)
         return self.create(1, **model_params)[0]
 
     def create(self, num: int, **model_params):
@@ -1030,52 +922,58 @@ class ModelMock(object):
         self._check_params(**model_params)
 
         entities = self._world.loop.run_until_complete(
-            self._sim.proxy.create(num, self._name, **model_params)
+            self._proxy.send(["create", (num, self.name), model_params])
         )
         assert len(entities) == num, (
             f'{num} entities were requested but {len(entities)} were created.'
         )
 
-        return self._make_entities(entities, assert_type=self._name)
+        return self._make_entities(entities, assert_type=self.name)
 
     def _check_params(self, **model_params):
-        expected_params = list(self._params)
-        for param in model_params:
-            if param not in expected_params:
-                raise TypeError("create() got an unexpected keyword argument "
-                                "'%s'" % param)
-            expected_params.remove(param)
+        unexpected_params = set(model_params.keys()).difference(self.params)
+        if unexpected_params:
+            sep = "', '"
+            raise TypeError(
+                "create() got unexpected keyword arguments: '"
+                f"{sep.join(unexpected_params)}'"
+            )
 
-    def _make_entities(self, entity_dicts, assert_type=None):
+    def _make_entities(
+        self, entity_dicts: List[CreateResult], assert_type: Optional[ModelName] = None
+    ) -> List[Entity]:
         """
         Recursively create lists of :class:`Entity` instance from a list
         of *entity_dicts*.
         """
-        sim_name = self._sim.name
-        sim_id = self._sim_id
+        sid = self._factory._sid
         entity_graph = self._world.entity_graph
 
-        entity_set = []
+        entity_set: List[Entity] = []
         for e in entity_dicts:
             self._assert_model_type(assert_type, e)
 
-            children = e.get('children', [])
-            if children:
+            children = e.get('children')
+            if children is not None:
                 children = self._make_entities(children)
-            entity = Entity(sim_id, e['eid'], sim_name, e['type'], children,
-                            self._sim)
+            model = self._factory.models[e['type']]
+            entity = Entity(
+                sid, e['eid'], self.name, model, children, e.get("extra_info")
+            )
 
             entity_set.append(entity)
-            entity_graph.add_node(entity.full_id, sim=sim_name, type=e['type'])
+            entity_graph.add_node(entity.full_id, sid=sid, type=e['type'])
             for rel in e.get('rel', []):
-                entity_graph.add_edge(entity.full_id, FULL_ID % (sim_id, rel))
+                entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
 
         return entity_set
 
-    def _assert_model_type(self, assert_type, e):
-        """
-        Assert that entity *e* has either type *assert_type* if is not none
-        or else any valid type.
+    def _assert_model_type(
+        self, assert_type: Optional[ModelName], e: CreateResult
+    ) -> None:
+        """Assert that entity ``e`` has entity type ``assert_type``, or
+        any valid model type of the simulator if ``assert_type`` is
+        ``None``.
         """
         if assert_type is not None:
             assert e['type'] == assert_type, (
@@ -1083,7 +981,7 @@ class ModelMock(object):
                 f'"{assert_type}" required.'
             )
         else:
-            assert e['type'] in self._sim.proxy.meta['models'], (
+            assert e['type'] in self._proxy.meta['models'], (
                 f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
                 'data.'
             )
@@ -1093,32 +991,42 @@ class Entity(object):
     """
     An entity represents an instance of a simulation model within mosaik.
     """
-    __slots__ = ['sid', 'eid', 'sim_name', 'type', 'children', 'sim']
+    __slots__ = ['sid', 'eid', 'sim_name', 'model_mock', 'children', 'extra_info']
     sid: SimId
+    """The ID of the simulator this entity belongs to."""
     eid: EntityId
+    """The entity's ID."""
     sim_name: str
-    type: str
-    children: Iterable[Entity]
-    sim: simmanager.SimRunner
+    """The entity's simulator name."""
+    model_mock: ModelMock
+    """The entity's type (or class)."""
+    children: List[Entity]
+    """An entity set containing subordinate entities."""
+    extra_info: Any
 
-    def __init__(self, sid, eid, sim_name, type, children, sim):
+    def __init__(
+        self,
+        sid: SimId,
+        eid: EntityId,
+        sim_name: str,
+        model_mock: ModelMock,
+        children: Optional[Iterable[Entity]],
+        extra_info: Any = None,
+    ):
         self.sid = sid
-        """The ID of the simulator this entity belongs to."""
-
         self.eid = eid
-        """The entity's ID."""
-
         self.sim_name = sim_name
-        """The entity's simulator name."""
+        self.model_mock = model_mock
+        self.children = list(children) if children is not None else []
+        self.extra_info = extra_info
 
-        self.type = type
-        """The entity's type (or class)."""
+    @property
+    def type(self) -> ModelName:
+        return self.model_mock.name
 
-        self.children = children if children is not None else set()
-        """An entity set containing subordinate entities."""
-
-        self.sim = sim
-        """The :class:`~mosaik.simmanager.SimProxy` containing the entity."""
+    @property
+    def model(self) -> ModelName:
+        return self.model_mock.name
 
     @property
     def full_id(self) -> FullId:
@@ -1128,23 +1036,19 @@ class Entity(object):
         return FULL_ID % (self.sid, self.eid)
 
     def triggered_by(self, attr: Attr) -> bool:
-        return (attr in self.meta["trigger"]) or (
-            self.sim.proxy.meta["type"] == "event-based"
-            and self.meta["any_inputs"]
-        )
+        return attr in self.model_mock.event_inputs
 
     def is_persistent(self, attr: Attr) -> bool:
-        return (attr in self.meta["persistent"])
-
-    @property
-    def meta(self) -> ModelDescription:
-        return self.sim.proxy.meta['models'][self.type]
+        return attr in self.model_mock.measurement_outputs
 
     def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type]))
+        return (
+            f"{self.__class__.__name__}(model={self.model!r}, eid={self.eid!r}, "
+            f"sid={self.sid!r})"
+        )
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([
-            repr(self.sid), repr(self.eid), repr(self.sim_name), self.type,
-            repr(self.children), repr(self.sim)]))
+        return (
+            f"{self.__class__.__name__}(model_mock={self.model_mock!r}, "
+            f"eid={self.eid!r}, sid={self.sid!r}, children={self.children!r})"
+        )

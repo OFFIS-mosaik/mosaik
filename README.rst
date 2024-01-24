@@ -7,7 +7,7 @@ It lets you re-use existing simulators and couple them to simulate large-scale
 Smart Grid scenarios. Mosaik offers powerful mechanisms to specify and compose
 these scenarios.
 
-Version: 3.2.0
+Version: 3.3.0.b1
 
 License: LGPL
 
@@ -78,3 +78,9 @@ Or as bibtex::
         ISSN = {2076-3417},
         DOI = {10.3390/app9050923}
     }
+
+Get in touch, ask questions, discuss 💬
+---------------------------------------
+You have a question, a feature request or want to generally discuss the amazing 
+possibilities with co-simulation and mosaik? We are curious to hear from you! 
+Join us on `GitHub Discussions <https://github.com/orgs/OFFIS-mosaik/discussions>`_.
