@@ -70,6 +70,7 @@ def world_fixture():
         ("event-based", False, "ab", (None, None, "a", None), ValueError),
         ("hybrid", False, "ab", (None, None, "a", "a"), ValueError),
         ("hybrid", False, "ab", ("a", "a", None, None), ValueError),
+        ("hybrid", False, "iton", (None, None, None, ""), ("iton", "", "iton", "")),
     ],
 )
 def test_parse_attrs(
@@ -113,14 +114,15 @@ def test_parse_attrs(
 def test_parse_attr_result_is_assigned_correctly(world: World):
     new_meta = deepcopy(META)
     del new_meta["models"]["ModelName"]["attrs"]
-    new_meta["models"]["ModelName"]["trigger"] = ["attr_1"]
+    new_meta["models"]["ModelName"]["trigger"] = []
+    new_meta["models"]["ModelName"]["non-trigger"] = ["attr_1"]
     new_meta["models"]["ModelName"]["non-persistent"] = ["attr_2"]
     new_meta["models"]["ModelName"]["persistent"] = ["attr_3"]
     model = cast(ModelMock, world.start("MetaMirror", meta=new_meta).ModelName)
-    assert model.event_inputs == frozenset(["attr_1"])
-    assert model.event_outputs == frozenset(["attr_2"])
-    assert model.measurement_inputs == frozenset()
+    assert model.measurement_inputs == frozenset(["attr_1"])
+    assert model.event_inputs == frozenset()
     assert model.measurement_outputs == frozenset(["attr_3"])
+    assert model.event_outputs == frozenset(["attr_2"])
     assert model.input_attrs == frozenset(["attr_1"])
     assert model.output_attrs == frozenset(["attr_2", "attr_3"])
 
