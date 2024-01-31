@@ -817,9 +817,16 @@ def parse_attrs(
     else:
         inputs = wrap_set(model_desc.get('attrs'))
     empty: FrozenSet[Attr] = frozenset()
-    default_measurements = empty if type == 'event-based' else None
+    if type == 'time-based':
+        default_measurements = None
+        default_events = empty
+    elif type == 'event-based':
+        default_measurements = empty
+        default_events = None
+    elif type == 'hybrid':
+        default_measurements = empty if 'trigger' in model_desc else None
+        default_events = None
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = None if type == 'event-based' else empty
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
