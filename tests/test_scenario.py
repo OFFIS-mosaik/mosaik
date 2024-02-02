@@ -67,6 +67,14 @@ def test_world():
         world.shutdown()
 
 
+def test_two_worlds():
+    """Test that two worlds can exist without a port conflict."""
+    world_1 = World({})
+    world_2 = World({})
+    world_1.shutdown()
+    world_2.shutdown()
+
+
 def test_world_debug():
     world = World(sim_config, debug=True)
     try:
