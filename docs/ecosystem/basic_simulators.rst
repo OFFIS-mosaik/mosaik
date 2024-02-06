@@ -1,5 +1,6 @@
 |mosaik| basic simulators
 =========================
+
 In order to test custom-made simulators, two basic simulators are provided to use and connect to.
 
 - The :class:`~mosaik.basic_simulators.input_simulator.InputSimulator`\ 

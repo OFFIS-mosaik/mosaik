@@ -122,19 +122,24 @@ def plot_execution_time(
     show_plot=True,
     slice=None,
 ):
-    """
-        Creates an image visualizing the execution time of the different simulators of a mosaik scenario.
+    """Creates an image visualizing the execution time of the different
+    simulators of a mosaik scenario.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param slice: reduce the timeframe that you show in the plot. Usage
+        as in Python list slicing, i.e., negative values are possible to
+        start from the end of the list. Jumps are not possible.
+        ``slice`` needs to be a two-element integer list, e.g.
+        ``[0, 5]``.
+
+    :return: ``None`` but image file will be written to file system
     """
     import matplotlib.pyplot as plt
 
@@ -196,7 +201,7 @@ def plot_dataflow_graph(
     show_plot: bool = True,
 ):
     """Creates an image visualizing the data flow graph of a mosaik
-    scenario. Using the spring_layout from Matplotlib (Fruchterman-
+    scenario. Using the spring layout from Matplotlib (Fruchterman-
     Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
@@ -206,8 +211,8 @@ def plot_dataflow_graph(
         the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :return: no return object, but image file will be written to file
+    :param show_plot: whether open a window to show the plot
+    :return: ``None`` but image file will be written to file
         system
     """
     import matplotlib.pyplot as plt
@@ -325,20 +330,25 @@ def plot_execution_graph(
     save_plot: bool = True,
     slice=None,
 ):
-    """
-        Creates an image visualizing the execution graph of a mosaik scenario.
+    """Creates an image visualizing the execution graph of a mosaik
+    scenario.
 
     :param world: mosaik world object
-    :param title:
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param title: the title of the graph
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param slice: reduce the timeframe that you show in the plot.
+        Usage as in Python list slicing, i.e., negative values are
+        possible to start from the end of the list. Jumps are not
+        possible. ``slice`` needs to be a two-element integer list,
+        e.g. ``[0, 5]``.
+
+    :return: ``None`` but image file will be written to file system
     """
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
@@ -455,21 +465,26 @@ def plot_execution_time_per_simulator(
     plot_per_simulator: bool = False,
     slice=None,
 ):
-    """
-        Creates images visualizing the execution time of each of the different simulators of a mosaik scenario.
+    """Creates images visualizing the execution time of each of the
+    different simulators of a mosaik scenario.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :plot_per_simulator: Create a separated plot per simulator. This is especially useful
-                         if the step sizes of the simulators are very different.
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param plot_per_simulator: whether to create a separated plot per
+        simulator. This is especially useful if the step sizes of the
+        simulators are very different.
+    :param slice: reduce the timeframe that you show in the plot. Usage
+        as in Python list slicing, i.e., negative values are possible to
+        start from the end of the list. Jumps are not possible.
+        ``slice`` needs to be a two-element integer list, e.g.
+        ``[0, 5]``.
+    :return: ``None`` but image file will be written to file system
     """
     import matplotlib.pyplot as plt
 
