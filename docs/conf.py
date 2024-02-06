@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+from typing import cast
 import mosaik
 # -- General configuration ----------------------------------------------------
 
@@ -274,11 +275,25 @@ autodoc_member_order = 'bysource'
 # documentation.
 def linkcode_resolve(domain, info):
     # Don't create links for non-Python code.
-    if domain != 'py':
+    if domain != "py":
         return
     # Cannot create link if we don't know the Python module of the code
-    if not info['module']:
+    if not info["module"]:
         return
     # Turn the module name into the URL on gitlab
-    filename = info['module'].replace('.', '/')
-    return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"
+    module = cast(str, info["module"])
+    filename = module.replace(".", "/")
+
+    init_modules = {"mosaik", "mosaik_api_v3"}
+    if info["module"] in init_modules:
+        filename += "/__init__"
+
+    base_module = module.split(".", 1)[0]
+    repos = {
+        "mosaik": "https://gitlab.com/mosaik/mosaik/-/blob/develop/",
+        "mosaik_api_v3": "https://gitlab.com/mosaik/api/mosaik-api-python/-/blob/master/",
+    }
+    if base_module in repos:
+        return repos[base_module] + filename + ".py"
+    else:
+        return None
