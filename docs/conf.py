@@ -29,7 +29,7 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.linkcode',
     'sphinx_rtd_theme',
-    'sphinxcontrib.plantuml',
+    'sphinx_toolbox.more_autodoc.autotypeddict',
 ]
 
 # -- Options for Graphviz -------------------------------------------------
@@ -88,7 +88,7 @@ exclude_patterns = ['_build']
 #default_role = None
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
-#add_function_parentheses = True
+add_function_parentheses = False
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
@@ -274,6 +274,15 @@ intersphinx_mapping = {
 
 # Autodoc
 autodoc_member_order = 'bysource'
+
+autodoc_typehints = "description"
+
+# TODO: Check once type aliases work in type annotations
+autodoc_type_aliases = {
+    "InputData": "mosaik_api_v3.types.InputData",
+    "SimConfig": "mosaik.scenario.SimConfig",
+    "mosaik.scenario.SimConfig": "mosaik.scenario.SimConfig",
+}
 
 # This method is used to generate links to the source code in the
 # documentation.

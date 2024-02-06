@@ -95,7 +95,8 @@ actually provided. See the :ref:`API description <api.get_data>` for
 implementation details.
 Event-based simulators do not necessarily start at time 0, but whenever their
 first event is scheduled, either by other simulators or via
-:meth:`World.set_initial_event()` from the scenario definition.
+:meth:`World.set_initial_event <mosaik.scenario.World.set_initial_event>` from
+the scenario definition.
 
 .. figure:: /_static/scheduler-event-based-1.*
    :width: 600
@@ -226,6 +227,7 @@ parameter of the *step()* API call.
 It is important to understand that simulators don't talk to each other directly
 but that all data flows through mosaik were it can be cached and managed.
 
+.. _cyclic_data_flows:
 
 Cyclic data-flows
 =================

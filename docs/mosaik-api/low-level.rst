@@ -32,7 +32,7 @@ failed) need to use the message ID of the corresponding request.
 
 The content of a request roughly map to a Python function call:
 
-.. code-block:: json
+.. code-block:: none
 
    [function, [arg0, arg1, ...], {kwarg0: val0, kwar1: val1}]
 
