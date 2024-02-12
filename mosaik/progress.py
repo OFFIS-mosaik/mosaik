@@ -2,16 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from loguru import logger  # type: ignore  # noqa: F401
-from typing import Generic, List, Protocol, Tuple, TypeVar
-from typing_extensions import Self
+from typing import List, Tuple
 
-class Comparable(Protocol):
-    def __lt__(self, other: Self) -> bool: ...
-    def __ge__(self, __value: Self) -> bool: ...
+from mosaik.tiered_time import TieredInterval, TieredTime
 
-T = TypeVar('T', bound=Comparable)
 
-class Progress(Generic[T]):
+class Progress:
     """A progress keeps track of a simulator's progress and provided
     coroutines for waiting for the progress to reach or pass a given
     value.
@@ -19,9 +15,9 @@ class Progress(Generic[T]):
     The implemenation is generic over the type of the time values,
     provided that they are comparable.
     """
-    value: T
+    time: TieredTime
     """The current value of the progress."""
-    _futures: List[Tuple[T, bool, asyncio.Future[T]]]
+    _futures: List[Tuple[TieredTime, TieredInterval, bool, asyncio.Future[TieredTime]]]
     """Futures representing all currently waiting has_reached and
     has_passed calls.
 
@@ -31,29 +27,30 @@ class Progress(Generic[T]):
     reaching the time.
     """
     
-    def __init__(self, initial: T):
+    def __init__(self, initial: TieredTime):
         self._futures = []
-        self.value = initial
+        self.time = initial
 
-    def set(self, value: T):
+    def set(self, time: TieredTime):
         """Set the progress to ``value`` and trigger all waiting
         coroutines whose wait times have now been passed or reached.
         """
-        assert value >= self.value, "cannot progress backwards"
-        self.value = value
+        assert time >= self.time, "cannot progress backwards"
+        self.time = time
         # Use index-based for loop so we can call del in the loop.
         for index in reversed(range(0, len(self._futures))):
-            time, needs_to_pass, future = self._futures[index]
-            if needs_to_pass and time < value:
+            target, shift, needs_to_pass, future = self._futures[index]
+            time_at_dest = time + shift
+            if needs_to_pass and time_at_dest > target:
                 if not future.cancelled():
-                    future.set_result(value)
+                    future.set_result(time_at_dest)
                 del self._futures[index]
-            if not needs_to_pass and time <= value:
+            if not needs_to_pass and time_at_dest >= target:
                 if not future.cancelled():
-                    future.set_result(value)
+                    future.set_result(time_at_dest)
                 del self._futures[index]
 
-    async def has_reached(self, time: T) -> T:
+    async def has_reached(self, target: TieredTime, shift: TieredInterval | None = None) -> TieredTime:
         """Wait until this ``Progress`` has reached (or passed) the
         given time. Returns immediately if this ``Progress`` has
         already reached (or passed) the given time.
@@ -62,13 +59,16 @@ class Progress(Generic[T]):
         :returns: the actual value of the progress when the given
         time has been reached or passed
         """
-        if self.value >= time:
-            return self.value
-        future: asyncio.Future[T] = asyncio.Future()
-        self._futures.append((time, False, future))
+        if shift is None:
+            shift = TieredInterval(len(target), len(target), (0,) * len(target))
+        # TODO: Remove duplication of this check with the one in `set`
+        if self.time + shift >= target:
+            return self.time
+        future: asyncio.Future[TieredTime] = asyncio.Future()
+        self._futures.append((target, shift, False, future))
         return await future
 
-    async def has_passed(self, time: T) -> T:
+    async def has_passed(self, target: TieredTime, shift: TieredInterval | None = None) -> TieredTime:
         """Wait until this ``Progress`` has passed the given time.
         Returns immediately if this ``Progress`` has already passed
         the given time.
@@ -77,9 +77,15 @@ class Progress(Generic[T]):
         :returns: the actual value of the progress when the given
         time has been passed
         """
-        if self.value > time:
-            return self.value
-        future: asyncio.Future[T] = asyncio.Future()
-        self._futures.append((time, True, future))
+        if shift is None:
+            shift = TieredInterval(len(target), len(target), (0,) * len(target))
+        # TODO: Remove duplication of this check with the one in `set`
+        if self.time + shift > target:
+            return self.time
+        future: asyncio.Future[TieredTime] = asyncio.Future()
+        self._futures.append((target, shift, True, future))
         return await future
+
+    def __repr__(self) -> str:
+        return f"<Progress at {self.time!r} with {len(self._futures)} waiting>"
         

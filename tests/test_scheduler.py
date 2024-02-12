@@ -1,5 +1,6 @@
 import asyncio
 from heapq import heappop, heappush
+from mosaik_api_v3 import InputData
 import pytest
 from tqdm import tqdm
 from typing import Iterable, List
@@ -10,6 +11,7 @@ from mosaik.dense_time import DenseTime
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
+from mosaik.tiered_time import TieredInterval, TieredTime
 
 from tests.mocks.simulator_mock import SimulatorMock
 
@@ -52,11 +54,11 @@ def world_fixture(request):
         sim.task = DummyTask()
     for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
         sims[src].successors.add(sims[dest])
-        sims[dest].input_delays[sims[src]] = DenseTime(0)
+        sims[dest].input_delays[sims[src]] = TieredInterval(1, 1, (0,))
         if event_based:
-            sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], DenseTime(0)))
+            sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], TieredInterval(1, 1, (0,))))
     sims[5].successors.add(sims[4])
-    sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else DenseTime(1, 0)
+    sims[4].input_delays[sims[5]] = DenseTime(0, 1) if event_based else TieredInterval(1, 1, (1,))
     if event_based:
         sims[5].triggers[('1', 'x')] = [(sims[4], DenseTime(0, 1))]
     world.until = 4
@@ -161,7 +163,7 @@ async def test_wait_for_dependencies_all_done(world: World):
     """
     heappush(world.sims["Sim-2"].next_steps, DenseTime(0))
     for dep_sid in ["Sim-0", "Sim-1"]:
-        world.sims[dep_sid].progress.value = DenseTime(1)
+        world.sims[dep_sid].progress.time = DenseTime(1)
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
         pass_backs=3,
@@ -215,14 +217,14 @@ def test_get_input_data(world: World):
     sim_0 = world.sims["Sim-0"]
     sim_1 = world.sims["Sim-1"]
     sim_2 = world.sims["Sim-2"]
-    sim_2.current_step = DenseTime(0)
+    sim_2.current_step = TieredTime((0,))
     sim_0.outputs = {0: {'1': {'x': 0, 'y': 1}}}
     sim_1.outputs = {0: {'2': {'x': 2, 'z': 4}}}
     sim_2.inputs_from_set_data = {
         '0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}
     }
-    sim_2.pulled_inputs[(sim_0, 0)] = [(('1', 'x'), ('0', 'in'))]
-    sim_2.pulled_inputs[(sim_1, 0)] = [(('2', 'z'), ('0', 'in'))]
+    sim_2.pulled_inputs[(sim_0, TieredInterval(1, 1, (0,)))] = set([(('1', 'x'), ('0', 'in'))])
+    sim_2.pulled_inputs[(sim_1, TieredInterval(1, 1, (0,)))] = set([(('2', 'z'), ('0', 'in'))])
     data = scheduler.get_input_data(world, sim_2)
     assert data == {'0': {
         'in': {'Sim-0.1': 0, 'Sim-1.2': 4, '3': 5},
@@ -237,9 +239,9 @@ def test_get_input_data_shifted(world: World):
     """
     sim_4 = world.sims["Sim-4"]
     sim_5 = world.sims["Sim-5"]
-    sim_4.current_step = DenseTime(0)
+    sim_4.current_step = TieredTime((0,))
     sim_5.outputs = {-1: {'1': {'z': 7}}}
-    sim_4.pulled_inputs[(sim_5, 1)] = [(('1', 'z'), ('0', 'in'))]
+    sim_4.pulled_inputs[(sim_5, TieredInterval(1, 1, (1,)))] = set([(('1', 'z'), ('0', 'in'))])
     data = scheduler.get_input_data(world, world.sims["Sim-4"])
     assert data == {'0': {'in': {'Sim-5.1': 7}}}
 
@@ -247,23 +249,28 @@ def test_get_input_data_shifted(world: World):
 @pytest.mark.parametrize(
     'world, next_steps, next_step_s1, expected',
     [
-        ('time-based', [], DenseTime(2), 5),
-        ('time-based', [DenseTime(4)], DenseTime(2), 3),
-        ('event-based', [DenseTime(3)], None, 2),
-        ('event-based', [DenseTime(3)], DenseTime(2), 1),
+        ('time-based', [], TieredTime((2,)), 5),
+        ('time-based', [TieredTime((4,))], TieredTime((2,)), 3),
+        ('event-based', [TieredTime((3,))], None, 2),
+        ('event-based', [TieredTime((3,))], TieredTime((2,)), 1),
     ],
     indirect=['world'],
 )
-def test_get_max_advance(world, next_steps, next_step_s1, expected):
+def test_get_max_advance(
+    world: World,
+    next_steps: List[TieredTime],
+    next_step_s1: TieredTime | None,
+    expected: int,
+):
     sim = world.sims["Sim-2"]
     sim.next_steps = next_steps
     sim.tqdm = tqdm(disable=True)
-    heappush(sim.next_steps, DenseTime(1))
+    heappush(sim.next_steps, TieredTime((1,)))
     sim.current_step = heappop(sim.next_steps)
 
     # In the event-based world, Sim-0 and Sim-1 are triggering ancestors
     # of Sim-2:
-    world.sims["Sim-0"].next_steps = [DenseTime(3)]
+    world.sims["Sim-0"].next_steps = [TieredTime((3,))]
     if next_step_s1 is not None:
         heappush(world.sims["Sim-1"].next_steps, next_step_s1)
 
@@ -274,18 +281,18 @@ def test_get_max_advance(world, next_steps, next_step_s1, expected):
 # TODO: Implement test/parameter for new API (passing max_advance)
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based', 'event-based'], indirect=True)
-async def test_step(world):
-    inputs = {}
+async def test_step(world: World):
+    inputs: InputData = {}
     sim = world.sims["Sim-0"]
     sim.tqdm = tqdm(disable=True)
     if sim.type == 'event-based':
-        heappush(sim.next_steps, DenseTime(0))
-    assert (sim.last_step, sim.next_steps[0]) == (DenseTime(-1), DenseTime(0))
+        heappush(sim.next_steps, TieredTime((0,)))
+    assert (sim.last_step, sim.next_steps[0]) == (TieredTime((-1,)), TieredTime((0,)))
     sim.current_step = heappop(sim.next_steps)
 
     await scheduler.step(world, sim, inputs, 0)
     assert (sim.last_step, sim.next_steps) == (
-        DenseTime(0), [DenseTime(1)] if sim.type == 'time-based' else []
+        TieredTime((0,)), [TieredTime((1,))] if sim.type == 'time-based' else []
     )
 
 
@@ -294,19 +301,19 @@ async def test_step(world):
 @pytest.mark.parametrize('world, cache',
                          [('time-based', True),
                           ('event-based', False)], indirect=['world'])
-async def test_get_outputs(world, cache):
+async def test_get_outputs(world: World, cache: bool):
     world.use_cache = cache
     sim = world.sims["Sim-0"]
     sim.outputs = {} if cache else None
     sim.output_request = {0: ['x', 'y']}
-    sim.last_step = DenseTime(0) 
-    sim.output_time = -1
+    sim.last_step = TieredTime((0,)) 
+    sim.output_time = TieredTime((-1,))
     sim.tqdm = tqdm(disable=True)
 
     if sim.type == 'time-based':
         sim.current_step = heappop(sim.next_steps)
     else:
-        sim.current_step = DenseTime(0)
+        sim.current_step = TieredTime((0,))
     await scheduler.get_outputs(world, sim)
 
     expected_output_cache = {
@@ -327,7 +334,7 @@ async def test_get_outputs(world, cache):
         with pytest.raises(AssertionError):
             sim.get_output_for(1)
 
-    assert sim.output_time == DenseTime(0)
+    assert sim.output_time == TieredTime((0,))
 
 
 @pytest.mark.asyncio
@@ -428,16 +435,16 @@ def test_get_progress():
     sims = {i: Sim(0) for i in range(2)}
     assert scheduler.get_progress(sims, 4) == 0
 
-    sims[0].progress.value = DenseTime(1)
+    sims[0].progress.time = DenseTime(1)
     assert scheduler.get_progress(sims, 4) == 12.5
 
-    sims[0].progress.value = DenseTime(2)
+    sims[0].progress.time = DenseTime(2)
     assert scheduler.get_progress(sims, 4) == 25
 
-    sims[1].progress.value = DenseTime(3)
-    sims[0].progress.value = DenseTime(3)
+    sims[1].progress.time = DenseTime(3)
+    sims[0].progress.time = DenseTime(3)
     assert scheduler.get_progress(sims, 4) == 75
 
-    sims[0].progress.value = DenseTime(4)
-    sims[1].progress.value = DenseTime(4)
+    sims[0].progress.time = DenseTime(4)
+    sims[1].progress.time = DenseTime(4)
     assert scheduler.get_progress(sims, 4) == 100

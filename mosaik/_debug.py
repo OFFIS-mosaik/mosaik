@@ -16,6 +16,7 @@ from mosaik import scheduler
 from mosaik.dense_time import DenseTime
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
+from mosaik.tiered_time import TieredInterval, TieredTime
 
 _originals = {
     'step': scheduler.step,
@@ -45,12 +46,12 @@ def disable():
         setattr(scheduler, k, v)
 
 
-def parse_node(node_str: str) -> Tuple[SimId, DenseTime]:
+def parse_node(node_str: str) -> Tuple[SimId, TieredTime]:
     # networkx will call the parser on already-parsed nodes occasionally
     # So we make sure that we only try to parse strings.
     if isinstance(node_str, str):
         sid, time = node_str.rsplit("-", 1)
-        return (sid, DenseTime.parse(time.replace("~", ":")))
+        return (sid, TieredTime(tuple(map(int, time.split("~")))))
     return node_str
 
 
@@ -97,8 +98,8 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
     for pre_sim in sim.input_delays:
         pre = pre_sim.sid
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
-            pre_node: Optional[Tuple[str, DenseTime]] = None
-            pre_time = DenseTime(-1)
+            pre_node: Optional[Tuple[str, TieredTime]] = None
+            pre_time = TieredTime((-1,))
             # We check for all nodes if it is from the predecessor and it its
             # step time is before the current step of sim. There might be cases
             # where this simple procedure is wrong, e.g. when the pred has
@@ -106,7 +107,7 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
             for inode in eg.nodes:
                 node_sid, itime = inode
                 if node_sid == pre:
-                    if (next_step - sim.input_delays[pre_sim] >= itime >= pre_time):
+                    if (next_step >= itime + sim.input_delays[pre_sim] and itime >= pre_time):
                         pre_node = inode
                         pre_time = itime
             if pre_node is not None:
@@ -115,10 +116,10 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
 
     for suc_sim in sim.successors_to_wait_for:
         suc = suc_sim.sid
-        if sim.last_step >= DenseTime(0):
+        if sim.last_step >= TieredTime((0,)):
             suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress.value + DenseTime(1) >= next_step
+            assert sims[suc].progress.time + TieredInterval(1, 1, (1,)) >= next_step
 
 
 def post_step(world: World, sim: SimRunner):
@@ -129,7 +130,7 @@ def post_step(world: World, sim: SimRunner):
     last_node = sim.last_node
     eg.nodes[last_node]['t_end'] = perf_counter()
     next_self_step = sim.next_self_step
-    if next_self_step is not None and next_self_step < world.until:
-        node_id = (sim.sid, DenseTime(next_self_step))
+    if next_self_step is not None and next_self_step < TieredTime((world.until,)):
+        node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None

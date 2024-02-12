@@ -74,9 +74,9 @@ def test_mosaik(scenario_name: str, cache: bool):
     try:
         scenario_desc.create_scenario(world)
         if not hasattr(scenario_desc, 'RT_FACTOR'):
-            world.run(until=scenario_desc.UNTIL)
+            world.run(until=scenario_desc.UNTIL,) # print_progress=False)
         else:
-            world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR)
+            world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR, print_progress=False)
 
         expected_graph = _debug.parse_execution_graph(scenario_desc.EXECUTION_GRAPH)
         
@@ -140,7 +140,7 @@ def test_mosaik(scenario_name: str, cache: bool):
 
         for sim in world.sims.values():
             assert sim.last_step.time < scenario_desc.UNTIL
-            assert sim.progress.value.time == scenario_desc.UNTIL
+            assert sim.progress.time.time == scenario_desc.UNTIL
     finally:
         world.shutdown()
         gc.collect()

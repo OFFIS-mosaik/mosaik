@@ -17,6 +17,7 @@ from mosaik import proxies, scenario, simmanager, World
 from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import BaseProxy, LocalProxy
+from mosaik.tiered_time import TieredTime
 
 
 sim_config: scenario.SimConfig = {
@@ -389,8 +390,8 @@ def test_local_process(world):
     sim = simmanager.SimRunner("ExampleSim-0", proxy)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
-    assert sim.last_step == DenseTime(-1)
-    assert sim.next_steps == [DenseTime(0)]
+    assert sim.last_step == TieredTime((-1,))
+    assert sim.next_steps == [TieredTime((0,))]
 
 
 def test_local_process_finalized(world):
