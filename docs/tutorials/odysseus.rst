@@ -10,8 +10,9 @@ with mosaik Odysseus can be used to process, visualise and store the results of
 mosaik during a simulation.
 
 In this first part of the tutorial we cover the two ways to connect mosaik and
-:doc:`Odysseus<../ecosystem/odysseus>`, the :doc:`second part<odysseus2>` is about how
+Odysseus, the :doc:`second part<odysseus2>` is about how
 to use Odysseus to process, visualize and store simulation data.
+
 .. note::
     Connecting mosaik and Odysseus works mosaik >= 3.0
 

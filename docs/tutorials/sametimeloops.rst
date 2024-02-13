@@ -24,12 +24,12 @@ The results of this control function will be returned to the controllers as 'del
 .. literalinclude:: code/controller_master.py
    :lines: 9-18
 
-The :meth:`__init__` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
+``__init__`` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
 
 .. literalinclude:: code/controller_master.py
    :lines: 21-27
 
-The :meth:`step()` is changed, so that first the current time is updated in the ``self.time`` variable.
+The ``step`` is changed, so that first the current time is updated in the ``self.time`` variable.
 Also the control function is changed.
 The master controller gets the delta output of the other controllers as 'delta_in' and stores the last value of each controller in the ``self.cache``.
 This is needed, because the controllers are event-based and the current values are only sent if the values changes.
@@ -39,9 +39,9 @@ If these limits are exceeded the delta of all controllers will be overwritten by
 .. literalinclude:: code/controller_master.py
    :lines: 39-52
 
-Additionally, two small changes in the :meth:`get_data` method were done.
+Additionally, two small changes in the ``get_data`` method were done.
 First, the name was updated to 'delta_out' in the check for the correct attribute name.
-Second, the current time, which was stored previously in the :meth:`step()`, is added to the output cache dictionary.
+Second, the current time, which was stored previously in the ``step``, is added to the output cache dictionary.
 This informs mosaik that the simulation should start or stay in a same-time loop if also output data for 'delta_out' is provided.
 
 .. literalinclude:: code/controller_master.py

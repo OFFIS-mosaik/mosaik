@@ -6,7 +6,7 @@ This tutorial will give some examples on how you can use Odysseus to process,
 visualize and store the data from mosaik. More information about connecting 
 mosaik and Odysseus can be found in the :doc:`first part <odysseus>` of the 
 tutorial and more about Odysseus in general can be found in its 
-`documentation <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS>`_.
+`documentation <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS>`__.
 If you have no experience with Odysseus you should first visit the tutorials in 
 its documentation. `Simple query processing <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_
 and `selection, projection and map <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Selection%2C+Projection+and+Map>`_
@@ -33,7 +33,7 @@ For better handling we can rename the attributes with the `rename <https://wiki.
 
 We can also add computations to the data with a `map <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Map+operator>`_ operator.
 The expressions parameter contains first the computation and second the new name for every attribute.
-In this example the deviation of voltage to the nominal voltage of 230 V is calculated (more information about the offered functions can be found `here <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/MEP%3A+Functions+and+Operators>`_):
+In this example the deviation of voltage to the nominal voltage of 230 V is calculated (more information about the offered functions can be found `here <http://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/MEP%3A+Functions+and+Operators>`__):
 
 .. literalinclude:: code/odysseus_tutorial.qry
    :lines: 20-26
@@ -59,7 +59,7 @@ For the data stream shown in the section above an exemplary dashboard could look
     :align: center
     :alt: visualisation of simulation data in Odysseus
 
-More information about dashboards in Odysseus can be found in the `documentation <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Dashboard+Feature>`_.
+More information about dashboards in Odysseus can be found in the `documentation <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Dashboard+Feature>`__.
 
 .. _storing:
 
@@ -69,7 +69,7 @@ Storing
 If we want to save the results of our Odysseus query, we can use the `sender <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Sender+operator>`_ operator to export it, e.g. to a csv file:
 
 .. literalinclude:: code/odysseus_tutorial.qry
-   :lines: 39-48
+   :lines: 39-47
 
 Odysseus also offers adapters to store the processed data to different databases (e.g. mysql, postgres and oracle). 
-More details can be found `here <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Database+Feature>`_.
+More details can be found `here <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Database+Feature>`__.

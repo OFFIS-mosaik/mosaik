@@ -35,7 +35,7 @@ class OutputSimulator(mosaik_api_v3.Simulator):
     This simulator takes the input it is given and writes it into a python dictionary
     where the keys are the timestamps of the input and the values are the inputs values.
 
-    The dictionary can be retrieved using the :meth:`get_dict()` method.
+    The dictionary can be retrieved using the :meth:`get_dict` method.
     """
 
     entities: Dict[str, Dict[Time, Any]]
