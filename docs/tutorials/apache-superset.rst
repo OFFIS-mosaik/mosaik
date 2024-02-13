@@ -19,12 +19,16 @@ In this part of the tutorial we will show you how to install the necessary tools
 
 Installing a database and collecting data
 =========================================
+
 To use Apache Superset a SQL database that contains simulation data is needed. For this there are currently three options in mosaik.
 
 * `A MySQL database`_
 * `A PostgreSQL database`_
 * `A Timescale database`_
-| To install one of the databases locally follow the link, this tutorial is written with the Timescale database in mind, the other databases however, should follow similar steps. 
+
+To install one of the databases locally follow corresponding the link.
+(This tutorial is written with the Timescale database in mind. However, the other databases, should follow similar steps.)
+
 **Make sure to change the port of the database to something different from 5432 if you want to run the database and superset locally, as superset uses the same default port for its databse.**
 When using docker the command should look something like this:
 
@@ -33,7 +37,7 @@ When using docker the command should look something like this:
    $ docker run -d --name [YOURCONTAINERNAME] -p [YOURPORT]:5432 ...
 
 
-| After installing the database the corresponding  mosaik adapter can be used to save simulation data into the database:
+After installing the database the corresponding  mosaik adapter can be used to save simulation data into the database:
 
 * `MySQL adapter`_
 * `PostgreSQL/Timescale adapter`_
@@ -104,7 +108,8 @@ The connection between superset and the database is done in the ``settings -> Da
    :width: 100%
    :align: center
    :alt: Database Connections Setting
-Database Connections Setting
+
+   Database Connections Setting
 
 Afterwards a new Database is added  by clickin on the ``Database +`` Button.
 
@@ -112,7 +117,8 @@ Afterwards a new Database is added  by clickin on the ``Database +`` Button.
    :width: 100%
    :align: center
    :alt: Button to click for adding a database
-Button to click for adding a database
+
+   Button to click for adding a database
 
 This initiates the add database dialog consisting of three steps:
 
@@ -120,19 +126,22 @@ This initiates the add database dialog consisting of three steps:
    :width: 100%
    :align: center
    :alt: Step 1: Choosing the correct database(PostgreSQL in this example)
-Step 1: Choosing the correct database(PostgreSQL in this example)
+
+   Step 1: Choosing the correct database(PostgreSQL in this example)
 
 .. figure:: /_static/tutorials/superset/Connect_Step_2.png
    :width: 100%
    :align: center
    :alt: Step 2: Adding the database Credentials
-Step 2: Adding the database Credentials. If the database i run locally the IP-Address is 172.18.0.1 by default. If using Windows the IP might be host.docker.internal.
+
+   Step 2: Adding the database Credentials. If the database i run locally the IP-Address is 172.18.0.1 by default. If using Windows the IP might be host.docker.internal.
 
 .. figure:: /_static/tutorials/superset/Connect_step_3.png
    :width: 100%
    :align: center
    :alt: Step 3: Finishing the setup
-Step 3: Finishing the setup
+
+   Step 3: Finishing the setup
 
 Visualizing Data in Apache Superset
 ===================================
@@ -144,7 +153,8 @@ To do this first the data needs to be extracted from the databae using SQL. This
    :width: 100%
    :align: center
    :alt: SQL LAB view
-View of the SQL Lab
+
+   View of the SQL Lab
 
 I the SQL Lab the database the database, schema and table schema of a table in the database can be selected on the left side. 
 On the right side a sql query can be built.
@@ -171,7 +181,8 @@ After extracting the wanted data using a SQL query it needs to be saved as a dat
    :width: 100%
    :align: center
    :alt: SQL LAB saing
-View of saving the dataset in the SQL Lab
+
+   View of saving the dataset in the SQL Lab
 
 Clicking the ``Save & Explore`` Button will open up the Chart creation view of superset. This can also be done afterwards by selecting the wanted dataset in the datasets tab.
 
@@ -179,7 +190,8 @@ Clicking the ``Save & Explore`` Button will open up the Chart creation view of s
    :width: 100%
    :align: center
    :alt: Chart View
-Chart View of superset
+
+   Chart View of superset
 
 The default chart view of superset can be divided into two important parts. The left side where you can chose the kind of chart to create as well as input
 the data from the dataset into the chart and the right chart where the chart will be displayed.
@@ -190,22 +202,24 @@ For this example lets start by selecting a line chart from the left side and the
    :width: 100%
    :align: center
    :alt: Chart View Changing to line chart
-Changing chart to line chart.
+
+   Changing chart to line chart.
 
 After changing the chart to line chart the relevant fields to fill out are **the x-Axis, which in most cases will be the time column, and the metrics, which represent te y values.**
 Superset can not display  simple y value, it is always a sql function. If a simple x/y comparison is needed the avg/min/max of the y values can be used since for only one value this is the value itself.
-
 
 .. figure:: /_static/tutorials/superset/x_axis.png
    :width: 100%
    :align: center
    :alt: Chart View selecting x axis
+
 For selecting the x Axis you can chose from your dataset columns. Most of the time you want the simple time value but a custom sql query can also be used.
 
 .. figure:: /_static/tutorials/superset/Metrics.png
    :width: 100%
    :align: center
    :alt: Chart View selecting metrics
+
 When selecting a metric there are many basic sql aggregation functions to choose from.
 
 .. figure:: /_static/tutorials/superset/metrics_3.png
@@ -213,7 +227,7 @@ When selecting a metric there are many basic sql aggregation functions to choose
    :align: center
    :alt: Chart View selecting metrics 2
 
-After Selecting the metrics you can render the chart by clickin the ``Create Chart`` or ``Update Chart button``
+After selecting the metrics you can render the chart by clickin the ``Create Chart`` or ``Update Chart button``
 
 Multiple metrics can be selected but only one x-Axis.
 
@@ -221,6 +235,7 @@ Multiple metrics can be selected but only one x-Axis.
    :width: 100%
    :align: center
    :alt: Chart View selecting metrics 3
+
 For this example I selected the average, minmum and maximum va_degree of Electric Buses over the timespan of one day in seconds. 
 If for your chart you cannot see the graph try making the time grain smaller.
 
@@ -231,7 +246,8 @@ This is done by clicking the save button and giving the chart a name and either 
    :width: 100%
    :align: center
    :alt: Chart View create Dashboard
-This is the saving menu of the chart view.
+
+   This is the saving menu of the chart view.
 
 After saving the chart in a dashboard the created/picked dashboard can be found in the dashboard view.
 
@@ -239,7 +255,8 @@ After saving the chart in a dashboard the created/picked dashboard can be found 
    :width: 100%
    :align: center
    :alt: Chart View create Dashboard
-This is the dashboard view.
+
+   This is the dashboard view.
 
 If a dashboard is selected it displays all charts that are saved in it.
 
@@ -247,7 +264,8 @@ If a dashboard is selected it displays all charts that are saved in it.
    :width: 100%
    :align: center
    :alt: Dashboard Full
-This is the created example dashboard.
+
+   This is the created example dashboard.
 
 Inside a dashboard charts can be updated, removed, looked at in fullscreen, exported and more.
 
@@ -255,4 +273,5 @@ Inside a dashboard charts can be updated, removed, looked at in fullscreen, expo
    :width: 100%
    :align: center
    :alt: Dashboard Fullscreen
-This is the created example chart in fullscreen.
+   
+   This is the created example chart in fullscreen.

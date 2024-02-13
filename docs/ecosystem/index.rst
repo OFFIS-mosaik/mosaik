@@ -150,6 +150,7 @@ This lists the mosaik components that are available on pypi. There are always co
   multi-agent system written in mango to mosaik.
 
 - The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains python notebooks with example scenraios that can be executed on mybinder.
+
 .. _mosaik_tools:
 
 |mosaik| mosaik-tools
@@ -216,6 +217,3 @@ the flawless practicability.
 
 - `ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`_ contains the research and development of digitalized
   energy systems in ZLE using mosaik (collection of simulation scenarios).
-
-
-.. |mosaik| image:: /_static/favicon.png

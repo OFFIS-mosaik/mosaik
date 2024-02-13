@@ -29,7 +29,7 @@ from typing import (
     Union,
 )
 import warnings
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
@@ -91,7 +91,10 @@ class CmdModel(ModelOptionals):
     by the `host:port` combination to which the simulator should connect."""
 
 
-SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+"""Description of all the simulators you intend to use in your
+simulation.
+"""
 
 
 class World(object):
@@ -124,7 +127,10 @@ class World(object):
     """
 
     sim_config: SimConfig
+    """The config dictionary that tells mosaik how to start a simulator.
+    """
     config: MosaikConfigTotal
+    """The config dictionary for general mosaik settings."""
     until: int
     """The time until which this simulation will run."""
     rt_factor: Optional[float]
@@ -151,6 +157,10 @@ class World(object):
     _sim_ids: Dict[ModelName, itertools.count[int]]
 
     entity_graph: networkx.Graph[FullId]
+    """The :class:`graph <networkx.Graph>` of related entities.
+    Nodes are ``(sid, eid)`` tuples. Each note has an attribute
+    *entity* with an :class:`Entity`.
+    """
 
     def __init__(
         self,
@@ -163,10 +173,8 @@ class World(object):
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         self.sim_config = sim_config
-        """The config dictionary that tells mosaik how to start a simulator."""
 
         self.config = copy(base_config)
-        """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
 
@@ -181,12 +189,7 @@ class World(object):
             asyncio.set_event_loop(self.loop)
 
         self.entity_graph = networkx.Graph()
-        """The :func:`graph <networkx.Graph>` of related entities. Nodes are
-        ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
-        :class:`Entity`."""
-
         self.sim_progress = 0
-        """Progress of the current simulation (in percent)."""
 
         self._debug = False
         if debug:

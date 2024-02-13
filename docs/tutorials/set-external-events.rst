@@ -47,7 +47,7 @@ More information about the listener thread can be found in the next section.
    :lines: 32-60
 
 In order to set the event for the next time step, it is necessary to determine the current simulation time in wall clock time.
-For this, we need to store the initial timestamp in :meth:`step()` once for the first simulation step.
+For this, we need to store the initial timestamp in ``step`` once for the first simulation step.
 
 .. literalinclude:: code/controller_set_event.py
    :lines: 62-72
