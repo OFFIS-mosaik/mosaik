@@ -25,6 +25,9 @@ os.makedirs(component_docs_dir, exist_ok=True)
 # Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
 # Files will be downloaded and integrated in mosaik documentation.
 
+# mosaik-heatpump package url
+mosaik_component_1_url = 'https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/blob/10-improve-documentation'
+
 # Install mosaik-heatpump to allow integration of documentation from the code.
 os.system('pip uninstall mosaik-heatpump -y')
 os.system('pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git@10-improve-documentation')
@@ -312,4 +315,8 @@ def linkcode_resolve(domain, info):
         return
     # Turn the module name into the URL on gitlab
     filename = info['module'].replace('.', '/')
-    return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"
+    if 'mosaik_component' in filename:
+
+        return f"{mosaik_component_1_url}/{filename}.py"
+    else:
+        return f"https://gitlab.com/mosaik/mosaik/-/blob/develop/{filename}.py"
