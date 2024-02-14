@@ -12,8 +12,8 @@ def create_scenario(world):
 CONFIG = 'local'
 
 EXECUTION_GRAPH = """
-A-0-0 A-0-1
-A-0-1 A-0-2
+A-0~0 A-0~1
+A-0~1 A-0~2
 """
 
 INPUTS = {}

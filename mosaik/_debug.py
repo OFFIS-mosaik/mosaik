@@ -50,12 +50,12 @@ def parse_node(node_str: str) -> Tuple[SimId, TieredTime]:
     # networkx will call the parser on already-parsed nodes occasionally
     # So we make sure that we only try to parse strings.
     if isinstance(node_str, str):
-        sid, time = node_str.rsplit("-", 1)
-        return (sid, TieredTime(tuple(map(int, time.split("~")))))
+        sid, time = node_str.rsplit("~", 1)
+        return (sid, TieredTime(*tuple(map(int, time.split(":")))))
     return node_str
 
 
-def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, DenseTime]]:
+def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, TieredTime]]:
     return nx.parse_edgelist(
         graph_string.split("\n"),
         create_using=nx.DiGraph(),
@@ -79,16 +79,6 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
     next_step = sim.current_step
     node_id = (sid, next_step)
 
-    # if hasattr(sim, 'last_node'):
-    #     last_node = sim.last_node
-    #     time_last_node = last_node[1]
-    # else:
-    #     time_last_node = DenseTime(-1)
-
-    # if next_step == time_last_node:
-    #     n_rep = int(last_node.split('~')[-1]) if '~' in last_node else 0
-    #     node_id = f'{node_id}~{n_rep + 1}'
-
     sim.last_node = node_id
 
     eg.add_node(node_id, t=perf_counter(), inputs=deepcopy(inputs))
@@ -99,7 +89,8 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
         pre = pre_sim.sid
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
             pre_node: Optional[Tuple[str, TieredTime]] = None
-            pre_time = TieredTime((-1,))
+            # TODO: Better pre_time calculation
+            pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
             # We check for all nodes if it is from the predecessor and it its
             # step time is before the current step of sim. There might be cases
             # where this simple procedure is wrong, e.g. when the pred has
@@ -116,10 +107,10 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
 
     for suc_sim in sim.successors_to_wait_for:
         suc = suc_sim.sid
-        if sim.last_step >= TieredTime((0,)):
+        if sim.last_step >= TieredTime(0):
             suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress.time + TieredInterval(1, 1, (1,)) >= next_step
+            assert sims[suc].progress.time + TieredInterval(1) >= next_step
 
 
 def post_step(world: World, sim: SimRunner):
@@ -130,7 +121,7 @@ def post_step(world: World, sim: SimRunner):
     last_node = sim.last_node
     eg.nodes[last_node]['t_end'] = perf_counter()
     next_self_step = sim.next_self_step
-    if next_self_step is not None and next_self_step < TieredTime((world.until,)):
+    if next_self_step is not None and next_self_step < TieredTime(world.until):
         node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None

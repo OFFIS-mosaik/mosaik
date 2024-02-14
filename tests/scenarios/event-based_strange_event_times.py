@@ -16,11 +16,11 @@ def create_scenario(world: World):
 CONFIG = 'generic_remote'
 
 EXECUTION_GRAPH = """
-A-0-1 B-0-1
+A-0~1 B-0~1
 """
 
 INPUTS = {
-    'B-0-1': {'0': {'val_in': {'A-0.0': 1}}},
+    'B-0~1': {'0': {'val_in': {'A-0.0': 1}}},
 }
 
 UNTIL = 2

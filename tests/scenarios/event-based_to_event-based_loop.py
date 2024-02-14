@@ -6,12 +6,16 @@ This scenario tests for a specific deadlock in cyclic dependencies.
 """
 
 
-def create_scenario(world):
+from mosaik.scenario import World
+
+
+def create_scenario(world: World):
     model_a = world.start('A', step_type='event-based', self_steps={0: 1},
                           output_timing={}).A()
-    model_b = world.start('B', step_type='event-based', self_steps={},
-                          output_timing={}).A()
-    model_c = world.start('C', step_type='event-based').A()
+    with world.group():
+        model_b = world.start('B', step_type='event-based', self_steps={},
+                            output_timing={}).A()
+        model_c = world.start('C', step_type='event-based').A()
     world.connect(model_a, model_b, ('val_out', 'val_in'))
     world.connect(model_b, model_c, ('val_out', 'val_in'))
     world.connect(model_c, model_b, ('val_out', 'val_in'), weak=True)
@@ -20,13 +24,14 @@ def create_scenario(world):
 
 
 CONFIG = 'generic'
+WEAK = True
 
 EXECUTION_GRAPH = """
-A-0-0 A-0-1
+A-0~0 A-0~1
 """
 
 INPUTS = {
-    'B-0-0': {},
+    'B-0~0': {},
 }
 
 UNTIL = 7

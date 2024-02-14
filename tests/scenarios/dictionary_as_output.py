@@ -16,15 +16,15 @@ def create_scenario(world):
 CONFIG = 'generic'
 
 EXECUTION_GRAPH = """
-FixedOut-0-0 B-0-0
-FixedOut-0-0 FixedOut-0-1
-B-0-0 B-0-1
-FixedOut-0-1 B-0-1
+FixedOut-0~0 B-0~0
+FixedOut-0~0 FixedOut-0~1
+B-0~0 B-0~1
+FixedOut-0~1 B-0~1
 """
 
 INPUTS = {
-	'B-0-0': {'0': {'val_in': {'FixedOut-0.E0': {'answer': 42}}}},
-	'B-0-1': {'0': {'val_in': {'FixedOut-0.E0': {'question': 'still computing'}}}},
+	'B-0~0': {'0': {'val_in': {'FixedOut-0.E0': {'answer': 42}}}},
+	'B-0~1': {'0': {'val_in': {'FixedOut-0.E0': {'question': 'still computing'}}}},
 }
 
 UNTIL = 2

@@ -6,8 +6,10 @@ import importlib
 import gc
 import glob
 import os
+import sys
 import time
-from typing import Dict, List, Tuple
+from types import ModuleType
+from typing import Any, Dict, List, Tuple
 import warnings
 
 from loguru import logger
@@ -18,6 +20,7 @@ from tqdm import tqdm
 from mosaik import scenario, _debug
 from mosaik.dense_time import DenseTime
 
+venv = os.path.dirname(sys.executable)
 
 sim_config: Dict[str, scenario.SimConfig] = {
     'local': {
@@ -25,8 +28,11 @@ sim_config: Dict[str, scenario.SimConfig] = {
         'MAS': {'python': 'example_mas.mosaik:ExampleMas'}
     },
     'remote': {
-        **{char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'},
-        'MAS': {'cmd': 'pyexamplemas %(addr)s'}
+        **{
+            char: {'cmd': f'{venv}/pyexamplesim %(addr)s'}
+            for char in 'ABCDE'
+        },
+        'MAS': {'cmd': f'{venv}/pyexamplemas %(addr)s'}
     },
     'generic': {
         **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
@@ -54,29 +60,36 @@ sim_config: Dict[str, scenario.SimConfig] = {
 # and where it is necessary with remote simulators to save some time (starting
 # procs is quite expensive).
 
-test_cases = [os.path.basename(file)[0:-3]  # remove ".py" at the end
-              for file in os.listdir('tests/scenarios')
-              if not file.startswith('__')]
+test_cases: List[Any] = []
+for file in os.listdir('tests/scenarios'):
+    if not file.startswith('__'):
+        scenario_name = os.path.basename(file)[0:-3]  # remove ".py" at the end
+        scenario_desc = importlib.import_module(f"tests.scenarios.{scenario_name}")
+        test_cases.append(
+            pytest.param(scenario_desc, marks=[
+                *([pytest.mark.weak] if getattr(scenario_desc, "WEAK", False) else []),
+            ])
+        )
 
 
 @pytest.mark.filterwarnings("ignore:Connections with async_requests")
-@pytest.mark.parametrize('scenario_name', test_cases)
+@pytest.mark.parametrize('scenario_desc', test_cases)
 @pytest.mark.parametrize('cache', [True, False])
-def test_mosaik(scenario_name: str, cache: bool):
+def test_mosaik(scenario_desc: ModuleType, cache: bool):
     logger.remove()
     logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
-    scenario_desc = importlib.import_module(f'tests.scenarios.{scenario_name}')
-    if hasattr(scenario_desc, 'SKIP') and cache in scenario_desc.SKIP:
+    if cache in getattr(scenario_desc, 'SKIP', []):
         pytest.skip()
-    if hasattr(scenario_desc, 'XFAIL') and cache in scenario_desc.XFAIL:
+    if cache in getattr(scenario_desc, 'XFAIL', []):
         pytest.xfail()
     world = scenario.World(sim_config[scenario_desc.CONFIG], debug=True, cache=cache)
     try:
         scenario_desc.create_scenario(world)
-        if not hasattr(scenario_desc, 'RT_FACTOR'):
-            world.run(until=scenario_desc.UNTIL,) # print_progress=False)
-        else:
-            world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR, print_progress=False)
+        world.run(
+            until=scenario_desc.UNTIL,
+            rt_factor=getattr(scenario_desc, "RT_FACTOR", None),
+            print_progress=False,
+        )
 
         expected_graph = _debug.parse_execution_graph(scenario_desc.EXECUTION_GRAPH)
         
