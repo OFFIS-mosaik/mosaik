@@ -129,12 +129,12 @@ def test_world_connect(world: World):
     sim_1 = world.sims[sim_1._sid]
     
     # TODO: check for connections in new place
-    assert sim_0.successors == set((sim_1,))
-    assert sim_0.successors_to_wait_for == set()
-    assert sim_1.successors == set()
-    assert sim_1.input_delays[sim_0] == TieredInterval(1, 1, (0,))
+    assert sim_0.successors == {sim_1: TieredInterval(0)}
+    assert sim_0.successors_to_wait_for == {}
+    assert sim_1.successors == {}
+    assert sim_1.input_delays[sim_0] == TieredInterval(0)
 
-    assert sim_1.pulled_inputs[(sim_0, TieredInterval(1, 1, (0,)))] == set([
+    assert sim_1.pulled_inputs[(sim_0, TieredInterval(0))] == set([
         ((a[0].eid, 'val_out'), (b[0].eid, 'val_in')),
         ((a[0].eid, 'dummy_out'), (b[0].eid, 'dummy_in')),
         ((a[1].eid, 'val_out'), (b[1].eid, 'val_in')),
@@ -241,12 +241,12 @@ def test_world_connect_any_inputs(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, 'val_out')
 
-    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1, 1, (0,)))] == set([
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(0))] == set([
         ((a.eid, "val_out"), (b.eid, "val_out")),
     ])
     
-    assert sim_a.successors == set((sim_b,))
-    assert sim_b.input_delays[sim_a] == TieredInterval(1, 1, (0,))
+    assert sim_a.successors == {sim_b: TieredInterval(0)}
+    assert sim_b.input_delays[sim_a] == TieredInterval(0)
     assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a.eid: {'MetaMirror-0.' + b.eid: {}},
         'MetaMirror-0.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
@@ -270,11 +270,11 @@ def test_world_connect_time_shifted(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1, 1, (1,)))] == set([
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1))] == set([
         ((a.eid, 'val_out'), (b.eid, 'val_out')),
     ])
-    assert sim_a.successors == set((sim_b,))
-    assert sim_b.input_delays[sim_a] == TieredInterval(1, 1, (1,))
+    assert sim_a.successors == {sim_b: TieredInterval(0)}
+    assert sim_b.input_delays[sim_a] == TieredInterval(1)
     assert world.sims['ExampleSim-0'].outputs[-1] == {
         a.eid: {
             'val_out': 1.0

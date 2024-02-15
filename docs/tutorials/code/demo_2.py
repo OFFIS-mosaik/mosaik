@@ -21,8 +21,9 @@ END = 10  # 10 seconds
 world = mosaik.World(SIM_CONFIG)
 
 # Start simulators
-examplesim = world.start('ExampleSim', eid_prefix='Model_')
-examplectrl = world.start('ExampleCtrl')
+with world.group():
+    examplesim = world.start('ExampleSim', eid_prefix='Model_')
+    examplectrl = world.start('ExampleCtrl')
 collector = world.start('Collector')
 
 # Instantiate models

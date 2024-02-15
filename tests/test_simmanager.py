@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import StreamReader, StreamWriter
+import os
 from loguru import logger
 import pytest
 import sys
@@ -17,15 +18,17 @@ from mosaik import proxies, scenario, simmanager, World
 from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import BaseProxy, LocalProxy
-from mosaik.tiered_time import TieredTime
+from mosaik.tiered_time import TieredInterval, TieredTime
 
+
+VENV = os.path.dirname(sys.executable)
 
 sim_config: scenario.SimConfig = {
     "ExampleSimA": {
         "python": "example_sim.mosaik:ExampleSim",
     },
     "ExampleSimB": {
-        "cmd": "pyexamplesim %(addr)s",
+        "cmd": f"{VENV}/pyexamplesim %(addr)s",
         "cwd": ".",
     },
     "ExampleSimC": {
@@ -33,7 +36,7 @@ sim_config: scenario.SimConfig = {
     },
     "ExampleSimD": {},  # type: ignore  # this is used for testing for this error
     "Fail": {
-        "cmd": 'python -c "import time; time.sleep(0.2)"',
+        "cmd": '%(python)s -c "import time; time.sleep(0.2)"',
     },
     "SimulatorMock": {
         "python": "tests.mocks.simulator_mock:SimulatorMock",
@@ -125,7 +128,7 @@ def test_start_in_process(world):
 
 
 @pytest.mark.cmd_process
-def test_start_external_process(world):
+def test_start_external_process(world: World):
     """
     Test starting a simulator as external process."""
     proxy = world.loop.run_until_complete(
@@ -337,7 +340,7 @@ def test_start_init_error(caplog):
     """
     Test simulator crashing during init().
     """
-    world = scenario.World({"spam": {"cmd": "pyexamplesim %(addr)s"}})
+    world = scenario.World({"spam": {"cmd": f"{VENV}/pyexamplesim %(addr)s"}})
     try:
         with pytest.raises(SystemExit) as exc_info:
             world.loop.run_until_complete(
@@ -390,8 +393,8 @@ def test_local_process(world):
     sim = simmanager.SimRunner("ExampleSim-0", proxy)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
-    assert sim.last_step == TieredTime((-1,))
-    assert sim.next_steps == [TieredTime((0,))]
+    assert sim.last_step == TieredTime(-1)
+    assert sim.next_steps == [TieredTime(0)]
 
 
 def test_local_process_finalized(world):
@@ -562,10 +565,10 @@ def test_mosaik_remote(
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             sim_x = simmanager.SimRunner("X", proxy_x)
-            sim_x.successors.add(sim_x)
-            sim_x.successors_to_wait_for.add(sim_x)
-            sim_x.last_step = DenseTime(1)
-            sim_x.current_step = DenseTime(0)
+            sim_x.successors[sim_x] = TieredInterval(0)
+            sim_x.successors_to_wait_for[sim_x] = TieredInterval(0)
+            sim_x.last_step = TieredTime(1)
+            sim_x.current_step = TieredTime(0)
             sim_x.is_in_step = True
             sim_x.outputs = {1: {"2": {"attr": "val"}}}
             world.sims["X"] = sim_x
@@ -580,7 +583,7 @@ def test_mosaik_remote(
             sim_z = simmanager.SimRunner("Z", DummyProxy())
             world.sims["Z"] = sim_z
 
-            sim_x.successors.add(sim_y)
+            sim_x.successors[sim_y] = TieredInterval(0)
             
 
         async def run():

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import functools
-from typing_extensions import Self
 
 
 @functools.total_ordering
@@ -35,7 +36,7 @@ class DenseTime:
         assert isinstance(self.time, int)
         assert isinstance(self.microstep, int)
 
-    def __add__(self, other: Self) -> Self:
+    def __add__(self, other: DenseTime) -> DenseTime:
         # Giving an int as `other` is only here to support use in
         # networkx algorithms
         if isinstance(other, int):
@@ -46,13 +47,13 @@ class DenseTime:
         else:
             return DenseTime(self.time + other.time, other.microstep)
 
-    def __radd__(self, other: int) -> Self:
+    def __radd__(self, other: int) -> DenseTime:
         # Adding to ints is only here to support use in  networkx
         # algorithms
         assert isinstance(other, int)
         return DenseTime(self.time + other, self.microstep)
 
-    def __sub__(self, other: Self) -> Self:
+    def __sub__(self, other: DenseTime) -> DenseTime:
         # dt_b - dt_delta should be the earliest DenseTime dt_a such
         # that dt_a + dt_delta is dt_b or later. (Due to the way that
         # DenseTime addition works, it is not always possible to
@@ -64,7 +65,7 @@ class DenseTime:
         else:
             return DenseTime(self.time - other.time + 1, 0)
 
-    def __lt__(self, other: Self) -> bool:
+    def __lt__(self, other: DenseTime) -> bool:
         # Giving an int as `other` is only here to support use in
         # networkx algorithms
         if isinstance(other, int):
@@ -78,7 +79,7 @@ class DenseTime:
         return f"{self.time}:{self.microstep}"
 
     @classmethod
-    def parse(cls, input: str) -> Self:
+    def parse(cls, input: str) -> DenseTime:
         try:
             time_str, microstep_str = input.split(":")
             return DenseTime(int(time_str), int(microstep_str))

@@ -10,7 +10,6 @@ from loguru import logger
 from math import ceil
 from time import perf_counter
 
-from icecream import ic
 from mosaik_api_v3 import InputData, SimId, Time
 
 from mosaik.dense_time import DenseTime

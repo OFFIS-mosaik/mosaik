@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 from heapq import heappop, heappush
 from mosaik_api_v3 import InputData
 import pytest
 from pytest import mark, param
 from tqdm import tqdm
-from typing import Iterable, List
+from typing import Any, Coroutine, Iterable, List
 
 from mosaik import exceptions, scenario, scheduler, simmanager, World
 from mosaik.adapters import init_and_get_adapter
@@ -16,16 +18,17 @@ from mosaik.tiered_time import TieredInterval, TieredTime
 from tests.mocks.simulator_mock import SimulatorMock
 
 
-async def does_coroutine_stall(coro, pass_backs=0):
+async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: int = 0):
     """Executes the given coroutine as a task and give control back
     to it `pass_backs` times. If it doesn't complete in that time,
     the task is cancelled.
     
-    Returns whether the task is completed in the given time.
+    Returns ``False`` if the coroutine did not complete in the given
+    attempts, ``True`` otherwise.
     """
     task = asyncio.create_task(coro)
     async def canceller():
-        for _ in range(pass_backs):
+        for _ in range(max_pass_backs):
             await asyncio.sleep(0)
         if not task.done():
             task.cancel()
@@ -34,8 +37,27 @@ async def does_coroutine_stall(coro, pass_backs=0):
 
 
 @pytest.fixture(name='world')
-def world_fixture(request):
-    event_based = request.param == 'event-based'
+def world_fixture(request: pytest.FixtureRequest):
+    """This fixture provides an example scenario for testing the
+    scheduler. It looks like this:
+
+    ┌───────┐                               ┌──────────────────────┐
+    │ Sim-0 ├─────────┐                     │ ┌───────┐            │
+    └───────┘         ▼                     │ │ Sim-4 │            │
+                  ┌───────┐     ┌───────┐   │ └─┬─────┘            │
+                  │ Sim-2 ├────►│ Sim-3 │   │   ▼   ▲time-shifted/ │
+                  └───────┘     └───────┘   │ ┌─────┴─┐   weak     │
+    ┌───────┐         ▲                     │ │ Sim-5 │            │
+    │ Sim-1 ├─────────┘                     │ └───────┘            │
+    └───────┘                               └──────────────────────┘
+    
+    All connections are non-triggering if the param value is
+    "time-based", and are triggering if the param value is
+    "event-based". The edge marked time-shifted/weak is time-shifted or
+    weak in these two cases, respectively. The box (indicating a
+    simulator group) only exists in the event-based case.
+    """
+    event_based = (request.param == 'event-based')
     world = scenario.World({})
     sims: List[SimRunner] = []
     for i in range(6):
@@ -52,15 +74,26 @@ def world_fixture(request):
             return False
     for sim in world.sims.values():
         sim.task = DummyTask()
-    for src, dest in [(0, 2), (1, 2), (2, 3), (4, 5)]:
-        sims[src].successors.add(sims[dest])
+    
+    for src, dest in [(0, 2), (1, 2), (2, 3)]:
+        sims[src].successors[sims[dest]] = TieredInterval(0)
         sims[dest].input_delays[sims[src]] = TieredInterval(0)
         if event_based:
             sims[src].triggers.setdefault(('1', 'x'), []).append((sims[dest], TieredInterval(0)))
-    sims[5].successors.add(sims[4])
-    sims[4].input_delays[sims[5]] = TieredInterval(0, 1) if event_based else TieredInterval(1)
     if event_based:
+        sims[4].successors[sims[5]] = TieredInterval(0, 0)
+        sims[5].input_delays[sims[4]] = TieredInterval(0, 0)
+        sims[5].successors[sims[4]] = TieredInterval(0, 0)
+        sims[4].input_delays[sims[5]] = TieredInterval(0, 1)
+        sims[4].triggers[('1', 'x')] = [(sims[5], TieredInterval(0, 0))]
         sims[5].triggers[('1', 'x')] = [(sims[4], TieredInterval(0, 1))]
+    else:
+        sims[4].successors[sims[5]] = TieredInterval(0)
+        sims[5].input_delays[sims[4]] = TieredInterval(0)
+        sims[5].successors[sims[4]] = TieredInterval(0)
+        sims[4].input_delays[sims[5]] = TieredInterval(1)
+
+
     world.until = 4
     world.rt_factor = None
     world.cache_triggering_ancestors()
@@ -169,7 +202,7 @@ async def test_wait_for_dependencies_all_done(world: World):
         world.sims[dep_sid].progress.time = TieredTime(1)
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
-        pass_backs=3,
+        max_pass_backs=3,
     )
     assert not stalled
 
@@ -188,7 +221,7 @@ async def test_wait_for_dependencies_shifted(world: World, progress: int, should
     sim_under_test.next_steps = [TieredTime(1)]
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(sim_under_test, lazy_stepping=False),
-        pass_backs=3,
+        max_pass_backs=3,
     )
     assert stalled == should_stall
 
@@ -350,8 +383,8 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ['x', 'y', 'z']}
     sim.output_to_push = {
-        ('0', 'x'): [(world.sims["Sim-2"], 0, ('0', 'in'))],
-        ('0', 'z'): [(world.sims["Sim-1"], 0, ('0', 'in'))],
+        ('0', 'x'): [(world.sims["Sim-2"], TieredInterval(0), ('0', 'in'))],
+        ('0', 'z'): [(world.sims["Sim-1"], TieredInterval(0), ('0', 'in'))],
     }
 
     await scheduler.get_outputs(world, sim)
@@ -386,20 +419,20 @@ def test_notify_dependencies(
 
 
 @pytest.mark.parametrize('world', ['event-based'], indirect=True)
-def test_notify_dependencies_trigger(world):
+def test_notify_dependencies_trigger(world: World):
     sim = world.sims["Sim-0"]
-    sim.progress = 0
+    sim.progress = Progress(TieredTime(0))
 
     sim.data = {'1': {'x': 1}}
-    sim.output_time = 1
+    sim.output_time = TieredTime(1)
     scheduler.notify_dependencies(sim)
 
     assert world.sims["Sim-2"].next_steps == [TieredTime(1)]
 
 
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-def test_prune_dataflow_cache(world):
-    world._df_cache = True
+def test_prune_dataflow_cache(world: World):
+    world.use_cache = True
     world.sims["Sim-0"].outputs = {
         0: {'spam': 'eggs'},
         1: {'foo': 'bar'},
@@ -416,15 +449,15 @@ def test_prune_dataflow_cache(world):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('world', ['time-based'], indirect=True)
-async def test_get_outputs_shifted(world):
+async def test_get_outputs_shifted(world: World):
     sim = world.sims["Sim-5"]
     sim.outputs = {}
     sim.output_request = {0: ['x', 'y']}
     sim.type = 'time-based'
-    sim.progress = TieredTime(1)
+    sim.progress = Progress(TieredTime(1))
     sim.last_step = TieredTime(1)
     sim.tqdm = tqdm(disable=True)
-    heappush(world.sims["Sim-4"].next_steps, 2)
+    heappush(world.sims["Sim-4"].next_steps, TieredTime(2))
     
     sim.current_step = heappop(sim.next_steps)
     await scheduler.get_outputs(world, sim)

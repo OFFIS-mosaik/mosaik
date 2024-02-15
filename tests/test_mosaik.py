@@ -21,19 +21,19 @@ from mosaik import scenario, _debug
 from mosaik.dense_time import DenseTime
 from mosaik.tiered_time import TieredTime
 
-venv = os.path.dirname(sys.executable)
+VENV = os.path.dirname(sys.executable)
 
-sim_config: Dict[str, scenario.SimConfig] = {
+SIM_CONFIG: Dict[str, scenario.SimConfig] = {
     'local': {
         **{char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'},
         'MAS': {'python': 'example_mas.mosaik:ExampleMas'}
     },
     'remote': {
         **{
-            char: {'cmd': f'{venv}/pyexamplesim %(addr)s'}
+            char: {'cmd': f'{VENV}/pyexamplesim %(addr)s'}
             for char in 'ABCDE'
         },
-        'MAS': {'cmd': f'{venv}/pyexamplemas %(addr)s'}
+        'MAS': {'cmd': f'{VENV}/pyexamplemas %(addr)s'}
     },
     'generic': {
         **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
@@ -83,7 +83,7 @@ def test_mosaik(scenario_desc: ModuleType, cache: bool):
         pytest.skip()
     if cache in getattr(scenario_desc, 'XFAIL', []):
         pytest.xfail()
-    world = scenario.World(sim_config[scenario_desc.CONFIG], debug=True, cache=cache)
+    world = scenario.World(SIM_CONFIG[scenario_desc.CONFIG], debug=True, cache=cache)
     try:
         scenario_desc.create_scenario(world)
         world.run(
@@ -160,7 +160,7 @@ def test_mosaik(scenario_desc: ModuleType, cache: bool):
         gc.collect()
 
 
-@pytest.mark.parametrize('sim_config', [sim_config['local'], sim_config['remote']])
+@pytest.mark.parametrize('sim_config', [SIM_CONFIG['local'], SIM_CONFIG['remote']])
 def test_call_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
@@ -172,7 +172,7 @@ def test_call_extra_methods(sim_config):
     assert ret == 23
 
 
-@pytest.mark.parametrize('sim_config', [sim_config['generic'], sim_config['generic_remote']])
+@pytest.mark.parametrize('sim_config', [SIM_CONFIG['generic'], SIM_CONFIG['generic_remote']])
 def test_call_two_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
@@ -190,7 +190,7 @@ def test_call_two_extra_methods(sim_config):
 
 def test_rt_sim():
     fixture = importlib.import_module('tests.scenarios.single_self_stepping')
-    world = scenario.World(sim_config['local'])
+    world = scenario.World(SIM_CONFIG['local'])
     try:
         fixture.create_scenario(world)
 
@@ -207,7 +207,7 @@ def test_rt_sim():
 @pytest.mark.parametrize('strict', [True, False])
 def test_rt_sim_too_slow(strict, caplog):
     fixture = importlib.import_module('tests.scenarios.single_self_stepping')
-    world = scenario.World(sim_config['local'])
+    world = scenario.World(SIM_CONFIG['local'])
     try:
         fixture.create_scenario(world)
 
