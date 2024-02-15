@@ -67,20 +67,21 @@ In the following description only the changes are explained, but the full code i
 The updated controller and the new master controller are added to the sim config of the scenario.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 1-23
+   :end-before: End: Create World
 
 The master controller is also started and initialized.
 The controllers get different 'init_val' values compared to the previous scenario.
 Here, it is changed to ``(-2, 0, -2)`` to have the right timing to get into the same-time loop.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 25-35
+   :start-at: Start simulators
+   :end-before: End: Instantiate models
 
 The 'delta' outputs of the controllers are connected to the new master controller and the 'delta_out' of the master controller is connected to the respective controller.
 The ``weak=True`` argument defines, that the connection from the controllers to the master controller will be the first to be executed by mosaik.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 37-51
+   :start-at: Connect entities
 
 The printed output of the collector shows the states of the different simulators.
 The collector just shows the final result of the same-time loop and not the steps during the loop.
@@ -101,4 +102,4 @@ After this second step of the master controller, it does not send an output agai
    :align: center
    :alt: Scheduling of demo 3
 
-   Schedulung of demo 3.
+   Scheduling of demo 3.
