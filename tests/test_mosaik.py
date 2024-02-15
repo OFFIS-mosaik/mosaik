@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from mosaik import scenario, _debug
 from mosaik.dense_time import DenseTime
+from mosaik.tiered_time import TieredTime
 
 venv = os.path.dirname(sys.executable)
 
@@ -101,19 +102,19 @@ def test_mosaik(scenario_desc: ModuleType, cache: bool):
         actual_nodes = set(world.execution_graph.nodes)
         missing_nodes = expected_nodes - actual_nodes
 
-        def format_node(node: Tuple[str, DenseTime]) -> str:
+        def format_node(node: Tuple[str, TieredTime]) -> str:
             return f"{node[0]} @ {node[1]}"
         
         if missing_nodes:
             errors.append("The following expected simulator invocations did not happen:")
-            for node in sorted(missing_nodes):
+            for node in sorted(missing_nodes, key=lambda n: n[0]):
                 errors.append(f"- {format_node(node)}")
             errors.append("")
 
         extra_nodes = actual_nodes - expected_nodes
         if extra_nodes:
             errors.append("The following simulator invocations were not expected:")
-            for node in sorted(extra_nodes):
+            for node in sorted(extra_nodes, key=lambda n: n[0]):
                 sources = world.execution_graph.predecessors(node)
                 if sources:
                     sources_str = f"caused by: {', '.join(map(format_node, sources))}"

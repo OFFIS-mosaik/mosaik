@@ -15,9 +15,17 @@ class TieredInterval:
     cutoff: int
     tiers: tuple[int, ...]
 
-    def __post_init__(self):
-        assert self.cutoff <= self.pre_length
-        assert self.cutoff <= len(self.tiers)
+    def __init__(self, *tiers: int, cutoff: int | None = None, pre_length: int | None = None):
+        if cutoff is None:
+            cutoff = len(tiers)
+        if pre_length is None:
+            pre_length = cutoff
+        assert cutoff >= 1
+        assert cutoff <= pre_length
+        assert cutoff <= len(tiers)
+        object.__setattr__(self, "pre_length", pre_length)
+        object.__setattr__(self, "cutoff", cutoff)
+        object.__setattr__(self, "tiers", tiers)
     
     def __len__(self) -> int:
         return len(self.tiers)
@@ -40,15 +48,28 @@ class TieredInterval:
         tiers = add + ext
         cutoff = min(self.cutoff, other.cutoff)
         assert len(tiers) == len(other)
-        return TieredInterval(self.pre_length, cutoff, tiers)
+        return TieredInterval(*tiers, pre_length=self.pre_length, cutoff=cutoff)
 
     def __lt__(self, other: TieredInterval):
         assert len(self) == len(other)
         assert self.pre_length == other.pre_length
         # Without this, comparison is not total, but it might still be
         # possible with more thought.
-        assert self.cutoff == other.cutoff
-        return self.tiers < other.tiers
+        for i, (s, o) in enumerate(zip(self.tiers, other.tiers)):
+            s_add_o_ext = other.cutoff <= i < self.cutoff
+            o_add_s_ext = self.cutoff <= i < other.cutoff
+            if s < o:
+                if s_add_o_ext:
+                    assert False, f"{self} and {other} are incomparable"
+                return True
+            if o > s:
+                if o_add_s_ext:
+                    assert False, f"{self} and {other} are incomparable"
+                return False
+        return False
+    
+    def __repr__(self):
+        return f'{":".join(map(str, self.add))}|{":".join(map(str, self.ext))}({self.pre_length})'
 
 
 @functools.total_ordering
@@ -56,9 +77,12 @@ class TieredInterval:
 class TieredTime:
     tiers: tuple[int, ...]
 
+    def __init__(self, *tiers: int):
+        object.__setattr__(self, "tiers", tiers)
+
     def __add__(self, interval: TieredInterval) -> TieredTime:
         assert len(self.tiers) == interval.pre_length
-        return TieredTime(tuple_add(self.tiers, interval.add) + interval.ext)
+        return TieredTime(*(tuple_add(self.tiers, interval.add) + interval.ext))
 
     def __lt__(self, other: TieredTime) -> bool:
         assert len(self) == len(other)
@@ -70,3 +94,6 @@ class TieredTime:
     @property
     def time(self) -> int:
         return self.tiers[0]
+    
+    def __repr__(self):
+        return f"{':'.join(map(str, self.tiers))}"

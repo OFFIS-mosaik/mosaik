@@ -9,10 +9,11 @@ a :class:`ModelMock`) via which the user can instantiate model instances
 """
 from __future__ import annotations
 
-
 import asyncio
 from collections import defaultdict
+import contextlib
 from copy import copy
+from dataclasses import dataclass, field
 import itertools
 from loguru import logger
 from mosaik_api_v3 import OutputData, OutputRequest
@@ -35,7 +36,6 @@ from typing import (
 import warnings
 from typing_extensions import Literal, TypeAlias, TypedDict
 
-from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
 
 from mosaik import simmanager
@@ -103,6 +103,55 @@ simulation.
 """
 
 
+@dataclass
+class SimGroup:
+    parent: SimGroup | None
+
+    @property
+    def depth(self) -> int:
+        if not self.parent:
+            return 1
+        return self.parent.depth + 1
+
+
+def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
+    src_groups = [src]
+    while src.parent:
+        src = src.parent
+        src_groups.append(src)
+    
+    descent = 0
+    while True:
+        try:
+            ascent = src_groups.index(dest)
+            return (ascent, descent, dest)
+        except ValueError:
+            if not dest.parent:
+                raise ValueError("no joint parent")
+            dest = dest.parent
+            descent += 1
+
+
+def connect_interval(src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0):
+    ascent, _, common_group = group_path(src_group, dest_group)
+    
+    pre_length = src_group.depth
+    cutoff = pre_length - ascent
+    list_tiers = [0] * dest_group.depth
+    if weak and not common_group.parent:
+        # TODO: Introduce link to documentation
+        raise ScenarioError(
+            "Weak connections may only be used in groups."
+        )
+    if time_shifted:
+        list_tiers[0] = time_shifted
+    if weak:
+        assert cutoff >= 2
+        list_tiers[cutoff - 1] = weak
+    return TieredInterval(*list_tiers, cutoff=cutoff, pre_length=pre_length)
+
+
+
 class World(object):
     """
     The world holds all data required to specify and run the scenario.
@@ -162,6 +211,9 @@ class World(object):
     """A dictionary of already started simulators instances."""
     _sim_ids: Dict[ModelName, itertools.count[int]]
 
+    main_group: SimGroup
+    current_group: SimGroup
+
     entity_graph: networkx.Graph[FullId]
     """The :class:`graph <networkx.Graph>` of related entities.
     Nodes are ``(sid, eid)`` tuples. Each note has an attribute
@@ -185,6 +237,9 @@ class World(object):
             self.config.update(mosaik_config)
 
         self.sims = {}
+        self.main_group = SimGroup(parent=None)
+        self.current_group = self.main_group
+
         self.time_resolution = time_resolution
         self.max_loop_iterations = max_loop_iterations
 
@@ -211,6 +266,14 @@ class World(object):
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
+
+    @contextlib.contextmanager
+    def group(self):
+        parent_group = self.current_group
+        new_group = SimGroup(parent=parent_group)
+        self.current_group = new_group
+        yield
+        self.current_group = parent_group
 
     def start(
         self,
@@ -240,8 +303,8 @@ class World(object):
         )
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
-        model_factory = ModelFactory(self, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy)
+        model_factory = ModelFactory(self, self.current_group, sim_id, proxy)
+        self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -307,8 +370,10 @@ class World(object):
                 "scenario-definition.html#connecting-entities"
             )
 
-        assert not weak, "reintroduce weak in connect"
-        delay = TieredInterval(1, 1, (int(time_shifted),))
+        src_group = src.model_mock._factory._group
+        dest_group = dest.model_mock._factory._group
+        delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
+
         dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
 
         is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
@@ -323,7 +388,7 @@ class World(object):
         else:
             src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, delay, dest_port))
 
-        src_sim.successors.add(dest_sim)
+        src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
 
         if dest.triggered_by(dest_attr):
             src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
@@ -348,14 +413,16 @@ class World(object):
             "connections instead.",
             category=DeprecationWarning,
         )
+        # TODO: Tiered time
         src_sim = self.sims[src._sid]
         dest_sim = self.sims[dest._sid]
-        src_sim.successors.add(dest_sim)
-        src_sim.successors_to_wait_for.add(dest_sim)
-        # TieredInterval(1, 1, (0,)) is always minimal, so we dont need
+        delay = connect_interval(src._group, dest._group)
+        src_sim.successors[dest_sim] = delay
+        src_sim.successors_to_wait_for[dest_sim] = delay
+        # TieredInterval(0) is always minimal, so we dont need
         # to compare to previous value of input_delays[src_sim]
         # TODO: Adapt for tiered time
-        dest_sim.input_delays[src_sim] = TieredInterval(1, 1, (0,))  
+        dest_sim.input_delays[src_sim] = delay
          
     def connect(
         self,
@@ -438,7 +505,8 @@ class World(object):
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
         # TODO: Adapt for tiered time
-        self.sims[sid].next_steps = [TieredTime((time,))]
+        sim = self.sims[sid]
+        sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
     def get_data(
         self,
@@ -638,19 +706,6 @@ class World(object):
                             dirty.add(dest_sim)
                             dest_sim.triggering_ancestors[src_sim] = src_to_dest
         return
-        
-        trigger_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
-        for src_sim in self.sims.values():
-            for successors in src_sim.triggers.values():
-                for (dest_sim, delay) in successors:
-                    min_delay = delay
-                    if trigger_graph.has_edge(src_sim, dest_sim):
-                        min_delay = min(delay, trigger_graph[src_sim][dest_sim]["delay"])
-                    trigger_graph.add_edge(src_sim, dest_sim, delay=min_delay)
-        for dest_sim in trigger_graph.nodes:
-            for src_sim in networkx.ancestors(trigger_graph, dest_sim):
-                distance = networkx.shortest_path_length(trigger_graph, src_sim, dest_sim, weight="delay")
-                dest_sim.triggering_ancestors.append((src_sim, distance))
 
     def ensure_no_dataflow_cycles(self):
         """
@@ -660,7 +715,7 @@ class World(object):
         for sim in self.sims.values():
             for pred_sim, delay in sim.input_delays.items():
                 # TODO: tiered time
-                if delay == TieredInterval(1, 1, (0,)):
+                if not any(delay.tiers):
                     immediate_graph.add_edge(pred_sim, sim)
         # If there are performance problems, it might be faster to first try sorting
         # this graph topologically. If that succeeds, there will be no cycles, so the
@@ -714,9 +769,10 @@ class ModelFactory():
     type: Literal['event-based', 'time-based', 'hybrid']
     models: Dict[ModelName, ModelMock]
 
-    def __init__(self, world: World, sid: SimId, proxy: Proxy):
+    def __init__(self, world: World, group: SimGroup, sid: SimId, proxy: Proxy):
         self.meta = proxy.meta
         self._world = world
+        self._group = group
         self._proxy = proxy
         self._sid = sid
 

@@ -121,7 +121,7 @@ def post_step(world: World, sim: SimRunner):
     last_node = sim.last_node
     eg.nodes[last_node]['t_end'] = perf_counter()
     next_self_step = sim.next_self_step
-    if next_self_step is not None and next_self_step < TieredTime(world.until):
+    if next_self_step is not None and next_self_step < TieredTime(world.until) + sim.from_world_time:
         node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None

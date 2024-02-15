@@ -150,7 +150,7 @@ async def next_step_settled(sim: SimRunner, world: World) -> bool:
         if sim.next_steps and sim.next_steps[0] == sim.progress.time:
             return True
         else:
-            await_time = sim.next_steps[0] if sim.next_steps else TieredTime((world.until,))
+            await_time = sim.next_steps[0] if sim.next_steps else TieredTime(world.until) + sim.from_world_time
             _, pending = await asyncio.wait(
                 [
                     asyncio.create_task(sim.progress.has_reached(await_time)),
@@ -202,11 +202,11 @@ async def wait_for_dependencies(
         # the input for our current step.
         futures.append(pre_sim.progress.has_passed(next_step, shift=delay))
 
-    for suc_sim in sim.successors_to_wait_for:
-        futures.append(suc_sim.progress.has_reached(next_step))
+    for suc_sim, adapt in sim.successors_to_wait_for.items():
+        futures.append(suc_sim.progress.has_reached(next_step + adapt))
     if lazy_stepping:
-        for suc_sim in sim.successors:
-            futures.append(suc_sim.progress.has_reached(next_step))
+        for suc_sim, adapt in sim.successors.items():
+            futures.append(suc_sim.progress.has_reached(next_step + adapt))
 
     await asyncio.gather(*futures)
 
@@ -287,16 +287,16 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
     Checks how far *sim* can safely advance its internal time during next step
     without causing a causality error.
     """
-    ancs_next_steps: List[TieredTime] = []
+    ancs_next_steps: List[Time] = []
     for anc_sim, distance in sim.triggering_ancestors.items():
         if anc_sim.next_steps:
-            ancs_next_steps.append(anc_sim.next_steps[0] + distance)
+            ancs_next_steps.append((anc_sim.next_steps[0] + distance).time)
 
-    own_next_step = [sim.next_steps[0]] if sim.next_steps else []
+    own_next_step = [sim.next_steps[0].time] if sim.next_steps else []
 
     # The +1, -1 shenanigans exists due to how max_advance was
     # originally designed.
-    return min([*ancs_next_steps, *own_next_step, TieredTime((until + 1,))]).time - 1
+    return min([*ancs_next_steps, *own_next_step, until + 1]) - 1
 
 
 async def step(
@@ -336,7 +336,7 @@ async def step(
             )
 
         if next_step_time < world.until:
-            next_step_tiered_time = TieredTime((next_step_time,))
+            next_step_tiered_time = TieredTime(next_step_time) + sim.from_world_time
             sim.schedule_step(next_step_tiered_time)
             sim.next_self_step = next_step_tiered_time
 
@@ -388,7 +388,7 @@ async def get_outputs(world: World, sim: SimRunner):
         if output_time == sim.current_step.time:
             output_dense_time = sim.current_step
         else:
-            output_dense_time = TieredTime((output_time,))
+            output_dense_time = TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
         sim.output_time = output_dense_time
         if sim.last_step.time > output_time:
             raise SimulationError(
@@ -466,7 +466,7 @@ def advance_progress(sim: SimRunner, world: World):
     current_step_prog = [sim.current_step] if sim.current_step else []
     if world.rt_factor:
         rt_passed = perf_counter() - sim.rt_start
-        rt_progress = [TieredTime((ceil(rt_passed / world.rt_factor),))]
+        rt_progress = [TieredTime(ceil(rt_passed / world.rt_factor))]
     else:
         rt_progress = []
     new_progress = min([
@@ -474,7 +474,7 @@ def advance_progress(sim: SimRunner, world: World):
         *next_step_progress,
         *current_step_prog,
         *rt_progress,
-        TieredTime((world.until,)),
+        TieredTime(world.until) + sim.from_world_time,
     ])
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)

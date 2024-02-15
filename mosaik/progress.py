@@ -50,17 +50,21 @@ class Progress:
                     future.set_result(time_at_dest)
                 del self._futures[index]
 
-    async def has_reached(self, target: TieredTime, shift: TieredInterval | None = None) -> TieredTime:
+    async def has_reached(
+        self,
+        target: TieredTime,
+        shift: TieredInterval | None = None,
+    ) -> TieredTime:
         """Wait until this ``Progress`` has reached (or passed) the
         given time. Returns immediately if this ``Progress`` has
         already reached (or passed) the given time.
         
         :param time: the time that needs to be reached (or passed)
         :returns: the actual value of the progress when the given
-        time has been reached or passed
+            time has been reached or passed
         """
         if shift is None:
-            shift = TieredInterval(len(target), len(target), (0,) * len(target))
+            shift = TieredInterval(*((0,) * len(self.time)))
         # TODO: Remove duplication of this check with the one in `set`
         if self.time + shift >= target:
             return self.time
@@ -68,17 +72,21 @@ class Progress:
         self._futures.append((target, shift, False, future))
         return await future
 
-    async def has_passed(self, target: TieredTime, shift: TieredInterval | None = None) -> TieredTime:
+    async def has_passed(
+        self,
+        target: TieredTime,
+        shift: TieredInterval | None = None,
+    ) -> TieredTime:
         """Wait until this ``Progress`` has passed the given time.
         Returns immediately if this ``Progress`` has already passed
         the given time.
         
         :param time: the time that needs to be passed
-        :returns: the actual value of the progress when the given
-        time has been passed
+        :return: the actual value of the progress when the given
+            time has been passed
         """
         if shift is None:
-            shift = TieredInterval(len(target), len(target), (0,) * len(target))
+            shift = TieredInterval(*((0,) * len(self.time)))
         # TODO: Remove duplication of this check with the one in `set`
         if self.time + shift > target:
             return self.time

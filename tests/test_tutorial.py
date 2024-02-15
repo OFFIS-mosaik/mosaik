@@ -20,5 +20,5 @@ def test_tutorial(outfile):
     python_file = outfile.rsplit('.', 1)[0] + '.py'
     expected = open(outfile).read()
     out = subprocess.check_output([sys.executable, python_file], cwd=CODE_DIR,
-                                  universal_newlines=True)
+                                  universal_newlines=True, stderr=subprocess.STDOUT)
     assert out == expected

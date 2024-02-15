@@ -349,8 +349,8 @@ class SimRunner:
     triggered by output on that port and the delay accrued along that
     edge.
     """
-    successors: Set[SimRunner]
-    successors_to_wait_for: Set[SimRunner]
+    successors: Dict[SimRunner, TieredInterval]
+    successors_to_wait_for: Dict[SimRunner, TieredInterval]
     triggering_ancestors: Dict[SimRunner, TieredInterval]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
@@ -368,6 +368,9 @@ class SimRunner:
     describing the destinations for that data and the time-shift
     occuring along the connection.
     """
+
+    to_world_time: TieredInterval
+    from_world_time: TieredInterval
 
     output_request: OutputRequest
 
@@ -417,6 +420,7 @@ class SimRunner:
         self,
         sid: SimId,
         connection: Proxy,
+        depth: int = 1,
     ):
         self.sid = sid
         self._proxy = connection
@@ -425,20 +429,24 @@ class SimRunner:
         self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
-        self.last_step = TieredTime((-1,))
+        self.last_step = TieredTime(-1, *([0] * (depth - 1)))
         self.current_step = None
         if self.type != 'event-based':
-            self.next_steps = [TieredTime((0,))]
+            self.next_steps = [TieredTime(*([0] * depth))]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress = Progress(TieredTime((0,)))
+        self.progress = Progress(TieredTime(*([0] * depth)))
+
+        self.to_world_time = TieredInterval(0, cutoff=1, pre_length=depth)
+        self.from_world_time = TieredInterval(*([0] * depth), cutoff=1, pre_length=1)
+
         self.inputs_from_set_data = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
 
-        self.successors_to_wait_for = set()
-        self.successors = set()
+        self.successors_to_wait_for = {}
+        self.successors = {}
         self.triggering_ancestors = {}
         self.triggers = {}
         self.output_to_push = {}
@@ -653,7 +661,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             )
         if event_time < self.world.until:
             # TODO: Check whether progress.set is better
-            sim.schedule_step(TieredTime((event_time,)))
+            sim.schedule_step(TieredTime(event_time))
         else:
             logger.warning(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "

@@ -11,10 +11,9 @@ def tiered_intervals(pre_length: int, length: int):
     pre_length and length.
     """
     return st.builds(
-        TieredInterval,
-        st.just(pre_length),
-        st.integers(min_value=0, max_value=min(pre_length, length)),
+        lambda tiers, cutoff: TieredInterval(*tiers, cutoff=cutoff, pre_length=pre_length),
         st.tuples(*((st.integers(min_value=0),) * length)),
+        st.integers(min_value=1, max_value=min(pre_length, length)),
     )
 
 
@@ -33,7 +32,7 @@ def asso_triples(min_length: int = 1, max_length: int = 7):
     )
 
 
-@hypothesis.given(asso_triples(0, 10))
+@hypothesis.given(asso_triples(1, 10))
 def test_associative(
     asso_triple: tuple[TieredInterval, TieredInterval, TieredInterval]
 ):
@@ -44,7 +43,7 @@ def test_associative(
 
 def tiered_times(length: int):
     return st.builds(
-        TieredTime,
+        lambda tiers: TieredTime(*tiers),
         st.tuples(*((st.integers(0),) * length))
     )
 
@@ -64,7 +63,7 @@ def torsor_triples(min_length: int = 1, max_length: int = 7):
     )
 
 
-@hypothesis.given(torsor_triples(0, 10))
+@hypothesis.given(torsor_triples(1, 10))
 def test_torsor(
     torsor_triple: tuple[TieredTime, TieredInterval, TieredInterval]
 ):

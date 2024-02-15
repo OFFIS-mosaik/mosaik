@@ -28,33 +28,33 @@ CONFIG = 'generic'
 WEAK = True
 
 EXECUTION_GRAPH = """
-A~0      A~1
-A~0      Loop~0
-A~0      C~0
-Loop~0   A~0:1
-Loop~0   C~0
-A~0:1    A~1
+A~0:0    A~1:0
+A~0:0    Loop~0:0
+A~0:0    C~0:0
+Loop~0:0 A~0:1
+Loop~0:0 C~0:0
+A~0:1    A~1:0
 A~0:1    Loop~0:1
 A~0:1    C~0:1
-Loop~0:1 Loop~1
-A~1      Loop~1
-A~1      C~1
-Loop~1   A~1:1
-Loop~1   C~1
+Loop~0:1 Loop~1:0
+A~1:0    Loop~1:0
+A~1:0    C~1:0
+Loop~1:0 A~1:1
+Loop~1:0 C~1:0
 A~1:1    C~1:1
 A~1:1    Loop~1:1
 Loop~1:1
 """
 
 INPUTS = {
-    'Loop~0': {'Loop': {'loop_in': {'A.0': 0}}},
+    'Loop~0:0': {'Loop': {'loop_in': {'A.0': 0}}},
     'A~0:1': {'0': {'val_in': {'Loop.Loop': 1}}},
     'Loop~0:1': {'Loop': {'loop_in': {'A.0': 0}}},
-    'C~0': {'0': {'val_in': {'A.0': 0, 'Loop.Loop': 1}}},
-    'Loop~1': {'Loop': {'loop_in': {'A.0': 1}}},
+    'C~0:0': {'0': {'val_in': {'A.0': 0, 'Loop.Loop': 1}}},
+    'Loop~1:0': {'Loop': {'loop_in': {'A.0': 1}}},
     'A~1:1': {'0': {'val_in': {'Loop.Loop': 1}}},
     'Loop~1:1': {'Loop': {'loop_in': {'A.0': 1}}},
-    'C~1': {'0': {'val_in': {'A.0': 1, 'Loop.Loop': 1}}},
+    'C~1:0': {'0': {'val_in': {'A.0': 1, 'Loop.Loop': 1}}},
     'C~0:1': {'0': {'val_in': {'A.0': 0}}},
     'C~1:1': {'0': {'val_in': {'A.0': 1}}},
 }
