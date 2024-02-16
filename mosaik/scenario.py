@@ -776,9 +776,9 @@ def parse_attrs(
         inconsistent
     """
     error_template = (
-            "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
-            "if you need both types of %s attributes), and they must list all their "
-            "attrs as %s if that key is present"
+        "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
+        "if you need both types of %s attributes), and they must list all their "
+        "attrs as %s if that key is present"
     )
     
     if model_desc.get('any_inputs', False):
@@ -786,9 +786,16 @@ def parse_attrs(
     else:
         inputs = wrap_set(model_desc.get('attrs'))
     empty: FrozenSet[Attr] = frozenset()
-    default_measurements = empty if type == 'event-based' else None
+    if type == 'time-based':
+        default_measurements = None
+        default_events = empty
+    elif type == 'event-based':
+        default_measurements = empty
+        default_events = None
+    elif type == 'hybrid':
+        default_measurements = None if 'trigger' in model_desc else inputs
+        default_events = None
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = None if type == 'event-based' else empty
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
@@ -858,12 +865,18 @@ class ModelMock(object):
         model_desc = proxy.meta['models'][model]
         self.params = frozenset(model_desc.get('params', []))
 
-        (
-            self.measurement_inputs,
-            self.event_inputs,
-            self.measurement_outputs,
-            self.event_outputs,
-        ) = parse_attrs(model_desc, self._factory.type)
+        try:
+            (
+                self.measurement_inputs,
+                self.event_inputs,
+                self.measurement_outputs,
+                self.event_outputs,
+            ) = parse_attrs(model_desc, self._factory.type)
+        except ValueError as e:
+            raise ValueError(
+                f"while parsing the model description of model {model} of the "
+                f"simulator {factory._sid}: {e}"
+            )
 
     @property
     def input_attrs(self) -> InOrOutSet[Attr]:
