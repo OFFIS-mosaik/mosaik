@@ -6,11 +6,11 @@ Scenario definition
 
 Modeling or composing a scenario in mosaik comprises three steps:
 
-1. Starting simulators,
+1. starting simulators,
 
-2. Instantiating models within the simulators, and
+2. instantiating models within the simulators, and
 
-3. Connecting the model instances of different simulators to establish the data
+3. connecting the model instances of different simulators to establish the data
    flow between them.
 
 This page will show you how to create simple scenarios in these three steps.
@@ -40,18 +40,16 @@ a :class:`World` instance:
 .. code-block:: python
 
    >>> import mosaik
-   >>> from mosaik.scenario import SimConfig
    >>>
-   >>> sim_config: SimConfig = {
+   >>> sim_config: mosaik.SimConfig = {
    ...     'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
    ... }
    >>>
    >>> world = mosaik.World(sim_config)
 
-(You can leave off the type annotation on ``sim_config`` and the line importing
-``SimConfig`` if you're not using type checking.)
+(You can leave off the type annotation on ``sim_config`` if you're not using type checking.)
 
-As we start simulator instances by using *world*, it needs to know what
+As we start simulator instances by using ``world``, it needs to know what
 simulators are available and how to start them. This is called the *sim config*
 and is a dict that contains every simulator we want to use together with some
 information on how to start it.
@@ -64,7 +62,7 @@ running processes. The :doc:`simulator manager docs<simmanager>` explain how
 this all works and give you some hints when to use which method of starting
 a simulator.
 
-In addition to the *sim config* you can optionally pass the *mosaik_config* dictionary to
+In addition to the sim config you can optionally pass the ``mosaik_config`` dictionary to
 :class:`World` in order to overwrite some general parameters for mosaik (e.g.,
 the host and port number for its network socket or timeouts).  Usually, the
 defaults work just well.
@@ -75,7 +73,7 @@ defaults work just well.
 
 .. _time_resolution:
 
-Via the *time_resolution* parameter you can set a global time resolution for
+Via the ``time_resolution`` parameter you can set a global time resolution for
 the scenario, which will be passed to each simulator as keyword argument via
 the init function (see :ref:`API init <api.init>`). It tells each simulator how to
 translate mosaik's integer time to simulated time (in seconds from simulation
@@ -85,15 +83,15 @@ start). It has to be a float and it defaults to ``1.``.
 
    >>> world = mosaik.World(sim_config, time_resolution=1.)
 
-If you set the *debug* flag to ``True`` an execution graph will be created
-during the simulation. This may be useful for debugging and testing. Note,
+If you set the ``debug`` flag to ``True`` an execution graph will be created
+during the simulation. This may be useful for debugging and testing. Note
 that this increases the memory consumption and simulation time.
 
 .. code-block:: python
 
    >>> world = mosaik.World(sim_config, debug=False)
 
-There are two more technical parameters: You can set the *cache* flag to False
+There are two more technical parameters: You can set the ``cache`` flag to ``False``
 if the average step size of the simulators is orders of magnitudes larger than
 the time resolution, i.e. a time resolution of microseconds where the typical
 step size is in the seconds range. This will considerably reduce the
@@ -103,7 +101,7 @@ simulation time.
 
    >>> world = mosaik.World(sim_config, cache=True)
 
-Via *max_loop_iterations* you can limit the maximum iteration count within one
+Via ``max_loop_iterations`` you can limit the maximum iteration count within one
 time step for :ref:`same-time loops <same-time_loops>`. It's default value is 100.
 
 .. code-block:: python
@@ -122,23 +120,23 @@ Now that the basic set-up is done, we can start our simulators:
    >>> simulator_1 = world.start('ExampleSim')
    Starting "ExampleSim" as "ExampleSim-1" ...
 
-To start a simulator, we call :meth:`World.start()` and pass the name of the
-simulator. Mosaik looks up that name in its *sim config*, starts the simulator
+To start a simulator, we call :meth:`World.start` and pass the name of the
+simulator. Mosaik looks up that name in its sim config, starts the simulator
 for us and returns a :class:`ModelFactory`. This factory allows us to
 instantiate simulation models within that simulator.
 
 In addition to the simulator name, you can pass further parameters for the
-simulators. These parameters are passed to the simulator via the :ref:`init()
+simulators. These parameters are passed to the simulator via the :ref:`init
 API call <api.init>`.
 
 
 Instantiating simulation models
 ===============================
 
-Simulators specify a set of public models in their meta data (see :ref:`init()
+Simulators specify a set of public models in their meta data (see :ref:`init
 API call <api.init>`). These models can be accessed with the
-:class:`ModelFactory` that :meth:`World.start()` returns as if they were normal
-Python classes. So to create one instance of *ExampleSim's* model *A* we just
+:class:`ModelFactory` that :meth:`World.start` returns as if they were normal
+Python classes. So to create one instance of *ExampleSim*'s model *A* we just
 write:
 
 .. code-block:: python
@@ -146,7 +144,7 @@ write:
    >>> a = simulator_0.A(init_val=0)
 
 This will create one instance of the *A* simulation model and pass the model
-parameter ``init_val=0`` to it (see :ref:`create() API call <api.create>`).
+parameter ``init_val=0`` to it (see :ref:`create API call <api.create>`).
 Lets see what it is that gets returned to us:
 
 .. code-block:: python
@@ -160,7 +158,7 @@ Lets see what it is that gets returned to us:
    >>> a.children
    []
 
-A model instances is represented in your scenario as an :class:`Entity`. The
+A model instance is represented in your scenario as an :class:`Entity`. The
 entity belongs to the simulator *ExampleSim-0*, has the ID *0.0* and its type
 is *A*. The entity ID is unique within a simulator. To make it globally unique,
 we prepend it with the simulator ID. This is called the entity's *full ID* (see
@@ -169,7 +167,7 @@ is empty in this case).
 
 In order to instantiate multiple instances of a model, you can either use
 a simple list comprehension (or ``for`` loop) or call the static method
-`create()` of the model:
+`create` of the model:
 
 .. code-block:: python
 
@@ -177,20 +175,20 @@ a simple list comprehension (or ``for`` loop) or call the static method
    >>> b_set = simulator_1.B.create(3, init_val=1)
 
 The list comprehension is more verbose but allows you to pass individual
-parameter values to each instance. Using ``create()`` is more concise but all
-three instance will have the same value for *init_val*. In both cases you'll
+parameter values to each instance. Using ``create`` is more concise but all
+three instance will have the same value for ``init_val``. In both cases you'll
 get a list of entities (aka :term:`entity sets <entity set>`).
 
 
 Setting initial events
 ======================
 
-Time-based (and hybrid) simulators are automatically scheduled for time step 0,
+Time-based and hybrid simulators are automatically scheduled for time step 0,
 and will organize their scheduling until the simulation's end themselves
 afterward. For event-based simulators this is not the case, as they might only
 want to be stepped if an event is created by another simulator for example.
 Therefore you might need to set initial events for some event-based ones via
-:meth:`World.set_initial_event()`, which sets an event for time 0 by default,
+:meth:`World.set_initial_event`, which sets an event for time 0 by default,
 or at later times if explicitly stated:
 
 .. code-block:: python
@@ -202,7 +200,7 @@ or at later times if explicitly stated:
 Connecting entities
 ===================
 
-If we would now run our simulation, both, *simulator_0* and *simulator_1* would run
+If we would now run our simulation, both, *ExampleSim-0* and *Example-Sim-1* would run
 in parallel and never exchange any data. To change that, we need to connect
 the models providing input data to entities requiring this data. In our case,
 we will connect the *val_out* attribute of the *A* instances with the *val_in*
@@ -214,11 +212,11 @@ attribute of the *B* instances:
    >>> for a, b in zip(a_set, b_set):
    ...     world.connect(a, b, ('val_out', 'val_in'))
 
-The method :meth:`World.connect()` takes the source entity, the destination
+The method :meth:`World.connect` takes the source entity, the destination
 entity and an arbitrary amount of *(source attribute, dest. attribute)* tuples.
 If the name of the source attributes equals that of the destination attribute,
 you can alternatively just pass a single string (e.g., ``connect(a, b,
-'attr')``).
+'attr')`` is the same as ``connect(a, b, ('attr', 'attr'))``).
 
 mosaik deals with two separate types of data exchange between simulators:
 
@@ -239,11 +237,10 @@ are called non-persistent when they deal with events. The opposite terms ‘non-
 and ‘persistent’ are used for measurement attributes (input and output, respectively).
 
 mosaik will complain if you connect a non-persistent output to a non-trigger
-input. This is because the target simulator should be able to rely on always
-receiving input on its non-trigger attributes, but just delaying or even repeating
-the last event would be semantically unsound (the event is associated with the
-time at which it was generated by the source simulator, not with the time at which
-the target simulator happens to run).
+input.
+This is because the target simulator should be able to rely on always receiving input on its non-trigger attributes, but the source simulator could potentially omit output on its non-persistent attribute.
+(mosaik could provide output that the source simulator produced in earlier steps, delaying or even repeating it.
+However, this would be semantically unsound as the event is associated with the time at which it was generated by the source simulator, not with the time at which the target simulator happens to run.)
 
 .. figure:: /_static/connect_attr_simulator.*
    :width: 600
@@ -252,25 +249,13 @@ the target simulator happens to run).
 
    A non-persistent output connected to a non-trigger input leads to a warning.
 
-Usually, the solution to resolve this warning is to change the type of one of the
-affected attributes: the source attribute from non-persistent to persistent, or
-the target attribute from non-trigger to trigger. You can do this without
-affecting the simulator’s other attributes by changing the simulator’s type to
-hybrid, where you can then specify which attributes should be trigger and/or
-non-persistent. :ref:`(See here for the format of META.) <meta>`
-Note that the attributes of hybrid simulator behave like measurements by default,
-so if you are changing an event-based simulator to hybrid, you will have to specify
-all attributes except for the affected one to be trigger and/or non-persistent if
-you want to preserve their previous behavior.
+Usually, the solution to resolve this warning is to change the type of one of the affected attributes: the source attribute from non-persistent to persistent, or the target attribute from non-trigger to trigger.
+You can do this without affecting the simulator’s other attributes by changing the simulator’s type to hybrid, where you can then specify which attributes should be trigger and/or non-persistent.
+:ref:`(See here for the format of META.) <meta>`
+Note that the attributes of hybrid simulator behave like measurements by default, so if you are changing an event-based simulator to hybrid, you will have to specify all attributes except for the affected one to be trigger and/or non-persistent if you want to preserve their previous behavior.
 
-We also encourage you to carefully think about the case where you attempt to
-connect a persistent output to a trigger input. However, because there is the
-common case of saving data generated in the simulation using some database or
-writer simulator (regardless of how whether it is an event or a measurement),
-mosaik will not complain when you set up connections like this.
-
-You can only connect entities that belong to different simulators with each
-other (that's why we created two instances of the *ExampleSim*).
+We also encourage you to carefully think about the opposite case where you attempt to connect a persistent output to a trigger input, as wanting to do this often indicates ambiguity about what your data represents.
+However, because there is the common case of saving data generated in the simulation using some database or writer simulator (regardless of how whether it is an event or a measurement), mosaik will not complain when you set up connections like this.
 
 You are also not allowed to create circular dependencies via standard
 connections only (e.g., connect *a* to *b* and then connect *b* to *a*).
@@ -295,24 +280,20 @@ finally run our simulation:
 
 This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
-detail what happens when you call ``run()``.
+detail what happens when you call ``run``.
 
-While the simulation is running, the current progress is visualized using a
-`tqdm <https://pypi.org/project/tqdm/>`_ progress bar. You can turn this off
-using the `print_progress` parameter of `world.run`:
+While the simulation is running, the current progress is visualized using a `tqdm <https://pypi.org/project/tqdm/>`_ progress bar. You can turn this off using the ``print_progress`` parameter of ``world.run``:
 
 .. code-block:: python
 
    world.run(until=10, print_progress=False)
 
-If you want a more detailed progress report, you can also set
-``print_progress='individual'`` which will produce a separate progress bar for
-each simulator in your simulation.
+If you want a more detailed progress report, you can set ``print_progress='individual'`` which will produce a separate progress bar for each simulator in your simulation.
 
-We can also set the *lazy_stepping* flag (default: ``True``). If
-``True``, a simulator can only run ahead one step of its successors. If
-``False``, a simulator always steps as long as all inputs are provided. This
-might decrease the simulation time but increase the memory consumption.
+We can also set the *lazy_stepping* flag (default: ``True``).
+If ``True``, a simulator can only run ahead one step of its successors.
+If ``False``, a simulator always steps as long as all inputs are provided.
+This might decrease the simulation time but increase the memory consumption.
 
 .. code-block:: python
 
@@ -352,11 +333,10 @@ To wrap it all up, this is how our small example scenario finally looks like:
 How to achieve cyclic data-flows
 ========================================
 
-Bi-directional (or cyclic) data-flows can occur easily in many scenarios,
-e.g. when you want to integrate control strategies. In this case you have to
-explicitly define in which order the simulators have to be stepped in case they
-are scheduled at the same time step simultaneously. Otherwise the simulation would
-get stuck in a dead-lock. Therefore this trivial approach is not allowed in mosaik:
+The guiding principle behind mosaik's scheduler is that simulator steps that happen at the same (mosaik) time are handled in data-dependency order.
+In other words, if simulator *A* is connected to simulator *B* (with data flowing from *A* to *B*) and both simulators are scheduled to step at time *t*, simulator *A* will run first so that simulator *B* can use the most up-to-date outputs from *A* in its calculation.
+
+This leads to problems when naively setting up bi-directional or cyclic data flow, like this
 
 .. code-block:: python
 
@@ -365,18 +345,17 @@ get stuck in a dead-lock. Therefore this trivial approach is not allowed in mosa
    # Controller sends back a schedule to the battery
    world.connect(controller, battery, 'schedule')
 
-The problem with this is that mosaik cannot know whether to compute *battery.P*
-or *controller.schedule* first.
+The problem is that mosaik cannot step either of the involved simulators as both are waiting for input from the other one.
+mosaik will recognize cycles like this and raise an error when you attempt to :meth:`run` a simulation containing them.
+To avoid this error, the standard connections in your scenario must form an acyclic (directed) graph (on the level of simulators).
 
-There are different ways to solve this problem, depending of the stepping type
-of your simulators:
+Of course, cyclic data flow is common in co-simulations and mosaik offers two options for this: time-shifted connections and weak connections.
+(There are also asynchronous requests, which are deprecated.)
 
-Time-based
-----------
-For time-based simulators the easiest way is to indicate explicitly that the
-output of at least one simulator (e.g. the schedule of the controller)is to be
-used for time steps afterwards (here by the battery) via the *time_shifted*
-flag:
+Time-shifted connections
+------------------------
+
+You can resolve a cycle by marking (at least) one of its constituent connections as *time shifted*, like so:
 
 .. code-block:: python
 
@@ -384,29 +363,91 @@ flag:
    world.connect(controller, battery, 'schedule', time_shifted=True,
                  initial_data={'schedule': initial_schedule})
 
-As for the first step this data cannot be provided yet, you have to set it via
-the *initial_data* argument. This example would result in a sequential execution
-of the two simulators. If you set the time_shifted flag for both connections, you
-get a parallel execution.
+This indicates to mosaik that the output of the source simulator should only be passed to the target simulator at the next time step.
+Now the loop is resolved, as the non-time-shifted connections form an acyclic graph again.
+(So in the example, ``battery`` will run before ``controller`` in each step.)
 
-The other option to resolve the cycle is to use asynchronous requests. For this you
-only connect the battery's *P* to the controller and let the control strategy set the
-new schedule via the asynchronous request :ref:`rpc.set_data`. To indicate
-this in your scenario, you set the
-*async_request* flag of :meth:`World.connect()` to ``True``:
+For the first step, the source simulator in a time-shifted connection will not have run, yet.
+However, the target simulator might still require input on the connected attribute.
+Therefore, you must provide ``initial_data``, which is a dictionary of the attributes of the source simulator and the values they should have for the first step.
+
+In the example above, the result would be a sequential execution of the two simulators.
+You can also set the ``time_shifted`` flag for both connections, in which case you would get parallel execution of both simulators, with each simulators using the output of the other simulator from the previous step.
+
+Finally, you can set ``time-shifted`` to an integer value instead of ``True``.
+This will delay data along that connection by that many steps.
+
+Weak connections
+----------------
+
+Occasionally, you want parts of your simulation to run on a much finer time scale than the rest, without committing to a precise factor between the two.
+This is often the case for control strategies that are distributed over two or simulators.
+
+In this case, you can use *weak* connection.
+A weak connection resolves cycles within one time step in much the same way as a time-shifted connection.
+However, if the source simulator produces output, this will trigger another step of the target simulator within the same time step.
+This might in turn trigger additional of the source simulator again, leading to a so-called *same-time loop* which runs until one of the simulators interrupts it by not producing output.
+(Weak connections therefore only make sense if the target attribute is a trigger attribute.
+If it is not, the effect will be identical to a time-shifted connection.)
+
+In most scenarios with same-time loops only some of the simulators will be involved in the loop.
+This poses the question when the other simulators are run in relation to them.
+In the past, this depended in subtle ways on the order in which connections were made in the scenario script.
+Starting with mosaik 3.3, we force you to be more explicit about it.
+Weak connections are only allowed between simulators that are part of a common *simulator group*.
+A simulator group can be created using a Python ``with`` statement like so:
+
+.. code-block:: python
+
+   with world.group():
+       sim_a = world.start("A")
+       sim_b = world.start("B")
+   with world.group():
+       sim_c = world.start("C")
+   sim_d = world.start("D")
+
+In this example, simulators *A* and *B* are part of a common simulator group, so weak connections between entities of *A* and *B* would be admissible.
+Simulator *C* is also part of a group, but its a different group from the one shared by *A* and *B*, so weak connections between *A* (or *B*) and *C* would not be allowed.
+(You could connect *C* weakly to itself, though.)
+Simulator *D* is not part of any group and therefore does not support weak connections at all.
+
+Weak connections are implemented by keeping track of a second time component for each simulator within a group.
+(This time component is opaque to the simulators.)
+When sending data along the weak connection, this sub-time is increased instead of the main time.
+
+Normal (and time-shifted) connections can still be established between simulators within and without the group.
+When a connection leaves a group, the corresponding sub-time is forgotten.
+For example, suppose that simulator *A* is connected to simulator *D* and that it's the start of the simulation.
+As long as *A* is performing steps within the same-time loop, its main time will stay at 0 and only its sub-time will increase.
+As simulator *D*, being outside of *A*'s group, does not see *A*'s sub-time, it will not consider simulator *A*'s step 0 to be done, and simulator *D* therefore will not step.
+Once the same-time loop is over, *A*'s main time will progress and *D* will perform its step.
+
+On the other hand, if *D* were part of *A*'s group (but still connected non-weakly), it would see *A*'s sub-time progress right away and therefore perform its step after *A*'s very first step.
+The decision of whether or not to include a simulator in a group therefore depends on how you want the timing to work.
+
+It is in fact possible to nest groups, by nesting the correponding ``with world.group()`` blocks.
+In this case, each additional group will introduce yet another finer level of time.
+Weak connections between two simulators will increase the sub-time component associated to their closest shared group.
+
+Asynchronous requests
+---------------------
+
+*This type of connection is deprecated because it couples the involved simulators too closely.*
+
+The final option to resolve the cycle is to use asynchronous requests.
+For this you only connect the battery's *P* to the controller and let the control strategy set the new schedule via the asynchronous request :ref:`rpc.set_data`.
+To indicate this in your scenario, you set the ``async_request`` flag of :meth:`World.connect` to ``True``:
 
 .. code-block:: python
 
    world.connect(battery, controller, 'P', async_requests=True)
 
-This way, mosaik will push the value for *P* from the battery to the
-controller. It will then wait until the controller's :ref:`step <api.step>` is
-done before the next step for the battery will be computed.
+This way, mosaik will push the value for *P* from the battery to the controller.
+It will then wait until the controller's :ref:`step <api.step>` is done before the next step for the battery will be computed.
 
-The advantage of this approach is that the call of set_data is optional, so
-you don't need to send a schedule on every step if there's no new schedule.
-The disadvantage is that you have to implement the set_data call within the
-simulator with the specific destination, making it less modular.
+The advantage of this approach is that the call of ``set_data`` is optional, so you don't need to send a schedule on every step if there's no new schedule.
+(However, much the same effect can be achieved by using some trigger attributes.)
+The disadvantage is that you have to implement the ``set_data`` call within the simulator with the specific destination, making it less modular.
 
 The *step* implementation of the controller could roughly look like this:
 
@@ -418,18 +459,6 @@ The *step* implementation of the controller could roughly look like this:
           schedule = self._get_schedule(inputs)
           yield self.mosaik.set_data(schedule)
           return t + self.step_size
-
-Event-based
------------
-For cyclic dependencies of event-based simulators you have to set one (and
-only one) connection to *weak*, analogous to the *time_shifted* connections.
-This allows mosaik to create a topological ranking of the simulators which is
-used to resolve eventual deadlocks (when two or more simulators have scheduled
-steps at the same time). In contrast to the time-shifted connections, weakly
-connected output can also be valid/used at the same point in time. This
-enables algebraic loops within one time step for example. You just have to
-make sure that you don't construct infinite loops. See section
-:ref:`Same-time Loops <same-time_loops>` for details.
 
 How to filter entity sets
 =========================
