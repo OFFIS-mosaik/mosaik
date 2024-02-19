@@ -7,7 +7,8 @@ Currently, this is only :class:`mosaik.scenario.World`.
 """
 from importlib import metadata
 
-from mosaik.scenario import SimConfig, World
+from mosaik.scenario import SimConfig as SimConfig
+from mosaik.scenario import World as World
 
 __version__ = metadata.version("mosaik")
-__all__ = ['SimConfig', 'World']
+__all__ = ['World']
