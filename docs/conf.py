@@ -13,6 +13,7 @@
 # serve to show the default.
 
 import mosaik
+import mosaik_components.heatpump
 import sphinx_rtd_theme
 from urllib.request import urlretrieve
 import os
@@ -24,9 +25,6 @@ os.makedirs(component_docs_dir, exist_ok=True)
 
 # Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
 # Files will be downloaded and integrated in mosaik documentation.
-
-# mosaik-heatpump package url
-mosaik_component_1_url = 'https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/blob/10-improve-documentation'
 
 # Install mosaik-heatpump to allow integration of documentation from the code.
 os.system('pip uninstall mosaik-heatpump -y')
@@ -46,6 +44,11 @@ os.remove(zip_file_dir)
 shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'), 'docs'),
             mosaik_heatpump_docs_dir)
 os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'))
+
+mosaik_hp_version = mosaik_components.heatpump.__version__
+rst_epilog = ".. |mosaik_hp_version| replace:: v{}".format(mosaik_hp_version)
+# mosaik-heatpump package url
+mosaik_component_1_url = 'https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/blob/10-improve-documentation'
 
 # -- General configuration ----------------------------------------------------
 
