@@ -3,6 +3,9 @@ This module provides mosaik specific exception types.
 """
 
 
+from typing import Any
+
+
 class ScenarioError(Exception):
     """
     This exception is raised if something fails during the creation of
@@ -16,7 +19,7 @@ class SimulationError(Exception):
     a problem arises during the execution of a simulation.
     """
 
-    def __init__(self, msg, exc=None):
+    def __init__(self, msg: str, exc: Any = None):
         arg = ''
         if exc:
             orig = str(exc)

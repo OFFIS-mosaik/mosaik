@@ -11,7 +11,7 @@ import sys
 
 from mosaik import scenario
 
-from execution_graph_tools import plot_execution_graph_st as plot_execution_graph
+from mosaik.util import plot_execution_graph
 sys.path.insert(0, os.getcwd())
 from tests.test_mosaik import SIM_CONFIG
 

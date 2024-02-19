@@ -392,10 +392,10 @@ async def get_outputs(world: World, sim: SimRunner):
         output_time: int
         output_time = data.get('time', sim.last_step.time)  # type: ignore
         if output_time == sim.current_step.time:
-            output_dense_time = sim.current_step
+            output_tiered_time = sim.current_step
         else:
-            output_dense_time = TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
-        sim.output_time = output_dense_time
+            output_tiered_time = TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
+        sim.output_time = output_tiered_time
         if sim.last_step.time > output_time:
             raise SimulationError(
                 'Output time (%s) is not >= time (%s) for simulator "%s"'
