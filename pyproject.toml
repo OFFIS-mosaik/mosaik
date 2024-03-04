@@ -20,7 +20,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-loguru = "^0.6"
+loguru = "^0.7.2"
 networkx = "^2.5"
 tqdm = "^4.64.1"
 typing-extensions = "^4.5"
@@ -44,6 +44,15 @@ sphinx-toolbox = "^3.5.0"
 [tool.poetry.group.plotting.dependencies]
 matplotlib = { version = "^3.8.2", markers = "python_version >= '3.9'" }
 
+
+
+[tool.poetry.group.tutorial.dependencies]
+mosaik-pandapower-2 = {version = "^0.3.1", python = ">=3.9,<4.0"}
+mosaik-pv = {version = "^1.2", python = ">=3.9,<4.0"}
+pandapower = {version = "^2.13.1", python = ">=3.9,<4.0"}
+numba = {version = "^0.59.0", python = ">=3.9,<4.0"}
+plotly = {version = "^5.19.0", python = ">=3.9,<4.0"}
+simbench = {version = "^1.4.0", python = ">=3.9,<4.0"}
 
 [build-system]
 requires = ["poetry-core"]

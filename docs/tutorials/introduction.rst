@@ -1,0 +1,11 @@
+============
+Introduction
+============
+
+mosaik is a co-simulation tool: It enables you to connect different pieces of software (and to some degree, hardware) that perform simulations to combine them into a bigger *co-simulation*, exchanging data on the way. We will call the individual pieces of software *simulators*. mosaik will transfer data between these simulators and keep track of the *simulation time*, so that simulators are invoked at the right moments and always use the data as input that is appropriate for their current state.
+
+Simulators can be written by many different authors (potentially including you), each working in their domain of expertise and potentially using different programming languages. They might even run on physically separate computers. All that is required is that the simulator implement the *mosaik API*, which is a relatively straight-forward protocol based on TCP connections and JSON. For some programming languages, there are also higher-level bindings which abstract these details away. All that remains in these cases is implementing a subclass of an abstract mosaik ``Simulator`` class (or an appropriate substitute for classes, depending on the language). In fact, the mosaik API is concise enough that you will often be able to implement it yourself if your simulator does not come with a ready-made implementation.
+
+Having acquired the necessary simulators for your simulation, you will then create a *scenario script*. This is a program written in Python, often just a single file, that describes which simulators to use and which data to exchange between them. Finally, the script will call mosaik’s ``World.run`` method to set the simulation in motion.
+
+In this tutorial, we will describe both how to write scenarios and how to write or adapt simulators for mosaik, using the high-level Python API. As you cannot test a mosaik simulator without a scenario, we will start there, using existing simulators from the mosaik ecosystem. In later chapters, we will then show how to extend this scenario using simulators that we create ourselves.
