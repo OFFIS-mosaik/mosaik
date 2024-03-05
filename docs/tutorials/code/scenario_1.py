@@ -1,5 +1,3 @@
-from pprint import pprint
-from typing import cast
 
 import warnings
 
@@ -18,13 +16,14 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import mosaik
 import mosaik.util
 import random
+from pprint import pprint
 # end
 
 SIM_CONFIG: mosaik.SimConfig = {
-	"Weather": {"python": "mosaik.basic_simulators:InputSimulator"},
-	"PV": {"python": "mosaik_components.pv.pvsimulator:PVSimulator"},
-	"Grid": {"python": "mosaik_components.pandapower:Simulator"},
-	"Output": {"python": "mosaik.basic_simulators:OutputSimulator"},
+    "Weather": {"python": "mosaik.basic_simulators:InputSimulator"},
+    "PV": {"python": "mosaik_components.pv.pvsimulator:PVSimulator"},
+    "Grid": {"python": "mosaik_components.pandapower:Simulator"},
+    "Output": {"python": "mosaik.basic_simulators:OutputSimulator"},
 }
 # end
 
@@ -39,53 +38,51 @@ outputsim = world.start("Output")
 
 weather = weathersim.Function(function=lambda time: random.uniform(0.0, 1000.0))
 # end
-pvs = cast(list[mosaik.scenario.Entity], pvsim.PV.create(
-	50, area=10, latitude=53.14, efficiency=0.5, el_tilt=32.0, az_tilt=0.0
-))
+pvs = pvsim.PV.create(
+    50, area=10, latitude=53.14, efficiency=0.5, el_tilt=32.0, az_tilt=0.0
+)
 # end
-grid = cast(mosaik.scenario.Entity, gridsim.Grid(simbench="1-LV-urban6--1-sw"))
+grid = gridsim.Grid(network_function="create_cigre_network_lv")
 # end
 
 # filter buses
-mv_bus_ids = ['Bus-0', 'Bus-1', 'Bus-20', 'Bus-23']
 lv_buses = [
-	entity
-	for entity in grid.children
-	if entity.type == 'Bus' and entity.eid not in mv_bus_ids
+    entity
+    for entity in grid.children
+    if entity.type == 'Bus' and entity.extra_info["nominal voltage [kV]"] == 0.4
 ]
 # end
 ext_grid = [entity for entity in grid.children if entity.type == 'ExternalGrid'][0]
 # end
 
-print(outputsim.meta)
 output = outputsim.Dict()
 # end
 
 # connect weather to pv
 for pv in pvs:
-	world.connect(weather, pv, ("value", "DNI[W/m2]"))
+    world.connect(weather, pv, ("value", "DNI[W/m2]"))
 # end
 
 # connect pv to buses
 mosaik.util.connect_randomly(
-	world,
-	pvs,
-	lv_buses,
-	("P[MW]", "P_gen[MW]"),
+    world,
+    pvs,
+    lv_buses,
+    ("P[MW]", "P_gen[MW]"),
 )
 # end
 
 # connect ext_grid
-world.connect(ext_grid, output, "P[MW]")
+world.connect(ext_grid, output, "P[MW]", "Q[MVar]")
 # end
 
 result = outputsim.get_dict(output.eid)
 # end
 
 # start run
-world.run(until=3600*48)
+world.run(until=3600)
 # end
 
 # start print
-print(result)
+pprint(result)
 # end
