@@ -29,7 +29,7 @@ os.makedirs(component_docs_dir, exist_ok=True)
 
 # Install mosaik-heatpump to allow integration of documentation from the code.
 os.system('pip uninstall mosaik-heatpump -y')
-os.system('pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git@10-improve-documentation')
+os.system('pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git')
 # Create a directory for the mosaik-heatpump documentation
 mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, 'mosaik-heatpump')
 if os.path.exists(mosaik_heatpump_docs_dir):
@@ -37,14 +37,14 @@ if os.path.exists(mosaik_heatpump_docs_dir):
 # Download documentation from mosaik-heatpump repository.
 zip_file_dir = os.path.join(component_docs_dir, "doc.zip")
 urlretrieve (
-   "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/10-improve-documentation/mosaik-heatpump-10-improve-documentation.zip?path=docs",
+   "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/master/mosaik-heatpump-master.zip?path=docs",
    zip_file_dir
 )
 shutil.unpack_archive(zip_file_dir, component_docs_dir)
 os.remove(zip_file_dir)
-shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'), 'docs'),
+shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-master-docs'), 'docs'),
             mosaik_heatpump_docs_dir)
-os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-10-improve-documentation-docs'))
+os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-master-docs'))
 
 mosaik_hp_version = mosaik_components.heatpump.__version__
 rst_epilog = ".. |mosaik_hp_version| replace:: v{}".format(mosaik_hp_version)
