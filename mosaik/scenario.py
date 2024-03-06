@@ -39,6 +39,7 @@ from typing_extensions import Literal, TypeAlias, TypedDict
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
 
 from mosaik import simmanager
+from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
 from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
@@ -134,14 +135,15 @@ def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
 
 def connect_interval(src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0):
     ascent, _, common_group = group_path(src_group, dest_group)
-    
+
     pre_length = src_group.depth
     cutoff = pre_length - ascent
     list_tiers = [0] * dest_group.depth
     if weak and not common_group.parent:
-        # TODO: Introduce link to documentation
         raise ScenarioError(
-            "Weak connections may only be used in groups."
+            "Weak connections may only be used in groups. This is new in mosaik 3.3. "
+            "For more information, see "
+            f"{doc_link('scenario-definition', 'weak-connections')}."
         )
     if time_shifted:
         list_tiers[0] = time_shifted
@@ -405,7 +407,7 @@ class World(object):
                 ).setdefault(dest_attr, {})[src.full_id] = initial_data
 
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-    
+
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
         warnings.warn(
             "Connections with async_requests are deprecated. They and the set_data "
@@ -413,17 +415,16 @@ class World(object):
             "connections instead.",
             category=DeprecationWarning,
         )
-        # TODO: Tiered time
         src_sim = self.sims[src._sid]
         dest_sim = self.sims[dest._sid]
         delay = connect_interval(src._group, dest._group)
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
-        # TieredInterval(0) is always minimal, so we dont need
-        # to compare to previous value of input_delays[src_sim]
-        # TODO: Adapt for tiered time
+        # Normally, we would only set the input delay if it is smaller
+        # than whatever is already there. However, in this case, the
+        # new value is the smallest possible, so no test is necessary.
         dest_sim.input_delays[src_sim] = delay
-         
+
     def connect(
         self,
         src: Entity,
@@ -504,7 +505,6 @@ class World(object):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
-        # TODO: Adapt for tiered time
         sim = self.sims[sid]
         sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
@@ -714,7 +714,6 @@ class World(object):
         immediate_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
         for sim in self.sims.values():
             for pred_sim, delay in sim.input_delays.items():
-                # TODO: tiered time
                 if not any(delay.tiers):
                     immediate_graph.add_edge(pred_sim, sim)
         # If there are performance problems, it might be faster to first try sorting

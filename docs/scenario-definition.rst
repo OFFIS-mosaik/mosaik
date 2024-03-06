@@ -377,6 +377,8 @@ You can also set the ``time_shifted`` flag for both connections, in which case y
 Finally, you can set ``time-shifted`` to an integer value instead of ``True``.
 This will delay data along that connection by that many steps.
 
+.. _weak-connections:
+
 Weak connections
 ----------------
 
@@ -419,8 +421,9 @@ Normal (and time-shifted) connections can still be established between simulator
 When a connection leaves a group, the corresponding sub-time is forgotten.
 For example, suppose that simulator *A* is connected to simulator *D* and that it's the start of the simulation.
 As long as *A* is performing steps within the same-time loop, its main time will stay at 0 and only its sub-time will increase.
-As simulator *D*, being outside of *A*'s group, does not see *A*'s sub-time, it will not consider simulator *A*'s step 0 to be done, and simulator *D* therefore will not step.
-Once the same-time loop is over, *A*'s main time will progress and *D* will perform its step.
+Simulator *D*, being outside of *A*'s group, does not see *A*'s sub-time.
+It will not consider simulator *A*'s step 0 to be done, and simulator *D* therefore will not step.
+Once the same-time loop is over, *A*'s main time will progress at which time *D* will see the progress and perform its step.
 
 On the other hand, if *D* were part of *A*'s group (but still connected non-weakly), it would see *A*'s sub-time progress right away and therefore perform its step after *A*'s very first step.
 The decision of whether or not to include a simulator in a group therefore depends on how you want the timing to work.

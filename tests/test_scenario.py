@@ -282,6 +282,14 @@ def test_world_connect_time_shifted(world: World):
     }
 
 
+def test_weak_outside_group(world: World):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    with pytest.raises(ScenarioError) as exc:
+        world.connect(a, b, "val_out", weak=True, initial_data={"val_out": 0})
+    assert "in groups" in str(exc.value)
+
+
 def test_world_get_data(world: World):
     sim1 = world.start('ExampleSim')
     sim2 = world.start('ExampleSim')

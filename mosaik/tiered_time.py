@@ -15,7 +15,9 @@ class TieredInterval:
     cutoff: int
     tiers: tuple[int, ...]
 
-    def __init__(self, *tiers: int, cutoff: int | None = None, pre_length: int | None = None):
+    def __init__(
+        self, *tiers: int, cutoff: int | None = None, pre_length: int | None = None
+    ):
         if cutoff is None:
             cutoff = len(tiers)
         if pre_length is None:
@@ -26,25 +28,28 @@ class TieredInterval:
         object.__setattr__(self, "pre_length", pre_length)
         object.__setattr__(self, "cutoff", cutoff)
         object.__setattr__(self, "tiers", tiers)
-    
+
     def __len__(self) -> int:
         return len(self.tiers)
-    
+
     @property
     def add(self) -> tuple[int, ...]:
-        return self.tiers[0:self.cutoff]
+        return self.tiers[0 : self.cutoff]
 
     @property
     def ext(self) -> tuple[int, ...]:
-        return self.tiers[self.cutoff:]
-    
+        return self.tiers[self.cutoff :]
+
     def __add__(self, other: TieredInterval) -> TieredInterval:
         assert len(self) == other.pre_length
         add = tuple_add(self.add, other.add)
         if self.cutoff >= other.cutoff:
             ext = other.ext
         else:  # self.cutoff is shorter
-            ext = tuple_add(self.ext + ((0,) * len(other.add)), other.add[self.cutoff:]) + other.ext
+            ext = (
+                tuple_add(self.ext + ((0,) * len(other.add)), other.add[self.cutoff :])
+                + other.ext
+            )
         tiers = add + ext
         cutoff = min(self.cutoff, other.cutoff)
         assert len(tiers) == len(other)
@@ -53,8 +58,6 @@ class TieredInterval:
     def __lt__(self, other: TieredInterval):
         assert len(self) == len(other)
         assert self.pre_length == other.pre_length
-        # Without this, comparison is not total, but it might still be
-        # possible with more thought.
         for i, (s, o) in enumerate(zip(self.tiers, other.tiers)):
             s_add_o_ext = other.cutoff <= i < self.cutoff
             o_add_s_ext = self.cutoff <= i < other.cutoff
@@ -67,9 +70,12 @@ class TieredInterval:
                     assert False, f"{self} and {other} are incomparable"
                 return False
         return False
-    
+
     def __repr__(self):
-        return f'{":".join(map(str, self.add))}|{":".join(map(str, self.ext))}({self.pre_length})'
+        return (
+            f"{':'.join(map(str, self.add))}|{':'.join(map(str, self.ext))}"
+            f"({self.pre_length})"
+        )
 
 
 @functools.total_ordering
@@ -94,6 +100,6 @@ class TieredTime:
     @property
     def time(self) -> int:
         return self.tiers[0]
-    
+
     def __repr__(self):
         return f"{':'.join(map(str, self.tiers))}"

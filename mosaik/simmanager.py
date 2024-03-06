@@ -660,7 +660,6 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 "mode."
             )
         if event_time < self.world.until:
-            # TODO: Check whether progress.set is better
             sim.schedule_step(TieredTime(event_time))
         else:
             logger.warning(
