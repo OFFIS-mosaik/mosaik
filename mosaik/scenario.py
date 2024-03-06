@@ -29,7 +29,7 @@ from typing import (
     Union,
 )
 import warnings
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
@@ -37,29 +37,21 @@ from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescr
 from mosaik import simmanager
 from mosaik.dense_time import DenseTime
 from mosaik.proxies import Proxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
 
 
 class MosaikConfig(TypedDict, total=False):
-    addr: Tuple[str, int]
+    addr: Tuple[str, int | None]
     start_timeout: float
     stop_timeout: float
 
-class _MosaikConfigTotal(TypedDict):
-    """A total version for :cls:`MosaikConfig` for internal use.
-    """
-
-    addr: Tuple[str, int]
-    start_timeout: float
-    stop_timeout: float
-
-base_config: _MosaikConfigTotal = {
-    'addr': ('127.0.0.1', 5555),
-    'start_timeout': 10,  # seconds
-    'stop_timeout': 10,  # seconds
+base_config: MosaikConfigTotal = {
+    "addr": ("127.0.0.1", None),
+    "start_timeout": 10,  # seconds
+    "stop_timeout": 10,  # seconds
 }
 
 FULL_ID = simmanager.FULL_ID
@@ -99,7 +91,10 @@ class CmdModel(ModelOptionals):
     by the `host:port` combination to which the simulator should connect."""
 
 
-SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+"""Description of all the simulators you intend to use in your
+simulation.
+"""
 
 
 class World(object):
@@ -132,7 +127,10 @@ class World(object):
     """
 
     sim_config: SimConfig
-    config: _MosaikConfigTotal
+    """The config dictionary that tells mosaik how to start a simulator.
+    """
+    config: MosaikConfigTotal
+    """The config dictionary for general mosaik settings."""
     until: int
     """The time until which this simulation will run."""
     rt_factor: Optional[float]
@@ -154,12 +152,15 @@ class World(object):
     """The progress of the entire simulation (in percent)."""
     use_cache: bool
     loop: asyncio.AbstractEventLoop
-    incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
     _sim_ids: Dict[ModelName, itertools.count[int]]
 
     entity_graph: networkx.Graph[FullId]
+    """The :class:`graph <networkx.Graph>` of related entities.
+    Nodes are ``(sid, eid)`` tuples. Each note has an attribute
+    *entity* with an :class:`Entity`.
+    """
 
     def __init__(
         self,
@@ -172,10 +173,8 @@ class World(object):
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         self.sim_config = sim_config
-        """The config dictionary that tells mosaik how to start a simulator."""
 
         self.config = copy(base_config)
-        """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
 
@@ -189,35 +188,8 @@ class World(object):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-        # When simulators are started using `cmd`, they will connect
-        # back to mosaik using a TCP connection. Here we start the
-        # server that accepts these connections. Whenever an external
-        # simulator connects, a Channel is created from the 
-        # (reader, writer) pair and written to the 
-        # incoming_connections_queue so that the function starting the
-        # simulator can .get() the connection information.
-        async def setup_queue() -> asyncio.Queue[Channel]:
-            return asyncio.Queue()
-        self.incoming_connections_queue = self.loop.run_until_complete(setup_queue())
-
-        async def connected_cb(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-            await self.incoming_connections_queue.put(Channel(reader, writer))
-
-        self.server = self.loop.run_until_complete(
-            asyncio.start_server(
-                connected_cb,
-                self.config['addr'][0],
-                self.config['addr'][1],
-            )
-        )
-
         self.entity_graph = networkx.Graph()
-        """The :func:`graph <networkx.Graph>` of related entities. Nodes are
-        ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
-        :class:`Entity`."""
-
         self.sim_progress = 0
-        """Progress of the current simulation (in percent)."""
 
         self._debug = False
         if debug:
@@ -678,9 +650,6 @@ class World(object):
         """
         Shut-down all simulators and close the server socket.
         """
-        if self.server.is_serving():
-            self.server.close()
-
         if not self.loop.is_closed():
             for sim in self.sims.values():
                 self.loop.run_until_complete(sim.stop())
@@ -807,9 +776,9 @@ def parse_attrs(
         inconsistent
     """
     error_template = (
-            "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
-            "if you need both types of %s attributes), and they must list all their "
-            "attrs as %s if that key is present"
+        "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
+        "if you need both types of %s attributes), and they must list all their "
+        "attrs as %s if that key is present"
     )
     
     if model_desc.get('any_inputs', False):
@@ -817,9 +786,16 @@ def parse_attrs(
     else:
         inputs = wrap_set(model_desc.get('attrs'))
     empty: FrozenSet[Attr] = frozenset()
-    default_measurements = empty if type == 'event-based' else None
+    if type == 'time-based':
+        default_measurements = None
+        default_events = empty
+    elif type == 'event-based':
+        default_measurements = empty
+        default_events = None
+    elif type == 'hybrid':
+        default_measurements = None if 'trigger' in model_desc else inputs
+        default_events = None
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = None if type == 'event-based' else empty
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
@@ -889,12 +865,18 @@ class ModelMock(object):
         model_desc = proxy.meta['models'][model]
         self.params = frozenset(model_desc.get('params', []))
 
-        (
-            self.measurement_inputs,
-            self.event_inputs,
-            self.measurement_outputs,
-            self.event_outputs,
-        ) = parse_attrs(model_desc, self._factory.type)
+        try:
+            (
+                self.measurement_inputs,
+                self.event_inputs,
+                self.measurement_outputs,
+                self.event_outputs,
+            ) = parse_attrs(model_desc, self._factory.type)
+        except ValueError as e:
+            raise ValueError(
+                f"while parsing the model description of model {model} of the "
+                f"simulator {factory._sid}: {e}"
+            )
 
     @property
     def input_attrs(self) -> InOrOutSet[Attr]:

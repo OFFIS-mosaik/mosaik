@@ -102,7 +102,7 @@ environment variables. That could look like this:
   new sub-process for the simulator.
 
   You can use the placeholder ``%(python)s`` to use the same Python interpreter
-  and virtualenv that mosaik currently uses (see :attr:`sys.executable`).
+  and virtualenv that mosaik currently uses (see :data:`sys.executable`).
 
   In order to create a socket connection to mosaik the simulator needs to know
   the address of mosaik's server socket. Mosaik will pass this address (in the

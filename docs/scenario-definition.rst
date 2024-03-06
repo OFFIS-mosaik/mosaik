@@ -608,12 +608,13 @@ that you created in your scenario. You can use these graphs, for example, to
 export the simulation topology that mosaik created into a custom data or file
 format.
 
-:attr:`World.df_graph` is the directed *dataflow graph* for your scenarios. It
-contains a node for every simulator that you started. The simulator ID is used
-to label the nodes. If you established a data-flow between two simulators (by
-connecting at least two of their entities), a directed edge between two nodes
-is inserted.  The edges contain a list of the data-flows as well as the
-*async_requests*, *time_shifted*, and *weak* flags
+**This is outdated; mosaik now stored information about the data flow
+differently.** ``World.df_graph`` is the directed *dataflow graph* for your
+scenarios. It contains a node for every simulator that you started. The
+simulator ID is used to label the nodes. If you established a data-flow between
+two simulators (by connecting at least two of their entities), a directed edge
+between two nodes is inserted.  The edges contain a list of the data-flows as
+well as the *async_requests*, *time_shifted*, and *weak* flags
 (see :ref:`cyclic_data-flows`) and the *trigger* and *pred_waiting* flags.
 
 The data-flow graph may, for example, look like this:

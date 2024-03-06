@@ -59,7 +59,12 @@ class OutSet(Generic[E]):
         return item not in self._set
 
     def __eq__(self, other: Self):
+        if other.__class__ != OutSet:
+            return False
         return self._set == other._set
+
+    def __str__(self):
+        return f"OutSet({{{', '.join(self._set)}}})"
 
 
 InOrOutSet: TypeAlias = Union[FrozenSet[E], OutSet[E]]
@@ -106,12 +111,15 @@ def parse_set_triple(
         part_b = union - part_a
 
     if not part_a & part_b == frozenset():
-        raise ValueError(f"{part_a_name} and {part_b_name} are not disjoint")
+        raise ValueError(
+            f"{part_a_name} ({part_a}) and {part_b_name} ({part_b}) are not disjoint"
+        )
 
     if not union == (part_a | part_b):
         raise ValueError(
-            f"{part_a_name} and {part_b_name} must be subsets of {union_name}, "
-            f"and they must have {union_name} as their union if both given"
+            f"{part_a_name} ({part_a}) and {part_b_name} ({part_b}) must be subsets "
+            f"of {union_name} ({union}), and they must have {union_name} as their "
+            f"union if both given"
         )
 
     return part_a, part_b

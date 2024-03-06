@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 from asyncio import StreamReader, StreamWriter
 from loguru import logger
 import pytest
 import sys
 import time
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, Type, cast
 
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3 import Meta, __api_version__ as api_version
@@ -141,12 +143,30 @@ def test_start_proc_timeout_accept(world, caplog):
     )
 
 
+@pytest.mark.asyncio
+async def test_start_proc_no_port_conflict():
+    mosaik_config: scenario.MosaikConfigTotal = {
+        "addr": ("0.0.0.0", None),
+        "start_timeout": 0,
+        "stop_timeout": 1,
+    }
+    mosaik_remote = cast(simmanager.MosaikRemote, None)
+    exc_1, exc_2 = await asyncio.gather(
+        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": "true"}, mosaik_remote),
+        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": "true"}, mosaik_remote),
+        return_exceptions=True,
+    )
+    # We should get `SimulationError`s here, not `OSError`s
+    assert isinstance(exc_1, SimulationError)
+    assert isinstance(exc_2, SimulationError)
+
+
 @pytest.mark.cmd_process
 def test_start_external_process_with_environment_variables(world, tmpdir):
     """
     Assert that you can set environment variables for a new sub-process.
     """
-    # Replace sim_config for this test:
+    # Replace sim_config for this test:z
     print(tmpdir.strpath)
     world.sim_config = {
         "SimulatorMockTmp": {
@@ -523,24 +543,21 @@ def test_mosaik_remote(
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
         edges = [("X.%s" % x, "X.%s" % y) for x, y in edges]
-        # world.df_graph.add_edge("X", "X", async_requests=True)
-        # world.df_graph.add_edge("Y", "X", async_requests=False)
-        # world.df_graph.add_node("Z")
         world.entity_graph.add_edges_from(edges)
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim="ExampleSim", type="A")
         world.sim_progress = 23
 
-        async def simulator():
-            reader, writer = await asyncio.open_connection("localhost", 5555)
+        async def simulator(host: str, port: int):
+            reader, writer = await asyncio.open_connection(host, port)
             channel = mosaik_api_v3.connection.Channel(reader, writer)
             try:
                 await rpc(channel, world)
             finally:
                 await channel.close()
 
-        async def greeter():
-            channel = await world.incoming_connections_queue.get()
+        async def greeter(channel_future: asyncio.Future[Channel]):
+            channel = await channel_future
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             sim_x = simmanager.SimRunner("X", proxy_x)
@@ -555,6 +572,8 @@ def test_mosaik_remote(
                 @property
                 def meta(self):
                     return {"type": "time-based", "models": {}}
+                async def stop(self):
+                    pass
             sim_y = simmanager.SimRunner("Y", DummyProxy())
             world.sims["Y"] = sim_y
             sim_z = simmanager.SimRunner("Z", DummyProxy())
@@ -564,11 +583,16 @@ def test_mosaik_remote(
             
 
         async def run():
-            sim_exc, greeter_exc = await asyncio.gather(
-                simulator(),
-                greeter(),
-                return_exceptions=True,
-            )
+            channel_future: asyncio.Future[Channel] = asyncio.Future()
+            async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
+                channel_future.set_result(Channel(r, w))
+            async with await asyncio.start_server(on_connect, "0.0.0.0") as server:
+                actual_addr = server.sockets[0].getsockname()
+                sim_exc, greeter_exc = await asyncio.gather(
+                    simulator(*actual_addr),
+                    greeter(channel_future),
+                    return_exceptions=True,
+                )
             assert greeter_exc is None
             if sim_exc:
                 raise sim_exc
@@ -580,9 +604,7 @@ def test_mosaik_remote(
             world.loop.run_until_complete(run())
 
     finally:
-        world.loop.run_until_complete(world.sims["X"].stop())
-        world.server.close()
-        world.loop.close()
+        world.shutdown()
 
 
 def test_timed_input_buffer():
