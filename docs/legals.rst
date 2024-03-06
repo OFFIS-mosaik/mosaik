@@ -19,9 +19,7 @@ Legals
 
 | Prof. Dr. Sebastian Lehnhoff (Chairman)
 | Prof. Dr. techn. Susanne Boll-Westermann
-| Prof. Dr.-Ing. Axel Hahn
 | Prof. Dr.-Ing. Andreas Hein
-| Prof. Dr.-Ing. Wolfgang H. Nebel
 
 
 **Register Court**

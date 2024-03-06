@@ -99,7 +99,7 @@ the connection between ExampleSim and ExampleSim2 is only marked as weak, not as
 
 If we add back the timeshift parameter, we get an additional arrow from ExampleSim to ExampleSim2. That 
 is because the data from ExampleSim is used in ExampleSim2 in a timeshifted manner, i.e., from the previous 
-step. This is the :doc:`Gauss-Seidel scheme<../scheduler#cyclic-data-flows>`.
+step. This is the :ref:`Gauss-Seidel scheme <cyclic_data_flows>`.
 
 .. figure:: /_static/graphs/execution_graph_timeshifted_weak.png
    :width: 100%
@@ -120,7 +120,9 @@ uses comparatively more time than the ExampleSim simulators.
 Execution time per simulator
 ============================
 The execution time can also be plotted over the simulation steps per simulator, as can be seen 
-in the figure below.
+in the figure below. You can also set the parameter `plot_per_simulator=True`. In that case,
+the plots for the different are separated. This is especially useful if the simulators have 
+different step sizes.
 
 .. figure:: /_static/graphs/execution_time_simulator.png
    :width: 100%

@@ -154,6 +154,7 @@ Mosaik will also produce some diagnostic output along the lines of
 If you don't want the progress bar, you can run the simulation with
 
 .. code-block:: python
+
    world.run(until=END, print_progress=False)
 
 instead. For even more progress bars, set ``print_progress='individual'``, instead.

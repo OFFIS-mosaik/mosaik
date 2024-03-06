@@ -120,7 +120,7 @@ init()
 ======
 
 This method will be called exactly once while the simulator is being started
-via :meth:`World.start()`.
+via :meth:`World.start <mosaik.scenario.World.start>`.
 It is used for additional initialization tasks (e.g., it can handle parameters
 that you pass to a simulator in your scenario definition). It must return the
 meta data dictionary ``self.meta``:
@@ -199,7 +199,8 @@ In this example, the *inputs* could be something like this:
            'delta': {'src_id_0': 23},
        },
        'Model_1':
-           'delta': {'src_id_1': 42},‘val’ :{ 'src_id_1': 20},
+           'delta': {'src_id_1': 42},
+           'val': {'src_id_1': 20},
        },
    }
 

@@ -144,7 +144,7 @@ run_docker_production:
     - python setup.py sdist bdist_wheel
     - twine check dist/*
     - echo $PYPI_USER
-    - twine upload --repository-url "$REPOSITORY_URL" --username $MOSAIK_PYPI_USER --password $MOSAIK_PYPI_PASSWORD dist/*
+    - twine upload --repository-url "$REPOSITORY_URL" --username $TWINE_USERNAME --password $TWINE_PASSWORD dist/*
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -156,6 +156,7 @@ pypi_test:
   stage: pre_release
   variables:
     REPOSITORY_URL: https://test.pypi.org/legacy/
+    TWINE_PASSWORD: $MOSAIK_TEST_PYPI_TOKEN
 
 # Release the newly tagged version of mosaik on pypi.
 pypi_release:
@@ -163,6 +164,7 @@ pypi_release:
   stage: release
   variables:
     REPOSITORY_URL: https://upload.pypi.org/legacy/
+
 
 # Build a docker container with the new mosaik version and publish it in the GitLab docker regitry
 build_docker_tag:

@@ -34,11 +34,13 @@ from time import sleep
 logger = logging.getLogger('test_simulator')
 
 
-sim_meta = {
+sim_meta: mosaik_api_v3.Meta = {
+    'api_version': '3.0',
+    'type': 'time-based',
     'models': {
         'A': {
             'public': True,
-            'params': [],
+            'params': ['extra_info'],
             'attrs': ['val_in', 'trigger_in', 'val_out', 'never_out'],
         },
     },
@@ -76,7 +78,7 @@ class TestSim(mosaik_api_v3.Simulator):
             self.meta['models']['A']['trigger'] = trigger
 
         if step_type == 'hybrid':
-            self.meta['models']['A']['persistent'] = ['val_out']
+            self.meta['models']['A']['non-persistent'] = []
 
         self.events = {float(key): val for key, val in events.items()}
         if events:
@@ -84,11 +86,14 @@ class TestSim(mosaik_api_v3.Simulator):
 
         return self.meta
 
-    def create(self, num, model):
+    def create(self, num, model, extra_info=None):
         n_entities = len(self.entities)
         new_entities = [str(eid) for eid in range(n_entities, n_entities + num)]
         self.entities.extend(new_entities)
-        return [{'eid': eid, 'type': model} for eid in new_entities]
+        return [
+            {'eid': eid, 'type': model, 'extra_info': extra_info}
+            for eid in new_entities
+        ]
 
     def step(self, time, inputs, max_advance):
         self.time = time
@@ -138,11 +143,14 @@ class TestSim(mosaik_api_v3.Simulator):
         return f"method_b({val})"
 
     def event_setter(self):
-        self.event_setter_wait = asyncio.Event()
-        yield self.event_setter_wait.wait()
         last_time = 0
+        wait_event = asyncio.Event()
+        self.event_setter_wait = wait_event
+        yield wait_event.wait()
         for real_time, event_time in self.events.items():
+            print(f"Wait until {real_time - last_time}")
             yield asyncio.sleep(real_time - last_time)
+            print(f"reached, setting event")
             yield self.mosaik.set_event(event_time)
             last_time = real_time
 

@@ -4,9 +4,10 @@ Scenario 24:
 
 This scenario tests for chained cyclic dependencies.
 """
+from mosaik import World
 
 
-def create_scenario(world):
+def create_scenario(world: World):
     model_a = world.start('A', step_type='event-based', self_steps={0: 4},
                           output_timing={0: 0}).A()
     model_b = world.start('B', step_type='event-based', self_steps={0: 2},
@@ -25,14 +26,14 @@ EXECUTION_GRAPH = """
 A-0-0 A-0-4
 A-0-0 B-0-0
 B-0-0 B-0-2
-B-0-2 A-0-2
+B-0-2 A-0-2~1
 B-0-2 C-0-2
 C-0-2 B-0-2~1
 """
 
 INPUTS = {
     'B-0-0': {'0': {'val_in': {'A-0.0': 0}}},
-    'A-0-2': {'0': {'val_in': {'B-0.0': 2}}},
+    'A-0-2~1': {'0': {'val_in': {'B-0.0': 2}}},
     'C-0-2': {'0': {'val_in': {'B-0.0': 2}}},
     'B-0-2~1': {'0': {'val_in': {'C-0.0': 2}}},
 }
