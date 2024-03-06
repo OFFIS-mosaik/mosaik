@@ -5,14 +5,12 @@ from __future__ import annotations
 
 import asyncio
 from heapq import heappop
-from sys import stderr
 from loguru import logger
 from math import ceil
 from time import perf_counter
 
 from mosaik_api_v3 import InputData, SimId, Time
 
-from mosaik.dense_time import DenseTime
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import recursive_merge_all, recursive_merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner

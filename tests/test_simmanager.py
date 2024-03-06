@@ -15,7 +15,6 @@ import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
-from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.tiered_time import TieredInterval, TieredTime

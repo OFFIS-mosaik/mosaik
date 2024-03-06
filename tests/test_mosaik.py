@@ -18,7 +18,6 @@ import pytest
 from tqdm import tqdm
 
 from mosaik import scenario, _debug
-from mosaik.dense_time import DenseTime
 from mosaik.tiered_time import TieredTime
 
 VENV = os.path.dirname(sys.executable)

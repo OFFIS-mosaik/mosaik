@@ -13,7 +13,6 @@ from mosaik_api_v3 import InputData, SimId
 import networkx as nx
 
 from mosaik import scheduler
-from mosaik.dense_time import DenseTime
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import TieredInterval, TieredTime

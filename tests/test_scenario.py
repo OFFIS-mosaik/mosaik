@@ -3,7 +3,6 @@ from typing import List, cast
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.dense_time import DenseTime
 from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
 import pytest
@@ -216,7 +215,7 @@ def test_world_connect_no_attrs(world: World):
 
     sim_0.successors = set((sim_1,))
     sim_1.successors = set()
-    sim_1.input_delays = {sim_0: DenseTime(0)}
+    sim_1.input_delays = {sim_0: TieredInterval(0)}
     assert world.entity_graph.adj == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
