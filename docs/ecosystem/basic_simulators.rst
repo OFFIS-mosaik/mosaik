@@ -1,5 +1,6 @@
-|mosaik| mosaik basic simulators
-================================
+.. _basic simulators:
+
+|mosaik| **basic simulators**
 
 In order to test custom-made simulators, two basic simulators are provided to use and connect to.
 
@@ -18,5 +19,3 @@ After the simulation is done, the dictionary including the values received by th
 .. literalinclude:: code/basic_simulators_example_usage.py
    :start-after: # START_INCLUDE_SECTION
    :end-before: # END_INCLUDE_SECTION
-
-.. _external_components:

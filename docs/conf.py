@@ -14,6 +14,41 @@
 
 from typing import cast
 import mosaik
+import mosaik_components.heatpump
+import sphinx_rtd_theme
+from urllib.request import urlretrieve
+import os
+import shutil
+
+# Create a directory for the documentation of components of the mosaik ecosystem.
+component_docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ecosystem', 'components')
+os.makedirs(component_docs_dir, exist_ok=True)
+
+# Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
+# Files will be downloaded and integrated in mosaik documentation.
+
+# Install mosaik-heatpump to allow integration of documentation from the code.
+os.system('pip uninstall mosaik-heatpump -y')
+os.system('pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git')
+# Create a directory for the mosaik-heatpump documentation
+mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, 'mosaik-heatpump')
+if os.path.exists(mosaik_heatpump_docs_dir):
+    shutil.rmtree(mosaik_heatpump_docs_dir)
+# Download documentation from mosaik-heatpump repository.
+zip_file_dir = os.path.join(component_docs_dir, "doc.zip")
+urlretrieve (
+   "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/master/mosaik-heatpump-master.zip?path=docs",
+   zip_file_dir
+)
+shutil.unpack_archive(zip_file_dir, component_docs_dir)
+os.remove(zip_file_dir)
+shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-master-docs'), 'docs'),
+            mosaik_heatpump_docs_dir)
+os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-master-docs'))
+
+mosaik_hp_version = mosaik_components.heatpump.__version__
+rst_epilog = ".. |mosaik_hp_version| replace:: v{}".format(mosaik_hp_version)
+
 # -- General configuration ----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -295,7 +330,7 @@ def linkcode_resolve(domain, info):
     # Turn the module name into the URL on gitlab
     module = cast(str, info["module"])
     filename = module.replace(".", "/")
-
+    
     init_modules = {"mosaik", "mosaik_api_v3"}
     if info["module"] in init_modules:
         filename += "/__init__"

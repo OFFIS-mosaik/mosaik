@@ -4,7 +4,7 @@ mosaik ecosystem
 
 Mosaik as a co-simulation tool organizes the data exchange between simulators
 and coordinates the execution of the connected simulaters. This part is called
-|mosaik| :ref:`mosaik_core` and contains mosaik itself and APIs for multiple
+|mosaik| `mosaik-core`_ and contains mosaik itself and APIs for multiple
 programming languages.
 
     .. figure:: /_static/mosaik-ecosystem.*
@@ -21,25 +21,28 @@ programming languages.
 Mosaik-core without any connected simulators doesn't do much. This is why we
 provide some simple and free simulators so that it is possible to start with
 a working Smart-Grid simulation. These simulators belong to a part of mosaik's ecosystem called
-|mosaik| :ref:`mosaik_components`.
+|mosaik| `mosaik-components`_. More detailed documentation for some components can be found in the 
+|mosaik| `component documentation`_.
 
 To see how these components can be coupled to simulations, also some example scenarios are
-provided in |mosaik| :ref:`mosaik_examples`.
+provided in |mosaik| `mosaik-examples`_.
 
 Mosaik is developed following the "lean and mean" principle. That means that we
 try to keep the software as simple as possible in order to keep it efficient
 and easy to maintain.  In order to make it easier to set up and run experiments with
 mosaik we provide some tools that help building scenarios, connecting
 simulators or to visualize and analyze the simulation results. These tools are
-located in the |mosaik| :ref:`mosaik_tools`-library.
+located in the |mosaik| `mosaik-tools`_.
+
+For testing simulators or scenarios, mosaik provides some |mosaik| `basic simulators`_,
+which allow to specify specific data to be sent.
 
 There are also some implementations done by external users of mosaik. We give an overview
-of the |mosaik| :ref:`external_components` and |mosaik| :ref:`external_scenarios` we know here.
+of the |mosaik| `external components`_ and |mosaik| `external scenarios`_ we know.
 
-.. _mosaik_core:
+.. _mosaik-core:
 
-|mosaik| mosaik-core
-====================
+|mosaik| **mosaik-core** 
 
 The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the high-level API implementations are
 provided in the `API folder <https://gitlab.com/mosaik/api>`_.
@@ -53,10 +56,10 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `API for Matlab via Java <https://gitlab.com/mosaik/api/mosaik-api-matlab-over-java>`_
 - `API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`_
 
-.. _mosaik_components:
+.. _mosaik-components:
 
-|mosaik| mosaik-components
-==========================
+|mosaik| **mosaik-components**
+
 This lists the mosaik components that are available on pypi. There are always component in work that are not released yet but are in working condition so if you don't find what you are searching for here take a look in the repository.
 
 - `energy <https://gitlab.com/mosaik/components/energy>`_ related components:
@@ -73,7 +76,8 @@ This lists the mosaik components that are available on pypi. There are always co
       analysis library. Not maintained anymore, please install the `mosaik-pandapower2 <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2>`_ adapter.
 
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
-      contains different models for simulation of heatpumps.
+      contains different models for simulation of heatpump systems (detailled documentation
+      can be found :doc:`here <./components/mosaik-heatpump/overview>`).
 
     - `mosaik-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
       is a simple PV Simulator based on PyPVSim.
@@ -129,10 +133,24 @@ This lists the mosaik components that are available on pypi. There are always co
 - `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_ allows to couple Functional Mockup Units (FMU),
   which are based on the `FMI standard <https://fmi-standard.org>`_.
     
-.. _mosaik_examples:
+.. _component documentation:
 
-|mosaik| mosaik-examples
-========================
+|mosaik| **component documentation**
+
+The components listed above and provided by the mosaik team, have usually a documentation directly in their repository.
+For components which need a more detailled documentation to describe how they work, the documentation is integrated here:
+
+- :doc:`mosaik-heatpump <./components/mosaik-heatpump/overview>`
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   components/mosaik-heatpump/overview
+    
+.. _mosaik-examples:
+
+|mosaik| **mosaik-examples**
 
 - The `mosaik-demo <https://gitlab.com/mosaik/examples/mosaik-demo>`_
   contains a simple demo scenario for mosaik.
@@ -151,24 +169,19 @@ This lists the mosaik components that are available on pypi. There are always co
 
 - The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains python notebooks with example scenraios that can be executed on mybinder.
 
-.. _mosaik_tools:
+.. _mosaik-tools:
 
-|mosaik| mosaik-tools
-=====================
+|mosaik| **mosaik-tools**
 
 - `icons for the energy domain <https://gitlab.com/mosaik/tools/energy-icons>`_
 - `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`_ is a visualization component, which is
   not maintained anymore.
 
-
-|mosaik| mosaik simulators
-==========================
-
 .. include:: basic_simulators.rst
 
+.. _external components:
 
-|mosaik| external components
-============================
+|mosaik| **external components**
 
 These components are developed by external users of mosaik and we can not guarantee or support
 the flawless integration of these tools with mosaik.
@@ -200,10 +213,12 @@ feel free to contact us at `mosaik [ A T ] offis.de <mosaik@offis.de>`_ to be li
   `palaestrAI <https://palaestr.ai>`_ (an universal framework for multi-agent artificial intelligence)
   into mosaik.
 
-.. _external_scenarios:
+- `QEMS - Quarter Energy Management System <https://gitlab.com/qems/scenarios>`_ contains simulation components,
+  which are used to simulate an energy management system for neighborhoods for analyzing and optimizing energy flows.
 
-|mosaik| external scenarios
-============================
+.. _external scenarios:
+
+|mosaik| **external scenarios**
 
 These scenarios are developed by external users of mosaik and we can not guarantee or support
 the flawless practicability.
@@ -217,3 +232,8 @@ the flawless practicability.
 
 - `ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`_ contains the research and development of digitalized
   energy systems in ZLE using mosaik (collection of simulation scenarios).
+
+- `QEMS - Quarter Energy Management System Scenarios <https://gitlab.com/qems/scenarios>`_ contains scenarios of an energy 
+  management system for neighborhoods for analyzing and optimizing energy flows.
+
+.. |mosaik| image:: /_static/favicon.png
