@@ -88,7 +88,6 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
         pre = pre_sim.sid
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
             pre_node: Optional[Tuple[str, TieredTime]] = None
-            # TODO: Better pre_time calculation
             pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
             # We check for all nodes if it is from the predecessor and it its
             # step time is before the current step of sim. There might be cases
