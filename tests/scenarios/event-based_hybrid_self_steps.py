@@ -17,13 +17,13 @@ def create_scenario(world):
 CONFIG = 'generic'
 
 EXECUTION_GRAPH = """
-A-0-0 A-0-2
-C-0-0 C-0-3
+A-0~0 A-0~2
+C-0~0 C-0~3
 """
 
 INPUTS = {
-    'C-0-0': {},
-    'C-0-3': {},
+    'C-0~0': {},
+    'C-0~3': {},
 }
 
 UNTIL = 4

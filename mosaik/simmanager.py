@@ -41,17 +41,17 @@ from typing_extensions import Literal, TypeAlias, TypedDict
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
-from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
+from mosaik.tiered_time import TieredInterval, TieredTime
 
 if 'Windows' in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import World
+    from mosaik.scenario import World, ConnectModel, PythonModel, CmdModel
 
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
@@ -286,7 +286,7 @@ async def start_proc(
 async def start_connect(
     mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config,
+    sim_config: ConnectModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -339,34 +339,38 @@ class SimRunner:
     """The actual proxy for this simulator."""
 
     # Connection setup
-    input_delays: Dict[SimRunner, DenseTime]
+    input_delays: Dict[SimRunner, TieredInterval]
     """For each simulator that provides data to this simulator, the
     minimum over all input delays. This is used while waiting for
-    dependencies."""
-    triggers: Dict[Port, List[Tuple[SimRunner, DenseTime]]]
+    dependencies.
+    """
+    triggers: Dict[Port, List[Tuple[SimRunner, TieredInterval]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
     edge.
     """
-    successors: Set[SimRunner]
-    successors_to_wait_for: Set[SimRunner]
-    triggering_ancestors: List[Tuple[SimRunner, DenseTime]]
+    successors: Dict[SimRunner, TieredInterval]
+    successors_to_wait_for: Dict[SimRunner, TieredInterval]
+    triggering_ancestors: Dict[SimRunner, TieredInterval]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, Time], Set[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredInterval], Set[Tuple[Port, Port]]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.
     """
-    output_to_push: Dict[Port, List[Tuple[SimRunner, int, Port]]]
+    output_to_push: Dict[Port, List[Tuple[SimRunner, TieredInterval, Port]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-time-entity-attribute triples
     describing the destinations for that data and the time-shift
     occuring along the connection.
     """
+
+    to_world_time: TieredInterval
+    from_world_time: TieredInterval
 
     output_request: OutputRequest
 
@@ -383,25 +387,25 @@ class SimRunner:
     `perf_counter()`."""
     started: bool
 
-    next_steps: List[DenseTime]
+    next_steps: List[TieredTime]
     """The scheduled next steps this simulator will take, organized as a heap.
     Once the immediate next step has been chosen (and the `has_next_step` event
     has been triggered), the step is moved to `next_step` instead."""
     newer_step: asyncio.Event
-    next_self_step: Optional[Time]
+    next_self_step: Optional[TieredTime]
     """The next self-scheduled step for this simulator."""
 
-    progress: Progress[DenseTime]
+    progress: Progress
     """This simulator's progress in mosaik time.
 
     This simulator has done all its work before time `progress`, so
     other simulator can rely on this simulator's output until this time.
     """
-    last_step: DenseTime
+    last_step: TieredTime
     """The most recent step this simulator performed."""
-    current_step: Optional[DenseTime]
+    current_step: Optional[TieredTime]
 
-    output_time: DenseTime
+    output_time: TieredTime
     """The output time associated with `data`. Usually, this will be equal to
     `last_step` but simulators may specify a different time for their output."""
     data: OutputData
@@ -416,6 +420,7 @@ class SimRunner:
         self,
         sid: SimId,
         connection: Proxy,
+        depth: int = 1,
     ):
         self.sid = sid
         self._proxy = connection
@@ -424,21 +429,25 @@ class SimRunner:
         self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
-        self.last_step = DenseTime(-1)
+        self.last_step = TieredTime(-1, *([0] * (depth - 1)))
         self.current_step = None
         if self.type != 'event-based':
-            self.next_steps = [DenseTime(0)]
+            self.next_steps = [TieredTime(*([0] * depth))]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress = Progress(DenseTime(0))
+        self.progress = Progress(TieredTime(*([0] * depth)))
+
+        self.to_world_time = TieredInterval(0, cutoff=1, pre_length=depth)
+        self.from_world_time = TieredInterval(*([0] * depth), cutoff=1, pre_length=1)
+
         self.inputs_from_set_data = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
 
-        self.successors_to_wait_for = set()
-        self.successors = set()
-        self.triggering_ancestors = []
+        self.successors_to_wait_for = {}
+        self.successors = {}
+        self.triggering_ancestors = {}
         self.triggers = {}
         self.output_to_push = {}
         self.pulled_inputs = {}
@@ -453,18 +462,18 @@ class SimRunner:
 
         self.outputs = None
 
-    def schedule_step(self, dense_time: DenseTime):
+    def schedule_step(self, tiered_time: TieredTime):
         """Schedule a step for this simulator at the given time. This
         will trigger a re-evaluation whether this simulator's next
         step is settled, provided that the new step is earlier than the
         old one and the simulator is currently awaiting it's next
         settled step.
         """
-        if dense_time in self.next_steps:
-            return dense_time
+        if tiered_time in self.next_steps:
+            return tiered_time
 
-        is_earlier = not self.next_steps or dense_time < self.next_steps[0]
-        hq.heappush(self.next_steps, dense_time)
+        is_earlier = not self.next_steps or tiered_time < self.next_steps[0]
+        hq.heappush(self.next_steps, tiered_time)
         if is_earlier:
             self.newer_step.set()
 
@@ -651,8 +660,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 "mode."
             )
         if event_time < self.world.until:
-            # TODO: Check whether progress.set is better
-            sim.schedule_step(DenseTime(event_time, 0))
+            sim.schedule_step(TieredTime(event_time))
         else:
             logger.warning(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "

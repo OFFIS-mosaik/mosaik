@@ -4,4 +4,5 @@
     "reportUninitializedInstanceVariable": "warning",
     "reportUnnecessaryIsInstance": "none",
     "reportUnusedImport": "warning",
+    "reportPrivateUsage": "none",
 }

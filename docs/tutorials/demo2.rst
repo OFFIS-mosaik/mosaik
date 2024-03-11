@@ -11,7 +11,7 @@ Again, we start by setting some configuration values and creating a simulation
 world:
 
 .. literalinclude:: code/demo_2.py
-   :lines: 1-21
+   :end-before: End: Create World
 
 We added *ExampleCtrl* to the sim config and let it be executed in-process
 with mosaik.
@@ -19,12 +19,14 @@ with mosaik.
 We can now start one instance of each simulator:
 
 .. literalinclude:: code/demo_2.py
-   :lines: 23-26
+   :start-at: Start simulators
+   :end-before: End: Start simulators
 
 We'll create three model instances, the same number of agents, and one database:
 
 .. literalinclude:: code/demo_2.py
-   :lines: 28-31
+   :start-at: Instantiate models
+   :end-before: End: Instantiate models
 
 We use a `list comprehension`__ to create three model instances with individual
 initial values (-2, 0 and 2). For instantiating the same number of agent
@@ -37,7 +39,8 @@ Finally we establish pairwise bi-directional connections between the models
 and the agents:
 
 .. literalinclude:: code/demo_2.py
-   :lines: 33-36
+   :start-at: Connect entities
+   :end-before: End: Connect entities
 
 The important thing here is the ``weak=True`` argument that we pass to the
 second connection. This tells mosaik how to resolve the cyclic dependency, i.e.
@@ -48,7 +51,7 @@ agents are only stepped by the models' outputs.)
 Finally, we can connect the models and the agents to the monitor and run the simulation:
 
 .. literalinclude:: code/demo_2.py
-   :lines: 38-42
+   :start-at: Connect to monitor
 
 In the printed output of the collector, you can see two important things: The
 first is that the agents only provide output when the delta of the controlled

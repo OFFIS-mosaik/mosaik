@@ -6,8 +6,10 @@ import importlib
 import gc
 import glob
 import os
+import sys
 import time
-from typing import Dict, List, Tuple
+from types import ModuleType
+from typing import Any, Dict, List, Tuple
 import warnings
 
 from loguru import logger
@@ -16,17 +18,21 @@ import pytest
 from tqdm import tqdm
 
 from mosaik import scenario, _debug
-from mosaik.dense_time import DenseTime
+from mosaik.tiered_time import TieredTime
 
+VENV = os.path.dirname(sys.executable)
 
-sim_config: Dict[str, scenario.SimConfig] = {
+SIM_CONFIG: Dict[str, scenario.SimConfig] = {
     'local': {
         **{char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'},
         'MAS': {'python': 'example_mas.mosaik:ExampleMas'}
     },
     'remote': {
-        **{char: {'cmd': 'pyexamplesim %(addr)s'} for char in 'ABCDE'},
-        'MAS': {'cmd': 'pyexamplemas %(addr)s'}
+        **{
+            char: {'cmd': f'{VENV}/pyexamplesim %(addr)s'}
+            for char in 'ABCDE'
+        },
+        'MAS': {'cmd': f'{VENV}/pyexamplemas %(addr)s'}
     },
     'generic': {
         **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
@@ -54,29 +60,36 @@ sim_config: Dict[str, scenario.SimConfig] = {
 # and where it is necessary with remote simulators to save some time (starting
 # procs is quite expensive).
 
-test_cases = [os.path.basename(file)[0:-3]  # remove ".py" at the end
-              for file in os.listdir('tests/scenarios')
-              if not file.startswith('__')]
+test_cases: List[Any] = []
+for file in os.listdir('tests/scenarios'):
+    if not file.startswith('__'):
+        scenario_name = os.path.basename(file)[0:-3]  # remove ".py" at the end
+        scenario_desc = importlib.import_module(f"tests.scenarios.{scenario_name}")
+        test_cases.append(
+            pytest.param(scenario_desc, marks=[
+                *([pytest.mark.weak] if getattr(scenario_desc, "WEAK", False) else []),
+            ])
+        )
 
 
 @pytest.mark.filterwarnings("ignore:Connections with async_requests")
-@pytest.mark.parametrize('scenario_name', test_cases)
+@pytest.mark.parametrize('scenario_desc', test_cases)
 @pytest.mark.parametrize('cache', [True, False])
-def test_mosaik(scenario_name: str, cache: bool):
+def test_mosaik(scenario_desc: ModuleType, cache: bool):
     logger.remove()
     logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
-    scenario_desc = importlib.import_module(f'tests.scenarios.{scenario_name}')
-    if hasattr(scenario_desc, 'SKIP') and cache in scenario_desc.SKIP:
+    if cache in getattr(scenario_desc, 'SKIP', []):
         pytest.skip()
-    if hasattr(scenario_desc, 'XFAIL') and cache in scenario_desc.XFAIL:
+    if cache in getattr(scenario_desc, 'XFAIL', []):
         pytest.xfail()
-    world = scenario.World(sim_config[scenario_desc.CONFIG], debug=True, cache=cache)
+    world = scenario.World(SIM_CONFIG[scenario_desc.CONFIG], debug=True, cache=cache)
     try:
         scenario_desc.create_scenario(world)
-        if not hasattr(scenario_desc, 'RT_FACTOR'):
-            world.run(until=scenario_desc.UNTIL)
-        else:
-            world.run(until=scenario_desc.UNTIL, rt_factor=scenario_desc.RT_FACTOR)
+        world.run(
+            until=scenario_desc.UNTIL,
+            rt_factor=getattr(scenario_desc, "RT_FACTOR", None),
+            print_progress=False,
+        )
 
         expected_graph = _debug.parse_execution_graph(scenario_desc.EXECUTION_GRAPH)
         
@@ -88,19 +101,19 @@ def test_mosaik(scenario_name: str, cache: bool):
         actual_nodes = set(world.execution_graph.nodes)
         missing_nodes = expected_nodes - actual_nodes
 
-        def format_node(node: Tuple[str, DenseTime]) -> str:
+        def format_node(node: Tuple[str, TieredTime]) -> str:
             return f"{node[0]} @ {node[1]}"
         
         if missing_nodes:
             errors.append("The following expected simulator invocations did not happen:")
-            for node in sorted(missing_nodes):
+            for node in sorted(missing_nodes, key=lambda n: n[0]):
                 errors.append(f"- {format_node(node)}")
             errors.append("")
 
         extra_nodes = actual_nodes - expected_nodes
         if extra_nodes:
             errors.append("The following simulator invocations were not expected:")
-            for node in sorted(extra_nodes):
+            for node in sorted(extra_nodes, key=lambda n: n[0]):
                 sources = world.execution_graph.predecessors(node)
                 if sources:
                     sources_str = f"caused by: {', '.join(map(format_node, sources))}"
@@ -140,13 +153,13 @@ def test_mosaik(scenario_name: str, cache: bool):
 
         for sim in world.sims.values():
             assert sim.last_step.time < scenario_desc.UNTIL
-            assert sim.progress.value.time == scenario_desc.UNTIL
+            assert sim.progress.time.time == scenario_desc.UNTIL
     finally:
         world.shutdown()
         gc.collect()
 
 
-@pytest.mark.parametrize('sim_config', [sim_config['local'], sim_config['remote']])
+@pytest.mark.parametrize('sim_config', [SIM_CONFIG['local'], SIM_CONFIG['remote']])
 def test_call_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
@@ -158,7 +171,7 @@ def test_call_extra_methods(sim_config):
     assert ret == 23
 
 
-@pytest.mark.parametrize('sim_config', [sim_config['generic'], sim_config['generic_remote']])
+@pytest.mark.parametrize('sim_config', [SIM_CONFIG['generic'], SIM_CONFIG['generic_remote']])
 def test_call_two_extra_methods(sim_config):
     world = scenario.World(sim_config)
     try:
@@ -176,7 +189,7 @@ def test_call_two_extra_methods(sim_config):
 
 def test_rt_sim():
     fixture = importlib.import_module('tests.scenarios.single_self_stepping')
-    world = scenario.World(sim_config['local'])
+    world = scenario.World(SIM_CONFIG['local'])
     try:
         fixture.create_scenario(world)
 
@@ -193,7 +206,7 @@ def test_rt_sim():
 @pytest.mark.parametrize('strict', [True, False])
 def test_rt_sim_too_slow(strict, caplog):
     fixture = importlib.import_module('tests.scenarios.single_self_stepping')
-    world = scenario.World(sim_config['local'])
+    world = scenario.World(SIM_CONFIG['local'])
     try:
         fixture.create_scenario(world)
 

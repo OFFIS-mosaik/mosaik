@@ -15,6 +15,10 @@ work.
    *A.step()* means, that mosaik calls the *step()* function of
    simulator/entity *A*.
 
+Here are the topics:
+
+.. contents::
+   :local:
 
 .. _circular-data-flows:
 
@@ -133,3 +137,75 @@ So to wrap this up, there are two possibilities to achieve cyclic data-flows:
    If you forget to set the ``async_requests=True`` flag, mosaik will raise an
    error at *simulation time*.
 
+
+Same-time loops for control cycles
+==================================
+
+The first implementation of same-time loops was pretty ad-hoc and therefore showed some difficult-to-explain behavior.
+In particular, the order in which simulators in a same-time loop would trigger each other depended in subtle ways on the order in which connections were established.
+(The execution order was governed by the *rank* of a simulator, which was calculated using a topological sort method from networkx.)
+
+As a first solution, we attempted a concept of dense time, where each internal time stamp had two components, called *time* and *micro step*.
+Only the time component is communicated to the simulators, whereas the micro step component is only used internally.
+Progress along weak connections would only increase the micro step component, allowing simulators to perform multiple steps in one time step, while still preserving an order for all steps.
+
+Unfortunately, a very common control structure that usually happened to work under the old scheme was not possible anymore:
+The simplest version of the case in question is when there are two simulators that communicate via a same-time loop and which then send the result of their negotiation to a third simulator.
+Because users would normally create the connections for the negotiation part earlier in their scenario, the corresponding same-time loop would run first, leading to the expected result.
+With the dense-time setup, the third simulator would instead run at micro step 0, and thus only receive the results of the first round of negotiation.
+
+To resolve this problem, we introduce a concept of *simulator groups*.
+A user can create a group in their script using a ``with`` statement like
+
+.. code-block:: python
+
+   with world.group():
+       world.start("SimulatorA")
+       world.start("SimulatorB")
+
+All simulators started in the ``with`` block are automatically added to the group.
+Users can nest groups by nesting the ``with world.group()`` blocks.
+(Using the ``with`` statement has the advantage that users cannot nest the groups incorrectly.)
+
+Each group adds an additional tier to the internal times used for simulators contained within, leading to a concept of *tiered time*.
+(The simulators still only get to see the highest level.)
+When a connection leaves a group (i.e. leads from a simulator in a group to a simulator not in that group), the corresponding part of the time is cut off.
+This results in the simulator outside the group not seeing the steps inside the group.
+It therefore only considers the steps of its inputs done when the simulators in the group progress their actual time, i.e. when they conclude their negotiation.
+
+Similarly, a time entering a group will be padded with zeros at the end.
+
+To force users to update their simulations (so they don't silently start producing completely different results), we decided to outlaw weak connections outside of groups.
+A user using weak connections will receive an error message leading them to the documentation that explains how to adapt their scenario.
+
+The category of tiered intervals
+--------------------------------
+
+This is additional mathematical information on tiered time.
+
+Times are used in two different ways:
+They can represent specific points in the simulation or they can represent intervals of time.
+Previously, both of these concepts were represented by the same data structure internally.
+With tiered time, we also introduce *tiered interval*, so tiered times now only represent points in time.
+It is legal to add an interval to a time, and to add two intervals, but it is not legal to add two times.
+
+Speaking of intervals, there are three basic types:
+
+- Connections within a group keep the number of tiers fixed an just add something to some tiers (usually nothing at all, or 1 to the first tier for time-shifted connections, or 1 to the last tier for weak connections).
+- Connections leaving a group cut off some tiers at the end.
+- Connections entering a group add some tiers at the end.
+
+When calculating the progression within the simulation, it becomes necessary to add these types of intervals together, leading to mixed types.
+Therefore, a tiered interval consists of:
+
+- A list of addition tiers.
+  These are added to the corresponding tiers of the tiered time.
+  All further tiers of the tiered time are cut off.
+- A list of extension tiers.
+  There are appended to the result of the addition and cutoff.
+- A pre-length, which is used as a sanity check.
+  The pre-length must equal the number of tiers of the time to which the interval is added.
+  Also, the pre-length serves as an upper bound for the number of addition tiers, so that the time always has enough components to add to.
+
+The addition rules for intervals are set up such that adding two intervals to a time one after the other is the same as adding the sum of the two intervals to the time, and such that the addition of intervals is associative.
+(Mathematically, this turns tiered times and intervals into a category with sets of tiered times of the same length as objects and tiered intervals as arrows.)

@@ -5,9 +5,10 @@ to create scenarios and run simulations.
 Currently, this is only :class:`mosaik.scenario.World`.
 
 """
-from importlib import metadata
+# Saying "import X as X" (with X repeated) is the standard way of
+# marking to linters and type checkers that something is re-exported.
+from mosaik.scenario import SimConfig as SimConfig
+from mosaik.scenario import World as World
+from mosaik._version import __version__ as __version__
 
-from mosaik.scenario import SimConfig, World
-
-__version__ = metadata.version("mosaik")
-__all__ = ['SimConfig', 'World']
+__all__ = ['World']

@@ -13,12 +13,12 @@ from mosaik import scenario
 
 from execution_graph_tools import plot_execution_graph_st as plot_execution_graph
 sys.path.insert(0, os.getcwd())
-from tests.test_mosaik import sim_config
+from tests.test_mosaik import SIM_CONFIG
 
 
 def plot_test_case(test_case):
     test_module = importlib.import_module('tests.fixtures.%s' % test_case)
-    world = scenario.World(sim_config[test_module.CONFIG], debug=True)
+    world = scenario.World(SIM_CONFIG[test_module.CONFIG], debug=True)
     try:
         test_module.create_scenario(world)
         if not hasattr(test_module, 'RT_FACTOR'):

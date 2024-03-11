@@ -14,11 +14,11 @@ def create_scenario(world):
 CONFIG = 'generic'
 
 EXECUTION_GRAPH = """
-A-0-0 B-0-2
+A-0~0 B-0~2
 """
 
 INPUTS = {
-    'B-0-2': {'0': {'val_in': {'A-0.0': 0}}},
+    'B-0~2': {'0': {'val_in': {'A-0.0': 0}}},
 }
 
 UNTIL = 3

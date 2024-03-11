@@ -21,11 +21,13 @@ END = 6  # 10 seconds
 
 # Create World
 world = mosaik.World(SIM_CONFIG)
+# End: Create World
 
 # Start simulators
-examplesim = world.start('ExampleSim', eid_prefix='Model_')
-examplectrl = world.start('ExampleCtrl')
-examplemasterctrl = world.start('ExampleMasterCtrl')
+with world.group():
+    examplesim = world.start('ExampleSim', eid_prefix='Model_')
+    examplectrl = world.start('ExampleCtrl')
+    examplemasterctrl = world.start('ExampleMasterCtrl')
 collector = world.start('Collector')
 
 # Instantiate models
@@ -33,6 +35,7 @@ models = [examplesim.ExampleModel(init_val=i) for i in (-2, 0, -2)]
 agents = examplectrl.Agent.create(len(models))
 master_agent = examplemasterctrl.Agent.create(1)
 monitor = collector.Monitor()
+# End: Instantiate models
 
 # Connect entities
 for model, agent in zip(models, agents):
