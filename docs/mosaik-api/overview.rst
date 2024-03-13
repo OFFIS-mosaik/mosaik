@@ -59,4 +59,6 @@ and set data for other entities (``set_data()``).
    :alt: Sequence diagram for asynchronous requests made by a simulator.
 
 The next two sections explain the :ref:`low-level API <low-level-api>` and the
-:ref:`Python high-level API <high-level-api>` in more detail.
+:ref:`Python high-level API <high-level-api>` in more detail. The last section, 
+:ref:`High-level APIs in other languages <high-level-api-other-languages>`, presents 
+APIs available for other popular programming languages.
