@@ -8,16 +8,16 @@ We will connect these PV systems to a power grid simulation and observe the effe
 Installation
 ============
 
-The first step (after installing mosaik itself) is to install the packages necessary for our simulation (in addition to mosaik).
+The first step after installing mosaik itself is to install the packages necessary for our simulation.
 We will be using ``mosaik-pandapower-2`` and ``mosaik-pv``.
-Both of them are on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor’s Python package management, etc.).
-We will also use mosaik’s built-in function simulator (for the weather input) and output simulator (to see what’s going on).
+Both of them are on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
+We will also use mosaik's built-in function simulator as a fake weather simulator and the built-in output simulator to see what's going on.
 
 Sic mundus creatus est
 ======================
 
 Every mosaik scenario has its humble beginnings in importing mosaik.
-We will also be using Python’s ``random`` module, a function from ``mosaik.util`` and Python's built-in pretty printer.
+We will also be using Python's ``random`` module, a function from ``mosaik.util`` and Python's built-in pretty printer.
 
 .. literalinclude:: code/scenario_1.py
    :start-at: import mosaik
@@ -56,7 +56,7 @@ This won’t take seven days, just
    :start-at: world =
    :end-at: world =
 
-Using this ``world`` we can start our simulators:
+Using this ``world``, we can start our simulators:
 
 .. literalinclude:: code/scenario_1.py
    :start-after: # start simulators
@@ -65,17 +65,21 @@ Using this ``world`` we can start our simulators:
 The first argument to a call to ``world.start`` is one of the simulator names specified in the ``SIM_CONFIG``.
 Then, you can optionally specify the ID your simulator should have in the scenario using the ``sim_id`` keyword argument.
 If you don't specify the simulator ID, it will be derived from the simulator name automatically.
-(For example, the output simulator will be called *Output-0*.)
-The ``sim_id`` and all further keyword arguments that you specify will also be passed on to the simulator.
-The simulator’s documentation will contain details about the supported arguments.
+For example, the output simulator will be called *Output-0*.
+The ``sim_id`` and all further keyword arguments will also be passed on to the simulator.
+The simulator's documentation will contain details about which further arguments are supported.
 In our case, we specify ``step_size=900`` for all simulators except the output simulator.
-(This step size is a common convention in mosaik as 900 seconds corresponds to 15 minutes, which is the market interval on many energy markets.)
-The output simulator does not need to know the step size because it is “event-based” which means that it will run automatically whenever it receives input.
+
+.. note::
+
+   This step size is a common convention in mosaik as 900 seconds correspond to 15 minutes, which is the market interval on many energy markets.
+
+The output simulator does not need to know the step size because it is “event-based”, which means that it will run automatically whenever it receives input.
 We will discuss the distinction between the simulator types further in TODO.
 
-We have created one instance of each simulator.
+In our scenario, we have created one instance of each simulator.
 It is possible to create multiple instances of the same simulator by calling ``world.start`` with the same simulator name multiple times.
-However, if the simulator supports it, it is usually better to create entities within a single simulator instance.
+However, if the simulator supports it, it is usually better to create multiple entities within a single simulator instance, instead.
 Entities are the subject of the next section.
 
 Creating entities
@@ -92,9 +96,9 @@ Having started our simulators, we now need to create entities in them.
 
    Each simulator may offer several different models and will usually allow you to create as many entities of each model as you need.
    All entities created in one simulator will run at the same time during the simulation, but each may work with different inputs and produce its own output.
-   The entity’s model describes how the input to (and output of) the entity must be structured.
+   The role of the entity's model is to describe how the input to (and output of) the entity must be structured.
 
-   We use entities because multiple entities in one simulator are usually more efficient than starting a whole new instance of the simulator for each entity.
+   We use entities because having one simulator calculate multiple similar things at once is usually more efficient than starting a whole new instance of the simulator for each thing.
    We recommend that you only start several instances of a simulator when you need it to run at multiple points within the same time step or when the simulator does not support multiple entities.
 
 Our highly realistic weather model will be based on random values provided by the built-in input simulator.
@@ -113,7 +117,7 @@ Data that we pass to a simulator while creating an entity of one of its models i
 So in this case, *function* is a param of the *Function* model.
 
 Each simulator and model will expect different data as its params.
-The simulator’s documentation should describe which params are necessary or supported.
+The simulator's documentation should describe which params are necessary or supported.
 
 Next, we will create 50 entities of the *PV* model in our PV simulator, so that we can simulate 50 PV systems in the grid.
 We could create these entities by calling ``pvsim.PV(...)`` 50 times in a loop, but there is a shorter way:
@@ -189,10 +193,10 @@ This connection is represented by the *ExternalGrid* entity which we get like th
    :start-at: output =
    :end-before: # end
 
-Connecting things
-=================
+Doing Charlotte's work
+======================
 
-The last step in setting up our simulation is to connect all the entities.
+The last step in setting up our simulation is to spin a web of connections between our entities.
 
 First, each PV system needs access to the weather data:
 
@@ -203,7 +207,7 @@ First, each PV system needs access to the weather data:
 We loop over all elements of our ``pvs`` list.
 For each ``pv`` we establish a connection from the ``weather`` entity to the ``pv`` entity.
 To do this, we need to specify which attributes should be connected.
-*Attributes* are (the names for) the values that are exchanged the simulation while the simulation is running (as opposed to params that are used during setup).
+*Attributes* are (the names for) the values that are exchanged while the simulation is running (as opposed to params that are used during setup).
 Here, we connect the *value* attribute of the ``weather`` entity to the *DNI* attribute of the ``pv`` entity.
 The simulator’s documentation should list the attributes of its models, whether they are used for input or output, and in which format they expect or provide their data.
 
@@ -230,21 +234,22 @@ So we extract the *ExternalGrid* entity from the grid’s children and connect i
 This looks very similar to the calls above, but note that the attribute names are not given as a pair.
 (There are no parentheses around ``"P[MW]", "Q[MVar]"``.)
 This is actually a combination of two shortcuts in mosaik's ``connect`` method:
-First, in case that the name of the output attribute of the source entity matches the name of the input attribute of the target attribute exactly, you can just give the name of the attribute as a string once (instead of a pair of two strings).
-mosaik will then use this name for both the output and input attribute.
-Second, the ``connect`` method is variadic in the number of attribute connections.
-By giving multiple attributes (or attribute pairs), connections are established between all of them.
-So in this case, the *P[MW]* output attribute of the ``ext_grid`` entity is connected to the *P[MW]* input attribute of the ``output`` entity, and likewise, the *Q[MVar]* output attribute is connected to the *Q[MVar]* input attribute.
-These shortcuts make things slightly more convenient whenever attribute names happen to line up.
-In the case of the output simulator, we can have it this way because it will accept input under every attribute name.
-(It will just store that data together with the attribute name in a dictionary.)
 
-Running things
-==============
+1. In case that the names of the two attributes that you want to connect are identical, you can just give the name of the attribute as a string once (instead of a pair of two strings).
+   mosaik will then use this name for both the output and input attribute.
+2. The ``connect`` method is variadic in the number of attribute connections.
+   By giving multiple attributes (or attribute pairs), connections are established between all of them.
+   So in this case, the *P[MW]* output attribute of the ``ext_grid`` entity is connected to the *P[MW]* input attribute of the ``output`` entity, and likewise, the *Q[MVar]* output attribute is connected to the *Q[MVar]* input attribute.
+
+These shortcuts make things slightly more convenient whenever attribute names happen to line up.
+In the case of the output simulator, we can have it this way because it will accept input on any attribute and just store the input under that name in a dictionary.
+
+Run, mosaik, run
+================
 
 We are almost set to run the scenario now.
-However, for we first need to obtain a reference to the output simulator's internal dictionary to access the data afterwards.
-(mosaik closes the connection immediately at the end of the simulation, so it would be too late afterwards.)
+However, we first need to obtain a reference to the output simulator's internal dictionary to access the data afterwards.
+(mosaik closes the connection immediately at the end of the simulation, so it would be too late by then.)
 For this, the output simulator provides the ``get_dict`` extra method, which requires that we give it the entity ID for which we want to receive the output:
 
 .. literalinclude:: code/scenario_1.py
