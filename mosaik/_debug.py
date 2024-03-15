@@ -28,7 +28,7 @@ def enable():
     scheduler execution.
     """
 
-    async def wrapped_step(world, sim, inputs, max_advance):
+    async def wrapped_step(world: World, sim: SimRunner, inputs: InputData, max_advance: int):
         pre_step(world, sim, inputs)
         ret = await _originals['step'](world, sim, inputs, max_advance)
         post_step(world, sim)
@@ -147,10 +147,10 @@ def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
             errors.append(f"- {format_node(node)}")
         errors.append("")
 
-    extra_nodes = actual_nodes - expected_nodes
-    if extra_nodes:
+    unexpected_nodes = actual_nodes - expected_nodes
+    if unexpected_nodes:
         errors.append("The following simulator invocations were not expected:")
-        for node in sorted(extra_nodes):
+        for node in sorted(unexpected_nodes):
             sources = actual_graph.predecessors(node)
             if sources:
                 sources_str = f"caused by: {', '.join(map(format_node, sources))}"
