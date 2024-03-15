@@ -4,23 +4,32 @@ Scenario 16::
 """
 
 
-def create_scenario(world):
-    model_a = world.start('A', step_type='event-based', output_timing={0: 2}).A()
-    model_b = world.start('B', step_type='time-based').A()
-    world.connect(model_a, model_b, ('val_out', 'val_in'))
+from mosaik import World
+
+
+def create_scenario(world: World):
+    model_a = world.start(
+        "Generic", sim_id="A", step_type="event-based", output_timing={0: 2}
+    ).A()
+    model_b = world.start("Generic", sim_id="B", step_type="time-based").A()
+    world.connect(model_a, model_b, ("val_out", "val_in"))
     world.set_initial_event(model_a.sid)
 
 
-CONFIG = 'generic'
+def test_scenario(world: World):
+    create_scenario(world)
+    world.run(until=3)
 
-EXECUTION_GRAPH = """
-A-0~0 B-0~2
-B-0~0 B-0~1
-B-0~1 B-0~2
-"""
+    world.assert_graph(
+        """
+        A~0 B~2
+        B~0 B~1
+        B~1 B~2
+        """
+    )
 
-INPUTS = {
-    'B-0~2': {'0': {'val_in': {'A-0.0': 0}}},
-}
-
-UNTIL = 3
+    world.assert_inputs(
+        {
+            "B~2": {"0": {"val_in": {"A.0": 0}}},
+        }
+    )

@@ -4,18 +4,26 @@ Scenario 1::
 """
 
 
-def create_scenario(world):
-    example_simulator = world.start('A')
+from mosaik import World
+
+
+def create_scenario(world: World):
+    example_simulator = world.start("Local", sim_id="A")
     example_simulator.A(init_val=0)
 
 
-CONFIG = 'local'
-
-EXECUTION_GRAPH = """
-A-0~0 A-0~1
-A-0~1 A-0~2
-"""
-
-INPUTS = {}
-
 UNTIL = 3
+
+
+def test_scenario(world: World):
+    create_scenario(world)
+    world.run(until=UNTIL)
+
+    world.assert_graph(
+        """
+        A~0 A~1
+        A~1 A~2
+        """
+    )
+
+    world.assert_inputs({})

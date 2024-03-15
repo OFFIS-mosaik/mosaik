@@ -6,11 +6,10 @@ C
 A
 """
 
-from mosaik.scenario import World
-from tests.scenarios.conftest import ExecutionChecker
+from mosaik import World
 
 
-def test(world: World, check: ExecutionChecker):
+def create_scenario(world: World):
     a = world.start("Generic", sim_id="A", step_type="time-based", step_size=1).A()
     b = world.start("Generic", sim_id="B", step_type="hybrid", trigger=["val_in"]).A()
     c = world.start("Generic", sim_id="C", step_type="time-based", step_size=1).A()
@@ -19,9 +18,12 @@ def test(world: World, check: ExecutionChecker):
     world.connect(a, b, ("val_out", "val_in"))
     world.connect(b, d, ("val_out", "val_in"))
 
+
+def test_scenario(world: World):
+    create_scenario(world)
     world.run(until=2)
 
-    check.graph(
+    world.assert_graph(
         """
         A~0 B~0
         C~0 B~0
@@ -35,7 +37,7 @@ def test(world: World, check: ExecutionChecker):
         """
     )
 
-    check.inputs(
+    world.assert_inputs(
         {
             "B~0": {"0": {"val_in": {"A.0": 0, "C.0": 0}}},
             "D~0": {"0": {"val_in": {"B.0": 0}}},

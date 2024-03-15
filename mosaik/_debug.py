@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from time import perf_counter
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3 import InputData, SimId
@@ -35,6 +35,8 @@ def enable():
         return ret
 
     scheduler.step = wrapped_step
+    World.assert_graph = assert_graph
+    World.assert_inputs = assert_inputs
 
 
 def disable():
@@ -123,3 +125,71 @@ def post_step(world: World, sim: SimRunner):
         node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None
+
+
+def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
+    actual_graph = world.execution_graph
+    expected_graph = parse_execution_graph(expected_str)
+    for node in extra_nodes:
+        expected_graph.add_node(parse_node(node))
+
+    errors: List[str] = []
+    expected_nodes = set(expected_graph.nodes)
+    actual_nodes = set(actual_graph.nodes)
+    missing_nodes = expected_nodes - actual_nodes
+
+    def format_node(node: Tuple[str, TieredTime]) -> str:
+        return f"{node[0]} @ {node[1]}"
+    
+    if missing_nodes:
+        errors.append("The following expected simulator invocations did not happen:")
+        for node in sorted(missing_nodes):
+            errors.append(f"- {format_node(node)}")
+        errors.append("")
+
+    extra_nodes = actual_nodes - expected_nodes
+    if extra_nodes:
+        errors.append("The following simulator invocations were not expected:")
+        for node in sorted(extra_nodes):
+            sources = actual_graph.predecessors(node)
+            if sources:
+                sources_str = f"caused by: {', '.join(map(format_node, sources))}"
+            else:
+                sources_str = "not caused by other simulators"
+            errors.append(f"- {format_node(node)} ({sources_str})")
+        errors.append("")
+
+    predecessor_errors: List[str] = []
+    for node in sorted(actual_nodes & expected_nodes):
+        actual_pres = set(actual_graph.predecessors(node))
+        expected_pres = set(expected_graph.predecessors(node))
+        if actual_pres != expected_pres:
+            predecessor_errors.append(
+                f"- {format_node(node)} ("
+                f"extraneous {', '.join(map(format_node, sorted(actual_pres - expected_pres)))}; "
+                f"missing {', '.join(map(format_node, sorted(expected_pres - actual_pres)))})"
+            )
+    if predecessor_errors:
+        errors.append(
+            "The following simulator invocations had incorrect sources:"
+        )
+        errors.extend(predecessor_errors)
+        errors.append("")
+
+    if errors:
+        raise AssertionError(
+            "The following problems were detected in the execution graph:\n\n"
+            + "\n".join(errors)
+        )
+
+    assert actual_graph.adj == expected_graph.adj
+
+
+def assert_inputs(world: World, expected_inputs: Dict[str, InputData]):
+    eg = world.execution_graph
+    for node_str, expected_data in expected_inputs.items():
+        node = parse_node(node_str)
+        assert expected_data == eg.nodes[node]['inputs']
+        del eg.nodes[node]['inputs']
+    for node in eg.nodes(data="inputs"):
+        assert not node[1]  # Make sure that there are not unchecked inputs
