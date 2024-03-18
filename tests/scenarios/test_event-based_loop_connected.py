@@ -13,7 +13,6 @@ import pytest
 from mosaik import World
 
 
-@pytest.mark.weak
 def create_scenario(world: World):
     with world.group():
         model_a = world.start("Generic", sim_id="A", step_type="event-based").A()
@@ -29,6 +28,7 @@ def create_scenario(world: World):
     world.connect(model_b, model_c, ("val_out", "val_in"))
 
 
+@pytest.mark.weak
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=1)

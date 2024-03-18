@@ -7,7 +7,6 @@ import pytest
 from mosaik import World
 
 
-@pytest.mark.weak
 def create_scenario(world: World):
     with world.group():
         a = world.start("LoopSim", sim_id="Loop", loop_length=2).A()
@@ -19,6 +18,7 @@ def create_scenario(world: World):
     world.connect(b, a, ("loop_out", "loop_in"), weak=True)
 
 
+@pytest.mark.weak
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

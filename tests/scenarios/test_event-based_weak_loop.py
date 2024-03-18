@@ -8,7 +8,6 @@ import pytest
 from mosaik import World
 
 
-@pytest.mark.weak
 def create_scenario(world: World):
     with world.group():
         model_a = world.start(
@@ -20,6 +19,7 @@ def create_scenario(world: World):
     world.set_initial_event(model_a.sid)
 
 
+@pytest.mark.weak
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=3)
