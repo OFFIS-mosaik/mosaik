@@ -326,12 +326,12 @@ class World(object):
 
         src_sim = self.sims[src.sid]
         dest_sim = self.sims[dest.sid]
-        
+
         src_port = (src.eid, src_attr)
         dest_port = (dest.eid, dest_attr)
 
         problems: List[str] = []
-        
+
         if src_attr not in src.model_mock.output_attrs:
             problems.append(
                 "the source attribute does not exist"
@@ -689,6 +689,8 @@ class World(object):
         """Collects the ancestors of each simulator and stores them in
         the respective simulator object.
         """
+        # See ``ensure_no_dataflow_cycles`` for an explanation of this
+        # algorithm
         dirty: Set[SimRunner] = set()
         for sim in self.sims.values():
             for port_triggers in sim.triggers.values():
@@ -708,25 +710,63 @@ class World(object):
         return
 
     def ensure_no_dataflow_cycles(self):
+        """Make sure that there is no cyclic dataflow with 0 total
+        delay. Raise an exception with one such cycle otherwise.
         """
-        Deduce a simulator ranking from a topological sort of the df_graph.
+
+        # Short note on terminology: ancestors and descendants any
+        # number of steps removed; predecessors and successors are one
+        # step removed (i.e. they're *direct* ancestors/descendants)
+
+        dirty: Set[SimRunner] = set(self.sims.values())
+        """Sims that have changed descendants and thus require
+        recalculation
         """
-        immediate_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
+        sim_descs: Dict[
+            SimRunner, Dict[SimRunner, Tuple[TieredInterval, List[SimRunner]]]
+        ] = {
+            sim: {} for sim in self.sims.values()
+        }
+        """For each SimRunner, all its descendants that have been found
+        so far with the shortest delay to them and the path that
+        exhibits this delay.
+        """
+
+        # At the start, enter each sim as a descendant of all its
+        # (direct) predecessors
         for sim in self.sims.values():
-            for pred_sim, delay in sim.input_delays.items():
-                if not any(delay.tiers):
-                    immediate_graph.add_edge(pred_sim, sim)
-        # If there are performance problems, it might be faster to first try sorting
-        # this graph topologically. If that succeeds, there will be no cycles, so the
-        # cycles computation can be skipped.
-        for cycle in networkx.simple_cycles(immediate_graph):
-            # If we run into any cycles, we raise, thus not computing all cycles.
-            raise ScenarioError(
-                "Your scenario contains cycles that are not broken up using "
-                "time-shifted or weak connections. mosaik is unable to determine which "
-                "simulator to run first in these cases. Here is an example of one such "
-                f"cycle: {cycle}."
-            )
+            for pred, delay in sim.input_delays.items():
+                sim_descs[pred][sim] = (delay, [pred, sim])
+        while dirty:
+            mid_sim = dirty.pop()
+            # This sim has had updates to its descendants since we last
+            # processed it. These changes are pushed to its predecessors
+            for src_sim, src_to_mid in mid_sim.input_delays.items():
+                for dest_sim, (mid_to_dest, path) in sim_descs[mid_sim].items():
+                    src_to_dest = src_to_mid + mid_to_dest
+                    src_to_dest = update_min(
+                        sim_descs[src_sim].get(dest_sim, (None,))[0], src_to_dest
+                    )
+                    # update_min only return as non-None value if the
+                    # existing value needs to be updated, i.e. a shorter
+                    # path was found
+                    if src_to_dest is not None:
+                        # In this case we need to update the
+                        # predecessor's shortest path to the descendant
+                        # and reprocess the predecessor
+                        sim_descs[src_sim][dest_sim] = (src_to_dest, [src_sim] + path)
+                        dirty.add(src_sim)
+
+        # We need to raise an error if any sim has itself as a
+        # descendant with a delay of 0
+        for sim, descs in sim_descs.items():
+            if sim not in descs:
+                continue
+            (delay, path) = descs[sim]
+            if all(t == 0 for t in delay.tiers):
+                raise ScenarioError(
+                    f"Your scenario contains cycles, for example: {path}."
+                )
 
     def shutdown(self):
         """

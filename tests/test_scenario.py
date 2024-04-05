@@ -175,7 +175,6 @@ def test_world_connect_cycle(world: World):
     )
 
 
-@pytest.mark.xfail()
 def test_group_cycle(world: World):
     with world.group():
         a = world.start('ExampleSim').B(init_val=0)
