@@ -156,7 +156,7 @@ def test_world_connect_same_simulator(world: World):
     with pytest.raises(ScenarioError) as err:
         world.connect(a[0], a[1], ('val_out', 'val_out'))
         world.run(1)
-    assert "cycles that are not broken up" in str(err.value)
+    assert "Your scenario contains cycles" in str(err.value)
 
 
 def test_world_connect_cycle(world: World):
@@ -171,11 +171,22 @@ def test_world_connect_cycle(world: World):
     with pytest.raises(ScenarioError) as err:
         world.run(1)
     assert (
-        "Your scenario contains cycles that are not broken up using time-shifted or "
-        "weak connections. mosaik is unable to determine which simulator to run first "
-        "in these cases. Here is an example of one such cycle:"
-        in str(err.value)
+        "Your scenario contains cycles" in str(err.value)
     )
+
+
+@pytest.mark.xfail()
+def test_group_cycle(world: World):
+    with world.group():
+        a = world.start('ExampleSim').B(init_val=0)
+        b = world.start('ExampleSim').B(init_val=0)
+    c = world.start('ExampleSim').B(init_val=0)
+    world.connect_one(a, b, 'val_out', 'val_in', weak=True, initial_data=None)
+    world.connect_one(b, c, 'val_out', 'val_in')
+    world.connect_one(c, a, 'val_out', 'val_in')
+    with pytest.raises(ScenarioError) as err:
+        world.run(0)
+    assert "Your scenario contains cycles" in str(err.value)
 
 
 def test_world_connect_wrong_attr_names(world: World):
