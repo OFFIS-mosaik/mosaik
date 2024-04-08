@@ -34,6 +34,7 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
     Union,
+    cast,
 )
 import tqdm
 from typing_extensions import Literal, TypeAlias, TypedDict
@@ -164,7 +165,7 @@ async def start(
 async def start_inproc(
     mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config: Dict[Literal['python', 'env'], str],
+    sim_config: PythonModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -205,7 +206,7 @@ async def start_inproc(
 async def start_proc(
     mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
+    sim_config: CmdModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -236,30 +237,29 @@ async def start_proc(
         # Make a copy of the current env vars dictionary and update it with the
         # user provided values (or an empty dict as a default):
         env = dict(os.environ)
-        env.update(sim_config.get('env', {}))  # type: ignore
+        env.update(sim_config.get('env', {}))
 
         # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
-        creationflags = 0
+        creationflags: int = 0
         new_console = sim_config.get('new_console', False)
         if new_console:
             if 'Windows' in platform.system():
-                creationflags = CREATE_NEW_CONSOLE
+                creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
             else:
                 logger.warning(
                     f'Simulator "{sim_name}" could not be started in a new console: '
                     "Only available on Windows"
                 )
 
-        kwargs = {
-            "bufsize": 1,
-            "cwd": cwd,
-            "universal_newlines": True,
-            "env": env,  # pass the new env dict to the sub process
-            "creationflags": creationflags,
-        }
-
         try:
-            subprocess.Popen(cmd, **kwargs)
+            subprocess.Popen(
+                cmd, 
+                bufsize=1,
+                cwd=cwd,
+                universal_newlines=True,
+                env=env,  # pass the new env dict to the sub process
+                creationflags=creationflags,
+            )
         except (FileNotFoundError, NotADirectoryError) as e:
             # This distinction has to be made due to a change in python 3.8.0.
             # It might become unecessary for future releases supporting
@@ -382,7 +382,7 @@ class SimRunner:
     """Inputs for this simulator."""
 
 
-    rt_start: float
+    rt_start: float  # type: ignore  # set at start of sim_process
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
     started: bool
@@ -405,16 +405,16 @@ class SimRunner:
     """The most recent step this simulator performed."""
     current_step: Optional[TieredTime]
 
-    output_time: TieredTime
+    output_time: TieredTime  # type: ignore  # set on first get_data
     """The output time associated with `data`. Usually, this will be equal to
     `last_step` but simulators may specify a different time for their output."""
-    data: OutputData
+    data: OutputData  # type: ignore  # set on first get_data
     """The newest data returned by this simulator."""
     task: asyncio.Task[None]
     """The asyncio.Task for this simulator."""
 
     outputs: Optional[Dict[Time, OutputData]]
-    tqdm: tqdm.tqdm[NoReturn]
+    tqdm: tqdm.tqdm[NoReturn]  # type: ignore
 
     def __init__(
         self,
@@ -599,8 +599,10 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         assert self.sim.is_in_step, "get_data must happen in step"
         assert self.sim.current_step is not None, "no current step time"
 
-        data = {}
-        missing = collections.defaultdict(lambda: collections.defaultdict(list))
+        data: Dict[FullId, Dict[Attr, Any]] = {}
+        missing: Dict[SimId, OutputRequest] = collections.defaultdict(
+            lambda: collections.defaultdict(list)
+        )
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
@@ -632,7 +634,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
         return data
 
-    async def set_data(self, data):
+    async def set_data(self, data: Dict[FullId, Dict[Attr, Any]]):
         """
         Set *data* as input data for all affected simulators.
 
@@ -705,7 +707,7 @@ class StarterCollection(object):
     """
 
     # Singleton instance of the starter collection.
-    __instance = None
+    __instance: OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]] | None = None
 
     def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:

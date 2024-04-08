@@ -62,7 +62,7 @@ SIM_CONFIG: Dict[str, scenario.SimConfig] = {
 
 test_cases: List[Any] = []
 for file in os.listdir('tests/scenarios'):
-    if not file.startswith('__'):
+    if not (file.startswith('__') or file.startswith(".")):
         scenario_name = os.path.basename(file)[0:-3]  # remove ".py" at the end
         scenario_desc = importlib.import_module(f"tests.scenarios.{scenario_name}")
         test_cases.append(

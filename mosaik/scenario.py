@@ -13,7 +13,7 @@ import asyncio
 from collections import defaultdict
 import contextlib
 from copy import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import itertools
 from loguru import logger
 from mosaik_api_v3 import OutputData, OutputRequest
@@ -27,6 +27,7 @@ from typing import (
     FrozenSet,
     Iterable,
     List,
+    NoReturn,
     Optional,
     Set,
     Tuple,
@@ -77,6 +78,10 @@ class ModelOptionals(TypedDict, total=False):
     api_version: str
     """The API version of the connected simulator. Set this to suppress
     warnings about this simulator being outdated.
+    """
+    posix: bool
+    """Whether to split the given shell command using POSIX rules.
+    (Default: ``False`` on Windows, ``True`` otherwise.)
     """
 
 
@@ -188,9 +193,9 @@ class World(object):
     """
     config: MosaikConfigTotal
     """The config dictionary for general mosaik settings."""
-    until: int
+    until: int  # type: ignore  # set in run
     """The time until which this simulation will run."""
-    rt_factor: Optional[float]
+    rt_factor: Optional[float]  # type: ignore  # set in run
     """The number of real-time seconds corresponding to one mosaik step."""
 
     time_resolution: float
@@ -221,6 +226,9 @@ class World(object):
     Nodes are ``(sid, eid)`` tuples. Each note has an attribute
     *entity* with an :class:`Entity`.
     """
+
+    tqdm: tqdm[NoReturn]  # type: ignore  # set in run
+    """The tqdm progress bar for the total progress."""
 
     def __init__(
         self,
