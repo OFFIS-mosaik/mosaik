@@ -11,55 +11,55 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+import contextlib
 from copy import copy
+from dataclasses import dataclass
 import itertools
 from loguru import logger
+from mosaik_api_v3 import OutputData, OutputRequest
 import networkx
 from tqdm import tqdm
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     FrozenSet,
     Iterable,
     List,
+    NoReturn,
     Optional,
     Set,
     Tuple,
+    TypeVar,
     Union,
 )
 import warnings
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, TypeAlias, TypedDict
 
-from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
 
 from mosaik import simmanager
-from mosaik.dense_time import DenseTime
+from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
+from mosaik.tiered_time import TieredInterval, TieredTime
 
+if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparison
 
 class MosaikConfig(TypedDict, total=False):
-    addr: Tuple[str, int]
+    addr: Tuple[str, int | None]
     start_timeout: float
     stop_timeout: float
 
-class _MosaikConfigTotal(TypedDict):
-    """A total version for :cls:`MosaikConfig` for internal use.
-    """
-
-    addr: Tuple[str, int]
-    start_timeout: float
-    stop_timeout: float
-
-base_config: _MosaikConfigTotal = {
-    'addr': ('127.0.0.1', 5555),
-    'start_timeout': 10,  # seconds
-    'stop_timeout': 10,  # seconds
+base_config: MosaikConfigTotal = {
+    "addr": ("127.0.0.1", None),
+    "start_timeout": 10,  # seconds
+    "stop_timeout": 10,  # seconds
 }
 
 FULL_ID = simmanager.FULL_ID
@@ -78,6 +78,10 @@ class ModelOptionals(TypedDict, total=False):
     api_version: str
     """The API version of the connected simulator. Set this to suppress
     warnings about this simulator being outdated.
+    """
+    posix: bool
+    """Whether to split the given shell command using POSIX rules.
+    (Default: ``False`` on Windows, ``True`` otherwise.)
     """
 
 
@@ -99,7 +103,60 @@ class CmdModel(ModelOptionals):
     by the `host:port` combination to which the simulator should connect."""
 
 
-SimConfig = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+"""Description of all the simulators you intend to use in your
+simulation.
+"""
+
+
+@dataclass
+class SimGroup:
+    parent: SimGroup | None
+
+    @property
+    def depth(self) -> int:
+        if not self.parent:
+            return 1
+        return self.parent.depth + 1
+
+
+def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
+    src_groups = [src]
+    while src.parent:
+        src = src.parent
+        src_groups.append(src)
+    
+    descent = 0
+    while True:
+        try:
+            ascent = src_groups.index(dest)
+            return (ascent, descent, dest)
+        except ValueError:
+            if not dest.parent:
+                raise ValueError("no joint parent")
+            dest = dest.parent
+            descent += 1
+
+
+def connect_interval(src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0):
+    ascent, _, common_group = group_path(src_group, dest_group)
+
+    pre_length = src_group.depth
+    cutoff = pre_length - ascent
+    list_tiers = [0] * dest_group.depth
+    if weak and not common_group.parent:
+        raise ScenarioError(
+            "Weak connections may only be used in groups. This is new in mosaik 3.3. "
+            "For more information, see "
+            f"{doc_link('scenario-definition', 'weak-connections')}."
+        )
+    if time_shifted:
+        list_tiers[0] = time_shifted
+    if weak:
+        assert cutoff >= 2
+        list_tiers[cutoff - 1] = weak
+    return TieredInterval(*list_tiers, cutoff=cutoff, pre_length=pre_length)
+
 
 
 class World(object):
@@ -132,10 +189,13 @@ class World(object):
     """
 
     sim_config: SimConfig
-    config: _MosaikConfigTotal
-    until: int
+    """The config dictionary that tells mosaik how to start a simulator.
+    """
+    config: MosaikConfigTotal
+    """The config dictionary for general mosaik settings."""
+    until: int  # type: ignore  # set in run
     """The time until which this simulation will run."""
-    rt_factor: Optional[float]
+    rt_factor: Optional[float]  # type: ignore  # set in run
     """The number of real-time seconds corresponding to one mosaik step."""
 
     time_resolution: float
@@ -154,12 +214,21 @@ class World(object):
     """The progress of the entire simulation (in percent)."""
     use_cache: bool
     loop: asyncio.AbstractEventLoop
-    incoming_connections_queue: asyncio.Queue[Channel]
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
     _sim_ids: Dict[ModelName, itertools.count[int]]
 
+    main_group: SimGroup
+    current_group: SimGroup
+
     entity_graph: networkx.Graph[FullId]
+    """The :class:`graph <networkx.Graph>` of related entities.
+    Nodes are ``(sid, eid)`` tuples. Each note has an attribute
+    *entity* with an :class:`Entity`.
+    """
+
+    tqdm: tqdm[NoReturn]  # type: ignore  # set in run
+    """The tqdm progress bar for the total progress."""
 
     def __init__(
         self,
@@ -172,14 +241,15 @@ class World(object):
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         self.sim_config = sim_config
-        """The config dictionary that tells mosaik how to start a simulator."""
 
         self.config = copy(base_config)
-        """The config dictionary for general mosaik settings."""
         if mosaik_config:
             self.config.update(mosaik_config)
 
         self.sims = {}
+        self.main_group = SimGroup(parent=None)
+        self.current_group = self.main_group
+
         self.time_resolution = time_resolution
         self.max_loop_iterations = max_loop_iterations
 
@@ -189,35 +259,8 @@ class World(object):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-        # When simulators are started using `cmd`, they will connect
-        # back to mosaik using a TCP connection. Here we start the
-        # server that accepts these connections. Whenever an external
-        # simulator connects, a Channel is created from the 
-        # (reader, writer) pair and written to the 
-        # incoming_connections_queue so that the function starting the
-        # simulator can .get() the connection information.
-        async def setup_queue() -> asyncio.Queue[Channel]:
-            return asyncio.Queue()
-        self.incoming_connections_queue = self.loop.run_until_complete(setup_queue())
-
-        async def connected_cb(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-            await self.incoming_connections_queue.put(Channel(reader, writer))
-
-        self.server = self.loop.run_until_complete(
-            asyncio.start_server(
-                connected_cb,
-                self.config['addr'][0],
-                self.config['addr'][1],
-            )
-        )
-
         self.entity_graph = networkx.Graph()
-        """The :func:`graph <networkx.Graph>` of related entities. Nodes are
-        ``(sid, eid)`` tuples.  Each note has an attribute *entity* with an
-        :class:`Entity`."""
-
         self.sim_progress = 0
-        """Progress of the current simulation (in percent)."""
 
         self._debug = False
         if debug:
@@ -228,11 +271,19 @@ class World(object):
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[Tuple[SimId, DenseTime]] = networkx.DiGraph()
+            self.execution_graph: networkx.DiGraph[Tuple[SimId, TieredTime]] = networkx.DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
+
+    @contextlib.contextmanager
+    def group(self):
+        parent_group = self.current_group
+        new_group = SimGroup(parent=parent_group)
+        self.current_group = new_group
+        yield
+        self.current_group = parent_group
 
     def start(
         self,
@@ -262,8 +313,8 @@ class World(object):
         )
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
-        model_factory = ModelFactory(self, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy)
+        model_factory = ModelFactory(self, self.current_group, sim_id, proxy)
+        self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -283,12 +334,12 @@ class World(object):
 
         src_sim = self.sims[src.sid]
         dest_sim = self.sims[dest.sid]
-        
+
         src_port = (src.eid, src_attr)
         dest_port = (dest.eid, dest_attr)
 
         problems: List[str] = []
-        
+
         if src_attr not in src.model_mock.output_attrs:
             problems.append(
                 "the source attribute does not exist"
@@ -329,7 +380,10 @@ class World(object):
                 "scenario-definition.html#connecting-entities"
             )
 
-        delay = DenseTime(time_shifted, weak)
+        src_group = src.model_mock._factory._group
+        dest_group = dest.model_mock._factory._group
+        delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
+
         dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
 
         is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
@@ -340,17 +394,18 @@ class World(object):
         src_sim.output_request.setdefault(src.eid, []).append(src_attr)
 
         if is_pulled:
-            dest_sim.pulled_inputs.setdefault((src_sim, time_shifted), set()).add((src_port, dest_port))
+            dest_sim.pulled_inputs.setdefault((src_sim, delay), set()).add((src_port, dest_port))
         else:
-            src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, time_shifted, dest_port))
+            src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, delay, dest_port))
 
-        src_sim.successors.add(dest_sim)
+        src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
 
         if dest.triggered_by(dest_attr):
             src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
 
         if initial_data is not SENTINEL:
             if is_pulled:
+                assert src_sim.outputs is not None
                 src_sim.outputs.setdefault(
                     -int(time_shifted), {}
                 ).setdefault(src.eid, {})[src_attr] = initial_data
@@ -360,7 +415,7 @@ class World(object):
                 ).setdefault(dest_attr, {})[src.full_id] = initial_data
 
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-    
+
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
         warnings.warn(
             "Connections with async_requests are deprecated. They and the set_data "
@@ -370,12 +425,14 @@ class World(object):
         )
         src_sim = self.sims[src._sid]
         dest_sim = self.sims[dest._sid]
-        src_sim.successors.add(dest_sim)
-        src_sim.successors_to_wait_for.add(dest_sim)
-        # DenseTime(0) is always minimal, so we dont need to compare to
-        # previous value of input_delays[src_sim]
-        dest_sim.input_delays[src_sim] = DenseTime(0)  
-         
+        delay = connect_interval(src._group, dest._group)
+        src_sim.successors[dest_sim] = delay
+        src_sim.successors_to_wait_for[dest_sim] = delay
+        # Normally, we would only set the input delay if it is smaller
+        # than whatever is already there. However, in this case, the
+        # new value is the smallest possible, so no test is necessary.
+        dest_sim.input_delays[src_sim] = delay
+
     def connect(
         self,
         src: Entity,
@@ -456,7 +513,8 @@ class World(object):
         """
         Set an initial step for simulator *sid* at time *time* (default=0).
         """
-        self.sims[sid].next_steps = [DenseTime(time)]
+        sim = self.sims[sid]
+        sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
     def get_data(
         self,
@@ -479,11 +537,11 @@ class World(object):
                 ...
             }
         """
-        outputs_by_sim = defaultdict(dict)
+        outputs_by_sim: Dict[SimId, OutputRequest] = defaultdict(dict)
         for entity in entity_set:
-            outputs_by_sim[entity.sid][entity.eid] = attributes
+            outputs_by_sim[entity.sid][entity.eid] = list(attributes)
 
-        async def request_data():
+        async def request_data() -> Dict[SimId, OutputData]:
             requests = {
                 sid: asyncio.create_task(self.sims[sid].get_data(outputs))
                 for sid, outputs in outputs_by_sim.items()
@@ -504,14 +562,14 @@ class World(object):
                         "Could not determine which simulator closed its connection."
                     )
 
-            results_by_sim = {}
+            results_by_sim: Dict[SimId, OutputData] = {}
             for sid, task in requests.items():
                 results_by_sim[sid] = task.result()
 
             return results_by_sim
 
         results_by_sim = self.loop.run_until_complete(request_data())
-        results = {}
+        results: Dict[Entity, Dict[Attr, Any]] = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
 
@@ -636,55 +694,110 @@ class World(object):
                 logger.info('Simulation finished successfully.')
 
     def cache_triggering_ancestors(self):
+        """Collects the ancestors of each simulator and stores them in
+        the respective simulator object.
         """
-        Collects the ancestors of each simulator and stores them in the
-        respective simulator object.
-        """
-        trigger_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
-        for src_sim in self.sims.values():
-            for successors in src_sim.triggers.values():
-                for (dest_sim, delay) in successors:
-                    min_delay = delay
-                    if trigger_graph.has_edge(src_sim, dest_sim):
-                        min_delay = min(delay, trigger_graph[src_sim][dest_sim]["delay"])
-                    trigger_graph.add_edge(src_sim, dest_sim, delay=min_delay)
-        for dest_sim in trigger_graph.nodes:
-            for src_sim in networkx.ancestors(trigger_graph, dest_sim):
-                distance = networkx.shortest_path_length(trigger_graph, src_sim, dest_sim, weight="delay")
-                dest_sim.triggering_ancestors.append((src_sim, distance))
+        # See ``ensure_no_dataflow_cycles`` for an explanation of this
+        # algorithm
+        dirty: Set[SimRunner] = set()
+        for sim in self.sims.values():
+            for port_triggers in sim.triggers.values():
+                for dest_sim, delay in port_triggers:
+                    dest_sim.triggering_ancestors[sim] = delay
+                    dirty.add(dest_sim)
+        while dirty:
+            sim = dirty.pop()
+            for port_triggers in sim.triggers.values():
+                for dest_sim, mid_to_dest in port_triggers:
+                    for src_sim, src_to_mid in sim.triggering_ancestors.items():
+                        src_to_dest = src_to_mid + mid_to_dest
+                        src_to_dest = update_min(dest_sim.triggering_ancestors.get(src_sim), src_to_dest)
+                        if src_to_dest is not None:
+                            dirty.add(dest_sim)
+                            dest_sim.triggering_ancestors[src_sim] = src_to_dest
+        return
 
     def ensure_no_dataflow_cycles(self):
+        """Make sure that there is no cyclic dataflow with 0 total
+        delay. Raise an exception with one such cycle otherwise.
         """
-        Deduce a simulator ranking from a topological sort of the df_graph.
+
+        # Short note on terminology: ancestors and descendants any
+        # number of steps removed; predecessors and successors are one
+        # step removed (i.e. they're *direct* ancestors/descendants)
+
+        dirty: Set[SimRunner] = set(self.sims.values())
+        """Sims that have changed descendants and thus require
+        recalculation
         """
-        immediate_graph: networkx.DiGraph[SimRunner] = networkx.DiGraph()
+        sim_descs: Dict[
+            SimRunner, Dict[SimRunner, Tuple[TieredInterval, List[SimRunner]]]
+        ] = {
+            sim: {} for sim in self.sims.values()
+        }
+        """For each SimRunner, all its descendants that have been found
+        so far with the shortest delay to them and the path that
+        exhibits this delay.
+        """
+
+        # At the start, enter each sim as a descendant of all its
+        # (direct) predecessors
         for sim in self.sims.values():
-            for pred_sim, delay in sim.input_delays.items():
-                if delay == DenseTime(0):
-                    immediate_graph.add_edge(pred_sim, sim)
-        # If there are performance problems, it might be faster to first try sorting
-        # this graph topologically. If that succeeds, there will be no cycles, so the
-        # cycles computation can be skipped.
-        for cycle in networkx.simple_cycles(immediate_graph):
-            # If we run into any cycles, we raise, thus not computing all cycles.
-            raise ScenarioError(
-                "Your scenario contains cycles that are not broken up using "
-                "time-shifted or weak connections. mosaik is unable to determine which "
-                "simulator to run first in these cases. Here is an example of one such "
-                f"cycle: {cycle}."
-            )
+            for pred, delay in sim.input_delays.items():
+                sim_descs[pred][sim] = (delay, [pred, sim])
+        while dirty:
+            mid_sim = dirty.pop()
+            # This sim has had updates to its descendants since we last
+            # processed it. These changes are pushed to its predecessors
+            for src_sim, src_to_mid in mid_sim.input_delays.items():
+                for dest_sim, (mid_to_dest, path) in sim_descs[mid_sim].items():
+                    src_to_dest = src_to_mid + mid_to_dest
+                    src_to_dest = update_min(
+                        sim_descs[src_sim].get(dest_sim, (None,))[0], src_to_dest
+                    )
+                    # update_min only return as non-None value if the
+                    # existing value needs to be updated, i.e. a shorter
+                    # path was found
+                    if src_to_dest is not None:
+                        # In this case we need to update the
+                        # predecessor's shortest path to the descendant
+                        # and reprocess the predecessor
+                        sim_descs[src_sim][dest_sim] = (src_to_dest, [src_sim] + path)
+                        dirty.add(src_sim)
+
+        # We need to raise an error if any sim has itself as a
+        # descendant with a delay of 0
+        for sim, descs in sim_descs.items():
+            if sim not in descs:
+                continue
+            (delay, path) = descs[sim]
+            if all(t == 0 for t in delay.tiers):
+                raise ScenarioError(
+                    f"Your scenario contains cycles, for example: {path}."
+                )
 
     def shutdown(self):
         """
         Shut-down all simulators and close the server socket.
         """
-        if self.server.is_serving():
-            self.server.close()
-
         if not self.loop.is_closed():
             for sim in self.sims.values():
                 self.loop.run_until_complete(sim.stop())
+
+            self.loop.stop()
+            self.loop.run_forever()
             self.loop.close()
+
+
+if TYPE_CHECKING:
+    T = TypeVar("T", bound=SupportsRichComparison)
+
+def update_min(a: T | None, b: T) -> T | None:
+    if a is None:
+        return b
+    if a <= b:  # type: ignore
+        return None
+    return b
 
 
 MOSAIK_METHODS = set(
@@ -706,9 +819,10 @@ class ModelFactory():
     type: Literal['event-based', 'time-based', 'hybrid']
     models: Dict[ModelName, ModelMock]
 
-    def __init__(self, world: World, sid: SimId, proxy: Proxy):
+    def __init__(self, world: World, group: SimGroup, sid: SimId, proxy: Proxy):
         self.meta = proxy.meta
         self._world = world
+        self._group = group
         self._proxy = proxy
         self._sid = sid
 
@@ -764,7 +878,7 @@ class ModelFactory():
 
             setattr(self, meth_name, get_wrapper(proxy, meth_name))
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         # Implemented in order to improve error messages.
         models = self.meta["models"]
         if name in models:
@@ -807,9 +921,9 @@ def parse_attrs(
         inconsistent
     """
     error_template = (
-            "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
-            "if you need both types of %s attributes), and they must list all their "
-            "attrs as %s if that key is present"
+        "%s simulators may not specify %s attrs (use a hybrid simulator, instead, "
+        "if you need both types of %s attributes), and they must list all their "
+        "attrs as %s if that key is present"
     )
     
     if model_desc.get('any_inputs', False):
@@ -817,9 +931,16 @@ def parse_attrs(
     else:
         inputs = wrap_set(model_desc.get('attrs'))
     empty: FrozenSet[Attr] = frozenset()
-    default_measurements = empty if type == 'event-based' else None
+    if type == 'time-based':
+        default_measurements = None
+        default_events = empty
+    elif type == 'event-based':
+        default_measurements = empty
+        default_events = None
+    elif type == 'hybrid':
+        default_measurements = None if 'trigger' in model_desc else inputs
+        default_events = None
     measurement_inputs = wrap_set(model_desc.get('non-trigger', default_measurements))
-    default_events = None if type == 'event-based' else empty
     event_inputs = wrap_set(model_desc.get('trigger', default_events))
     measurement_inputs, event_inputs = parse_set_triple(
         inputs, measurement_inputs, event_inputs,
@@ -889,12 +1010,18 @@ class ModelMock(object):
         model_desc = proxy.meta['models'][model]
         self.params = frozenset(model_desc.get('params', []))
 
-        (
-            self.measurement_inputs,
-            self.event_inputs,
-            self.measurement_outputs,
-            self.event_outputs,
-        ) = parse_attrs(model_desc, self._factory.type)
+        try:
+            (
+                self.measurement_inputs,
+                self.event_inputs,
+                self.measurement_outputs,
+                self.event_outputs,
+            ) = parse_attrs(model_desc, self._factory.type)
+        except ValueError as e:
+            raise ValueError(
+                f"while parsing the model description of model {model} of the "
+                f"simulator {factory._sid}: {e}"
+            )
 
     @property
     def input_attrs(self) -> InOrOutSet[Attr]:
@@ -904,13 +1031,13 @@ class ModelMock(object):
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
     
-    def __call__(self, **model_params):
+    def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.
         """
         return self.create(1, **model_params)[0]
 
-    def create(self, num: int, **model_params):
+    def create(self, num: int, **model_params: Any):
         """
         Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.
@@ -930,7 +1057,7 @@ class ModelMock(object):
 
         return self._make_entities(entities, assert_type=self.name)
 
-    def _check_params(self, **model_params):
+    def _check_params(self, **model_params: Any):
         unexpected_params = set(model_params.keys()).difference(self.params)
         if unexpected_params:
             sep = "', '"

@@ -6,16 +6,16 @@ from __future__ import annotations
 
 from copy import deepcopy
 from time import perf_counter
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3 import InputData, SimId
 import networkx as nx
 
 from mosaik import scheduler
-from mosaik.dense_time import DenseTime
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
+from mosaik.tiered_time import TieredInterval, TieredTime
 
 _originals = {
     'step': scheduler.step,
@@ -28,13 +28,15 @@ def enable():
     scheduler execution.
     """
 
-    async def wrapped_step(world, sim, inputs, max_advance):
+    async def wrapped_step(world: World, sim: SimRunner, inputs: InputData, max_advance: int):
         pre_step(world, sim, inputs)
         ret = await _originals['step'](world, sim, inputs, max_advance)
         post_step(world, sim)
         return ret
 
     scheduler.step = wrapped_step
+    World.assert_graph = assert_graph
+    World.assert_inputs = assert_inputs
 
 
 def disable():
@@ -45,16 +47,16 @@ def disable():
         setattr(scheduler, k, v)
 
 
-def parse_node(node_str: str) -> Tuple[SimId, DenseTime]:
+def parse_node(node_str: str) -> Tuple[SimId, TieredTime]:
     # networkx will call the parser on already-parsed nodes occasionally
     # So we make sure that we only try to parse strings.
     if isinstance(node_str, str):
-        sid, time = node_str.rsplit("-", 1)
-        return (sid, DenseTime.parse(time.replace("~", ":")))
+        sid, time = node_str.rsplit("~", 1)
+        return (sid, TieredTime(*tuple(map(int, time.split(":")))))
     return node_str
 
 
-def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, DenseTime]]:
+def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, TieredTime]]:
     return nx.parse_edgelist(
         graph_string.split("\n"),
         create_using=nx.DiGraph(),
@@ -78,16 +80,6 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
     next_step = sim.current_step
     node_id = (sid, next_step)
 
-    # if hasattr(sim, 'last_node'):
-    #     last_node = sim.last_node
-    #     time_last_node = last_node[1]
-    # else:
-    #     time_last_node = DenseTime(-1)
-
-    # if next_step == time_last_node:
-    #     n_rep = int(last_node.split('~')[-1]) if '~' in last_node else 0
-    #     node_id = f'{node_id}~{n_rep + 1}'
-
     sim.last_node = node_id
 
     eg.add_node(node_id, t=perf_counter(), inputs=deepcopy(inputs))
@@ -97,8 +89,8 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
     for pre_sim in sim.input_delays:
         pre = pre_sim.sid
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
-            pre_node: Optional[Tuple[str, DenseTime]] = None
-            pre_time = DenseTime(-1)
+            pre_node: Optional[Tuple[str, TieredTime]] = None
+            pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
             # We check for all nodes if it is from the predecessor and it its
             # step time is before the current step of sim. There might be cases
             # where this simple procedure is wrong, e.g. when the pred has
@@ -106,7 +98,7 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
             for inode in eg.nodes:
                 node_sid, itime = inode
                 if node_sid == pre:
-                    if (next_step - sim.input_delays[pre_sim] >= itime >= pre_time):
+                    if (next_step >= itime + sim.input_delays[pre_sim] and itime >= pre_time):
                         pre_node = inode
                         pre_time = itime
             if pre_node is not None:
@@ -115,10 +107,10 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
 
     for suc_sim in sim.successors_to_wait_for:
         suc = suc_sim.sid
-        if sim.last_step >= DenseTime(0):
+        if sim.last_step >= TieredTime(0):
             suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress.value + DenseTime(1) >= next_step
+            assert sims[suc].progress.time + TieredInterval(1) >= next_step
 
 
 def post_step(world: World, sim: SimRunner):
@@ -129,7 +121,75 @@ def post_step(world: World, sim: SimRunner):
     last_node = sim.last_node
     eg.nodes[last_node]['t_end'] = perf_counter()
     next_self_step = sim.next_self_step
-    if next_self_step is not None and next_self_step < world.until:
-        node_id = (sim.sid, DenseTime(next_self_step))
+    if next_self_step is not None and next_self_step < TieredTime(world.until) + sim.from_world_time:
+        node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None
+
+
+def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
+    actual_graph = world.execution_graph
+    expected_graph = parse_execution_graph(expected_str)
+    for node in extra_nodes:
+        expected_graph.add_node(parse_node(node))
+
+    errors: List[str] = []
+    expected_nodes = set(expected_graph.nodes)
+    actual_nodes = set(actual_graph.nodes)
+    missing_nodes = expected_nodes - actual_nodes
+
+    def format_node(node: Tuple[str, TieredTime]) -> str:
+        return f"{node[0]} @ {node[1]}"
+    
+    if missing_nodes:
+        errors.append("The following expected simulator invocations did not happen:")
+        for node in sorted(missing_nodes):
+            errors.append(f"- {format_node(node)}")
+        errors.append("")
+
+    unexpected_nodes = actual_nodes - expected_nodes
+    if unexpected_nodes:
+        errors.append("The following simulator invocations were not expected:")
+        for node in sorted(unexpected_nodes):
+            sources = actual_graph.predecessors(node)
+            if sources:
+                sources_str = f"caused by: {', '.join(map(format_node, sources))}"
+            else:
+                sources_str = "not caused by other simulators"
+            errors.append(f"- {format_node(node)} ({sources_str})")
+        errors.append("")
+
+    predecessor_errors: List[str] = []
+    for node in sorted(actual_nodes & expected_nodes):
+        actual_pres = set(actual_graph.predecessors(node))
+        expected_pres = set(expected_graph.predecessors(node))
+        if actual_pres != expected_pres:
+            predecessor_errors.append(
+                f"- {format_node(node)} ("
+                f"extraneous {', '.join(map(format_node, sorted(actual_pres - expected_pres)))}; "
+                f"missing {', '.join(map(format_node, sorted(expected_pres - actual_pres)))})"
+            )
+    if predecessor_errors:
+        errors.append(
+            "The following simulator invocations had incorrect sources:"
+        )
+        errors.extend(predecessor_errors)
+        errors.append("")
+
+    if errors:
+        raise AssertionError(
+            "The following problems were detected in the execution graph:\n\n"
+            + "\n".join(errors)
+        )
+
+    assert actual_graph.adj == expected_graph.adj
+
+
+def assert_inputs(world: World, expected_inputs: Dict[str, InputData]):
+    eg = world.execution_graph
+    for node_str, expected_data in expected_inputs.items():
+        node = parse_node(node_str)
+        assert expected_data == eg.nodes[node]['inputs']
+        del eg.nodes[node]['inputs']
+    for node in eg.nodes(data="inputs"):
+        assert not node[1]  # Make sure that there are not unchecked inputs

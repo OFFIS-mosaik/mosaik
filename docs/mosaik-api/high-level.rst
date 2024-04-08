@@ -19,13 +19,6 @@ an can easily be installed via `pip <https://pip.pypa.io>`_:
 
 It supports Python 2.7, >= 3.3 and PyPy.
 
-Java-API
-========
-For the use of the Java-API please refer to the :doc:`Java-tutorial</tutorials/tutorial_api-java>`.
-
-.. note:: There is also an extended version for java at :doc:`Java-tutorial</tutorials/tutorial_api-java-generics>` that incorporates QoL changes for a more java-like experience.
-
-
 Usage
 =====
 

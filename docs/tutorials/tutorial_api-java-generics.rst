@@ -8,7 +8,7 @@ Additionally to the basic mosaik Java API, another API based on the basic one ca
 that contains some quality of life changes, for example automatic meta-model generation based on your model,
 automatic model instantiation, input parsing via generics and automatic gathering of data for mosaik.
 
-.. note:: When to use basic java api and when to use this api? If you want to use the flexibility from python, for example using all inputs. If you want to have a more type strict java-like experience, use this api instead.
+.. note:: When to use basic Java API and when to use this API? If you want to use the flexibility from Python, for example using all inputs. If you want to have a more type strict Java-like experience, use this API instead.
 
 This tutorial is also based on the Python tutorial :doc:`Python tutorial</tutorials/examplesim>` for the simple model and shows how to use the most features of this API.
 
@@ -30,8 +30,9 @@ The model annotation has several different sub-annotations that are useful to cu
 automatic class instantiation.
 Some are also needed for some java versions to work, namely where constructor parameter names are not set.
 
-.. note:: All fields MUST be a non-primitive type. This is needed for internal purposes for the input data parsing.
-Else it could be possible that you read input values (for example 0 as demand) that were never set.
+.. note::
+   All fields MUST be a non-primitive type. This is needed for internal purposes for the input data parsing.
+   Else it could be possible that you read input values (for example 0 as demand) that were never set.
 
 Annotated models, that are added to a simulator, will be searched for public fields and getter,
 which will then be transformed into attributes.
@@ -61,8 +62,9 @@ The reason to have two simulators is simpler use of generics for single models c
 The simulators also separate entity model and input model.
 Separating the input model from the entity model enables you to use only a subset of the entity model as input.
 
-.. note:: Input models need a default constructor!
-This is due to the input parsing where an initially empty model's fields will be filled iteratively.
+.. note::
+    Input models need a default constructor!
+    This is due to the input parsing where an initially empty model's fields will be filled iteratively.
 
 Single model simulator
 ----------------------
@@ -210,7 +212,7 @@ There are two ways to do this:
 For more details about how to connect simulators to mosaik see the section about the
 :doc:`Sim Manager </simmanager>` in the mosaik-documentation.
 
-.. _java_cmd:
+.. _java_generics_cmd:
 
 Connecting the simulator using *cmd*
 ------------------------------------

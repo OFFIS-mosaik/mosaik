@@ -1,4 +1,6 @@
+from __future__ import annotations
 from typing import (
+    Any,
     FrozenSet,
     Generic,
     Iterable,
@@ -7,7 +9,7 @@ from typing import (
     TypeVar,
     Union,
 )
-from typing_extensions import Self, TypeAlias
+from typing_extensions import TypeAlias
 
 E = TypeVar("E")
 
@@ -28,7 +30,7 @@ class OutSet(Generic[E]):
     def __init__(self, elems: Iterable[E] = ()):
         self._set = frozenset(elems)
 
-    def __sub__(self, other: Union[FrozenSet[E], Self]) -> Union[Self, FrozenSet[E]]:
+    def __sub__(self, other: InOrOutSet[E]) -> InOrOutSet[E]:
         if isinstance(other, OutSet):
             return other._set - self._set
         else:
@@ -37,7 +39,7 @@ class OutSet(Generic[E]):
     def __rsub__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
         return rother & self._set
 
-    def __and__(self, other: Union[FrozenSet[E], Self]) -> Union[Self, FrozenSet[E]]:
+    def __and__(self, other: InOrOutSet[E]) -> InOrOutSet[E]:
         if isinstance(other, OutSet):
             return OutSet(self._set | other._set)
         else:
@@ -46,20 +48,25 @@ class OutSet(Generic[E]):
     def __rand__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
         return rother - self._set
 
-    def __or__(self, other: Union[FrozenSet[E], Self]) -> Self:
+    def __or__(self, other: InOrOutSet[E]) -> OutSet[E]:
         if isinstance(other, OutSet):
             return OutSet(self._set & other._set)
         else:
             return OutSet(self._set - other)
 
-    def __ror__(self, rother: FrozenSet[E]) -> Self:
+    def __ror__(self, rother: FrozenSet[E]) -> OutSet[E]:
         return OutSet(self._set - rother)
 
     def __contains__(self, item: E) -> bool:
         return item not in self._set
 
-    def __eq__(self, other: Self):
-        return self._set == other._set
+    def __eq__(self, other: Any):
+        if not isinstance(other, OutSet):
+            return False
+        return self._set == other._set  # type: ignore  (Pyright does not know E here)
+
+    def __str__(self):
+        return f"OutSet({{{', '.join(self._set)}}})"
 
 
 InOrOutSet: TypeAlias = Union[FrozenSet[E], OutSet[E]]
@@ -106,12 +113,15 @@ def parse_set_triple(
         part_b = union - part_a
 
     if not part_a & part_b == frozenset():
-        raise ValueError(f"{part_a_name} and {part_b_name} are not disjoint")
+        raise ValueError(
+            f"{part_a_name} ({part_a}) and {part_b_name} ({part_b}) are not disjoint"
+        )
 
     if not union == (part_a | part_b):
         raise ValueError(
-            f"{part_a_name} and {part_b_name} must be subsets of {union_name}, "
-            f"and they must have {union_name} as their union if both given"
+            f"{part_a_name} ({part_a}) and {part_b_name} ({part_b}) must be subsets "
+            f"of {union_name} ({union}), and they must have {union_name} as their "
+            f"union if both given"
         )
 
     return part_a, part_b
