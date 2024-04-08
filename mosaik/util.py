@@ -8,7 +8,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, MutableSequence, Optional, Set, Tuple
 from typing_extensions import Literal
-from matplotlib.axes import Axes
 from mosaik_api_v3 import Attr, SimId
 import networkx as nx
 import datetime
@@ -18,6 +17,7 @@ from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
+    from matplotlib.axes import Axes
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"
