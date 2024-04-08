@@ -743,6 +743,9 @@ class World(object):
         if not self.loop.is_closed():
             for sim in self.sims.values():
                 self.loop.run_until_complete(sim.stop())
+
+            self.loop.stop()
+            self.loop.run_forever()
             self.loop.close()
 
 
