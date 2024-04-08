@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mosaik"
-version = "3.3.0.b1"
+version = "3.3.0"
 description = "mosaik is a flexible smart-grid co-simulation framework"
 authors = ["mosaik development team <mosaik@offis.de>"]
 license = "LGPL-2.1-only"
@@ -20,11 +20,11 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-loguru = "^0.6"
+loguru = ">=0.6, <1"
 networkx = "^2.5"
 tqdm = "^4.64.1"
 typing-extensions = "^4.5"
-mosaik-api-v3 = "^3.0.4"
+mosaik-api-v3 = "^3.0.9"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "3.7.9"
