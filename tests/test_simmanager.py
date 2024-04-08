@@ -583,7 +583,6 @@ def test_mosaik_remote(
             world.sims["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredInterval(0)
-            
 
         async def run():
             channel_future: asyncio.Future[Channel] = asyncio.Future()

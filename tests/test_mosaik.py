@@ -22,42 +22,6 @@ from mosaik.tiered_time import TieredTime
 
 from tests.scenarios.conftest import SIM_CONFIG
 
-# VENV = os.path.dirname(sys.executable)
-
-# SIM_CONFIG: Dict[str, scenario.SimConfig] = {
-#     'local': {
-#         **{char: {'python': 'example_sim.mosaik:ExampleSim'} for char in 'ABCDE'},
-#         'MAS': {'python': 'example_mas.mosaik:ExampleMas'}
-#     },
-#     'remote': {
-#         **{
-#             char: {'cmd': f'{VENV}/pyexamplesim %(addr)s'}
-#             for char in 'ABCDE'
-#         },
-#         'MAS': {'cmd': f'{VENV}/pyexamplemas %(addr)s'}
-#     },
-#     'generic': {
-#         **{char: {'python': 'tests.simulators.generic_test_simulator:TestSim'}
-#         for char in 'ABCDE'},
-#         'LoopSim': {
-#             'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
-#         },
-#         'FixedOut': {'python': 'tests.simulators.fixed_output_sim:FixedOutputSim'},
-#     },
-#     'generic_remote': {
-#         char: {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}
-#         for char in 'ABCDE'
-#     },
-#     'loop': {
-#         'LoopSim': {
-#             'python': 'tests.simulators.loop_simulators.loop_simulator:LoopSim',
-#         },
-#         'EchoSim': {
-#             'python': 'tests.simulators.loop_simulators.echo_simulator:EchoSim',
-#         },
-#     }
-# }
-
 
 @pytest.mark.parametrize('sim_name', ["Local", "Remote"])
 def test_call_extra_methods(sim_name: str):

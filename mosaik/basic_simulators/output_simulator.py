@@ -59,7 +59,6 @@ class OutputSimulator(mosaik_api_v3.Simulator):
         return entities
 
     def step(self, time: Time, inputs:InputData, max_advance: Time):
-        print(inputs)
         for receiver, input in inputs.items():
             self.entities[receiver][time] = deepcopy(input) 
 

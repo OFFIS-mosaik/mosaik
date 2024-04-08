@@ -5,7 +5,7 @@ import mosaik.util
 
 
 # Sim config
-SIM_CONFIG = {
+SIM_CONFIG: mosaik.SimConfig = {
     'ExampleSim': {
         'python': 'simulator_mosaik:ExampleSim',
     },

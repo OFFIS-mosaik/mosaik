@@ -22,9 +22,9 @@
 # this new adapter.
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 import warnings
-from loguru import logger
+from loguru import logger  # noqa: F401  # type: ignore
 
 from mosaik_api_v3.types import Meta, SimId
 
@@ -115,7 +115,7 @@ class Adapter(Proxy):
     def meta(self) -> Meta:
         return self._out.meta
 
-    async def send(self, request):
+    async def send(self, request: Any):
         return await self._out.send(request)
 
     async def stop(self):
@@ -128,12 +128,12 @@ class V3ToV2Adapter(Adapter):
       (but this is handled in BaseConnection)
     - ``step`` is now supplied with ``max_advance`` (as an arg)
     """
-    async def send(self, request):
+    async def send(self, request: Any):
         try:
             func_name, args, kwargs = request
             if func_name == "step":
                 request = ("step", args[0:2], kwargs)
-        except:
+        except ValueError:
             pass
         return await self._out.send(request)
 
@@ -147,12 +147,12 @@ class V2ToV1Adapter(Adapter):
     """API changes:
     - ``setup_done`` function was added to simulators
     """
-    async def send(self, request):
+    async def send(self, request: Any):
         try:
-            func_name, args, kwargs = request
+            func_name, _args, _kwargs = request
             if func_name == "setup_done":
                 return None
-        except:
+        except ValueError:
             pass
 
         return await self._out.send(request)
