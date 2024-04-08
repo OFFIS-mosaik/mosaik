@@ -47,7 +47,7 @@ shutil.move(os.path.join(os.path.join(component_docs_dir, 'mosaik-heatpump-maste
 os.rmdir(os.path.join(component_docs_dir, 'mosaik-heatpump-master-docs'))
 
 mosaik_hp_version = mosaik_components.heatpump.__version__
-rst_epilog = ".. |mosaik_hp_version| replace:: v{}".format(mosaik_hp_version)
+rst_epilog = ".. |mosaik_hp_version| replace:: v{}\n".format(mosaik_hp_version)
 
 # -- General configuration ----------------------------------------------------
 
@@ -99,7 +99,7 @@ copyright = '2012-2024 OFFIS'
 version = mosaik.__version__
 release = mosaik.__version__
 
-rst_epilog = """
+rst_epilog = rst_epilog + """
 .. |mosaik| image:: /_static/favicon.png
 """
 
