@@ -20,7 +20,10 @@ default:
 Unit tests:
   image: dmanthing/multi-python
   stage: Tests
+  before_script:
+    - curl -sSL https://install.python-poetry.org | python3 -
   script:
+    - export PATH=/root/.local/bin:$PATH
     - tox
   artifacts:
     when: always
@@ -40,7 +43,10 @@ Benchmark tests:
   image: dmanthing/multi-python
   stage: Tests
   allow_failure: true
+  before_script:
+    - curl -sSL https://install.python-poetry.org | python3 -
   script:
+    - export PATH=/root/.local/bin:$PATH
     - tox -c tox-benchmark.ini
   rules:
     - if: '$CI_COMMIT_TAG == null'
