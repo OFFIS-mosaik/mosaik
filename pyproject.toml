@@ -27,9 +27,8 @@ typing-extensions = "^4.5"
 mosaik-api-v3 = "^3.0.4"
 
 [tool.poetry.group.dev.dependencies]
-flake8 = "3.7.9"
-pep8 = "1.7.1"
 tox = "^3.20.1"
+ruff = "^0.3.5"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.2.2"
@@ -46,6 +45,28 @@ sphinxcontrib-plantuml = "^0.26"
 [tool.poetry.group.plotting.dependencies]
 matplotlib = { version = "^3.8.2", markers = "python_version >= '3.9'" }
 
+[tool.ruff.lint]
+extend-select = ["C", "W"]
+mccabe.max-complexity = 11
+
+[tool.pytest.ini_options]
+markers = [
+    "cmd_process: Contains a simulator started using cmd",
+]
+xfail_strict = true
+filterwarnings = [
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
+addopts = [
+    "--doctest-glob='*.rst'"
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportIncompatibleMethodOverride = "warning"
+reportUninitializedInstanceVariable = "warning"
+reportUnnecessaryIsInstance = "none"
+reportUnusedImport = "warning"
 
 [build-system]
 requires = ["poetry-core"]
