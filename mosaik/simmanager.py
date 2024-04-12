@@ -222,9 +222,10 @@ async def start_proc(
     async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
         channel_future.set_result(Channel(r, w))
 
-    async with await asyncio.start_server(on_connect, *mosaik_config["addr"]) as server:
+    server = await asyncio.start_server(on_connect, *mosaik_config["addr"])
+    try:
         actual_addr = server.sockets[0].getsockname()
-        
+
         replacements = {
             "addr": "%s:%s" % actual_addr,
             "python": sys.executable,
@@ -281,6 +282,8 @@ async def start_proc(
             raise SimulationError(
                 f'Simulator "{sim_name}" did not connect to mosaik in time.'
             )
+    finally:
+        server.close()
 
 
 async def start_connect(
