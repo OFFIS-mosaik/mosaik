@@ -1,6 +1,10 @@
 Changelog
 =========
 
+3.3.1 - 2024-04-12
+------------------
+-[FIX] Remote simulators didn't work with Python 3.12 (https://gitlab.com/mosaik/mosaik/-/issues/233)
+
 3.3.0 - 2024-04-08
 ------------------
 - [NEW] A simulator can now be connected to itself if the connection is weak or time_shifted (https://gitlab.com/mosaik/mosaik/-/issues/156)
