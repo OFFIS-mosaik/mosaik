@@ -220,7 +220,7 @@ async def start_proc(
     """
     channel_future: asyncio.Future[Channel] = asyncio.Future()
     async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
-        channel_future.set_result(Channel(r, w))
+        channel_future.set_result(Channel(r, w, name=sim_name))
 
     server = await asyncio.start_server(on_connect, *mosaik_config["addr"])
     try:
@@ -318,7 +318,7 @@ async def start_connect(
             f'Simulator "{sim_name}" could not be started: Could not connect to '
             f'"{sim_config["connect"]}"'
         )
-    return RemoteProxy(Channel(reader, writer), mosaik_remote)
+    return RemoteProxy(Channel(reader, writer, name=sim_name), mosaik_remote)
 
 
 Port: TypeAlias = Tuple[EntityId, Attr]
