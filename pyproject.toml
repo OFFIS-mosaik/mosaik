@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mosaik"
-version = "3.3.0"
+version = "3.3.2"
 description = "mosaik is a flexible smart-grid co-simulation framework"
 authors = ["mosaik development team <mosaik@offis.de>"]
 license = "LGPL-2.1-only"

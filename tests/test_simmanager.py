@@ -588,13 +588,16 @@ def test_mosaik_remote(
             channel_future: asyncio.Future[Channel] = asyncio.Future()
             async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
                 channel_future.set_result(Channel(r, w))
-            async with await asyncio.start_server(on_connect, "0.0.0.0") as server:
+            server = await asyncio.start_server(on_connect, "0.0.0.0")
+            try:
                 actual_addr = server.sockets[0].getsockname()
                 sim_exc, greeter_exc = await asyncio.gather(
                     simulator(*actual_addr),
                     greeter(channel_future),
                     return_exceptions=True,
                 )
+            finally:
+                server.close()
             assert greeter_exc is None
             if sim_exc:
                 raise sim_exc
