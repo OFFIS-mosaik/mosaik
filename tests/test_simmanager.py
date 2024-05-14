@@ -15,7 +15,7 @@ import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.tiered_time import TieredInterval, TieredTime
 
@@ -42,6 +42,9 @@ sim_config: scenario.SimConfig = {
     },
     "MetaMock": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
+    },
+    "FixedOutputSim": {
+        "python": "tests.simulators.fixed_output_sim:FixedOutputSim",
     },
 }
 
@@ -635,3 +638,13 @@ def test_global_time_resolution(world):
     world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
     assert simulator_2._proxy.sim.time_resolution == 60.0
+
+
+def test_non_serializable_outputs_error(world: World):
+    src_sim = world.start("FixedOutputSim")
+    src_entity = src_sim.Entity(outputs={0: object()})
+    dest_sim = world.start("ExampleSimB")
+    dest_entity = dest_sim.B(init_val=0)
+    world.connect(src_entity, dest_entity, ("out", "val_in"))
+    with pytest.raises(NonSerializableOutputsError):
+        world.run(until=1)
