@@ -15,3 +15,4 @@ components.
    mosaik.scheduler
    mosaik.simmanager
    mosaik.util
+   mosaik.basic_simulators

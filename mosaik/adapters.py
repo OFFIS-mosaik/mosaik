@@ -22,7 +22,9 @@
 # this new adapter.
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import warnings
+from loguru import logger  # noqa: F401  # type: ignore
 
 from mosaik_api_v3.types import Meta, SimId
 
@@ -34,6 +36,7 @@ async def init_and_get_adapter(
     base_proxy: BaseProxy,
     sid: SimId,
     sim_params: Dict[str, Any],
+    explicit_version_str: Optional[str] = None,
 ) -> Proxy:
     """Initialize the simulator given by ``base_proxy`` (by calling its
     ``init`` function) and wrap it in a ``Proxy`` object that
@@ -48,6 +51,11 @@ async def init_and_get_adapter(
     by the init call.
     :raise ScenarioError: if there is a problem during initialization.
     """
+    if explicit_version_str is not None:
+        explicit_version = list(map(int, explicit_version_str.split('.')))
+    else:
+        explicit_version = None
+
     try:
         version = await base_proxy.init(sid, **sim_params)
     except ScenarioError as e:
@@ -63,17 +71,36 @@ async def init_and_get_adapter(
             "version of mosaik. Maybe a newer version of the mosaik package is "
             "available to be used in your scenario?"
         )
+    if explicit_version and version != explicit_version:
+        raise ScenarioError(
+            f"The explicit version that you specified for simulator {sid} in your "
+            f"SimConfig (namely {'.'.join(map(str, explicit_version))}) does not match "
+            "the version that this simulator reports (namely "
+            f"{'.'.join(map(str, version))})."
+        )
 
     proxy: Proxy = base_proxy
     # Add all the adapters needed to get from the actual version of the
     # simulator to the current version.
     # Note that there are no ``elif``s here since we need to add all
     # required adapters, not just the first matching one.
-    # IMPORTANT: Add new tests at the end to ensure the correct nesting!
+    # IMPORTANT: Add new adapters at the bottom to ensure the correct
+    # nesting!
     if version < [2, 2]:
         proxy = V2ToV1Adapter(proxy)
     if version < [3]:
         proxy = V3ToV2Adapter(proxy)
+
+    # Warn the user if no explicit version was specified in the
+    # SIM_CONFIG but the simulator is outdated for this version of
+    # mosaik.
+    if not isinstance(proxy, BaseProxy) and not explicit_version:
+        warnings.warn(
+            f"Simulator {sid} is using an outdated API version, namely "
+            f"{'.'.join(map(str, version))}. It should still work. You "
+            "can suppress this warning by adding an explicit API "
+            "version for this simulator in your SimConfig."
+        )
 
     return proxy
 
@@ -88,7 +115,7 @@ class Adapter(Proxy):
     def meta(self) -> Meta:
         return self._out.meta
 
-    async def send(self, request):
+    async def send(self, request: Any):
         return await self._out.send(request)
 
     async def stop(self):
@@ -101,12 +128,12 @@ class V3ToV2Adapter(Adapter):
       (but this is handled in BaseConnection)
     - ``step`` is now supplied with ``max_advance`` (as an arg)
     """
-    async def send(self, request):
+    async def send(self, request: Any):
         try:
             func_name, args, kwargs = request
             if func_name == "step":
                 request = ("step", args[0:2], kwargs)
-        except:
+        except ValueError:
             pass
         return await self._out.send(request)
 
@@ -120,12 +147,12 @@ class V2ToV1Adapter(Adapter):
     """API changes:
     - ``setup_done`` function was added to simulators
     """
-    async def send(self, request):
+    async def send(self, request: Any):
         try:
-            func_name, args, kwargs = request
+            func_name, _args, _kwargs = request
             if func_name == "setup_done":
                 return None
-        except:
+        except ValueError:
             pass
 
         return await self._out.send(request)

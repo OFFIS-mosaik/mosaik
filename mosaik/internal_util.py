@@ -1,6 +1,8 @@
 from typing import Callable, Dict
 from typing_extensions import TypeVar
 
+from mosaik._version import __version__
+
 K = TypeVar("K")
 V = TypeVar("V")
 
@@ -27,3 +29,7 @@ def recursive_merge_all(
         else:
             target[k] = v
     return target
+
+
+def doc_link(page: str, anchor: str) -> str:
+    return f"https://mosaik.readthedocs.io/en/{__version__}/{page}.html#{anchor}"

@@ -1,47 +1,37 @@
 ==================
-UML-Class-Diagrams
+UML Class Diagrams
 ==================
 
-These diagrams represent the object-oriented structure of mosaik. However, *mosaik* is not completely object-oriented, so not all methods and global variables are listed. The same applies to *simpy & simpy.io* which provides basic functionality for *mosaik*.
+These diagrams represent the object-oriented structure of mosaik.
+However, mosaik is not completely object-oriented, so not all methods and global variables are listed.
+The same applies to simpy and simpy.io which provide basic functionality for mosaik.
 
-|
-|
+mosaik
+======
 
-Class-Diagram: mosaik
-=====================
-|
 .. figure:: /_static/UML/class/classes_mosaik.dot.*
    :width: 100%
    :align: center
    :alt: classes_mosaik
 
    (click to enlarge)
-|
-|
-|
 
-Class-Diagram: simpy + simpy.io
-===============================
-|
+simpy + simpy.io
+================
+
 .. figure:: /_static/UML/class/classes_simpy.dot.*
    :width: 100%
    :align: center
    :alt: classes_mosaik_simpy
 
    (click to enlarge)
-|
-|
-|
 
-Class-Diagram: mosaik + simpy + simpy.io
-========================================
-|
+mosaik + simpy + simpy.io
+=========================
+
 .. figure:: /_static/UML/class/classes_mosaik_simpy.dot.*
    :width: 100%
    :align: center
    :alt: classes_mosaik_simpy
 
    (click to enlarge)
-|
-|
-|

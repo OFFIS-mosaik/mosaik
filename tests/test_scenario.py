@@ -3,10 +3,11 @@ from typing import List, cast
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.dense_time import DenseTime
 from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
 import pytest
+
+from mosaik.tiered_time import TieredInterval
 
 sim_config: scenario.SimConfig = {
     'ExampleSim': {
@@ -14,6 +15,10 @@ sim_config: scenario.SimConfig = {
     },
     'MetaMirror': {
         'python': 'tests.simulators.meta_mirror:MetaMirror',
+    },
+    'MetaMirror2.0': {
+        'python': 'tests.simulators.meta_mirror:MetaMirror',
+        'api_version': '2.0',
     },
     'GenericTestSimulator': {
         'python': 'tests.simulators.generic_test_simulator:TestSim',
@@ -61,6 +66,14 @@ def test_world():
         assert not hasattr(world, 'execution_graph')
     finally:
         world.shutdown()
+
+
+def test_two_worlds():
+    """Test that two worlds can exist without a port conflict."""
+    world_1 = World({})
+    world_2 = World({})
+    world_1.shutdown()
+    world_2.shutdown()
 
 
 def test_world_debug():
@@ -115,12 +128,12 @@ def test_world_connect(world: World):
     sim_1 = world.sims[sim_1._sid]
     
     # TODO: check for connections in new place
-    assert sim_0.successors == set((sim_1,))
-    assert sim_0.successors_to_wait_for == set()
-    assert sim_1.successors == set()
-    assert sim_1.input_delays[sim_0] == DenseTime(0, 0)
+    assert sim_0.successors == {sim_1: TieredInterval(0)}
+    assert sim_0.successors_to_wait_for == {}
+    assert sim_1.successors == {}
+    assert sim_1.input_delays[sim_0] == TieredInterval(0)
 
-    assert sim_1.pulled_inputs[(sim_0, 0)] == set([
+    assert sim_1.pulled_inputs[(sim_0, TieredInterval(0))] == set([
         ((a[0].eid, 'val_out'), (b[0].eid, 'val_in')),
         ((a[0].eid, 'dummy_out'), (b[0].eid, 'dummy_in')),
         ((a[1].eid, 'val_out'), (b[1].eid, 'val_in')),
@@ -143,7 +156,7 @@ def test_world_connect_same_simulator(world: World):
     with pytest.raises(ScenarioError) as err:
         world.connect(a[0], a[1], ('val_out', 'val_out'))
         world.run(1)
-    assert "cycles that are not broken up" in str(err.value)
+    assert "Your scenario contains cycles" in str(err.value)
 
 
 def test_world_connect_cycle(world: World):
@@ -158,11 +171,21 @@ def test_world_connect_cycle(world: World):
     with pytest.raises(ScenarioError) as err:
         world.run(1)
     assert (
-        "Your scenario contains cycles that are not broken up using time-shifted or "
-        "weak connections. mosaik is unable to determine which simulator to run first "
-        "in these cases. Here is an example of one such cycle:"
-        in str(err.value)
+        "Your scenario contains cycles" in str(err.value)
     )
+
+
+def test_group_cycle(world: World):
+    with world.group():
+        a = world.start('ExampleSim').B(init_val=0)
+        b = world.start('ExampleSim').B(init_val=0)
+    c = world.start('ExampleSim').B(init_val=0)
+    world.connect_one(a, b, 'val_out', 'val_in', weak=True, initial_data=None)
+    world.connect_one(b, c, 'val_out', 'val_in')
+    world.connect_one(c, a, 'val_out', 'val_in')
+    with pytest.raises(ScenarioError) as err:
+        world.run(0)
+    assert "Your scenario contains cycles" in str(err.value)
 
 
 def test_world_connect_wrong_attr_names(world: World):
@@ -202,7 +225,7 @@ def test_world_connect_no_attrs(world: World):
 
     sim_0.successors = set((sim_1,))
     sim_1.successors = set()
-    sim_1.input_delays = {sim_0: DenseTime(0)}
+    sim_1.input_delays = {sim_0: TieredInterval(0)}
     assert world.entity_graph.adj == {
         'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
         'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
@@ -215,21 +238,27 @@ def test_world_connect_any_inputs(world: World):
     everything can be connected to it.
     """
     a = cast(Entity, world.start('ExampleSim').A(init_val=0))
-    b = cast(Entity, world.start('ExampleSim').B(init_val=0))
+    b = cast(Entity, world.start(
+        'MetaMirror',
+        meta={
+            "api_version": "3.0",
+            "type": "time-based",
+            "models": {"B": {"any_inputs": True, "attrs": []}},
+        }
+    ).B())
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    b.model_mock.any_inputs = True
     world.connect(a, b, 'val_out')
 
-    assert sim_b.pulled_inputs[(sim_a, 0)] == set([
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(0))] == set([
         ((a.eid, "val_out"), (b.eid, "val_out")),
     ])
     
-    assert sim_a.successors == set((sim_b,))
-    assert sim_b.input_delays[sim_a] == DenseTime(0)
+    assert sim_a.successors == {sim_b: TieredInterval(0)}
+    assert sim_b.input_delays[sim_a] == TieredInterval(0)
     assert to_dict(world.entity_graph) == {
-        'ExampleSim-0.' + a.eid: {'ExampleSim-1.' + b.eid: {}},
-        'ExampleSim-1.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
+        'ExampleSim-0.' + a.eid: {'MetaMirror-0.' + b.eid: {}},
+        'MetaMirror-0.' + b.eid: {'ExampleSim-0.' + a.eid: {}},
     }
 
 
@@ -250,16 +279,24 @@ def test_world_connect_time_shifted(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, 'val_out', time_shifted=True, initial_data={'val_out': 1.0})
 
-    assert sim_b.pulled_inputs[(sim_a, 1)] == set([
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1))] == set([
         ((a.eid, 'val_out'), (b.eid, 'val_out')),
     ])
-    assert sim_a.successors == set((sim_b,))
-    assert sim_b.input_delays[sim_a] == DenseTime(1, 0)
+    assert sim_a.successors == {sim_b: TieredInterval(0)}
+    assert sim_b.input_delays[sim_a] == TieredInterval(1)
     assert world.sims['ExampleSim-0'].outputs[-1] == {
         a.eid: {
             'val_out': 1.0
         },
     }
+
+
+def test_weak_outside_group(world: World):
+    a = world.start('ExampleSim').A(init_val=0)
+    b = world.start('ExampleSim').B(init_val=0)
+    with pytest.raises(ScenarioError) as exc:
+        world.connect(a, b, "val_out", weak=True, initial_data={"val_out": 0})
+    assert "in groups" in str(exc.value)
 
 
 def test_world_get_data(world: World):
@@ -429,3 +466,39 @@ def test_extra_info(world: World):
     sim = world.start("GenericTestSimulator")
     entity = sim.A(extra_info=42)
     assert entity.extra_info == 42
+
+
+def test_missing_type_in_meta(world: World):
+    with pytest.raises(ScenarioError) as exc:
+        world.start(
+            "MetaMirror",
+            meta={
+                "api_version": "3.0",
+                "models": {},
+            }
+        )
+    assert "missing a type specification" in str(exc)
+
+
+def test_typo_in_type_in_meta(world: World):
+    with pytest.raises(ScenarioError) as exc:
+        world.start(
+            "MetaMirror",
+            meta={
+                "api_version": "3.0",
+                "type": "timebased",
+                "models": {},
+            }
+        )
+    assert "not a valid type" in str(exc)
+
+
+def test_missing_type_in_old_api(world: World):
+    sim = world.start(
+        "MetaMirror2.0",
+        meta={
+            "api_version": "2.0",
+            "models": {},
+        }
+    )
+    assert sim.type == "time-based"

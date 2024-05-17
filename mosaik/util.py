@@ -1,22 +1,37 @@
+# pyright: reportUnknownMemberType=false
 """
 This module contains some utility functions and classes.
 
 """
+from __future__ import annotations
+
 import random
+from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, MutableSequence, Optional, Set, Tuple
+from typing_extensions import Literal
+from mosaik_api_v3 import Attr, SimId
 import networkx as nx
 import datetime
 
-from mosaik.scenario import World
+from mosaik.scenario import Entity, World
+from mosaik.tiered_time import TieredTime
 
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+    from matplotlib.axes import Axes
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"
 STANDARD_FOLDER = "figures"
 
 
-def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
-    """
-    :meth:`~mosaik.scenario.World.connect` each entity in *src_set*
+def connect_many_to_one(
+    world: World,
+    src_set: Iterable[Entity],
+    dest: Entity,
+    *attrs: Attr | Tuple[Attr, Attr],
+    async_requests: bool = False
+):
+    """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
 
     See the :meth:`~mosaik.scenario.World.connect` for more details.
@@ -26,7 +41,12 @@ def connect_many_to_one(world, src_set, dest, *attrs, async_requests=False):
 
 
 def connect_randomly(
-    world, src_set, dest_set, *attrs, evenly=True, max_connects=float("inf")
+    world: World,
+    src_set: MutableSequence[Entity],
+    dest_set: MutableSequence[Entity],
+    *attrs: Attr | Tuple[Attr, Attr],
+    evenly: bool = True,
+    max_connects: int =float("inf"),  # type: ignore
 ):
     """
     Randomly :meth:`~mosaik.scenario.World.connect` the entities from
@@ -73,9 +93,14 @@ def connect_randomly(
     return connected
 
 
-def _connect_evenly(world, src_set, dest_set, *attrs):
+def _connect_evenly(
+    world: World,
+    src_set: MutableSequence[Entity],
+    dest_set: MutableSequence[Entity],
+    *attrs: Attr | Tuple[Attr, Attr]
+) -> Set[Entity]:
     connect = world.connect
-    connected = set()
+    connected: Set[Entity] = set()
 
     src_size, dest_size = len(src_set), len(dest_set)
     pos = 0
@@ -89,14 +114,20 @@ def _connect_evenly(world, src_set, dest_set, *attrs):
     return connected
 
 
-def _connect_randomly(world, src_set, dest_set, *attrs, max_connects=float("inf")):
+def _connect_randomly(
+    world: World,
+    src_set: MutableSequence[Entity],
+    dest_set: MutableSequence[Entity],
+    *attrs: Attr | Tuple[Attr, Attr],
+    max_connects: int = float("inf"),  # type: ignore
+) -> Set[Entity]:
     connect = world.connect
-    connected = set()
+    connected: Set[Entity] = set()
 
     assert len(src_set) <= (len(dest_set) * max_connects)
     max_i = len(dest_set) - 1
     randint = random.randint
-    connects = {}
+    connects: Dict[Entity, int] = {}
     for src in src_set:
         i = randint(0, max_i)
         dest = dest_set[i]
@@ -112,27 +143,32 @@ def _connect_randomly(world, src_set, dest_set, *attrs, max_connects=float("inf"
 
 
 def plot_execution_time(
-    world,
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
-    slice=None,
+    world: World,
+    folder: str = STANDARD_FOLDER,
+    hdf5path: str | None = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
+    slice: Tuple[int, int] | None = None,
 ):
-    """
-        Creates an image visualizing the execution time of the different simulators of a mosaik scenario.
+    """Creates an image visualizing the execution time of the different
+    simulators of a mosaik scenario.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param slice: reduce the timeframe that you show in the plot. Usage
+        as in Python list slicing, i.e., negative values are possible to
+        start from the end of the list. Jumps are not possible.
+        ``slice`` needs to be a two-element integer list, e.g.
+        ``(0, 5)``.
+
+    :return: ``None`` but image file will be written to file system
     """
     import matplotlib.pyplot as plt
 
@@ -186,36 +222,52 @@ def plot_execution_time(
 
 
 def plot_dataflow_graph(
-    world,
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
+    world: World,
+    folder: str = STANDARD_FOLDER,
+    hdf5path: Optional[str] = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
 ):
-    """
-    Creates an image visualizing the data flow graph of a mosaik scenario. Using the spring_layout from
-    Matplotlib (Fruchterman-Reingold force-directed algorithm) to position the nodes.
+    """Creates an image visualizing the data flow graph of a mosaik
+    scenario. Using the spring layout from Matplotlib (Fruchterman-
+    Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is 
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether open a window to show the plot
+    :return: ``None`` but image file will be written to file
+        system
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
 
-    df_graph = world.df_graph
+    # Recreate the df_graph for plotting. There might be additional
+    # useful information to be extracted from the SimRunners.
+    df_graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, delay in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=delay.tiers[0]>0,
+                weak=any(t > 0 for t in delay.tiers[1:]),
+            )
     positions = nx.spring_layout(df_graph)
+
     fig, ax = plt.subplots()
     for node in df_graph.nodes:
         # Draw a dot for the simulator
         ax.plot(positions[node][0], positions[node][1], "o")
-        # Put the name of the simulator on the dot. If we put an absolute distance, we depend on the scaling, which
-        # can effect seemingly random distances from the dot
+        # Put the name of the simulator on the dot. If we put an
+        # absolute distance, we depend on the scaling, which can effect
+        # seemingly random distances from the dot
         text_x = positions[node][0]
         text_y = positions[node][1]
         label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
@@ -265,7 +317,7 @@ def plot_dataflow_graph(
         # Why not calculating the middle point on the straight line? Because then by a 50/50 chance
         # when you have a curved arrow back and forth between two points, you can have the annotation
         # above the wrong arrow.
-        midpoint = con.get_path().vertices[1]
+        midpoint: Tuple[float, float] = con.get_path().vertices[1]  # type: ignore  # close enough
 
         ax.annotate(
             annotation,
@@ -298,29 +350,34 @@ def plot_dataflow_graph(
 
 def plot_execution_graph(
     world: World,
-    title: str ="",
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
+    title: str = "",
+    folder: str =STANDARD_FOLDER,
+    hdf5path: str | None = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
     save_plot: bool = True,
-    slice=None,
+    slice: Tuple[int, int] | None = None,
 ):
-    """
-        Creates an image visualizing the execution graph of a mosaik scenario.
+    """Creates an image visualizing the execution graph of a mosaik
+    scenario.
 
     :param world: mosaik world object
-    :param title:
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param title: the title of the graph
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param slice: reduce the timeframe that you show in the plot.
+        Usage as in Python list slicing, i.e., negative values are
+        possible to start from the end of the list. Jumps are not
+        possible. ``slice`` needs to be a two-element integer tuple,
+        e.g. ``(0, 5)``.
+
+    :return: ``None`` but image file will be written to file system
     """
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
@@ -330,13 +387,13 @@ def plot_execution_graph(
 
     rcParams.update({"figure.autolayout": True})
 
-    steps_st = {}
+    steps_st: Dict[SimId, List[float]] = {}
     for sim_name in world.sims.keys():
         steps_st[sim_name] = []
 
     for node in all_nodes:
-        sim_name, t, n_rep = split_node(node[0])
-        steps_st[sim_name].append(t + n_rep * 0.1)
+        sim_name, tiered_time = node[0]
+        steps_st[sim_name].append(_tiered_time_pos(tiered_time))
 
     fig, ax = plt.subplots()
     if title:
@@ -344,13 +401,13 @@ def plot_execution_graph(
 
     # Draw the time steps from the simulators
     number_of_steps = 0
-    colormap = ["black" for x in range(len(world.sims.keys()))]
-    for i, sim_name in enumerate(world.sims.keys()):
+    colormap = ["black" for _ in world.sims]
+    for i, sim_name in enumerate(world.sims):
         # We need the number of steps in the simulation for correct plotting with slices
         if number_of_steps < len(steps_st[sim_name]):
             number_of_steps = len(steps_st[sim_name])
 
-        if slice != None:
+        if slice is not None:
             dot = ax.plot(
                 steps_st[sim_name][slice[0] : slice[1]],
                 [i] * len(steps_st[sim_name][slice[0] : slice[1]]),
@@ -366,7 +423,7 @@ def plot_execution_graph(
     ax.set_yticklabels(list(world.sims.keys()))
 
     all_edges = list(world.execution_graph.edges())
-    y_pos = {}
+    y_pos: Dict[SimId, int] = {}
     for sim_count, sim_name in enumerate(world.sims.keys()):
         y_pos[sim_name] = sim_count
 
@@ -376,14 +433,14 @@ def plot_execution_graph(
         labels = range(world.until)[slice[0] : slice[1]]
 
     for edge in all_edges:
-        isid_0, t0, n_rep0 = split_node(edge[0])
-        isid_1, t1, n_rep1 = split_node(edge[1])
+        isid_0, t0 = edge[0]
+        isid_1, t1 = edge[1]
 
-        if arrow_is_not_in_slice(labels, t0, t1):
+        if arrow_is_not_in_slice(labels, t0.time, t1.time):
             continue
 
-        x_pos0 = t0 + n_rep0 * 0.1
-        x_pos1 = t1 + n_rep1 * 0.1
+        x_pos0 = _tiered_time_pos(t0)
+        x_pos1 = _tiered_time_pos(t1)
         y_pos0 = y_pos[isid_0]
         y_pos1 = y_pos[isid_1]
 
@@ -418,89 +475,103 @@ def plot_execution_graph(
         )
 
 
-def arrow_is_not_in_slice(labels, t0, t1):
+def arrow_is_not_in_slice(
+    labels: Collection[int] | None,
+    t0: int,
+    t1: int,
+):
     return labels is not None and (t0 not in labels or t1 not in labels)
 
 
-def split_node(node):
-    isid, dt = node
-    return isid, dt.time, dt.microstep
-
-
 def plot_execution_time_per_simulator(
-    world,
-    folder=STANDARD_FOLDER,
-    hdf5path=None,
-    dpi=STANDARD_DPI,
-    format=STANDARD_FORMAT,
-    show_plot=True,
+    world: World,
+    folder: str = STANDARD_FOLDER,
+    hdf5path: str | None = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
     plot_per_simulator: bool = False,
-    slice=None,
+    slice: Tuple[int, int] | None = None,
 ):
-    """
-        Creates images visualizing the execution time of each of the different simulators of a mosaik scenario.
+    """Creates images visualizing the execution time of each of the
+    different simulators of a mosaik scenario.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is provided)
-    :param hdf5path: Path to HDF5 file, which will be used as path for the created image
+    :param folder: folder to store the image (only if no hdf5path is
+        provided)
+    :param hdf5path: Path to HDF5 file, which will be used as path for
+        the created image
     :param dpi: DPI for created images
     :param format: format for created image
-    :show_plot: open a window to show the plot
-    :plot_per_simulator: Create a separated plot per simulator. This is especially useful
-                         if the step sizes of the simulators are very different.
-    :param slice: reduce the timeframe that you show in the plot. Usage as python list slicing,
-    i.e., negative values are possible to start from the end of the list. Jumps are not possible.
-    Slice needs to be a two-parameter integer list, e.g. [0,5].
-    :return: no return object, but image file will be written to file system
+    :param show_plot: whether to open a window to show the plot
+    :param plot_per_simulator: whether to create a separated plot per
+        simulator. This is especially useful if the step sizes of the
+        simulators are very different.
+    :param slice: reduce the timeframe that you show in the plot. Usage
+        as in Python list slicing, i.e., negative values are possible to
+        start from the end of the list. Jumps are not possible.
+        ``slice`` needs to be a two-element integer tuple, e.g.
+        ``(0, 5)``.
+    :return: ``None`` but image file will be written to file system
     """
-    import matplotlib.pyplot as plt
-
     execution_graph = world.execution_graph
-    results = {}
+    results: Dict[SimId, List[float]] = {}
     for node in execution_graph.nodes:
         execution_time = (
             execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
         )
         sim_id = node[0]
-        if sim_id not in results:
-            results[sim_id] = []
-        results[sim_id].append(execution_time)
+        results.setdefault(sim_id, []).append(execution_time)
 
     if plot_per_simulator is False:
-        fig, sub_figure = init_execution_time_per_simulator_plot(plt)
-
-    for key in results.keys():
-        if plot_per_simulator is True:
-            fig, sub_figure = init_execution_time_per_simulator_plot(plt)
-        plot_results = get_execution_time_per_simulator_plot_data(
-            slice, results, sub_figure, key
+        fig, sub_figure = init_execution_time_per_simulator_plot()
+        for key in results.keys():
+            plot_results = get_execution_time_per_simulator_plot_data(
+                slice, results, sub_figure, key
+            )
+            sub_figure.plot(plot_results, label=key)
+        finish_execution_time_per_simulator_plot(
+            folder, hdf5path, dpi, format, show_plot, fig
         )
-        sub_figure.plot(plot_results, label=key)
-        if plot_per_simulator is True:
+    else:
+        for key in results.keys():
+            fig, sub_figure = init_execution_time_per_simulator_plot()
+            plot_results = get_execution_time_per_simulator_plot_data(
+                slice, results, sub_figure, key
+            )
+            sub_figure.plot(plot_results, label=key)
             finish_execution_time_per_simulator_plot(
-                folder, hdf5path, dpi, format, show_plot, plt, fig, "_" + key
+                folder, hdf5path, dpi, format, show_plot, fig, "_" + key
             )
 
-    if plot_per_simulator is False:
-        finish_execution_time_per_simulator_plot(
-            folder, hdf5path, dpi, format, show_plot, plt, fig
-        )
 
-
-def get_execution_time_per_simulator_plot_data(slice, results, sub_figure, key):
+def get_execution_time_per_simulator_plot_data(
+    slice: Tuple[int, int] | None,
+    results: Dict[SimId, List[float]],
+    sub_figure: Axes,
+    key: SimId,
+) -> List[float]:
     if slice is not None:
         plot_results = results[key][slice[0] : slice[1]]
         # The slice values can be negative, so we want to have the correct time steps
         labels = range(len(results[key]))[slice[0] : slice[1]]
-        sub_figure.set_xticks(range(0, len(labels)), labels)
+        sub_figure.set_xticks(range(0, len(labels)), map(str, labels))
     else:
         plot_results = results[key]
     return plot_results
 
 
 def finish_execution_time_per_simulator_plot(
-    folder, hdf5path, dpi, format, show_plot, plt, fig, simulator_name: str = ""
+    folder: str,
+    hdf5path: str | None,
+    dpi: int,
+    format: Literal["png", "svg", "pdf"],
+    show_plot: bool,
+    fig: Figure,
+    simulator_name: str = "",
 ):
+    import matplotlib.pyplot as plt
+
     fig.legend()
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "_" + "all" + ".png")
@@ -522,11 +593,12 @@ def finish_execution_time_per_simulator_plot(
     plt.close()
 
 
-def init_execution_time_per_simulator_plot(plt):
+def init_execution_time_per_simulator_plot() -> Tuple[Figure, Axes]:
+    import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
 
-    fig = plt.figure()
-    sub_figure = fig.add_subplot()
+    fig: Figure = plt.figure()
+    sub_figure: Axes = fig.add_subplot()
     sub_figure.set_title("Execution time")
     sub_figure.set_ylabel("Execution time [s]")
     sub_figure.set_xlabel("Simulation time [steps of the simulator]")
@@ -547,3 +619,11 @@ def get_filename(dir: str, type: str, file_format: str) -> str:
         + "."
         + file_format
     )
+
+def _tiered_time_pos(time: TieredTime, base: float = 0.1) -> float:
+    result = 0.0
+    factor = 1.0
+    for tier in time.tiers:
+        result += factor * tier
+        factor *= base
+    return result

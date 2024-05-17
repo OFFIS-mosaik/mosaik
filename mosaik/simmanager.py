@@ -12,7 +12,6 @@ from __future__ import annotations
 from ast import literal_eval
 import asyncio
 import collections
-from dataclasses import dataclass
 import heapq as hq
 import importlib
 import itertools
@@ -27,7 +26,6 @@ from typing import (
     Callable,
     Coroutine,
     Dict,
-    Iterable,
     List,
     NoReturn,
     Optional,
@@ -35,30 +33,37 @@ from typing import (
     Set,
     Tuple,
     TYPE_CHECKING,
-    TypeVar,
     Union,
+    cast,
 )
 import tqdm
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
-from mosaik.dense_time import DenseTime
 from mosaik.exceptions import ScenarioError, SimulationError
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
+from mosaik.tiered_time import TieredInterval, TieredTime
 
 if 'Windows' in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import World
+    from mosaik.scenario import World, ConnectModel, PythonModel, CmdModel
 
 FULL_ID_SEP = '.'  # Separator for full entity IDs
 FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
+class MosaikConfigTotal(TypedDict):
+    """A total version for :cls:`MosaikConfig` for internal use.
+    """
+
+    addr: Tuple[str, int | None]
+    start_timeout: float
+    stop_timeout: float
 
 async def start(
     world: World,
@@ -126,10 +131,17 @@ async def start(
 
     for sim_type, starter in starters.items():
         if sim_type in sim_config:
-            proxy = await starter(world, sim_name, sim_config, MosaikRemote(world, sim_id))
+            proxy = await starter(
+                world.config, sim_name, sim_config, MosaikRemote(world, sim_id)
+            )
             try:
                 proxy = await asyncio.wait_for(
-                    init_and_get_adapter(proxy, sim_id, {"time_resolution": time_resolution, **sim_params}),
+                    init_and_get_adapter(
+                        proxy,
+                        sim_id,
+                        {"time_resolution": time_resolution, **sim_params},
+                        explicit_version_str=sim_config.get('api_version'),
+                    ),
                     world.config['start_timeout']
                 )
                 return proxy
@@ -151,9 +163,9 @@ async def start(
 
 
 async def start_inproc(
-    world: World,
+    mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config: Dict[Literal['python', 'env'], str],
+    sim_config: PythonModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -192,9 +204,9 @@ async def start_inproc(
 
 
 async def start_proc(
-    world: World,
+    mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config: Dict[Literal["cmd", "cwd", "env", "posix", "new_console"], Any],
+    sim_config: CmdModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -206,69 +218,78 @@ async def start_proc(
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
     """
-    replacements = {
-        'addr': '%s:%s' % (world.config['addr'][0], world.config['addr'][1]),
-        'python': sys.executable,
-    }
-    cmd = sim_config['cmd'] % replacements
-    if 'posix' in sim_config.keys():
-        posix = sim_config.pop('posix')
+    channel_future: asyncio.Future[Channel] = asyncio.Future()
+    async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
+        channel_future.set_result(Channel(r, w))
+
+    server = await asyncio.start_server(on_connect, *mosaik_config["addr"])
+    try:
+        actual_addr = server.sockets[0].getsockname()
+
+        replacements = {
+            "addr": "%s:%s" % actual_addr,
+            "python": sys.executable,
+        }
+        cmd = sim_config["cmd"] % replacements
+        posix = sim_config.pop("posix", os.name != "nt")
         cmd = shlex.split(cmd, posix=bool(posix))
-    else:
-        cmd = shlex.split(cmd, posix=(os.name != 'nt'))
-    cwd = sim_config['cwd'] if 'cwd' in sim_config else '.'
+        cwd = sim_config.get("cwd", ".")
 
-    # Make a copy of the current env. vars dictionary and update it with the
-    # user provided values (or an empty dict as a default):
-    env = dict(os.environ)
-    env.update(sim_config.get('env', {}))  # type: ignore
+        # Make a copy of the current env vars dictionary and update it with the
+        # user provided values (or an empty dict as a default):
+        env = dict(os.environ)
+        env.update(sim_config.get('env', {}))
 
-    # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
-    creationflags = 0
-    new_console = sim_config.get('new_console', False)
-    if new_console:
-        if 'Windows' in platform.system():
-            creationflags = CREATE_NEW_CONSOLE
-        else:
-            logger.warning('Simulator "{sim_name}" could not be started in a new console: '
-                           'Only available on Windows', sim_name=sim_name)
+        # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+        creationflags: int = 0
+        new_console = sim_config.get('new_console', False)
+        if new_console:
+            if 'Windows' in platform.system():
+                creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
+            else:
+                logger.warning(
+                    f'Simulator "{sim_name}" could not be started in a new console: '
+                    "Only available on Windows"
+                )
 
-    kwargs = {
-        'bufsize': 1,
-        'cwd': cwd,
-        'universal_newlines': True,
-        'env': env,  # pass the new env dict to the sub process
-        'creationflags': creationflags,
-    }
-    try:
-        subprocess.Popen(cmd, **kwargs)
-    except (FileNotFoundError, NotADirectoryError) as e:
-        # This distinction has to be made due to a change in python 3.8.0.
-        # It might become unecessary for future releases supporting
-        # python >= 3.8 only.
-        if str(e).count(':') == 2:
-            eout = e.args[1]
-        else:
-            eout = str(e).split('] ')[1]
-        raise ScenarioError('Simulator "%s" could not be started: %s'
-                            % (sim_name, eout)) from None
+        try:
+            subprocess.Popen(
+                cmd, 
+                bufsize=1,
+                cwd=cwd,
+                universal_newlines=True,
+                env=env,  # pass the new env dict to the sub process
+                creationflags=creationflags,
+            )
+        except (FileNotFoundError, NotADirectoryError) as e:
+            # This distinction has to be made due to a change in python 3.8.0.
+            # It might become unecessary for future releases supporting
+            # python >= 3.8 only.
+            if str(e).count(":") == 2:
+                eout = e.args[1]
+            else:
+                eout = str(e).split("] ")[1]
+            raise ScenarioError(
+                f'Simulator "{sim_name}" could not be started: {eout}'
+            ) from None
 
-    try:
-        channel = await asyncio.wait_for(
-            world.incoming_connections_queue.get(),
-            world.config['start_timeout'],
-        )
-        return RemoteProxy(channel, mosaik_remote)
-    except asyncio.TimeoutError:
-        raise SimulationError(
-            f'Simulator "{sim_name}" did not connect to mosaik in time.'
-        )
+        try:
+            channel = await asyncio.wait_for(
+                channel_future, timeout=mosaik_config["start_timeout"]
+            )
+            return RemoteProxy(channel, mosaik_remote)
+        except asyncio.TimeoutError:
+            raise SimulationError(
+                f'Simulator "{sim_name}" did not connect to mosaik in time.'
+            )
+    finally:
+        server.close()
 
 
 async def start_connect(
-    world: World,
+    mosaik_config: MosaikConfigTotal,
     sim_name: str,
-    sim_config,
+    sim_config: ConnectModel,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
@@ -321,34 +342,38 @@ class SimRunner:
     """The actual proxy for this simulator."""
 
     # Connection setup
-    input_delays: Dict[SimRunner, DenseTime]
+    input_delays: Dict[SimRunner, TieredInterval]
     """For each simulator that provides data to this simulator, the
     minimum over all input delays. This is used while waiting for
-    dependencies."""
-    triggers: Dict[Port, List[Tuple[SimRunner, DenseTime]]]
+    dependencies.
+    """
+    triggers: Dict[Port, List[Tuple[SimRunner, TieredInterval]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
     edge.
     """
-    successors: Set[SimRunner]
-    successors_to_wait_for: Set[SimRunner]
-    triggering_ancestors: List[Tuple[SimRunner, DenseTime]]
+    successors: Dict[SimRunner, TieredInterval]
+    successors_to_wait_for: Dict[SimRunner, TieredInterval]
+    triggering_ancestors: Dict[SimRunner, TieredInterval]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, Time], Set[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredInterval], Set[Tuple[Port, Port]]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.
     """
-    output_to_push: Dict[Port, List[Tuple[SimRunner, int, Port]]]
+    output_to_push: Dict[Port, List[Tuple[SimRunner, TieredInterval, Port]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-time-entity-attribute triples
     describing the destinations for that data and the time-shift
     occuring along the connection.
     """
+
+    to_world_time: TieredInterval
+    from_world_time: TieredInterval
 
     output_request: OutputRequest
 
@@ -360,44 +385,45 @@ class SimRunner:
     """Inputs for this simulator."""
 
 
-    rt_start: float
+    rt_start: float  # type: ignore  # set at start of sim_process
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
     started: bool
 
-    next_steps: List[DenseTime]
+    next_steps: List[TieredTime]
     """The scheduled next steps this simulator will take, organized as a heap.
     Once the immediate next step has been chosen (and the `has_next_step` event
     has been triggered), the step is moved to `next_step` instead."""
     newer_step: asyncio.Event
-    next_self_step: Optional[Time]
+    next_self_step: Optional[TieredTime]
     """The next self-scheduled step for this simulator."""
 
-    progress: Progress[DenseTime]
+    progress: Progress
     """This simulator's progress in mosaik time.
 
     This simulator has done all its work before time `progress`, so
     other simulator can rely on this simulator's output until this time.
     """
-    last_step: DenseTime
+    last_step: TieredTime
     """The most recent step this simulator performed."""
-    current_step: Optional[DenseTime]
+    current_step: Optional[TieredTime]
 
-    output_time: DenseTime
+    output_time: TieredTime  # type: ignore  # set on first get_data
     """The output time associated with `data`. Usually, this will be equal to
     `last_step` but simulators may specify a different time for their output."""
-    data: OutputData
+    data: OutputData  # type: ignore  # set on first get_data
     """The newest data returned by this simulator."""
     task: asyncio.Task[None]
     """The asyncio.Task for this simulator."""
 
     outputs: Optional[Dict[Time, OutputData]]
-    tqdm: tqdm.tqdm[NoReturn]
+    tqdm: tqdm.tqdm[NoReturn]  # type: ignore
 
     def __init__(
         self,
         sid: SimId,
         connection: Proxy,
+        depth: int = 1,
     ):
         self.sid = sid
         self._proxy = connection
@@ -406,21 +432,25 @@ class SimRunner:
         self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
-        self.last_step = DenseTime(-1)
+        self.last_step = TieredTime(-1, *([0] * (depth - 1)))
         self.current_step = None
         if self.type != 'event-based':
-            self.next_steps = [DenseTime(0)]
+            self.next_steps = [TieredTime(*([0] * depth))]
         else:
             self.next_steps = []
         self.next_self_step = None
-        self.progress = Progress(DenseTime(0))
+        self.progress = Progress(TieredTime(*([0] * depth)))
+
+        self.to_world_time = TieredInterval(0, cutoff=1, pre_length=depth)
+        self.from_world_time = TieredInterval(*([0] * depth), cutoff=1, pre_length=1)
+
         self.inputs_from_set_data = {}
         self.persistent_inputs = {}
         self.timed_input_buffer = TimedInputBuffer()
 
-        self.successors_to_wait_for = set()
-        self.successors = set()
-        self.triggering_ancestors = []
+        self.successors_to_wait_for = {}
+        self.successors = {}
+        self.triggering_ancestors = {}
         self.triggers = {}
         self.output_to_push = {}
         self.pulled_inputs = {}
@@ -435,18 +465,18 @@ class SimRunner:
 
         self.outputs = None
 
-    def schedule_step(self, dense_time: DenseTime):
+    def schedule_step(self, tiered_time: TieredTime):
         """Schedule a step for this simulator at the given time. This
         will trigger a re-evaluation whether this simulator's next
         step is settled, provided that the new step is earlier than the
         old one and the simulator is currently awaiting it's next
         settled step.
         """
-        if dense_time in self.next_steps:
-            return dense_time
+        if tiered_time in self.next_steps:
+            return tiered_time
 
-        is_earlier = not self.next_steps or dense_time < self.next_steps[0]
-        hq.heappush(self.next_steps, dense_time)
+        is_earlier = not self.next_steps or tiered_time < self.next_steps[0]
+        hq.heappush(self.next_steps, tiered_time)
         if is_earlier:
             self.newer_step.set()
 
@@ -572,8 +602,10 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         assert self.sim.is_in_step, "get_data must happen in step"
         assert self.sim.current_step is not None, "no current step time"
 
-        data = {}
-        missing = collections.defaultdict(lambda: collections.defaultdict(list))
+        data: Dict[FullId, Dict[Attr, Any]] = {}
+        missing: Dict[SimId, OutputRequest] = collections.defaultdict(
+            lambda: collections.defaultdict(list)
+        )
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
@@ -605,7 +637,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
         return data
 
-    async def set_data(self, data):
+    async def set_data(self, data: Dict[FullId, Dict[Attr, Any]]):
         """
         Set *data* as input data for all affected simulators.
 
@@ -633,8 +665,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 "mode."
             )
         if event_time < self.world.until:
-            # TODO: Check whether progress.set is better
-            sim.schedule_step(DenseTime(event_time, 0))
+            sim.schedule_step(TieredTime(event_time))
         else:
             logger.warning(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "
@@ -679,7 +710,7 @@ class StarterCollection(object):
     """
 
     # Singleton instance of the starter collection.
-    __instance = None
+    __instance: OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]] | None = None
 
     def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:

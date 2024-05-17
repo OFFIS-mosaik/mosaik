@@ -24,12 +24,12 @@ The results of this control function will be returned to the controllers as 'del
 .. literalinclude:: code/controller_master.py
    :lines: 9-18
 
-The :meth:`__init__` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
+``__init__`` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
 
 .. literalinclude:: code/controller_master.py
    :lines: 21-27
 
-The :meth:`step()` is changed, so that first the current time is updated in the ``self.time`` variable.
+The ``step`` is changed, so that first the current time is updated in the ``self.time`` variable.
 Also the control function is changed.
 The master controller gets the delta output of the other controllers as 'delta_in' and stores the last value of each controller in the ``self.cache``.
 This is needed, because the controllers are event-based and the current values are only sent if the values changes.
@@ -39,9 +39,9 @@ If these limits are exceeded the delta of all controllers will be overwritten by
 .. literalinclude:: code/controller_master.py
    :lines: 39-52
 
-Additionally, two small changes in the :meth:`get_data` method were done.
+Additionally, two small changes in the ``get_data`` method were done.
 First, the name was updated to 'delta_out' in the check for the correct attribute name.
-Second, the current time, which was stored previously in the :meth:`step()`, is added to the output cache dictionary.
+Second, the current time, which was stored previously in the ``step``, is added to the output cache dictionary.
 This informs mosaik that the simulation should start or stay in a same-time loop if also output data for 'delta_out' is provided.
 
 .. literalinclude:: code/controller_master.py
@@ -67,20 +67,21 @@ In the following description only the changes are explained, but the full code i
 The updated controller and the new master controller are added to the sim config of the scenario.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 1-23
+   :end-before: End: Create World
 
 The master controller is also started and initialized.
 The controllers get different 'init_val' values compared to the previous scenario.
 Here, it is changed to ``(-2, 0, -2)`` to have the right timing to get into the same-time loop.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 25-35
+   :start-at: Start simulators
+   :end-before: End: Instantiate models
 
 The 'delta' outputs of the controllers are connected to the new master controller and the 'delta_out' of the master controller is connected to the respective controller.
 The ``weak=True`` argument defines, that the connection from the controllers to the master controller will be the first to be executed by mosaik.
 
 .. literalinclude:: code/demo_3.py
-   :lines: 37-51
+   :start-at: Connect entities
 
 The printed output of the collector shows the states of the different simulators.
 The collector just shows the final result of the same-time loop and not the steps during the loop.
@@ -101,4 +102,4 @@ After this second step of the master controller, it does not send an output agai
    :align: center
    :alt: Scheduling of demo 3
 
-   Schedulung of demo 3.
+   Scheduling of demo 3.

@@ -25,7 +25,8 @@ Two of the most important parameters that you need in almost every simulation
 are the *simulator configuration* and the *duration* of your simulation:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 6-15
+   :start-at: Sim config
+   :end-before: End: Sim config
 
 The *sim config* specifies which simulators are available and how to start
 them. In the example above, we list our *ExampleSim* as well as *Collector* (the
@@ -66,8 +67,17 @@ hold all simulation state. It knows which simulators are available and started,
 which entities exist and how they are connected. It also provides most of the
 functionality that you need for modelling your scenario:
 
+
 .. literalinclude:: code/demo_1.py
-   :lines: 2-3,17-18
+   :start-at: Create World
+   :end-before: End: Create World
+
+To get access to mosaik's world, we need to import :mod:`mosaik` at the beginning
+of our scenario script. We also import :mod:`mosaik.util` to get access to some
+helper methods later on.
+
+.. literalinclude:: code/demo_1.py
+   :end-before: End: Imports
 
 
 The scenario
@@ -80,7 +90,8 @@ parameters which will be passed to the simulators ``init()`` method. So lets
 start the example simulator and the data collector:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 20-22
+   :start-at: Start simulators
+   :end-before: End: Start simulators
 
 We also set the *eid_prefix* for our example simulator. What gets returned by
 :meth:`World.start()` is called a *model factory*.
@@ -92,7 +103,8 @@ were classes within the factory's namespace. So this is how we can create one
 instance of our example model and one 'Monitor' instance:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 24-26
+   :start-at: Instantiate models
+   :end-before: End: Instantiate models
 
 The *init_val* parameter that we passed to ``ExampleModel`` is the same as in
 the ``create()`` method of our Sim API implementation.
@@ -101,7 +113,8 @@ Now, we need to connect the example model to the monitor. That's how we tell
 mosaik to send the outputs of the example model to the monitor.
 
 .. literalinclude:: code/demo_1.py
-   :lines: 28-29
+   :start-at: Connect entities
+   :end-before: End: Connect entities
 
 The method :meth:`World.connect()` takes one entity pair – the source and the
 destination entity, as well as a list of attributes or attribute tuples. If you
@@ -116,7 +129,8 @@ some utility functions for connecting sets of entities with each other. So lets
 create two more entities and connect them to our monitor:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 2-3,31-33
+   :start-at: Create more entities
+   :end-before: End: Create more entities
 
 Instead of instantiating the example model directly, we called its static
 method ``create()`` and passed the number of instances to it. It returns a list
@@ -139,7 +153,7 @@ In order to start the simulation, we call :meth:`World.run()` and specify for
 how long we want our simulation to run:
 
 .. literalinclude:: code/demo_1.py
-   :lines: 35-36
+   :start-at: Run simulation
 
 .. _demo1_output:
 
@@ -154,6 +168,7 @@ Mosaik will also produce some diagnostic output along the lines of
 If you don't want the progress bar, you can run the simulation with
 
 .. code-block:: python
+
    world.run(until=END, print_progress=False)
 
 instead. For even more progress bars, set ``print_progress='individual'``, instead.

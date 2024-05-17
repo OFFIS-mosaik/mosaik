@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, List
+from typing_extensions import override
 import mosaik_api_v3
 from mosaik_api_v3.types import (
     CreateResult,
@@ -36,9 +37,22 @@ META: Meta = {
 class InputSimulator(mosaik_api_v3.Simulator):
     """
     This simulator gives a steady input to a connected simulator.
-    This input can either be an constant numerical value or a custom
-    function. It is passed along as parameter in the :meth:`create()` method of this simulator.
-    Using the :meth:`get_data()` function, the generated values can be retrieved.
+    This input can either be an constant value or given by a custom
+    function based on the current time.
+
+    When starting the simulator, a custom step size may be provided
+    using the `step_size` parameter. The default is 1.
+
+    When creating a `Constant` entity, the constant must be passed as
+    the parameter `constant`.
+
+    When creating a `Function` entity, a function should be passed as
+    the `function` parameter. This function should take the current
+    mosaik time and return the desired value. This type of entity only
+    works when the simulator is started using the `"python"` method.
+
+    In either case, the entity will produce its output on the *value*
+    attribute.
     """
 
     step_size: int
@@ -52,10 +66,12 @@ class InputSimulator(mosaik_api_v3.Simulator):
         self.step_size = 1
         self.time = 0
 
+    @override
     def init(self, sid: SimId, time_resolution: float = 1, step_size: int = 1) -> Meta:
         self.step_size = step_size
         return self.meta
 
+    @override
     def create(
         self, num: int, model: ModelName, **model_params: Any
     ) -> List[CreateResult]:
@@ -89,11 +105,13 @@ class InputSimulator(mosaik_api_v3.Simulator):
         self.constants[eid] = constant
         return {"eid": eid, "type": model}
 
+    @override
     def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time:
         assert inputs == {}
         self.time = time
         return time + self.step_size
 
+    @override
     def get_data(self, outputs: OutputRequest) -> OutputData:
         data: OutputData = {}
         for eid in outputs:
