@@ -16,7 +16,7 @@ from mosaik.exceptions import ScenarioError
 class Proxy(ABC):
     """A proxy for a mosaik simulator from the view of a mosaik
     scenario.
-    
+
     Generally, this will be a ``BaseProxy`` subclass wrapped in the
     appropriate ``Adapter`` subclasses to bring the interface of the
     connected simulator in line with the most up-to-date API version.
@@ -24,7 +24,7 @@ class Proxy(ABC):
     @abstractmethod
     async def send(self, request: Any) -> Any:
         """Send a request to the connected simulator.
-        
+
         :param request: Generally, this will be a three-tuple consisting
         of a function name, a list of positional arguments and a dict
         of named arguments.
@@ -184,21 +184,18 @@ class RemoteProxy(BaseProxy):
     async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
         self._meta = await self.send(["init", (sid,), kwargs])
         return extract_version(self._meta)
-    
+
     @property
     def meta(self) -> Meta:
         return self._meta
-    
+
     async def send(self, request: Any) -> Any:
         return await self._channel.send(request)
 
     async def stop(self) -> None:
         try:
-            await asyncio.wait_for(
-                self._channel.send(["stop", [], {}]),
-                0.1,
-            )
-        except (asyncio.IncompleteReadError, asyncio.TimeoutError):
+            await asyncio.wait_for(self._channel.send(["stop", [], {}]), 0.1)
+        except (asyncio.TimeoutError, asyncio.IncompleteReadError):
             pass
         await self._channel.close()
         await self._reader_task
