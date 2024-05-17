@@ -24,7 +24,7 @@ loguru = ">=0.6, <1"
 networkx = "^2.5"
 tqdm = "^4.64.1"
 typing-extensions = "^4.5"
-mosaik-api-v3 = {git = "https://gitlab.com/mosaik/api/mosaik-api-python.git", rev = "10-improvements-to-remoteexception"}
+mosaik-api-v3 = "^3.0.10"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "3.7.9"
