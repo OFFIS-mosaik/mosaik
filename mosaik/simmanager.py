@@ -20,6 +20,7 @@ import shlex
 import subprocess
 import sys
 import platform
+from json import JSONEncoder
 from loguru import logger
 from typing import (
     Any,
@@ -42,7 +43,7 @@ from typing_extensions import Literal, TypeAlias, TypedDict
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
@@ -484,7 +485,23 @@ class SimRunner:
         return await self._proxy.send(["setup_done", (), {}])
 
     async def step(self, time: Time, inputs: InputData, max_advance: Time) -> Optional[Time]:
-        return await self._proxy.send(["step", (time, inputs, max_advance), {}])
+        try:
+            return await self._proxy.send(["step", (time, inputs, max_advance), {}])
+        except TypeError:  # from JSON serialization
+            # Find source for more precise error message
+            encoder = JSONEncoder()
+            error = NonSerializableOutputsError(self.sid)
+            for dest_eid, entity_inputs in inputs.items():
+                for dest_attr, attr_inputs in entity_inputs.items():
+                    for src_id, value in attr_inputs.items():
+                        try:
+                            encoder.encode(value)
+                        except TypeError as e:
+                            error.add_error(dest_eid, dest_attr, src_id, e)
+            if error:
+                raise error
+            else:  # no culprits found, raise original exception
+                raise
 
     async def get_data(self, outputs: OutputRequest) -> OutputData:
         return await self._proxy.send(["get_data", (outputs,), {}])
