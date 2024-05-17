@@ -158,8 +158,8 @@ async def test_start_proc_no_port_conflict():
     }
     mosaik_remote = cast(simmanager.MosaikRemote, None)
     exc_1, exc_2 = await asyncio.gather(
-        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": "true"}, mosaik_remote),
-        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": "true"}, mosaik_remote),
+        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
+        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
         return_exceptions=True,
     )
     # We should get `SimulationError`s here, not `OSError`s
@@ -222,9 +222,9 @@ def test_start_connect(world: scenario.World):
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     simC = world.start("ExampleSimC")
+    server.close()
     world.shutdown()
     assert "api_version" in simC.meta and "models" in simC.meta
-    server.close()
 
 
 def test_start_connect_timeout_init(world: World, caplog):
@@ -273,8 +273,8 @@ def test_start_connect_stop_timeout(world: World):
 
     sim = world.start("ExampleSimC")
     assert "api_version" in sim.meta and "models" in sim.meta
-    world.shutdown()
     server.close()
+    world.shutdown()
 
 
 @pytest.mark.parametrize(
@@ -591,7 +591,7 @@ def test_mosaik_remote(
             channel_future: asyncio.Future[Channel] = asyncio.Future()
             async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
                 channel_future.set_result(Channel(r, w))
-            server = await asyncio.start_server(on_connect, "0.0.0.0")
+            server = await asyncio.start_server(on_connect, "127.0.0.1")
             try:
                 actual_addr = server.sockets[0].getsockname()
                 sim_exc, greeter_exc = await asyncio.gather(

@@ -25,6 +25,7 @@ networkx = "^2.5"
 tqdm = "^4.64.1"
 typing-extensions = "^4.5"
 mosaik-api-v3 = "^3.0.9"
+hypothesis = "^6.102.4"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "3.7.9"
