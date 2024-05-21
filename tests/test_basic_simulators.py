@@ -45,5 +45,3 @@ def test_basic_simulators():
     assert len(test_dict) == END
     for key in test_dict:
         assert test_dict[key]["value"][test_input_eid] == f"The time is {key}"
-
-test_basic_simulators()
