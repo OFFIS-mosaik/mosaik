@@ -3,7 +3,9 @@ This module provides mosaik specific exception types.
 """
 
 
-from typing import Any
+from typing import Any, List, Tuple
+
+from mosaik_api_v3 import SimId
 
 
 class ScenarioError(Exception):
@@ -28,3 +30,28 @@ class SimulationError(Exception):
             arg += '%s: ' % orig
         arg += msg
         super().__init__(arg)
+
+
+class NonSerializableOutputsError(SimulationError):
+    dest: SimId
+    errors: List[Tuple[str, str, str, TypeError]]
+
+    def __init__(self, dest: SimId):
+        self.dest = dest
+        self.errors = []
+
+    def add_error(self, dest_eid: str, dest_attr: str, src_id: str, error: TypeError):
+        self.errors.append((dest_eid, dest_attr, src_id, error))
+    
+    def __bool__(self):
+        return bool(self.errors)
+
+    def __str__(self) -> str:
+        return (
+            f"Errors while trying to JSON-serialize inputs for {self.dest}:\n"
+            + "\n".join(
+                f"- serializing output from {src} for {dest_eid}.{dest_attr}: {str(error)}"
+                for dest_eid, dest_attr, src, error in self.errors
+            )
+            + "\nThis is likely a problem in the source simulator(s)."
+        )
