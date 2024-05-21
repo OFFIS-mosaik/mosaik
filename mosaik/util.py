@@ -234,7 +234,7 @@ def plot_dataflow_graph(
     Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is 
+    :param folder: folder to store the image (only if no hdf5path is
         provided)
     :param hdf5path: Path to HDF5 file, which will be used as path for
         the created image
@@ -448,12 +448,12 @@ def plot_execution_graph(
             "",
             (x_pos1, y_pos1),
             xytext=(x_pos0, y_pos0),
-            arrowprops=dict(
-                color=colormap[y_pos0],
-                arrowstyle="->",
-                connectionstyle="arc3,rad=0.05",
-                alpha=0.6,
-            ),
+            arrowprops={
+                "color": colormap[y_pos0],
+                "arrowstyle": "->",
+                "connectionstyle": "arc3,rad=0.05",
+                "alpha": 0.6,
+            },
         )
 
     if show_plot is True:

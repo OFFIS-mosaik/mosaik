@@ -475,9 +475,9 @@ class World(object):
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+        attr_pairs: Set[Tuple[Attr, Attr]] = {
             (a, a) if isinstance(a, str) else a for a in attr_pairs
-        )
+        }
         errors: List[ScenarioError] = []
         for src_attr, dest_attr in attr_pairs:
             try:
@@ -596,7 +596,7 @@ class World(object):
             (exclusive).
 
         :param rt_factor: The real-time factor. If set to a number > 0,
-            the simulation will run in real-time mode. A real-time 
+            the simulation will run in real-time mode. A real-time
             factor of 1. means that 1 second in simulated time takes
             1 second in real time. An real-time factor of 0.5 will let
             the simulation run twice as fast as real time. For correct
@@ -615,7 +615,7 @@ class World(object):
             simulator in your simulation (in addition to the global
             one). A value of ``False`` turns off the progress bars
             completely.
-            
+
             The progress bars use
             `tqdm <https://pypi.org/project/tqdm/>`_; see their
             documentation on how to write to the console without
@@ -810,9 +810,7 @@ def update_min(a: T | None, b: T) -> T | None:
     return b
 
 
-MOSAIK_METHODS = set(
-    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
-)
+MOSAIK_METHODS = {"init", "create", "setup_done", "step", "get_data", "finalize", "stop"}
 
 
 class ModelFactory():
@@ -926,7 +924,7 @@ def parse_attrs(
         types).
     :return: A four-tuple of :class:`InOrOutSet`, giving the
         measurement inputs, event inputs, measurement outputs, and event
-        outputs.        
+        outputs.
     :raises ValueError: if the information is insufficient or
         inconsistent
     """

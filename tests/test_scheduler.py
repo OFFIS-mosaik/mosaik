@@ -22,7 +22,7 @@ async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: i
     """Executes the given coroutine as a task and give control back
     to it `pass_backs` times. If it doesn't complete in that time,
     the task is cancelled.
-    
+
     Returns ``False`` if the coroutine did not complete in the given
     attempts, ``True`` otherwise.
     """
@@ -50,7 +50,7 @@ def world_fixture(request: pytest.FixtureRequest):
     ┌───────┐         ▲                     │ │ Sim-5 │            │
     │ Sim-1 ├─────────┘                     │ └───────┘            │
     └───────┘                               └──────────────────────┘
-    
+
     All connections are non-triggering if the param value is
     "time-based", and are triggering if the param value is
     "event-based". The edge marked time-shifted/weak is time-shifted or
@@ -259,8 +259,8 @@ def test_get_input_data(world: World):
     sim_2.inputs_from_set_data = {
         '0': {'in': {'3': 5}, 'spam': {'3': 'eggs'}}
     }
-    sim_2.pulled_inputs[(sim_0, TieredInterval(0))] = set([(('1', 'x'), ('0', 'in'))])
-    sim_2.pulled_inputs[(sim_1, TieredInterval(0))] = set([(('2', 'z'), ('0', 'in'))])
+    sim_2.pulled_inputs[(sim_0, TieredInterval(0))] = {(('1', 'x'), ('0', 'in'))}
+    sim_2.pulled_inputs[(sim_1, TieredInterval(0))] = {(('2', 'z'), ('0', 'in'))}
     data = scheduler.get_input_data(world, sim_2)
     assert data == {'0': {
         'in': {'Sim-0.1': 0, 'Sim-1.2': 4, '3': 5},
@@ -277,7 +277,7 @@ def test_get_input_data_shifted(world: World):
     sim_5 = world.sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {'1': {'z': 7}}}
-    sim_4.pulled_inputs[(sim_5, TieredInterval(1))] = set([(('1', 'z'), ('0', 'in'))])
+    sim_4.pulled_inputs[(sim_5, TieredInterval(1))] = {(('1', 'z'), ('0', 'in'))}
     data = scheduler.get_input_data(world, world.sims["Sim-4"])
     assert data == {'0': {'in': {'Sim-5.1': 7}}}
 

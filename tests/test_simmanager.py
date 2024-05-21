@@ -196,7 +196,7 @@ if __name__ == '__main__':
     mosaik_api_v3.start_simulation(SimulatorMock())
 """
     )
-    sim = world.start("SimulatorMockTmp")
+    world.start("SimulatorMockTmp")
 
 
 async def read_message(reader: asyncio.StreamReader):
@@ -408,7 +408,7 @@ def test_local_process_finalized(world):
 
 
 async def _rpc_get_progress(channel: Channel, world: World):
-    """ 
+    """
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
