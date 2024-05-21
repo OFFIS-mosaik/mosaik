@@ -2,6 +2,7 @@ from textwrap import dedent
 from mosaik._version import version as mosaik_version
 from mosaik_api_v3 import __version__ as api_version
 import platform
+import sys
 
 
 def print_greetings():
@@ -21,7 +22,7 @@ def print_greetings():
                     \____/          Get in touch:       https://github.com/orgs/OFFIS-mosaik/discussions
                     
         """
-    print(dedent(greetings))
+    print(dedent(greetings), file=sys.stderr)
 
 
 def get_python_version():
