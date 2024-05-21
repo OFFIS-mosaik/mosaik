@@ -122,7 +122,7 @@ class TestSim(mosaik_api_v3.Simulator):
                         output_time = None
                 else:
                     output_time = self.output_timing.pop(self.time, None)
-            except:
+            except KeyError:
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
