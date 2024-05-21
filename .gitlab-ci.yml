@@ -74,7 +74,8 @@ Linting (flake8):
   script:
     - echo "Publishing version tagged $CI_COMMIT_TAG"
     - 'echo "Commit ref is: ${CI_COMMIT_REF_NAME}"'
-    - echor "Publishing as user $PYPI_USER"    - python -m build
+    - echo "Publishing as user $PYPI_USER"
+    - python -m build
     - python -m twine check --strict dist/*
     - python -m twine upload --repository-url "$REPOSITORY_URL" --username $TWINE_USERNAME --password $TWINE_PASSWORD dist/*
   rules:
