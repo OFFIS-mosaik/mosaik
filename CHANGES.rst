@@ -1,6 +1,13 @@
 Changelog
 =========
 
+3.3.3 - 2024-05-21
+------------------
+
+- [NEW] mosaik greeting with ASCII art and version information, contact links (https://gitlab.com/mosaik/mosaik/-/issues/216)
+- [NEW] Better error messages on remote errors (https://gitlab.com/mosaik/mosaik/-/issues/234)
+- [FIX] Error message for serialization errors assigns blame correctly (https://gitlab.com/mosaik/mosaik/-/issues/232)
+
 3.3.2 - 2024-04-12
 ------------------
 

@@ -5,6 +5,23 @@ The history of mosaik
 Our work on mosaik started on July 15th, 2010 -- at least, the initial
 commit happened on that day. Since then, we've come a long way …
 
+3.3.3 - 2024-05-21
+------------------
+
+- [NEW] mosaik greeting with ASCII art and version information, contact links (https://gitlab.com/mosaik/mosaik/-/issues/216)
+- [NEW] Better error messages on remote errors (https://gitlab.com/mosaik/mosaik/-/issues/234)
+- [FIX] Error message for serialization errors assigns blame correctly (https://gitlab.com/mosaik/mosaik/-/issues/232)
+
+3.3.2 - 2024-04-12
+------------------
+
+- [FIX] Fix versioning issue
+
+3.3.1 - 2024-04-12
+------------------
+
+- [FIX] Remote simulators didn't work with Python 3.12 (https://gitlab.com/mosaik/mosaik/-/issues/233)
+
 3.3.0 - 2024-01-17
 -------------------
 - [NEW] A simulator can now be connected to itself if the connection is weak or time_shifted (https://gitlab.com/mosaik/mosaik/-/issues/156)
