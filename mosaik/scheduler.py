@@ -12,7 +12,7 @@ from time import perf_counter
 from mosaik_api_v3 import InputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
-from mosaik.internal_util import recursive_merge_all, recursive_merge_existing
+from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
@@ -239,9 +239,9 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     # Merge the persistent inputs into the input data, adding keys as
     # necessary. mosaik controls three levels deep, all further levels
     # therefore should not be merged.
-    recursive_merge_all(
-        lambda attrs_new, attrs_old: recursive_merge_all(
-            lambda data_new, data_old: recursive_merge_all(
+    merge_all(
+        lambda attrs_new, attrs_old: merge_all(
+            lambda data_new, data_old: merge_all(
                 lambda val_new, val_old: val_new, data_new, data_old
             ),
             attrs_new,
@@ -274,9 +274,9 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     # Merge the data back into the persistent inputs. Here, only keys
     # that already exist should be updated, as those are the persistent
     # attributes. (Adding others would make those persistent as well.)
-    recursive_merge_existing(
-        lambda attrs_old, attrs_new: recursive_merge_existing(
-            lambda data_old, data_new: recursive_merge_existing(
+    merge_existing(
+        lambda attrs_old, attrs_new: merge_existing(
+            lambda data_old, data_new: merge_existing(
                 lambda val_old, val_new: val_new, data_old, data_new
             ),
             attrs_old,

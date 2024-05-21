@@ -15,7 +15,7 @@ import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.tiered_time import TieredInterval, TieredTime
 
@@ -42,6 +42,9 @@ sim_config: scenario.SimConfig = {
     },
     "MetaMock": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
+    },
+    "FixedOutputSim": {
+        "python": "tests.simulators.fixed_output_sim:FixedOutputSim",
     },
 }
 
@@ -155,8 +158,8 @@ async def test_start_proc_no_port_conflict():
     }
     mosaik_remote = cast(simmanager.MosaikRemote, None)
     exc_1, exc_2 = await asyncio.gather(
-        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": "true"}, mosaik_remote),
-        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": "true"}, mosaik_remote),
+        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
+        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
         return_exceptions=True,
     )
     # We should get `SimulationError`s here, not `OSError`s
@@ -219,9 +222,9 @@ def test_start_connect(world: scenario.World):
         asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
     )
     simC = world.start("ExampleSimC")
+    server.close()
     world.shutdown()
     assert "api_version" in simC.meta and "models" in simC.meta
-    server.close()
 
 
 def test_start_connect_timeout_init(world: World, caplog):
@@ -270,8 +273,8 @@ def test_start_connect_stop_timeout(world: World):
 
     sim = world.start("ExampleSimC")
     assert "api_version" in sim.meta and "models" in sim.meta
-    world.shutdown()
     server.close()
+    world.shutdown()
 
 
 @pytest.mark.parametrize(
@@ -588,7 +591,7 @@ def test_mosaik_remote(
             channel_future: asyncio.Future[Channel] = asyncio.Future()
             async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
                 channel_future.set_result(Channel(r, w))
-            server = await asyncio.start_server(on_connect, "0.0.0.0")
+            server = await asyncio.start_server(on_connect, "127.0.0.1")
             try:
                 actual_addr = server.sockets[0].getsockname()
                 sim_exc, greeter_exc = await asyncio.gather(
@@ -635,3 +638,13 @@ def test_global_time_resolution(world):
     world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
     assert simulator_2._proxy.sim.time_resolution == 60.0
+
+
+def test_non_serializable_outputs_error(world: World):
+    src_sim = world.start("FixedOutputSim")
+    src_entity = src_sim.Entity(outputs={0: object()})
+    dest_sim = world.start("ExampleSimB")
+    dest_entity = dest_sim.B(init_val=0)
+    world.connect(src_entity, dest_entity, ("out", "val_in"))
+    with pytest.raises(NonSerializableOutputsError):
+        world.run(until=1)

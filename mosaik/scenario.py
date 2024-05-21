@@ -14,6 +14,7 @@ from collections import defaultdict
 import contextlib
 from copy import copy
 from dataclasses import dataclass
+from mosaik.greetings_util import print_greetings
 import itertools
 from loguru import logger
 from mosaik_api_v3 import OutputData, OutputRequest
@@ -38,6 +39,7 @@ import warnings
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik_api_v3.types import Attr, CreateResult, EntityId, FullId, ModelDescription, ModelName, SimId
+from mosaik_api_v3.connection import RemoteException
 
 from mosaik import simmanager
 from mosaik.internal_util import doc_link
@@ -239,7 +241,10 @@ class World(object):
         cache: bool = True,
         max_loop_iterations: int = 100,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
+        skip_greetings: bool = False
     ):
+        if not skip_greetings:
+            print_greetings()
         self.sim_config = sim_config
 
         self.config = copy(base_config)
@@ -683,6 +688,15 @@ class World(object):
             success = True
         except KeyboardInterrupt:
             logger.info('Simulation canceled. Terminating ...')
+        except RemoteException as exc:
+            logger.error(
+                f"Simulator {exc.source} aborted the simulation with error "
+                f"{exc.remote_type}({exc.remote_msg})." + (
+                    " Further information provided:\n" + "\n".join(exc.further_args)
+                    if exc.further_args
+                    else ""
+                )
+            )
         finally:
             for sid, sim in self.sims.items():
                 sim.tqdm.close()

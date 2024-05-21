@@ -1,8 +1,0 @@
-{
-    "typeCheckingMode": "strict",
-    "reportIncompatibleMethodOverride": "warning",
-    "reportUninitializedInstanceVariable": "warning",
-    "reportUnnecessaryIsInstance": "none",
-    "reportUnusedImport": "warning",
-    "reportPrivateUsage": "none",
-}
