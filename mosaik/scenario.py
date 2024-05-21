@@ -14,12 +14,10 @@ from collections import defaultdict
 import contextlib
 from copy import copy
 from dataclasses import dataclass
+from mosaik.greetings_util import print_greetings
 import itertools
-from textwrap import dedent
-import mosaik.internal_util
 from loguru import logger
 from mosaik_api_v3 import OutputData, OutputRequest
-import mosaik_api_v3
 import networkx
 from tqdm import tqdm
 from typing import (
@@ -311,23 +309,6 @@ class World(object):
             sim_name=sim_name,
             sim_id=sim_id,
         )
-        greetings = fr"""
-                     ____                              _ _
-                    /    \                            (_) |
-               ____/      \  _ __ ___   ___  ___  __ _ _| | __
-              /    \      / | '_ ` _ \ / _ \/ __|/ _` | | |/ / 
-             /      \____/  | | | | | | (_) \__ \ (_| | |   <     
-             \      /    \  |_| |_| |_|\___/|___/\__,_|_|_|\_\    
-              \____/      \____
-              /    \      /    \    mosaik version:     {mosaik.__version__}
-             /      \____/      \   mosaik API version: {mosaik_api_v3.__version__}
-             \      /    \      /   Python version:     {mosaik.internal_util.get_python_version()}
-              \____/      \____/    OS:                 {mosaik.internal_util.get_os()}
-                   \      /         Documentation:      https://mosaik.readthedocs.io/en/{mosaik.__version__}/
-                    \____/          Get in touch:       https://github.com/orgs/OFFIS-mosaik/discussions
-                    
-        """
-        print(dedent(greetings))
         proxy = self.loop.run_until_complete(
             simmanager.start(self, sim_name, sim_id, self.time_resolution, sim_params)
         )
@@ -1066,6 +1047,7 @@ class ModelMock(object):
         :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
         to every entity ID to make them globally unique.
         """
+        print_greetings()
         self._check_params(**model_params)
 
         entities = self._world.loop.run_until_complete(
