@@ -1060,7 +1060,6 @@ class ModelMock(object):
         :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
         to every entity ID to make them globally unique.
         """
-        print_greetings()
         self._check_params(**model_params)
 
         entities = self._world.loop.run_until_complete(
