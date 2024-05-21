@@ -241,7 +241,10 @@ class World(object):
         cache: bool = True,
         max_loop_iterations: int = 100,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
+        allow_greetings_print: bool = True
     ):
+        if allow_greetings_print:
+            print_greetings()
         self.sim_config = sim_config
 
         self.config = copy(base_config)

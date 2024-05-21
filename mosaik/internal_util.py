@@ -47,6 +47,7 @@ def merge_all(
             target[k] = v
     return target
 
+
 def doc_link(page: str, anchor: str) -> str:
     version = metadata.version("mosaik")
     return f"https://mosaik.readthedocs.io/en/{version}/{page}.html#{anchor}"
