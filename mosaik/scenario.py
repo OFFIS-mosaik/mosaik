@@ -126,7 +126,7 @@ def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
     while src.parent:
         src = src.parent
         src_groups.append(src)
-    
+
     descent = 0
     while True:
         try:
@@ -388,7 +388,7 @@ class World(object):
         dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
 
         is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
-        
+
         if src.is_persistent(src_attr) and not self.use_cache:
             dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(src.full_id, None)
 
@@ -576,7 +576,7 @@ class World(object):
 
         return results
 
-    
+
     def run(
         self,
         until: int,
@@ -856,7 +856,7 @@ class ModelFactory():
                 raise ScenarioError(
                     f"Simulator {sid} uses an illegal model name: {model}. This name "
                     "is already the name of a mosaik API method."
-                )               
+                )
             self.models[model] = ModelMock(self._world, self, model, self._proxy)
             # Make public models accessible
             if props.get("public", True):
@@ -935,7 +935,7 @@ def parse_attrs(
         "if you need both types of %s attributes), and they must list all their "
         "attrs as %s if that key is present"
     )
-    
+
     if model_desc.get('any_inputs', False):
         inputs: Optional[InOrOutSet[Attr]] = OutSet()
     else:
@@ -964,7 +964,7 @@ def parse_attrs(
         raise ValueError(
             error_template % ("event-based", "non-trigger", "inpus", "trigger")
         )
-    
+
     outputs = wrap_set(model_desc.get('attrs'))
     default_measurements = empty if type == 'event-based' else None
     measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
@@ -1040,7 +1040,7 @@ class ModelMock(object):
     @property
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
-    
+
     def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.

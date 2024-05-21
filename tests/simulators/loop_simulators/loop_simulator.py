@@ -53,7 +53,7 @@ class LoopSim(mosaik_api_v3.Simulator):
             self.loop_count = 0
         else:
             next_step = None
-        logger.info('step at {time}, next step at {next_step}', time=time, 
+        logger.info('step at {time}, next step at {next_step}', time=time,
                     next_step=next_step)
         return next_step
 
@@ -62,7 +62,7 @@ class LoopSim(mosaik_api_v3.Simulator):
             data = {}
         else:
             data = {self.eid: {'loop_out': self.loop_count}}
-        logger.info('get_data at {time}, returning {data}', 
+        logger.info('get_data at {time}, returning {data}',
                     time=self.time, data=data)
 
         return data

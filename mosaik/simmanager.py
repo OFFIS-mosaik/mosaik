@@ -255,7 +255,7 @@ async def start_proc(
 
         try:
             subprocess.Popen(
-                cmd, 
+                cmd,
                 bufsize=1,
                 cwd=cwd,
                 universal_newlines=True,

@@ -70,7 +70,7 @@ class Controller(mosaik_api_v3.Simulator):
         print(f"max_advance {max_advance}")
 
         return None
-        
+
 
 @threaded
 def listen_to_external_events(controller):

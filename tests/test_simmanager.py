@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 from asyncio import StreamReader, StreamWriter
 import os
-from loguru import logger
 import pytest
 import sys
-import time
 from typing import Any, Callable, Coroutine, Type, cast
 
 from example_sim.mosaik import ExampleSim
@@ -68,7 +66,7 @@ def test_start(world, monkeypatch):
         @property
         def meta(self) -> Meta:
             raise NotImplementedError
-        
+
         async def send(self, request):
             return None
 

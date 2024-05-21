@@ -5,7 +5,6 @@ Plots the executions graphs of the test scenarios in tests/fixtures/.
 
 import glob
 import importlib
-import networkx as nx
 import os
 import sys
 

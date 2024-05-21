@@ -74,7 +74,7 @@ def world_fixture(request: pytest.FixtureRequest):
             return False
     for sim in world.sims.values():
         sim.task = DummyTask()
-    
+
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
         sims[src].successors[sims[dest]] = TieredInterval(0)
         sims[dest].input_delays[sims[src]] = TieredInterval(0)
@@ -121,7 +121,7 @@ def test_run(monkeypatch):
             'api_version': '2.2',
             'type': 'time-based'
         }
-        
+
     world.sims = {i: SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, 'sim_process', dummy_proc)
@@ -342,7 +342,7 @@ async def test_get_outputs(world: World, cache: bool):
     sim = world.sims["Sim-0"]
     sim.outputs = {} if cache else None
     sim.output_request = {0: ['x', 'y']}
-    sim.last_step = TieredTime(0) 
+    sim.last_step = TieredTime(0)
     sim.output_time = TieredTime(-1)
     sim.tqdm = tqdm(disable=True)
 
@@ -458,7 +458,7 @@ async def test_get_outputs_shifted(world: World):
     sim.last_step = TieredTime(1)
     sim.tqdm = tqdm(disable=True)
     heappush(world.sims["Sim-4"].next_steps, TieredTime(2))
-    
+
     sim.current_step = heappop(sim.next_steps)
     await scheduler.get_outputs(world, sim)
     scheduler.notify_dependencies(sim)

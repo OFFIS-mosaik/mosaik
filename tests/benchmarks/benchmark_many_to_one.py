@@ -6,7 +6,7 @@ import mosaik
 import mosaik.util
 
 from argparser import argparser
-from comparison import write_exeuction_graph, compare_execution_graph
+from comparison import compare_execution_graph
 
 sys.path.insert(0, os.getcwd())
 
@@ -22,7 +22,7 @@ SIM_CONFIG = {
 
 world = mosaik.World(SIM_CONFIG, **world_args)
 
-if args.sim_type == 'time': 
+if args.sim_type == 'time':
     step_type = 'time-based'
     stepping = {'step_size': 1}
 else:

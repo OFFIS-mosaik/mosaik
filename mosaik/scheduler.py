@@ -417,7 +417,7 @@ async def get_outputs(world: World, sim: SimRunner):
                     )
             except KeyError:
                 pass
-        sim.data = data 
+        sim.data = data
 
 
 def notify_dependencies(sim: SimRunner) -> None:

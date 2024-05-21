@@ -97,7 +97,7 @@ def test_world_start(world: World):
     assert 'ExampleSim-0' in world.sims
 
     world.start('ExampleSim')
-    assert list(sorted(world.sims)) == ['ExampleSim-0', 'ExampleSim-1']
+    assert sorted(world.sims) == ['ExampleSim-0', 'ExampleSim-1']
     assert 'ExampleSim-1' in world.sims
 
 def test_global_time_resolution():
@@ -126,7 +126,7 @@ def test_world_connect(world: World):
 
     sim_0 = world.sims[sim_0._sid]
     sim_1 = world.sims[sim_1._sid]
-    
+
     # TODO: check for connections in new place
     assert sim_0.successors == {sim_1: TieredInterval(0)}
     assert sim_0.successors_to_wait_for == {}
@@ -139,7 +139,7 @@ def test_world_connect(world: World):
         ((a[1].eid, 'val_out'), (b[1].eid, 'val_in')),
         ((a[1].eid, 'dummy_out'), (b[1].eid, 'dummy_in')),
     ])
-    
+
     assert to_dict(world.entity_graph) == {
         'ExampleSim-0.' + a[0].eid: {'ExampleSim-1.' + b[0].eid: {}},
         'ExampleSim-1.' + b[0].eid: {'ExampleSim-0.' + a[0].eid: {}},
@@ -253,7 +253,7 @@ def test_world_connect_any_inputs(world: World):
     assert sim_b.pulled_inputs[(sim_a, TieredInterval(0))] == set([
         ((a.eid, "val_out"), (b.eid, "val_out")),
     ])
-    
+
     assert sim_a.successors == {sim_b: TieredInterval(0)}
     assert sim_b.input_delays[sim_a] == TieredInterval(0)
     assert to_dict(world.entity_graph) == {
@@ -422,7 +422,7 @@ def test_model_mock_entity_graph(world: World):
 
     fac = world.start('ExampleSim')
     fac._proxy.send = send
-    
+
     assert world.entity_graph.adj == {}
     fac.A.create(2)
     assert world.entity_graph.adj == {
@@ -437,7 +437,7 @@ def test_model_mock_entity_graph(world: World):
 
 def test_extra_methods(world: World):
     sim = world.start(
-        'MetaMirror', 
+        'MetaMirror',
         meta={
             "api_version": "3.0",
             "type": "time-based",

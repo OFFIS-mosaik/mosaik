@@ -140,7 +140,7 @@ def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
 
     def format_node(node: Tuple[str, TieredTime]) -> str:
         return f"{node[0]} @ {node[1]}"
-    
+
     if missing_nodes:
         errors.append("The following expected simulator invocations did not happen:")
         for node in sorted(missing_nodes):
