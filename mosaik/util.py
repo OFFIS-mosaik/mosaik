@@ -348,7 +348,7 @@ def plot_dataflow_graph(
     )
 
 
-def plot_execution_graph(
+def plot_execution_graph(  # noqa: C901  There are simply a lot of steps to be done
     world: World,
     title: str = "",
     folder: str =STANDARD_FOLDER,
