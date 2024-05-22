@@ -78,4 +78,3 @@ reportUnusedImport = "warning"
 
 [tool.ruff.lint]
 extend-select = ["C", "W"]
-mccabe.max-complexity = 11
