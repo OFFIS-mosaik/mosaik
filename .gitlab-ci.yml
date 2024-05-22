@@ -69,16 +69,6 @@ Formatting:
     - if: '$CI_COMMIT_TAG == null'
   needs: []
 
-Branch check:
-  allow_failure: true
-  stage: Tests
-  script:
-    - git fetch origin master --tags
-    - git branch -a
-    - git branch -a --contains 3.3.3
-    - git branch -a --contains 3.3.3 | grep master
-    - git branch -a --contains 4.0.0 | grep master
-
 # Basic job to upload the newly tagged version of mosaik to pypi. The server can be chosen, i.e., the test or production server.
 .pypi:
   script:
