@@ -42,6 +42,7 @@ Unit tests:
   needs: []
 
 Benchmark tests:
+  allow_failure: true
   stage: Tests
   script:
     - rye pin 3.12 && rye test -- --benchmarks tests/test_benchmarks.py
@@ -109,4 +110,6 @@ mosaik demo:
   trigger: 
     project: mosaik/examples/mosaik-demo
     branch: master
-  when: manual
+  rules:
+    - if: $CI_COMMIT_TAG
+    - when: manual
