@@ -127,26 +127,39 @@ def post_step(world: World, sim: SimRunner):
         sim.next_self_step = None
 
 
-def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
-    actual_graph = world.execution_graph
-    expected_graph = parse_execution_graph(expected_str)
-    for node in extra_nodes:
-        expected_graph.add_node(parse_node(node))
+def format_node(node: Tuple[str, TieredTime]) -> str:
+    return f"{node[0]} @ {node[1]}"
 
+
+def missing_node_errors(
+    actual_graph: nx.DiGraph[Tuple[str, TieredTime]],
+    expected_graph: nx.DiGraph[Tuple[str, TieredTime]],
+) -> List[str]:
+    """Check for nodes in the expected execution graph that do not occur
+    in the actual graph.
+    """
     errors: List[str] = []
     expected_nodes = set(expected_graph.nodes)
     actual_nodes = set(actual_graph.nodes)
     missing_nodes = expected_nodes - actual_nodes
-
-    def format_node(node: Tuple[str, TieredTime]) -> str:
-        return f"{node[0]} @ {node[1]}"
-
     if missing_nodes:
         errors.append("The following expected simulator invocations did not happen:")
         for node in sorted(missing_nodes):
             errors.append(f"- {format_node(node)}")
         errors.append("")
+    return errors
 
+
+def unexpected_node_errors(
+    actual_graph: nx.DiGraph[Tuple[str, TieredTime]],
+    expected_graph: nx.DiGraph[Tuple[str, TieredTime]],
+) -> List[str]:
+    """Check for nodes in the execution graph that are not listed in the
+    expected graph.
+    """
+    errors: List[str] = []
+    expected_nodes = set(expected_graph.nodes)
+    actual_nodes = set(actual_graph.nodes)
     unexpected_nodes = actual_nodes - expected_nodes
     if unexpected_nodes:
         errors.append("The following simulator invocations were not expected:")
@@ -158,23 +171,44 @@ def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
                 sources_str = "not caused by other simulators"
             errors.append(f"- {format_node(node)} ({sources_str})")
         errors.append("")
+    return errors
 
-    predecessor_errors: List[str] = []
+
+def predecessor_errors(
+    actual_graph: nx.DiGraph[Tuple[str, TieredTime]],
+    expected_graph: nx.DiGraph[Tuple[str, TieredTime]],
+) -> List[str]:
+    """Check for nodes in the execution graph with predecessors that
+    differ from those in the expected graph.
+    """
+    errors: List[str] = []
+    expected_nodes = set(expected_graph.nodes)
+    actual_nodes = set(actual_graph.nodes)
     for node in sorted(actual_nodes & expected_nodes):
         actual_pres = set(actual_graph.predecessors(node))
         expected_pres = set(expected_graph.predecessors(node))
         if actual_pres != expected_pres:
-            predecessor_errors.append(
+            errors.append(
                 f"- {format_node(node)} ("
                 f"extraneous {', '.join(map(format_node, sorted(actual_pres - expected_pres)))}; "
                 f"missing {', '.join(map(format_node, sorted(expected_pres - actual_pres)))})"
             )
-    if predecessor_errors:
-        errors.append(
-            "The following simulator invocations had incorrect sources:"
-        )
-        errors.extend(predecessor_errors)
+    if errors:
+        errors.insert(0, "The following simulator invocations had incorrect sources:")
         errors.append("")
+    return errors
+
+
+def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
+    actual_graph = world.execution_graph
+    expected_graph = parse_execution_graph(expected_str)
+    for node in extra_nodes:
+        expected_graph.add_node(parse_node(node))
+
+    errors: List[str] = []
+    errors += missing_node_errors(actual_graph, expected_graph)
+    errors += unexpected_node_errors(actual_graph, expected_graph)
+    errors += predecessor_errors(actual_graph, expected_graph)
 
     if errors:
         raise AssertionError(

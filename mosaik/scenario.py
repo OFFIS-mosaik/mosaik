@@ -22,7 +22,6 @@ from tqdm import tqdm
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     FrozenSet,
     Iterable,
