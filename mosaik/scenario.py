@@ -860,31 +860,29 @@ class ModelFactory():
             if props.get("public", True):
                 setattr(self, model, self.models[model])
 
-        # Bind extra_methods to this instance:
         for meth_name in self.meta.get("extra_methods", []):
-            # We need get_wrapper() in order to avoid problems with scoping
-            # of the name "meth". Without it, "meth" would be the same for all
-            # wrappers.
-            if meth_name in MOSAIK_METHODS:
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a mosaik API method.'
-                )
-            if meth_name in self.models.keys():
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a model of this '
-                    "simulator."
-                )
-            def get_wrapper(connection: Proxy, meth_name: str) -> Callable[..., Any]:
-                def wrapper(*args: Any, **kwargs: Any):
-                    return world.loop.run_until_complete(
-                        connection.send([meth_name, args, kwargs])
-                    )
-                wrapper.__name__ = meth_name
-                return wrapper
+            self._bind_extra_method(world, sid, proxy, meth_name)
 
-            setattr(self, meth_name, get_wrapper(proxy, meth_name))
+    def _bind_extra_method(self, world: World, sid: SimId, proxy: Proxy, meth_name: str):
+        if meth_name in MOSAIK_METHODS:
+            raise ScenarioError(
+                f"Simulator {sid} uses an illegal name for an extra method: "
+                f'"{meth_name}". This is already the name of a mosaik API method.'
+            )
+        if meth_name in self.models.keys():
+            raise ScenarioError(
+                f"Simulator {sid} uses an illegal name for an extra method: "
+                f'"{meth_name}". This is already the name of a model of this '
+                "simulator."
+            )
+
+        def wrapper(*args: Any, **kwargs: Any):
+            return world.loop.run_until_complete(
+                proxy.send([meth_name, args, kwargs])
+            )
+        wrapper.__name__ = meth_name
+
+        setattr(self, meth_name, wrapper)
 
     def __getattr__(self, name: str):
         # Implemented in order to improve error messages.
