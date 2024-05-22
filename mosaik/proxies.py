@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import asyncio
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
 from typing import Any, Dict, Iterator, List, Tuple
-from loguru import logger
 
-from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
+from loguru import logger
+from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
+
 from mosaik.exceptions import ScenarioError
 
 
@@ -21,6 +22,7 @@ class Proxy(ABC):
     appropriate ``Adapter`` subclasses to bring the interface of the
     connected simulator in line with the most up-to-date API version.
     """
+
     @abstractmethod
     async def send(self, request: Any) -> Any:
         """Send a request to the connected simulator.
@@ -80,6 +82,7 @@ class LocalProxy(BaseProxy):
     Proxy for a local simulator. This mainly wraps each mosaik method in
     a coroutine.
     """
+
     sim: Simulator
     """The underlying ``mosaik_api.Simulator."""
 
@@ -152,8 +155,7 @@ class RemoteProxy(BaseProxy):
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
-            self._handle_remote_requests(),
-            name="handle remote requests for ???"
+            self._handle_remote_requests(), name="handle remote requests for ???"
         )
 
     async def _handle_remote_requests(self) -> None:
@@ -170,15 +172,17 @@ class RemoteProxy(BaseProxy):
         except EndOfRequests:
             pass
         except RuntimeError as e:
-            if e.args[0] != 'Event loop is closed':
+            if e.args[0] != "Event loop is closed":
                 logger.exception(
                     "Something went wrong in _handle_remote_requests, "
-                    f"exception type {type(e)}")
+                    f"exception type {type(e)}"
+                )
                 await self.stop()
         except Exception as e:
             logger.exception(
                 "Something went wrong in _handle_remote_requests, "
-                f"exception type {type(e)}")
+                f"exception type {type(e)}"
+            )
             await self.stop()
 
     async def init(self, sid: SimId, **kwargs: Any) -> List[int]:

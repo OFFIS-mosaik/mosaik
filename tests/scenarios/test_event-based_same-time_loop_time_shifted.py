@@ -7,6 +7,7 @@ do not enter a same-time loop.
 
 where the connection from B to A is time_shifted.
 """
+
 from mosaik import World
 
 

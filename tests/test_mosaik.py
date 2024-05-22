@@ -2,17 +2,17 @@
 Test a complete mosaik simulation using mosaik as a library.
 
 """
+
 import importlib
 import time
 
 import pytest
 
 from mosaik import scenario
-
 from tests.scenarios.conftest import SIM_CONFIG
 
 
-@pytest.mark.parametrize('sim_name', ["Local", "Remote"])
+@pytest.mark.parametrize("sim_name", ["Local", "Remote"])
 def test_call_extra_methods(sim_name: str):
     world = scenario.World(SIM_CONFIG)
     try:
@@ -24,7 +24,7 @@ def test_call_extra_methods(sim_name: str):
     assert ret == 23
 
 
-@pytest.mark.parametrize('sim_name', ["Generic", "RemoteGeneric"])
+@pytest.mark.parametrize("sim_name", ["Generic", "RemoteGeneric"])
 def test_call_two_extra_methods(sim_name: str):
     world = scenario.World(SIM_CONFIG)
     try:
@@ -41,7 +41,7 @@ def test_call_two_extra_methods(sim_name: str):
 
 
 def test_rt_sim():
-    fixture = importlib.import_module('tests.scenarios.test_single_self_stepping')
+    fixture = importlib.import_module("tests.scenarios.test_single_self_stepping")
     world = scenario.World(SIM_CONFIG)
     try:
         fixture.create_scenario(world)
@@ -56,19 +56,24 @@ def test_rt_sim():
         world.shutdown()
 
 
-@pytest.mark.parametrize('strict', [True, False])
+@pytest.mark.parametrize("strict", [True, False])
 def test_rt_sim_too_slow(strict, caplog):
-    fixture = importlib.import_module('tests.scenarios.test_single_self_stepping')
+    fixture = importlib.import_module("tests.scenarios.test_single_self_stepping")
     world = scenario.World(SIM_CONFIG)
     try:
         fixture.create_scenario(world)
 
         factor = 0.00001
         if strict:
-            pytest.raises(RuntimeError, world.run, until=fixture.UNTIL,
-                          rt_factor=factor, rt_strict=strict)
+            pytest.raises(
+                RuntimeError,
+                world.run,
+                until=fixture.UNTIL,
+                rt_factor=factor,
+                rt_strict=strict,
+            )
         else:
             world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
-            assert 'too slow for real-time factor' in caplog.text
+            assert "too slow for real-time factor" in caplog.text
     finally:
         world.shutdown()

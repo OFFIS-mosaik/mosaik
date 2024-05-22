@@ -22,10 +22,10 @@
 # this new adapter.
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 import warnings
-from loguru import logger  # noqa: F401  # type: ignore
+from typing import Any, Dict, Optional
 
+from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
 
 from mosaik.exceptions import ScenarioError
@@ -52,7 +52,7 @@ async def init_and_get_adapter(
     :raise ScenarioError: if there is a problem during initialization.
     """
     if explicit_version_str is not None:
-        explicit_version = list(map(int, explicit_version_str.split('.')))
+        explicit_version = list(map(int, explicit_version_str.split(".")))
     else:
         explicit_version = None
 
@@ -128,6 +128,7 @@ class V3ToV2Adapter(Adapter):
       (but this is handled in BaseConnection)
     - ``step`` is now supplied with ``max_advance`` (as an arg)
     """
+
     async def send(self, request: Any):
         try:
             func_name, args, kwargs = request
@@ -147,6 +148,7 @@ class V2ToV1Adapter(Adapter):
     """API changes:
     - ``setup_done`` function was added to simulators
     """
+
     async def send(self, request: Any):
         try:
             func_name, _args, _kwargs = request

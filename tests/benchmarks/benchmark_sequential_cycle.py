@@ -1,49 +1,52 @@
-#benchmark_sequential_cycle.py
+# benchmark_sequential_cycle.py
 import os
 import sys
 
-import mosaik
-
 from argparser import argparser
 from comparison import compare_execution_graph
+
+import mosaik
 
 sys.path.insert(0, os.getcwd())
 
 args, world_args, run_args = argparser(until=10)
 if args.plot or args.compare:
-    world_args['debug'] = True
+    world_args["debug"] = True
 
 SIM_CONFIG = {
-    0: {'TestSim': {'python': 'tests.simulators.generic_test_simulator:TestSim'}},
-    1: {'TestSim': {'cmd': '%(python)s tests/simulators/generic_test_simulator.py %(addr)s'}}
+    0: {"TestSim": {"python": "tests.simulators.generic_test_simulator:TestSim"}},
+    1: {
+        "TestSim": {
+            "cmd": "%(python)s tests/simulators/generic_test_simulator.py %(addr)s"
+        }
+    },
 }
 
 world = mosaik.World(SIM_CONFIG[args.remote], **world_args)
 
-if args.sim_type == 'time':
-    step_type = 'time-based'
-    connection_args = {
-        'time_shifted': True,
-        'initial_data': {'val_out': 0}
-    }
+if args.sim_type == "time":
+    step_type = "time-based"
+    connection_args = {"time_shifted": True, "initial_data": {"val_out": 0}}
 else:
-    step_type = 'event-based'
-    connection_args = {
-        'weak': True
-    }
+    step_type = "event-based"
+    connection_args = {"weak": True}
 
-a = world.start('TestSim', step_type=step_type).A()
-b = world.start('TestSim', step_type=step_type,
-                output_timing=dict(zip(range(args.until), range(1, args.until+1)))).A()
+a = world.start("TestSim", step_type=step_type).A()
+b = world.start(
+    "TestSim",
+    step_type=step_type,
+    output_timing=dict(zip(range(args.until), range(1, args.until + 1))),
+).A()
 world.set_initial_event(a.sid)
 
-world.connect(a, b, ('val_out', 'val_in'))
-world.connect(b, a, ('val_out', 'val_in'), **connection_args)
+world.connect(a, b, ("val_out", "val_in"))
+world.connect(b, a, ("val_out", "val_in"), **connection_args)
 
 world.run(**run_args)
 
 if args.plot:
     from plotting.execution_graph_tools import plot_execution_graph_st
+
     plot_execution_graph_st(world)
 
 # Write execution_graph to file for comparison

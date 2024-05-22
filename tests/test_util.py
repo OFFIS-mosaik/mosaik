@@ -1,6 +1,7 @@
 import collections
-import pytest
 import random
+
+import pytest
 
 from mosaik import util
 
@@ -9,6 +10,7 @@ class World(object):
     """
     A dummy world for testing purposes.
     """
+
     def __init__(self):
         self.src_connects = set()
         self.dest_connects = collections.defaultdict(lambda: 0)
@@ -25,30 +27,31 @@ def test_connect_many_to_one():
     src_set = [object() for i in range(3)]
     dest = object()
 
-    util.connect_many_to_one(world, src_set, dest, 'a', 'b',
-                             async_requests=True)
+    util.connect_many_to_one(world, src_set, dest, "a", "b", async_requests=True)
 
     assert world.async_requests is True
     assert world.src_connects == set(src_set)
     assert world.dest_connects == {dest: len(src_set)}
 
 
-@pytest.mark.parametrize(['src_size', 'dest_size', 'evenly', 'max_c',
-                          'dest_connects'], [
-    (20, 20, True, None, (1, 1)),
-    (0,  20, True, None, (0, 0)),
-    (12, 20, True, None, (0, 1)),
-    (20, 12, True, None, (1, 2)),
-    (20,  1, True, None, (20, 20)),
-    (42, 20, True, None, (2, 3)),
-    (20, 20, False, float('inf'), (0, 20)),
-    (0,  20, False, float('inf'), (0, 0)),
-    (12, 20, False, float('inf'), (0, 12)),
-    (20, 12, False, float('inf'), (0, 20)),
-    (20,  1, False, float('inf'), (20, 20)),
-    (90, 20, False, float('inf'), (0, 90)),
-    (90, 20, False, 6, (0, 6)),
-])
+@pytest.mark.parametrize(
+    ["src_size", "dest_size", "evenly", "max_c", "dest_connects"],
+    [
+        (20, 20, True, None, (1, 1)),
+        (0, 20, True, None, (0, 0)),
+        (12, 20, True, None, (0, 1)),
+        (20, 12, True, None, (1, 2)),
+        (20, 1, True, None, (20, 20)),
+        (42, 20, True, None, (2, 3)),
+        (20, 20, False, float("inf"), (0, 20)),
+        (0, 20, False, float("inf"), (0, 0)),
+        (12, 20, False, float("inf"), (0, 12)),
+        (20, 12, False, float("inf"), (0, 20)),
+        (20, 1, False, float("inf"), (20, 20)),
+        (90, 20, False, float("inf"), (0, 90)),
+        (90, 20, False, 6, (0, 6)),
+    ],
+)
 def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
     """
     Test if connect_randomly() connects the correct amount of entities.
@@ -66,8 +69,9 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
         src_set = [object() for i in range(src_size)]
         dest_set = [object() for i in range(dest_size)]
 
-        connected = util.connect_randomly(world, src_set, dest_set, 'a', 'b',
-                                          evenly=evenly, max_connects=max_c)
+        connected = util.connect_randomly(
+            world, src_set, dest_set, "a", "b", evenly=evenly, max_connects=max_c
+        )
         if evenly:
             assert len(connected) == min(src_size, dest_size)
         else:

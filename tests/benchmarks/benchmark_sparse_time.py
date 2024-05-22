@@ -2,32 +2,30 @@
 import os
 import sys
 
-import mosaik
-
 from argparser import argparser
 from comparison import compare_execution_graph
+
+import mosaik
 
 sys.path.insert(0, os.getcwd())
 
 args, world_args, run_args = argparser(N=10000, until=1000)
 if args.plot or args.compare:
-    world_args['debug'] = True
-run_args['until'] *= args.N
+    world_args["debug"] = True
+run_args["until"] *= args.N
 SIM_CONFIG = {
-    'ExampleSim': {
-        'python': 'tests.simulators.generic_test_simulator:TestSim'
-    },
+    "ExampleSim": {"python": "tests.simulators.generic_test_simulator:TestSim"},
 }
 
 # Create World
 world = mosaik.World(SIM_CONFIG, **world_args)
 
 # Start simulators und instantiate models:
-a = world.start('ExampleSim', step_size=args.N).A()
-b = world.start('ExampleSim', step_size=args.N).A()
+a = world.start("ExampleSim", step_size=args.N).A()
+b = world.start("ExampleSim", step_size=args.N).A()
 
 # Connect entities
-world.connect(a, b, ('val_out', 'val_in'))
+world.connect(a, b, ("val_out", "val_in"))
 
 # Run simulation
 world.run(**run_args)

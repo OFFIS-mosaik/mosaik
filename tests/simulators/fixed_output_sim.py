@@ -1,8 +1,8 @@
+import copy
 from typing import Any, Dict
+
 import mosaik_api_v3
 from mosaik_api_v3.types import InputData, OutputData, OutputRequest
-import copy
-
 
 sim_meta = {
     "type": "time-based",

@@ -1,10 +1,10 @@
 import warnings
+
 import pytest
+
 from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
-
 from mosaik.scenario import SimConfig, World
-
 
 sim_config: SimConfig = {
     "MetaMirror": {
@@ -13,7 +13,7 @@ sim_config: SimConfig = {
     "MetaMirror2.0": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
         "api_version": "2.0",
-    }
+    },
 }
 
 
@@ -75,5 +75,3 @@ def test_start_wrong_api_version(world: World):
         "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
         "mosaik package is available to be used in your scenario?"
     )
-
-

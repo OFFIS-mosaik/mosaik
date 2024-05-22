@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import (
     Any,
     FrozenSet,
@@ -9,6 +10,7 @@ from typing import (
     TypeVar,
     Union,
 )
+
 from typing_extensions import TypeAlias
 
 E = TypeVar("E")

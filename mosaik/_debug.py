@@ -2,15 +2,16 @@
 This module allows you to activate some debugging functionality that makes
 mosaik collect more data when the simulation is being executed.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
 from time import perf_counter
 from typing import Dict, List, Optional, Tuple
 
+import networkx as nx
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3 import InputData, SimId
-import networkx as nx
 
 from mosaik import scheduler
 from mosaik.scenario import World
@@ -18,7 +19,7 @@ from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import TieredInterval, TieredTime
 
 _originals = {
-    'step': scheduler.step,
+    "step": scheduler.step,
 }
 
 
@@ -28,9 +29,11 @@ def enable():
     scheduler execution.
     """
 
-    async def wrapped_step(world: World, sim: SimRunner, inputs: InputData, max_advance: int):
+    async def wrapped_step(
+        world: World, sim: SimRunner, inputs: InputData, max_advance: int
+    ):
         pre_step(world, sim, inputs)
-        ret = await _originals['step'](world, sim, inputs, max_advance)
+        ret = await _originals["step"](world, sim, inputs, max_advance)
         post_step(world, sim)
         return ret
 
@@ -84,8 +87,12 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
 
     eg.add_node(node_id, t=perf_counter(), inputs=deepcopy(inputs))
 
-    input_pres = {kk.split('.')[0] for ii in inputs.values()
-                  for jj in ii.values() for kk in jj.keys()}
+    input_pres = {
+        kk.split(".")[0]
+        for ii in inputs.values()
+        for jj in ii.values()
+        for kk in jj.keys()
+    }
     for pre_sim in sim.input_delays:
         pre = pre_sim.sid
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
@@ -98,12 +105,15 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
             for inode in eg.nodes:
                 node_sid, itime = inode
                 if node_sid == pre:
-                    if (next_step >= itime + sim.input_delays[pre_sim] and itime >= pre_time):
+                    if (
+                        next_step >= itime + sim.input_delays[pre_sim]
+                        and itime >= pre_time
+                    ):
                         pre_node = inode
                         pre_time = itime
             if pre_node is not None:
                 eg.add_edge(pre_node, node_id)
-                assert eg.nodes[pre_node]['t'] <= eg.nodes[node_id]['t']
+                assert eg.nodes[pre_node]["t"] <= eg.nodes[node_id]["t"]
 
     for suc_sim in sim.successors_to_wait_for:
         suc = suc_sim.sid
@@ -119,9 +129,12 @@ def post_step(world: World, sim: SimRunner):
     """
     eg = world.execution_graph
     last_node = sim.last_node
-    eg.nodes[last_node]['t_end'] = perf_counter()
+    eg.nodes[last_node]["t_end"] = perf_counter()
     next_self_step = sim.next_self_step
-    if next_self_step is not None and next_self_step < TieredTime(world.until) + sim.from_world_time:
+    if (
+        next_self_step is not None
+        and next_self_step < TieredTime(world.until) + sim.from_world_time
+    ):
         node_id = (sim.sid, next_self_step)
         eg.add_edge(sim.last_node, node_id)
         sim.next_self_step = None
@@ -223,7 +236,7 @@ def assert_inputs(world: World, expected_inputs: Dict[str, InputData]):
     eg = world.execution_graph
     for node_str, expected_data in expected_inputs.items():
         node = parse_node(node_str)
-        assert expected_data == eg.nodes[node]['inputs']
-        del eg.nodes[node]['inputs']
+        assert expected_data == eg.nodes[node]["inputs"]
+        del eg.nodes[node]["inputs"]
     for node in eg.nodes(data="inputs"):
         assert not node[1]  # Make sure that there are not unchecked inputs

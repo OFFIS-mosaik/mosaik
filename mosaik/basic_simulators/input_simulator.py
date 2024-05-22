@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List
-from typing_extensions import override
+
 import mosaik_api_v3
 from mosaik_api_v3.types import (
     CreateResult,
@@ -11,6 +11,7 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
+from typing_extensions import override
 
 FUNCTION_KEY = "Function"
 CONSTANT_KEY = "Constant"

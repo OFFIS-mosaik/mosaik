@@ -1,7 +1,7 @@
-from typing import Callable, Dict
-from typing_extensions import TypeVar
-
 from importlib import metadata
+from typing import Callable, Dict
+
+from typing_extensions import TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")

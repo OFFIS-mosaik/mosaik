@@ -6,7 +6,6 @@ triggers on the second attribute of the other simulator, although the input is
 non-trigger.
 """
 
-
 from mosaik import World
 
 

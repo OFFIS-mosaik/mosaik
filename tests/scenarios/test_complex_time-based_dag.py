@@ -5,6 +5,7 @@ Scenario 5
          B(2)
   D(4) ↗      ↘ E(3)
 """
+
 from mosaik import World
 
 
