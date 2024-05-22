@@ -329,8 +329,7 @@ class World(object):
         weak: bool = False,
         initial_data: Any = SENTINEL,
     ):
-        if not dest_attr:
-            dest_attr = src_attr
+        dest_attr = dest_attr or src_attr
 
         src_sim = self.sims[src.sid]
         dest_sim = self.sims[dest.sid]
@@ -338,47 +337,7 @@ class World(object):
         src_port = (src.eid, src_attr)
         dest_port = (dest.eid, dest_attr)
 
-        problems: List[str] = []
-
-        if src_attr not in src.model_mock.output_attrs:
-            problems.append(
-                "the source attribute does not exist"
-            )
-        if dest_attr not in dest.model_mock.input_attrs:
-            problems.append(
-                "the destination attribute does not exist"
-            )
-
-        if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs:
-            if initial_data is SENTINEL:
-                problems.append(
-                    "weak or time-shifted connection into non-trigger attribute "
-                    "requires initial data"
-                )
-        elif initial_data is not SENTINEL:
-            logger.warning(
-                f"Gave initial data for connection from {src.full_id}.{src_attr} to "
-                f"{dest.full_id}.{dest_attr} where it is not needed"
-            )
-
-        if problems:
-            raise ScenarioError(
-                f"The are problems connecting {src.full_id}.{src_attr} to "
-                f"{dest.full_id}.{dest_attr}:\n- "
-                + "\n- ".join(problems)
-            )
-
-        if (
-            dest_attr in dest.model_mock.measurement_inputs
-            and src_attr in src.model_mock.event_outputs
-        ):
-            logger.warning(
-                f"A connection between the non-persistent attribute {src_attr} of "
-                f"{src.sid} and the non-trigger attribute {dest_attr} of "
-                f"{dest.sid} is not recommended. This might cause problems in the "
-                "simulation! See also: https://mosaik.readthedocs.io/en/latest/"
-                "scenario-definition.html#connecting-entities"
-            )
+        self._validate_connection(src, dest, src_attr, dest_attr, time_shifted, weak, initial_data)
 
         src_group = src.model_mock._factory._group
         dest_group = dest.model_mock._factory._group
@@ -415,6 +374,54 @@ class World(object):
                 ).setdefault(dest_attr, {})[src.full_id] = initial_data
 
         self.entity_graph.add_edge(src.full_id, dest.full_id)
+
+    def _validate_connection(
+        self,
+        src: Entity,
+        dest: Entity,
+        src_attr: Attr,
+        dest_attr: Attr,
+        time_shifted: Union[bool, int] = False,
+        weak: bool = False,
+        initial_data: Any = SENTINEL,
+    ):
+        problems: List[str] = []
+
+        if src_attr not in src.model_mock.output_attrs:
+            problems.append("the source attribute does not exist")
+        if dest_attr not in dest.model_mock.input_attrs:
+            problems.append("the destination attribute does not exist")
+
+        if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs and initial_data is SENTINEL:
+                problems.append(
+                    "weak or time-shifted connection into non-trigger attribute "
+                    "requires initial data"
+                )
+        elif initial_data is not SENTINEL:
+            logger.warning(
+                f"Gave initial data for connection from {src.full_id}.{src_attr} to "
+                f"{dest.full_id}.{dest_attr} where it is not needed"
+            )
+
+        if problems:
+            raise ScenarioError(
+                f"The are problems connecting {src.full_id}.{src_attr} to "
+                f"{dest.full_id}.{dest_attr}:\n- "
+                + "\n- ".join(problems)
+            )
+
+        if (
+            dest_attr in dest.model_mock.measurement_inputs
+            and src_attr in src.model_mock.event_outputs
+        ):
+            logger.warning(
+                f"A connection between the non-persistent attribute {src_attr} of "
+                f"{src.sid} and the non-trigger attribute {dest_attr} of "
+                f"{dest.sid} is not recommended. This might cause problems in the "
+                "simulation! See also: https://mosaik.readthedocs.io/en/latest/"
+                "scenario-definition.html#connecting-entities"
+            )
+
 
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
         warnings.warn(
