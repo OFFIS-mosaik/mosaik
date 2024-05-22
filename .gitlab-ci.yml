@@ -21,11 +21,11 @@ default:
 Unit tests:
   stage: Tests
   script:
-    - rye pin 3.8 && rye test
-    - rye pin 3.9 && rye test
-    - rye pin 3.10 && rye test
-    - rye pin 3.11 && rye test
-    - rye pin 3.12 && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
+    - rye pin 3.8 && rye sync && rye test
+    - rye pin 3.9 && rye sync && rye test
+    - rye pin 3.10 && rye sync && rye test
+    - rye pin 3.11 && rye sync && rye test
+    - rye pin 3.12 && rye sync && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
   artifacts:
     when: always
     paths:
