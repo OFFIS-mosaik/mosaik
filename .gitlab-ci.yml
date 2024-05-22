@@ -13,6 +13,7 @@ workflow:
 
 default:
   image: rye
+  tags: [prepared-rye]
   cache:
     paths:
       - .cache/pip
@@ -24,7 +25,7 @@ Unit tests:
     - rye pin 3.9 && rye test
     - rye pin 3.10 && rye test
     - rye pin 3.11 && rye test
-    - rye pin 3.12 && rye test --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
+    - rye pin 3.12 && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
   artifacts:
     when: always
     paths:
@@ -41,14 +42,9 @@ Unit tests:
   needs: []
 
 Benchmark tests:
-  image: dmanthing/multi-python
   stage: Tests
-  allow_failure: true
-  before_script:
-    - curl -sSL https://install.python-poetry.org | python3 -
   script:
-    - export PATH=/root/.local/bin:$PATH
-    - tox -c tox-benchmark.ini
+    - rye pin 3.12 && rye test -- --benchmarks tests/test_benchmarks.py
   rules:
     - if: '$CI_COMMIT_TAG == null'
       when: manual
