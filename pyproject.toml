@@ -7,7 +7,7 @@ authors = [
 dependencies = [
     "mosaik-api-v3>=3.0.10",
     "loguru>=0.6",
-    "networkx>=3.3",
+    "networkx>=2.5",
     "tqdm>=4.66.4",
     "typing-extensions>=4.11.0",
 ]
