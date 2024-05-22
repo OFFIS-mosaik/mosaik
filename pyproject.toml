@@ -53,6 +53,9 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["mosaik"]
 
+[tool.hatch.build.targets.sdist]
+packages = ["mosaik"]
+
 [tool.pytest.ini_options]
 markers = [
     "cmd_process: Contains a simulator started using cmd",
