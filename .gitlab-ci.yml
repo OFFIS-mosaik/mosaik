@@ -23,8 +23,11 @@ Unit tests:
   parallel:
     matrix:
       - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+  before_script:
+    - rye pin $PYTHON
+    - rye sync
   script:
-    - rye pin $PYTHON && rye sync && rye test -- --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
+    - rye test -- --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
   artifacts:
     when: always
     reports:
@@ -40,8 +43,11 @@ Unit tests:
 Benchmark tests:
   allow_failure: true
   stage: Tests
+  before_script:
+    - rye pin 3.12
+    - rye sync
   script:
-    - rye pin 3.12 && rye test -- --benchmarks tests/test_benchmarks.py
+    - rye test -- --benchmarks tests/test_benchmarks.py
   rules:
     - if: '$CI_COMMIT_TAG == null'
       when: manual
@@ -53,6 +59,7 @@ Linting:
   script:
     - rye lint -- --output-format=gitlab > lintreport.json
   artifacts:
+    when: always
     reports:
       codequality: lintreport.json
   rules:
@@ -67,6 +74,20 @@ Formatting:
   rules:
     - if: '$CI_COMMIT_TAG == null'
   needs: []
+
+Type checking:
+  allow_failure: true
+  stage: Tests
+  before_script:
+    - rye sync
+  script:
+    - pyright --outputjson > typecheck_raw.json
+  after_script:
+    - pyright-to-gitlab-ci --source typecheck_raw.json --output typecheck.json --base_path .
+  artifacts:
+    when: always
+    reports:
+      codequality: typecheck.json
 
 # Basic job to upload the newly tagged version of mosaik to pypi. The server can be chosen, i.e., the test or production server.
 .pypi:
