@@ -20,17 +20,13 @@ default:
 
 Unit tests:
   stage: Tests
+  parallel:
+    matrix:
+      - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   script:
-    - rye pin 3.8 && rye sync && rye test
-    - rye pin 3.9 && rye sync && rye test
-    - rye pin 3.10 && rye sync && rye test
-    - rye pin 3.11 && rye sync && rye test
-    - rye pin 3.12 && rye sync && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
+    - rye pin $PYTHON && rye sync && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
   artifacts:
     when: always
-    paths:
-      - pytest.xml
-      - coverage.xml
     reports:
       junit: pytest.xml
       coverage_report:
