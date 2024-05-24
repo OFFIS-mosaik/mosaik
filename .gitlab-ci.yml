@@ -83,7 +83,7 @@ Type checking:
   script:
     - pyright --outputjson > typecheck_raw.json
   after_script:
-    - pyright-to-gitlab-ci --source typecheck_raw.json --output typecheck.json --base_path .
+    - pyright-to-gitlab-ci --src typecheck_raw.json --output typecheck.json --base_path .
   artifacts:
     when: always
     reports:
