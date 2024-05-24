@@ -51,7 +51,10 @@ Linting:
   allow_failure: true
   stage: Tests
   script:
-    - rye lint
+    - rye lint -- --output-format=gitlab > lintreport.json
+  artifacts:
+    reports:
+      codequality: lintreport.json
   rules:
     - if: '$CI_COMMIT_TAG == null'
   needs: []
@@ -126,7 +129,7 @@ mosaik demo:
   stage: Tests
   variables:
     UPSTREAM_BRANCH: $CI_COMMIT_REF_NAME # pass the branch name to the downstream pipeline to check out the correct mosaik version
-  trigger: 
+  trigger:
     project: mosaik/examples/mosaik-demo
     branch: master
   rules:
