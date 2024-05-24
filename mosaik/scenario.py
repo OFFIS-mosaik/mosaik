@@ -14,6 +14,7 @@ from collections import defaultdict
 import contextlib
 from copy import copy
 from dataclasses import dataclass
+from mosaik.greetings_util import print_greetings
 import itertools
 from loguru import logger
 from mosaik_api_v3 import OutputData, OutputRequest
@@ -239,7 +240,10 @@ class World(object):
         cache: bool = True,
         max_loop_iterations: int = 100,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
+        skip_greetings: bool = False
     ):
+        if not skip_greetings:
+            print_greetings()
         self.sim_config = sim_config
 
         self.config = copy(base_config)

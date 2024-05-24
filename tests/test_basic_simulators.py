@@ -39,7 +39,6 @@ def test_basic_simulators():
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     test_input_eid = input_model_func[0].sid + "." + input_model_func[0].eid
-    print(test_input_eid)
     world.run(until=END)
 
     assert test_dict != {}
