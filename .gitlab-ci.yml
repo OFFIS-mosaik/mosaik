@@ -24,7 +24,7 @@ Unit tests:
     matrix:
       - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   script:
-    - rye pin $PYTHON && rye sync && rye test -- --junit-xml=pytest.xml --cov --cov-report xml --cov-report term
+    - rye pin $PYTHON && rye sync && rye test -- --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
   artifacts:
     when: always
     reports:
