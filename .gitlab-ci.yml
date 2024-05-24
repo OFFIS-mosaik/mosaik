@@ -1,5 +1,5 @@
 variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 stages:
  - Tests
@@ -16,7 +16,7 @@ default:
   tags: [prepared-rye]
   cache:
     paths:
-      - .cache/pip
+      - .cache/uv
 
 Unit tests:
   stage: Tests
