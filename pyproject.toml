@@ -75,6 +75,13 @@ reportIncompatibleMethodOverride = "warning"
 reportUninitializedInstanceVariable = "warning"
 reportUnnecessaryIsInstance = "none"
 reportUnusedImport = "warning"
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+include = ["mosaik"]
+exclude = ["**/__pycache__"]
+stubPath = "typings"
+pythonPlatform = "Linux"
 
 [tool.ruff.lint]
 extend-select = ["C", "W"]
