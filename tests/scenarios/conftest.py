@@ -1,11 +1,11 @@
 import os
 import sys
-
-import pytest
 from loguru import logger
+import pytest
 from tqdm import tqdm
 
 import mosaik
+
 
 venv = os.path.dirname(sys.executable)
 

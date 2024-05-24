@@ -2,9 +2,7 @@
 Scenario 17::
    A() → B() → C() → A()
 """
-
 import pytest
-
 from mosaik import World
 
 

@@ -1,9 +1,7 @@
-import logging
-
 import pytest
-from _pytest.logging import LogCaptureFixture
+import logging
 from loguru import logger
-
+from _pytest.logging import LogCaptureFixture
 
 # From the loguru documentation, see https://loguru.readthedocs.io/en/latest/resources/migration.html#replacing-caplog-fixture-from-pytest-library
 @pytest.fixture
@@ -22,12 +20,9 @@ def caplog(caplog: LogCaptureFixture):
 # documentation:
 # https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
 
-
 def pytest_addoption(parser):
     parser.addoption(
-        "--benchmarks",
-        action="store_true",
-        default=False,
+        "--benchmarks", action="store_true", default=False,
         help="include benchmark tests (might be slow)",
     )
 

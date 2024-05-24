@@ -1,7 +1,6 @@
 # gui_button.py
 
 import sys
-
 import zmq
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -9,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 
 class PushButtonWindow(QMainWindow):
     def __init__(self):
-        super(PushButtonWindow, self).__init__()
+        super(PushButtonWindow,self).__init__()
         self.button = None
         self.context = zmq.Context()
 

@@ -5,8 +5,8 @@ Scenario 25:
 This scenario tests for a specific deadlock in cyclic dependencies.
 """
 
-import pytest
 
+import pytest
 from mosaik import World
 
 

@@ -1,5 +1,4 @@
 from pprint import pprint
-
 import mosaik
 from mosaik.scenario import SimConfig
 

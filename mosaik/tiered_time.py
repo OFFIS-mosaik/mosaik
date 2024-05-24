@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import functools
 from dataclasses import dataclass
+import functools
 
 
 def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:

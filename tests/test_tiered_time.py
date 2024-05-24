@@ -11,9 +11,7 @@ def tiered_intervals(pre_length: int, length: int):
     pre_length and length.
     """
     return st.builds(
-        lambda tiers, cutoff: TieredInterval(
-            *tiers, cutoff=cutoff, pre_length=pre_length
-        ),
+        lambda tiers, cutoff: TieredInterval(*tiers, cutoff=cutoff, pre_length=pre_length),
         st.tuples(*((st.integers(min_value=0),) * length)),
         st.integers(min_value=1, max_value=min(pre_length, length)),
     )
@@ -36,7 +34,7 @@ def asso_triples(min_length: int = 1, max_length: int = 7):
 
 @hypothesis.given(asso_triples(1, 10))
 def test_associative(
-    asso_triple: tuple[TieredInterval, TieredInterval, TieredInterval],
+    asso_triple: tuple[TieredInterval, TieredInterval, TieredInterval]
 ):
     """Test that TieredInterval addition is associative."""
     ti1, ti2, ti3 = asso_triple
@@ -45,7 +43,8 @@ def test_associative(
 
 def tiered_times(length: int):
     return st.builds(
-        lambda tiers: TieredTime(*tiers), st.tuples(*((st.integers(0),) * length))
+        lambda tiers: TieredTime(*tiers),
+        st.tuples(*((st.integers(0),) * length))
     )
 
 
@@ -65,6 +64,8 @@ def torsor_triples(min_length: int = 1, max_length: int = 7):
 
 
 @hypothesis.given(torsor_triples(1, 10))
-def test_torsor(torsor_triple: tuple[TieredTime, TieredInterval, TieredInterval]):
+def test_torsor(
+    torsor_triple: tuple[TieredTime, TieredInterval, TieredInterval]
+):
     tt, ti1, ti2 = torsor_triple
     assert (tt + ti1) + ti2 == tt + (ti1 + ti2)

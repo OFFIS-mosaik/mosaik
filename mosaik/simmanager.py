@@ -7,23 +7,22 @@ It is able to start pure Python simulators in-process (by importing and
 instantiating them), to start external simulation processes and to connect to
 already running simulators and manage access to them.
 """
-
 from __future__ import annotations
 
+from ast import literal_eval
 import asyncio
 import collections
 import heapq as hq
 import importlib
 import itertools
 import os
-import platform
 import shlex
 import subprocess
 import sys
-from ast import literal_eval
+import platform
 from json import JSONEncoder
+from loguru import logger
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Coroutine,
@@ -34,53 +33,38 @@ from typing import (
     OrderedDict,
     Set,
     Tuple,
+    TYPE_CHECKING,
     Union,
     cast,
 )
-
-import mosaik_api_v3
 import tqdm
-from loguru import logger
-from mosaik_api_v3.connection import Channel
-from mosaik_api_v3.types import (
-    Attr,
-    EntityId,
-    FullId,
-    InputData,
-    OutputData,
-    OutputRequest,
-    SimId,
-    Time,
-)
 from typing_extensions import Literal, TypeAlias, TypedDict
 
-from mosaik.adapters import init_and_get_adapter
-from mosaik.exceptions import (
-    NonSerializableOutputsError,
-    ScenarioError,
-    SimulationError,
-)
+import mosaik_api_v3
+from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import OutputData, OutputRequest, SimId, Time, InputData, Attr, EntityId, FullId
+from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
 from mosaik.progress import Progress
-from mosaik.proxies import BaseProxy, LocalProxy, Proxy, RemoteProxy
+from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
+from mosaik.adapters import init_and_get_adapter
 from mosaik.tiered_time import TieredInterval, TieredTime
 
-if "Windows" in platform.system():
+if 'Windows' in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import CmdModel, ConnectModel, PythonModel, World
+    from mosaik.scenario import World, ConnectModel, PythonModel, CmdModel
 
-FULL_ID_SEP = "."  # Separator for full entity IDs
-FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
-
+FULL_ID_SEP = '.'  # Separator for full entity IDs
+FULL_ID = '%s.%s'  # Template for full entity IDs ('sid.eid')
 
 class MosaikConfigTotal(TypedDict):
-    """A total version for :cls:`MosaikConfig` for internal use."""
+    """A total version for :cls:`MosaikConfig` for internal use.
+    """
 
     addr: Tuple[str, int | None]
     start_timeout: float
     stop_timeout: float
-
 
 async def start(
     world: World,
@@ -136,9 +120,8 @@ async def start(
     try:
         sim_config = world.sim_config[sim_name]
     except KeyError:
-        raise ScenarioError(
-            'Simulator "%s" could not be started: Not found ' "in sim_config" % sim_name
-        )
+        raise ScenarioError('Simulator "%s" could not be started: Not found '
+                            'in sim_config' % sim_name)
 
     # Try available starters in that order and raise an error if none of them
     # matches. Default starters are:
@@ -158,16 +141,16 @@ async def start(
                         proxy,
                         sim_id,
                         {"time_resolution": time_resolution, **sim_params},
-                        explicit_version_str=sim_config.get("api_version"),
+                        explicit_version_str=sim_config.get('api_version'),
                     ),
-                    world.config["start_timeout"],
+                    world.config['start_timeout']
                 )
                 return proxy
             except asyncio.IncompleteReadError:
                 await proxy.stop()
                 raise SystemExit(
                     f'Simulator "{sim_name}" closed its connection during the init() '
-                    "call."
+                    'call.'
                 )
             except asyncio.TimeoutError:
                 await proxy.stop()
@@ -196,27 +179,26 @@ async def start_inproc(
     instantiated.
     """
     try:
-        mod_name, cls_name = sim_config["python"].split(":")
+        mod_name, cls_name = sim_config['python'].split(':')
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     except (AttributeError, ImportError, KeyError, ValueError) as err:
         detail_msgs = {
             ValueError: 'Malformed Python class name: Expected "module:Class"',
-            ModuleNotFoundError: "Could not import module: %s" % err.args[0],
-            AttributeError: "Class not found in module",
+            ModuleNotFoundError: 'Could not import module: %s' % err.args[0],
+            AttributeError: 'Class not found in module',
             ImportError: f"Error importing the requested class: {err.args[0]}",
-            KeyError: "'python' key not found in sim_config. "
-            "(This is an error in mosaik, please report it.)",
+            KeyError:
+                "'python' key not found in sim_config. "
+                "(This is an error in mosaik, please report it.)",
         }
         details = detail_msgs[type(err)]
         origerr = err.args[0]
-        raise ScenarioError(
-            'Simulator "%s" could not be started: %s --> %s'
-            % (sim_name, details, origerr)
-        ) from None
+        raise ScenarioError('Simulator "%s" could not be started: %s --> %s' %
+                            (sim_name, details, origerr)) from None
     sim = cls()
 
-    if int(mosaik_api_v3.__version__.split(".")[0]) < 3:
+    if int(mosaik_api_v3.__version__.split('.')[0]) < 3:
         raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
     return LocalProxy(sim, mosaik_remote)
@@ -238,7 +220,6 @@ async def start_proc(
     instantiated.
     """
     channel_future: asyncio.Future[Channel] = asyncio.Future()
-
     async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
         channel_future.set_result(Channel(r, w, name=sim_name))
 
@@ -258,13 +239,13 @@ async def start_proc(
         # Make a copy of the current env vars dictionary and update it with the
         # user provided values (or an empty dict as a default):
         env = dict(os.environ)
-        env.update(sim_config.get("env", {}))
+        env.update(sim_config.get('env', {}))
 
         # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
         creationflags: int = 0
-        new_console = sim_config.get("new_console", False)
+        new_console = sim_config.get('new_console', False)
         if new_console:
-            if "Windows" in platform.system():
+            if 'Windows' in platform.system():
                 creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
             else:
                 logger.warning(
@@ -321,9 +302,9 @@ async def start_connect(
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
     instantiated.
     """
-    addr = sim_config["connect"]
+    addr = sim_config['connect']
     try:
-        host, port = addr.strip().split(":")
+        host, port = addr.strip().split(':')
         addr = (host, int(port))
     except ValueError:
         raise ScenarioError(
@@ -355,7 +336,7 @@ class SimRunner:
 
     sid: SimId
     """This simulator's ID."""
-    type: Literal["time-based", "event-based", "hybrid"]
+    type: Literal['time-based', 'event-based', 'hybrid']
     supports_set_events: bool
 
     _proxy: Proxy
@@ -404,6 +385,7 @@ class SimRunner:
     timed_input_buffer: TimedInputBuffer
     """Inputs for this simulator."""
 
+
     rt_start: float  # type: ignore  # set at start of sim_process
     """The real time when this simulator started (as returned by
     `perf_counter()`."""
@@ -447,13 +429,13 @@ class SimRunner:
         self.sid = sid
         self._proxy = connection
 
-        self.type = connection.meta["type"]
-        self.supports_set_events = connection.meta.get("set_events", False)
+        self.type = connection.meta['type']
+        self.supports_set_events = connection.meta.get('set_events', False)
         # Simulation state
         self.started = False
         self.last_step = TieredTime(-1, *([0] * (depth - 1)))
         self.current_step = None
-        if self.type != "event-based":
+        if self.type != 'event-based':
             self.next_steps = [TieredTime(*([0] * depth))]
         else:
             self.next_steps = []
@@ -502,9 +484,7 @@ class SimRunner:
     async def setup_done(self):
         return await self._proxy.send(["setup_done", (), {}])
 
-    async def step(
-        self, time: Time, inputs: InputData, max_advance: Time
-    ) -> Optional[Time]:
+    async def step(self, time: Time, inputs: InputData, max_advance: Time) -> Optional[Time]:
         try:
             return await self._proxy.send(["step", (time, inputs, max_advance), {}])
         except TypeError:  # from JSON serialization
@@ -564,7 +544,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         return self.world.sim_progress
 
     async def get_related_entities(
-        self, entities: Union[FullId, List[FullId], None] = None
+        self,
+        entities: Union[FullId, List[FullId], None] = None
     ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
         Return information about the related entities of *entities*.
@@ -614,11 +595,14 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             edges_list = literal_eval(str(graph.edges))
             edges_tuple = tuple(list(edge) + [{}] for edge in edges_list)
 
-            return {"nodes": nodes_dict, "edges": edges_tuple}
+            return {'nodes': nodes_dict, 'edges': edges_tuple}
         elif isinstance(entities, str):
             return {n: graph.nodes[n] for n in graph[entities]}
         else:
-            return {eid: {n: graph.nodes[n] for n in graph[eid]} for eid in entities}
+            return {
+                eid: {n: graph.nodes[n] for n in graph[eid]}
+                for eid in entities
+            }
 
     async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
         """
@@ -660,7 +644,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            # assert dep.progress.value > self.sim.current_step >= dep.last_step, \
+            #assert dep.progress.value > self.sim.current_step >= dep.last_step, \
             #    "sim progress wrong for async requests"
             dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
@@ -743,17 +727,16 @@ class StarterCollection(object):
     """
 
     # Singleton instance of the starter collection.
-    __instance: (
-        OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]] | None
-    ) = None
+    __instance: OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]] | None = None
 
     def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:
             # Create collection with default starters (i.e., starters defined
             # my mosaik core).
             StarterCollection.__instance = collections.OrderedDict(
-                python=start_inproc, cmd=start_proc, connect=start_connect
-            )
+                python=start_inproc,
+                cmd=start_proc,
+                connect=start_connect)
 
         return StarterCollection.__instance
 
@@ -775,19 +758,11 @@ class TimedInputBuffer:
         self.input_queue = []
         self.counter = itertools.count()  # Used to chronologically sort entries
 
-    def add(
-        self,
-        time: Time,
-        src_sid: SimId,
-        src_eid: EntityId,
-        dest_eid: EntityId,
-        dest_attr: Attr,
-        value: Any,
-    ):
+    def add(self, time: Time, src_sid: SimId, src_eid: EntityId, dest_eid: EntityId, dest_attr: Attr, value: Any):
         src_full_id = f"{src_sid}.{src_eid}"
         hq.heappush(
             self.input_queue,
-            (time, next(self.counter), src_full_id, dest_eid, dest_attr, value),
+            (time, next(self.counter), src_full_id, dest_eid, dest_attr, value)
         )
 
     def get_input(self, input_dict: InputData, step: Time) -> InputData:

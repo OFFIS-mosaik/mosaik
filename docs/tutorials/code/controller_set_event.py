@@ -1,20 +1,21 @@
 # controller_set_event.py
 
-import math
 import sys
+import zmq
 import threading
+import math
 
 import mosaik_api_v3
-import zmq
+
 
 META = {
-    "type": "event-based",
-    "set_events": True,
-    "models": {
-        "Controller": {
-            "public": True,
-            "params": [],
-            "attrs": [],
+    'type': 'event-based',
+    'set_events': True,
+    'models': {
+        'Controller': {
+            'public': True,
+            'params': [],
+            'attrs': [],
         },
     },
 }
@@ -25,7 +26,6 @@ def threaded(fn):
         thread = threading.Thread(target=fn, args=args, kwargs=kwargs, daemon=True)
         thread.start()
         return thread
-
     return wrapper
 
 
@@ -50,10 +50,10 @@ class Controller(mosaik_api_v3.Simulator):
 
     def create(self, num, model):
         if num > 1 or self.eid is not None:
-            raise RuntimeError("Can only create one instance of Controller.")
+            raise RuntimeError('Can only create one instance of Controller.')
 
-        self.eid = "Controller_set_event"
-        return [{"eid": self.eid, "type": model}]
+        self.eid = 'Controller_set_event'
+        return [{'eid': self.eid, 'type': model}]
 
     def finalize(self):
         self.thread.join(0)

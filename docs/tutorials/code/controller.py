@@ -3,16 +3,16 @@
 A simple demo controller.
 
 """
-
 import mosaik_api_v3
 
+
 META = {
-    "type": "event-based",
-    "models": {
-        "Agent": {
-            "public": True,
-            "params": [],
-            "attrs": ["val_in", "delta"],
+    'type': 'event-based',
+    'models': {
+        'Agent': {
+            'public': True,
+            'params': [],
+            'attrs': ['val_in', 'delta'],
         },
     },
 }
@@ -29,9 +29,9 @@ class Controller(mosaik_api_v3.Simulator):
         n_agents = len(self.agents)
         entities = []
         for i in range(n_agents, n_agents + num):
-            eid = "Agent_%d" % i
+            eid = 'Agent_%d' % i
             self.agents.append(eid)
-            entities.append({"eid": eid, "type": model})
+            entities.append({'eid': eid, 'type': model})
 
         return entities
 
@@ -39,17 +39,16 @@ class Controller(mosaik_api_v3.Simulator):
         self.time = time
         data = {}
         for agent_eid, attrs in inputs.items():
-            delta_dict = attrs.get("delta", {})
+            delta_dict = attrs.get('delta', {})
             if len(delta_dict) > 0:
-                data[agent_eid] = {"delta": list(delta_dict.values())[0]}
+                data[agent_eid] = {'delta': list(delta_dict.values())[0]}
                 continue
 
-            values_dict = attrs.get("val_in", {})
+            values_dict = attrs.get('val_in', {})
             if len(values_dict) != 1:
-                raise RuntimeError(
-                    "Only one ingoing connection allowed per "
-                    'agent, but "%s" has %i.' % (agent_eid, len(values_dict))
-                )
+                raise RuntimeError('Only one ingoing connection allowed per '
+                                   'agent, but "%s" has %i.'
+                                   % (agent_eid, len(values_dict)))
             value = list(values_dict.values())[0]
 
             if value >= 3:
@@ -59,7 +58,7 @@ class Controller(mosaik_api_v3.Simulator):
             else:
                 continue
 
-            data[agent_eid] = {"delta": delta}
+            data[agent_eid] = {'delta': delta}
 
         self.data = data
 
@@ -69,10 +68,10 @@ class Controller(mosaik_api_v3.Simulator):
         data = {}
         for agent_eid, attrs in outputs.items():
             for attr in attrs:
-                if attr != "delta":
+                if attr != 'delta':
                     raise ValueError('Unknown output attribute "%s"' % attr)
                 if agent_eid in self.data:
-                    data["time"] = self.time
+                    data['time'] = self.time
                     data.setdefault(agent_eid, {})[attr] = self.data[agent_eid][attr]
 
         return data
@@ -82,5 +81,5 @@ def main():
     return mosaik_api_v3.start_simulation(Controller())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

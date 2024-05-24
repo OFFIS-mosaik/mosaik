@@ -3,6 +3,7 @@ Scenario 1::
    A(1)
 """
 
+
 from mosaik import World
 
 

@@ -6,6 +6,7 @@ This scenario tests for a deadlock caused by lazy_stepping if event-based
 successor is not triggered.
 """
 
+
 from mosaik import World
 
 
