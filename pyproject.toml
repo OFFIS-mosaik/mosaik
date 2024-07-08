@@ -11,7 +11,6 @@ dependencies = [
     "tqdm>=4.66.4",
     "typing-extensions>=4.11.0",
 ]
-readme = "README.rst"
 license = { file = "LICENSE.txt" }
 requires-python = ">= 3.8"
 classifiers = [
@@ -23,7 +22,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 
 [project.urls]
 Homepage = "https://mosaik.offis.de/"
@@ -33,6 +32,8 @@ Documentation = "https://mosaik.readthedocs.io/"
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata.hooks.custom]
 
 [tool.rye]
 managed = true
