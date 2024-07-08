@@ -29,6 +29,7 @@ dynamic = ["version", "readme"]
 Homepage = "https://mosaik.offis.de/"
 Repository = "https://gitlab.com/mosaik/mosaik"
 Documentation = "https://mosaik.readthedocs.io/"
+Discussions = "https://github.com/orgs/OFFIS-mosaik/discussions"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
