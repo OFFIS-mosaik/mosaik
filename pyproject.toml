@@ -1,6 +1,5 @@
 [project]
 name = "mosaik"
-version = "3.3.3"
 description = "mosaik is a flexible smart-grid co-simulation framework"
 authors = [
     { name = "mosaik development team", email = "mosaik@offis.de" }
