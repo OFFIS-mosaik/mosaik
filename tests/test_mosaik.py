@@ -3,22 +3,11 @@ Test a complete mosaik simulation using mosaik as a library.
 
 """
 import importlib
-import gc
-import glob
-import os
-import sys
 import time
-from types import ModuleType
-from typing import Any, Dict, List, Tuple
-import warnings
 
-from loguru import logger
-import networkx as nx
 import pytest
-from tqdm import tqdm
 
-from mosaik import scenario, _debug
-from mosaik.tiered_time import TieredTime
+from mosaik import scenario
 
 from tests.scenarios.conftest import SIM_CONFIG
 

@@ -64,7 +64,7 @@ class BaseProxy(Proxy):
         """Initialize the simulator by sending the ``init`` call. The
         ``meta`` returned by the simulator will be saved to be retrieved
         using the ``meta`` property.
-        
+
         :param sid: The ``SimId`` that mosaik assigns to this simulator
         instance
         :param time_resolution: The time resolution of the simulation,

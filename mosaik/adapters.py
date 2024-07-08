@@ -107,7 +107,7 @@ async def init_and_get_adapter(
 
 class Adapter(Proxy):
     _out: Proxy
-    
+
     def __init__(self, out: Proxy):
         self._out = out
 

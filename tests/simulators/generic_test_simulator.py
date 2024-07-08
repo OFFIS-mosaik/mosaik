@@ -122,7 +122,7 @@ class TestSim(mosaik_api_v3.Simulator):
                         output_time = None
                 else:
                     output_time = self.output_timing.pop(self.time, None)
-            except:
+            except KeyError:
                 output_time = None
             if output_time is not None:
                 data = {'time': output_time,
@@ -138,7 +138,7 @@ class TestSim(mosaik_api_v3.Simulator):
 
     def method_a(self, arg):
         return f"method_a({arg})"
-    
+
     def method_b(self, val):
         return f"method_b({val})"
 
@@ -150,7 +150,7 @@ class TestSim(mosaik_api_v3.Simulator):
         for real_time, event_time in self.events.items():
             print(f"Wait until {real_time - last_time}")
             yield asyncio.sleep(real_time - last_time)
-            print(f"reached, setting event")
+            print("reached, setting event")
             yield self.mosaik.set_event(event_time)
             last_time = real_time
 

@@ -54,7 +54,7 @@ def test_old_api_version_no_warning(world: World):
             )
         )
 
-    
+
 def test_start_wrong_api_version(world: World):
     """
     An exception should be raised if the simulator uses an unsupported

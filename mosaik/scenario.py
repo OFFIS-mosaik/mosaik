@@ -23,7 +23,6 @@ from tqdm import tqdm
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     FrozenSet,
     Iterable,
@@ -127,7 +126,7 @@ def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
     while src.parent:
         src = src.parent
         src_groups.append(src)
-    
+
     descent = 0
     while True:
         try:
@@ -334,8 +333,7 @@ class World(object):
         weak: bool = False,
         initial_data: Any = SENTINEL,
     ):
-        if not dest_attr:
-            dest_attr = src_attr
+        dest_attr = dest_attr or src_attr
 
         src_sim = self.sims[src.sid]
         dest_sim = self.sims[dest.sid]
@@ -343,19 +341,62 @@ class World(object):
         src_port = (src.eid, src_attr)
         dest_port = (dest.eid, dest_attr)
 
+        self._validate_connection(src, dest, src_attr, dest_attr, time_shifted, weak, initial_data)
+
+        src_group = src.model_mock._factory._group
+        dest_group = dest.model_mock._factory._group
+        delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
+
+        dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
+
+        is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
+
+        if src.is_persistent(src_attr) and not self.use_cache:
+            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(src.full_id, None)
+
+        src_sim.output_request.setdefault(src.eid, []).append(src_attr)
+
+        if is_pulled:
+            dest_sim.pulled_inputs.setdefault((src_sim, delay), set()).add((src_port, dest_port))
+        else:
+            src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, delay, dest_port))
+
+        src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
+
+        if dest.triggered_by(dest_attr):
+            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
+
+        if initial_data is not SENTINEL:
+            if is_pulled:
+                assert src_sim.outputs is not None
+                src_sim.outputs.setdefault(
+                    -int(time_shifted), {}
+                ).setdefault(src.eid, {})[src_attr] = initial_data
+            else:
+                dest_sim.persistent_inputs.setdefault(
+                    dest.eid, {}
+                ).setdefault(dest_attr, {})[src.full_id] = initial_data
+
+        self.entity_graph.add_edge(src.full_id, dest.full_id)
+
+    def _validate_connection(
+        self,
+        src: Entity,
+        dest: Entity,
+        src_attr: Attr,
+        dest_attr: Attr,
+        time_shifted: Union[bool, int] = False,
+        weak: bool = False,
+        initial_data: Any = SENTINEL,
+    ):
         problems: List[str] = []
 
         if src_attr not in src.model_mock.output_attrs:
-            problems.append(
-                "the source attribute does not exist"
-            )
+            problems.append("the source attribute does not exist")
         if dest_attr not in dest.model_mock.input_attrs:
-            problems.append(
-                "the destination attribute does not exist"
-            )
+            problems.append("the destination attribute does not exist")
 
-        if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs:
-            if initial_data is SENTINEL:
+        if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs and initial_data is SENTINEL:
                 problems.append(
                     "weak or time-shifted connection into non-trigger attribute "
                     "requires initial data"
@@ -385,41 +426,6 @@ class World(object):
                 "scenario-definition.html#connecting-entities"
             )
 
-        src_group = src.model_mock._factory._group
-        dest_group = dest.model_mock._factory._group
-        delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
-
-        dest_sim.input_delays[src_sim] = min(dest_sim.input_delays.get(src_sim, delay), delay)
-
-        is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
-        
-        if src.is_persistent(src_attr) and not self.use_cache:
-            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(src.full_id, None)
-
-        src_sim.output_request.setdefault(src.eid, []).append(src_attr)
-
-        if is_pulled:
-            dest_sim.pulled_inputs.setdefault((src_sim, delay), set()).add((src_port, dest_port))
-        else:
-            src_sim.output_to_push.setdefault(src_port, []).append((dest_sim, delay, dest_port))
-
-        src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
-
-        if dest.triggered_by(dest_attr):
-            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
-
-        if initial_data is not SENTINEL:
-            if is_pulled:
-                assert src_sim.outputs is not None
-                src_sim.outputs.setdefault(
-                    -int(time_shifted), {}
-                ).setdefault(src.eid, {})[src_attr] = initial_data
-            else:
-                dest_sim.persistent_inputs.setdefault(
-                    dest.eid, {}
-                ).setdefault(dest_attr, {})[src.full_id] = initial_data
-
-        self.entity_graph.add_edge(src.full_id, dest.full_id)
 
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
         warnings.warn(
@@ -479,9 +485,9 @@ class World(object):
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+        attr_pairs: Set[Tuple[Attr, Attr]] = {
             (a, a) if isinstance(a, str) else a for a in attr_pairs
-        )
+        }
         errors: List[ScenarioError] = []
         for src_attr, dest_attr in attr_pairs:
             try:
@@ -580,7 +586,7 @@ class World(object):
 
         return results
 
-    
+
     def run(
         self,
         until: int,
@@ -600,7 +606,7 @@ class World(object):
             (exclusive).
 
         :param rt_factor: The real-time factor. If set to a number > 0,
-            the simulation will run in real-time mode. A real-time 
+            the simulation will run in real-time mode. A real-time
             factor of 1. means that 1 second in simulated time takes
             1 second in real time. An real-time factor of 0.5 will let
             the simulation run twice as fast as real time. For correct
@@ -619,7 +625,7 @@ class World(object):
             simulator in your simulation (in addition to the global
             one). A value of ``False`` turns off the progress bars
             completely.
-            
+
             The progress bars use
             `tqdm <https://pypi.org/project/tqdm/>`_; see their
             documentation on how to write to the console without
@@ -814,9 +820,7 @@ def update_min(a: T | None, b: T) -> T | None:
     return b
 
 
-MOSAIK_METHODS = set(
-    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
-)
+MOSAIK_METHODS = {"init", "create", "setup_done", "step", "get_data", "finalize", "stop"}
 
 
 class ModelFactory():
@@ -860,37 +864,35 @@ class ModelFactory():
                 raise ScenarioError(
                     f"Simulator {sid} uses an illegal model name: {model}. This name "
                     "is already the name of a mosaik API method."
-                )               
+                )
             self.models[model] = ModelMock(self._world, self, model, self._proxy)
             # Make public models accessible
             if props.get("public", True):
                 setattr(self, model, self.models[model])
 
-        # Bind extra_methods to this instance:
         for meth_name in self.meta.get("extra_methods", []):
-            # We need get_wrapper() in order to avoid problems with scoping
-            # of the name "meth". Without it, "meth" would be the same for all
-            # wrappers.
-            if meth_name in MOSAIK_METHODS:
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a mosaik API method.'
-                )
-            if meth_name in self.models.keys():
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a model of this '
-                    "simulator."
-                )
-            def get_wrapper(connection: Proxy, meth_name: str) -> Callable[..., Any]:
-                def wrapper(*args: Any, **kwargs: Any):
-                    return world.loop.run_until_complete(
-                        connection.send([meth_name, args, kwargs])
-                    )
-                wrapper.__name__ = meth_name
-                return wrapper
+            self._bind_extra_method(world, sid, proxy, meth_name)
 
-            setattr(self, meth_name, get_wrapper(proxy, meth_name))
+    def _bind_extra_method(self, world: World, sid: SimId, proxy: Proxy, meth_name: str):
+        if meth_name in MOSAIK_METHODS:
+            raise ScenarioError(
+                f"Simulator {sid} uses an illegal name for an extra method: "
+                f'"{meth_name}". This is already the name of a mosaik API method.'
+            )
+        if meth_name in self.models.keys():
+            raise ScenarioError(
+                f"Simulator {sid} uses an illegal name for an extra method: "
+                f'"{meth_name}". This is already the name of a model of this '
+                "simulator."
+            )
+
+        def wrapper(*args: Any, **kwargs: Any):
+            return world.loop.run_until_complete(
+                proxy.send([meth_name, args, kwargs])
+            )
+        wrapper.__name__ = meth_name
+
+        setattr(self, meth_name, wrapper)
 
     def __getattr__(self, name: str):
         # Implemented in order to improve error messages.
@@ -930,7 +932,7 @@ def parse_attrs(
         types).
     :return: A four-tuple of :class:`InOrOutSet`, giving the
         measurement inputs, event inputs, measurement outputs, and event
-        outputs.        
+        outputs.
     :raises ValueError: if the information is insufficient or
         inconsistent
     """
@@ -939,7 +941,7 @@ def parse_attrs(
         "if you need both types of %s attributes), and they must list all their "
         "attrs as %s if that key is present"
     )
-    
+
     if model_desc.get('any_inputs', False):
         inputs: Optional[InOrOutSet[Attr]] = OutSet()
     else:
@@ -968,7 +970,7 @@ def parse_attrs(
         raise ValueError(
             error_template % ("event-based", "non-trigger", "inpus", "trigger")
         )
-    
+
     outputs = wrap_set(model_desc.get('attrs'))
     default_measurements = empty if type == 'event-based' else None
     measurement_outputs = wrap_set(model_desc.get('persistent', default_measurements))
@@ -1044,7 +1046,7 @@ class ModelMock(object):
     @property
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
-    
+
     def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.

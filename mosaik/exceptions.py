@@ -42,7 +42,7 @@ class NonSerializableOutputsError(SimulationError):
 
     def add_error(self, dest_eid: str, dest_attr: str, src_id: str, error: TypeError):
         self.errors.append((dest_eid, dest_attr, src_id, error))
-    
+
     def __bool__(self):
         return bool(self.errors)
 

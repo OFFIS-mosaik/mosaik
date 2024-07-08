@@ -15,7 +15,6 @@
 from typing import cast
 import mosaik
 import mosaik_components.heatpump
-import sphinx_rtd_theme
 from urllib.request import urlretrieve
 import os
 import shutil
@@ -330,7 +329,7 @@ def linkcode_resolve(domain, info):
     # Turn the module name into the URL on gitlab
     module = cast(str, info["module"])
     filename = module.replace(".", "/")
-    
+
     init_modules = {"mosaik", "mosaik_api_v3"}
     if info["module"] in init_modules:
         filename += "/__init__"

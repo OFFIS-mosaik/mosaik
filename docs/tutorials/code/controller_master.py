@@ -43,7 +43,7 @@ class Controller(mosaik_api_v3.Simulator):
             values_dict = attrs.get('delta_in', {})
             for key, value in values_dict.items():
                 self.cache[key] = value
-        
+
         if sum(self.cache.values()) < -1 or sum(self.cache.values()) > 1:
             data[agent_eid] = {'delta_out': 0}
 
