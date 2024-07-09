@@ -5,6 +5,7 @@ import platform
 import sys
 
 
+
 def print_greetings():
     greetings = rf"""
                      ____                              _ _
@@ -23,6 +24,7 @@ def print_greetings():
                     
         """
     print(dedent(greetings), file=sys.stderr)
+
 
 
 def get_python_version():
