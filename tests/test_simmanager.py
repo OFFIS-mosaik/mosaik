@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 from asyncio import StreamReader, StreamWriter
 import os
-from loguru import logger
 import pytest
 import sys
-import time
 from typing import Any, Callable, Coroutine, Type, cast
 
 from example_sim.mosaik import ExampleSim
@@ -206,7 +204,7 @@ if __name__ == '__main__':
     mosaik_api_v3.start_simulation(SimulatorMock())
 """
     )
-    sim = world.start("SimulatorMockTmp")
+    _sim = world.start("SimulatorMockTmp")
 
 
 async def read_message(reader: asyncio.StreamReader):

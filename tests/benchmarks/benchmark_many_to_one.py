@@ -6,7 +6,7 @@ import mosaik
 import mosaik.util
 
 from argparser import argparser
-from comparison import write_exeuction_graph, compare_execution_graph
+from comparison import compare_execution_graph
 
 sys.path.insert(0, os.getcwd())
 
