@@ -45,7 +45,6 @@ def test_entity():
         def __repr__(self):
             return "ModelMockMock"
 
-    sim = object()
     e = scenario.Entity("0", "1", "sim", ModelMockMock(), [])
     assert e.sid == "0"
     assert e.eid == "1"
@@ -99,7 +98,7 @@ def test_world_start(world: World):
     assert "ExampleSim-0" in world.sims
 
     world.start("ExampleSim")
-    assert list(sorted(world.sims)) == ["ExampleSim-0", "ExampleSim-1"]
+    assert sorted(world.sims) == ["ExampleSim-0", "ExampleSim-1"]
     assert "ExampleSim-1" in world.sims
 
 
@@ -110,7 +109,7 @@ def test_global_time_resolution():
     world = scenario.World(sim_config, time_resolution=60.0)
 
     try:
-        fac = world.start("ExampleSim", step_size=2)
+        _fac = world.start("ExampleSim", step_size=2)
         # TODO: Test whether the resolution "reaches" the simulator
         assert world.time_resolution == 60.0
     finally:
@@ -137,14 +136,12 @@ def test_world_connect(world: World):
     assert sim_1.successors == {}
     assert sim_1.input_delays[sim_0] == TieredInterval(0)
 
-    assert sim_1.pulled_inputs[(sim_0, TieredInterval(0))] == set(
-        [
+    assert sim_1.pulled_inputs[(sim_0, TieredInterval(0))] == {
             ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
             ((a[0].eid, "dummy_out"), (b[0].eid, "dummy_in")),
             ((a[1].eid, "val_out"), (b[1].eid, "val_in")),
             ((a[1].eid, "dummy_out"), (b[1].eid, "dummy_in")),
-        ]
-    )
+    }
 
     assert to_dict(world.entity_graph) == {
         "ExampleSim-0." + a[0].eid: {"ExampleSim-1." + b[0].eid: {}},
@@ -227,7 +224,7 @@ def test_world_connect_no_attrs(world: World):
     sim_0 = world.sims["ExampleSim-0"]
     sim_1 = world.sims["ExampleSim-1"]
 
-    sim_0.successors = set((sim_1,))
+    sim_0.successors = {sim_1}
     sim_1.successors = set()
     sim_1.input_delays = {sim_0: TieredInterval(0)}
     assert world.entity_graph.adj == {
@@ -257,11 +254,9 @@ def test_world_connect_any_inputs(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out")
 
-    assert sim_b.pulled_inputs[(sim_a, TieredInterval(0))] == set(
-        [
-            ((a.eid, "val_out"), (b.eid, "val_out")),
-        ]
-    )
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(0))] == {
+        ((a.eid, "val_out"), (b.eid, "val_out")),
+    }
 
     assert sim_a.successors == {sim_b: TieredInterval(0)}
     assert sim_b.input_delays[sim_a] == TieredInterval(0)
@@ -278,7 +273,7 @@ def test_world_connect_async_requests(world: World):
     world.connect(a, b, async_requests=True)
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    sim_a.successors_to_wait_for = set((sim_b,))
+    sim_a.successors_to_wait_for = {sim_b}
 
 
 def test_world_connect_time_shifted(world: World):
@@ -288,11 +283,9 @@ def test_world_connect_time_shifted(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out", time_shifted=True, initial_data={"val_out": 1.0})
 
-    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1))] == set(
-        [
-            ((a.eid, "val_out"), (b.eid, "val_out")),
-        ]
-    )
+    assert sim_b.pulled_inputs[(sim_a, TieredInterval(1))] == {
+        ((a.eid, "val_out"), (b.eid, "val_out")),
+    }
     assert sim_a.successors == {sim_b: TieredInterval(0)}
     assert sim_b.input_delays[sim_a] == TieredInterval(1)
     assert world.sims["ExampleSim-0"].outputs[-1] == {

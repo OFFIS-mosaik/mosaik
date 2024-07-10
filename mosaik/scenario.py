@@ -496,9 +496,9 @@ class World(object):
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
-        attr_pairs: Set[Tuple[Attr, Attr]] = set(
+        attr_pairs: Set[Tuple[Attr, Attr]] = {
             (a, a) if isinstance(a, str) else a for a in attr_pairs
-        )
+        }
         errors: List[ScenarioError] = []
         for src_attr, dest_attr in attr_pairs:
             try:
@@ -835,9 +835,9 @@ def update_min(a: T | None, b: T) -> T | None:
     return b
 
 
-MOSAIK_METHODS = set(
-    ["init", "create", "setup_done", "step", "get_data", "finalize", "stop"]
-)
+MOSAIK_METHODS = {
+    "init", "create", "setup_done", "step", "get_data", "finalize", "stop"
+}
 
 
 class ModelFactory:
