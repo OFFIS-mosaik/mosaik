@@ -2,7 +2,6 @@
 This module provides mosaik specific exception types.
 """
 
-
 from typing import Any, List, Tuple
 
 from mosaik_api_v3 import SimId
@@ -22,12 +21,12 @@ class SimulationError(Exception):
     """
 
     def __init__(self, msg: str, exc: Any = None):
-        arg = ''
+        arg = ""
         if exc:
             orig = str(exc)
-            if orig.endswith('.'):
+            if orig.endswith("."):
                 orig = orig[:-1]
-            arg += '%s: ' % orig
+            arg += "%s: " % orig
         arg += msg
         super().__init__(arg)
 
@@ -42,7 +41,7 @@ class NonSerializableOutputsError(SimulationError):
 
     def add_error(self, dest_eid: str, dest_attr: str, src_id: str, error: TypeError):
         self.errors.append((dest_eid, dest_attr, src_id, error))
-    
+
     def __bool__(self):
         return bool(self.errors)
 

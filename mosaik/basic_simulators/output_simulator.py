@@ -44,10 +44,11 @@ class OutputSimulator(mosaik_api_v3.Simulator):
         super().__init__(META)
         self.entities = {}  # Maps EIDs to model instances/entities
 
-    def init(self, sid: SimId, time_resolution:float = 1):
+    def init(self, sid: SimId, time_resolution: float = 1):
         return self.meta
 
-    def create(self, num: int, model: ModelName, **model_params: Any
+    def create(
+        self, num: int, model: ModelName, **model_params: Any
     ) -> List[CreateResult]:
         next_eid = len(self.entities)
         entities: List[CreateResult] = []
@@ -58,9 +59,9 @@ class OutputSimulator(mosaik_api_v3.Simulator):
             entities.append({"eid": eid, "type": model})
         return entities
 
-    def step(self, time: Time, inputs:InputData, max_advance: Time):
+    def step(self, time: Time, inputs: InputData, max_advance: Time):
         for receiver, input in inputs.items():
-            self.entities[receiver][time] = deepcopy(input) 
+            self.entities[receiver][time] = deepcopy(input)
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
         raise mosaik.exceptions.ScenarioError(
@@ -68,7 +69,7 @@ class OutputSimulator(mosaik_api_v3.Simulator):
             "Use this simulator for input data only."
         )
 
-    def get_dict(self, eid:str) -> Dict[Time, Any]:
+    def get_dict(self, eid: str) -> Dict[Time, Any]:
         """
         Returns the dict of the simulator entity specified by the ``eid``.
 

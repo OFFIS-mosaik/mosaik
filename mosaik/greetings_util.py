@@ -5,7 +5,6 @@ import platform
 import sys
 
 
-
 def print_greetings():
     greetings = f"""
                 \033[32m____\033[0m                              _ _
@@ -23,7 +22,6 @@ def print_greetings():
                \033[33m\\____/\033[0m     Get in touch: https://github.com/orgs/OFFIS-mosaik/discussions
         """
     print(dedent(greetings), file=sys.stderr)
-
 
 
 def get_python_version():

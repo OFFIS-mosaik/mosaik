@@ -67,7 +67,6 @@ Linting:
   needs: []
 
 Formatting:
-  allow_failure: true
   stage: Tests
   script:
     - rye format --check

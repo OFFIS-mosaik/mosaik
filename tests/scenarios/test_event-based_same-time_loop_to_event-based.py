@@ -6,7 +6,6 @@ This scenario tests for the right max_advance value if a simulator is
 interrupted due to an earlier step.
 """
 
-
 import pytest
 from mosaik import World
 

@@ -3,7 +3,6 @@ Scenario 19::
    A() → B() → C()
 """
 
-
 from mosaik import World
 
 

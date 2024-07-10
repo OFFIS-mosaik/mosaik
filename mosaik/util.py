@@ -3,10 +3,21 @@
 This module contains some utility functions and classes.
 
 """
+
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, MutableSequence, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    MutableSequence,
+    Optional,
+    Set,
+    Tuple,
+)
 from typing_extensions import Literal
 from mosaik_api_v3 import Attr, SimId
 import networkx as nx
@@ -29,7 +40,7 @@ def connect_many_to_one(
     src_set: Iterable[Entity],
     dest: Entity,
     *attrs: Attr | Tuple[Attr, Attr],
-    async_requests: bool = False
+    async_requests: bool = False,
 ):
     """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
@@ -46,7 +57,7 @@ def connect_randomly(
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
     evenly: bool = True,
-    max_connects: int =float("inf"),  # type: ignore
+    max_connects: int = float("inf"),  # type: ignore
 ):
     """
     Randomly :meth:`~mosaik.scenario.World.connect` the entities from
@@ -97,7 +108,7 @@ def _connect_evenly(
     world: World,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
-    *attrs: Attr | Tuple[Attr, Attr]
+    *attrs: Attr | Tuple[Attr, Attr],
 ) -> Set[Entity]:
     connect = world.connect
     connected: Set[Entity] = set()
@@ -234,7 +245,7 @@ def plot_dataflow_graph(
     Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param folder: folder to store the image (only if no hdf5path is 
+    :param folder: folder to store the image (only if no hdf5path is
         provided)
     :param hdf5path: Path to HDF5 file, which will be used as path for
         the created image
@@ -256,7 +267,7 @@ def plot_dataflow_graph(
             df_graph.add_edge(
                 pred.sid,
                 sim.sid,
-                time_shifted=delay.tiers[0]>0,
+                time_shifted=delay.tiers[0] > 0,
                 weak=any(t > 0 for t in delay.tiers[1:]),
             )
     positions = nx.spring_layout(df_graph)
@@ -351,7 +362,7 @@ def plot_dataflow_graph(
 def plot_execution_graph(
     world: World,
     title: str = "",
-    folder: str =STANDARD_FOLDER,
+    folder: str = STANDARD_FOLDER,
     hdf5path: str | None = None,
     dpi: int = STANDARD_DPI,
     format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
@@ -576,7 +587,9 @@ def finish_execution_time_per_simulator_plot(
     if hdf5path:
         filename: str = hdf5path.replace(".hdf5", "_" + "all" + ".png")
     else:
-        filename: str = get_filename(folder, "execution_time_simulator" + simulator_name, format)
+        filename: str = get_filename(
+            folder, "execution_time_simulator" + simulator_name, format
+        )
 
     fig.savefig(
         filename,
@@ -619,6 +632,7 @@ def get_filename(dir: str, type: str, file_format: str) -> str:
         + "."
         + file_format
     )
+
 
 def _tiered_time_pos(time: TieredTime, base: float = 0.1) -> float:
     result = 0.0

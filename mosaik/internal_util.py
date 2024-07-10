@@ -55,5 +55,6 @@ def doc_link(page: str, anchor: str) -> str:
 def get_python_version():
     return platform.python_version()
 
+
 def get_os():
     return platform.platform()

@@ -2,6 +2,7 @@
 Executes all files in bchemanrks subfolder and
 compares the execution graph to the contents of the *.gexf file.
 """
+
 import glob
 import os
 import subprocess

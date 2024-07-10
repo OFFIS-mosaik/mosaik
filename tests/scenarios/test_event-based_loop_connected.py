@@ -8,7 +8,6 @@ scheduler when events where scheduled close to world.until.
 where the connection from B to A is weak.
 """
 
-
 import pytest
 from mosaik import World
 
