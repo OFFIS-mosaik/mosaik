@@ -21,7 +21,7 @@ def print_greetings():
               \033[33m\\      /\033[0m            Docs: https://mosaik.readthedocs.io/en/{mosaik_version}/
                \033[33m\\____/\033[0m     Get in touch: https://github.com/orgs/OFFIS-mosaik/discussions
         """
-    print(dedent(greetings), file=sys.stderr)
+    print(dedent(greetings), file=sys.stderr)  # noqa: T201
 
 
 def get_python_version():
