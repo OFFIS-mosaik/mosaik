@@ -57,6 +57,9 @@ Linting:
   allow_failure: true
   stage: Tests
   script:
+    # Run rye twice (it's fast enough), so we see the output both in the job log
+    # and in the code-quality report on the merge request.
+    - FORCE_COLOR=1 rye lint -- -e
     - rye lint -- --output-format=gitlab > lintreport.json
   artifacts:
     when: always
