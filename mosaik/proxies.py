@@ -21,6 +21,7 @@ class Proxy(ABC):
     appropriate ``Adapter`` subclasses to bring the interface of the
     connected simulator in line with the most up-to-date API version.
     """
+
     @abstractmethod
     async def send(self, request: Any) -> Any:
         """Send a request to the connected simulator.
@@ -64,7 +65,7 @@ class BaseProxy(Proxy):
         """Initialize the simulator by sending the ``init`` call. The
         ``meta`` returned by the simulator will be saved to be retrieved
         using the ``meta`` property.
-        
+
         :param sid: The ``SimId`` that mosaik assigns to this simulator
         instance
         :param time_resolution: The time resolution of the simulation,
@@ -80,6 +81,7 @@ class LocalProxy(BaseProxy):
     Proxy for a local simulator. This mainly wraps each mosaik method in
     a coroutine.
     """
+
     sim: Simulator
     """The underlying ``mosaik_api.Simulator."""
 
@@ -152,8 +154,7 @@ class RemoteProxy(BaseProxy):
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
-            self._handle_remote_requests(),
-            name="handle remote requests for ???"
+            self._handle_remote_requests(), name="handle remote requests for ???"
         )
 
     async def _handle_remote_requests(self) -> None:
@@ -170,15 +171,17 @@ class RemoteProxy(BaseProxy):
         except EndOfRequests:
             pass
         except RuntimeError as e:
-            if e.args[0] != 'Event loop is closed':
+            if e.args[0] != "Event loop is closed":
                 logger.exception(
                     "Something went wrong in _handle_remote_requests, "
-                    f"exception type {type(e)}")
+                    f"exception type {type(e)}"
+                )
                 await self.stop()
         except Exception as e:
             logger.exception(
                 "Something went wrong in _handle_remote_requests, "
-                f"exception type {type(e)}")
+                f"exception type {type(e)}"
+            )
             await self.stop()
 
     async def init(self, sid: SimId, **kwargs: Any) -> List[int]:

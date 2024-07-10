@@ -1,4 +1,15 @@
-from typing import Any, Callable, Dict, Generic, Iterable, Iterator, Literal, Tuple, TypeVar, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    Literal,
+    Tuple,
+    TypeVar,
+    overload,
+)
 
 N = TypeVar("N")
 K = TypeVar("K")
@@ -41,8 +52,14 @@ class MultiDiGraph(Generic[N, K]):
     def edges(self, data: Literal[True]) -> Iterable[Tuple[N, N, Dict[str, Any]]]: ...
 
 def ancestors(graph: DiGraph[N], node: N) -> Iterable[N]: ...
-def shortest_path_length(graph: DiGraph[N], source: N, target: N, weight: str) -> Any: ...
-def parse_edgelist(lines: Iterable[str], create_using: DiGraph[N], nodetype: Callable[[str], N], data: Tuple[()]) -> DiGraph[N]: ...
+def shortest_path_length(
+    graph: DiGraph[N], source: N, target: N, weight: str
+) -> Any: ...
+def parse_edgelist(
+    lines: Iterable[str],
+    create_using: DiGraph[N],
+    nodetype: Callable[[str], N],
+    data: Tuple[()],
+) -> DiGraph[N]: ...
 def simple_cycles(graph: DiGraph[N]) -> Iterable[Iterable[N]]: ...
-
 def spring_layout(graph: DiGraph[N]) -> Dict[N, Tuple[float, float]]: ...

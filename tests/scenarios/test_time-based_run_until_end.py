@@ -7,7 +7,6 @@ if their successors have already finished. This is a change in the intended
 behaviour.
 """
 
-
 from mosaik import World
 
 

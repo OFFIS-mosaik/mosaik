@@ -3,7 +3,6 @@ Scenario 15::
    A() → B()
 """
 
-
 import pytest
 from mosaik import World
 

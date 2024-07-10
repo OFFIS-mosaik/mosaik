@@ -15,7 +15,11 @@ import mosaik_api_v3.connection
 from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
-from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
+from mosaik.exceptions import (
+    NonSerializableOutputsError,
+    ScenarioError,
+    SimulationError,
+)
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.tiered_time import TieredInterval, TieredTime
 
@@ -63,12 +67,12 @@ def test_start(world, monkeypatch):
 
     class Proxy(BaseProxy):
         async def init(self, *args, **kwargs):
-            return list(map(int, api_version.split('.')))
+            return list(map(int, api_version.split(".")))
 
         @property
         def meta(self) -> Meta:
             raise NotImplementedError
-        
+
         async def send(self, request):
             return None
 
@@ -158,8 +162,12 @@ async def test_start_proc_no_port_conflict():
     }
     mosaik_remote = cast(simmanager.MosaikRemote, None)
     exc_1, exc_2 = await asyncio.gather(
-        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
-        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
+        simmanager.start_proc(
+            mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote
+        ),
+        simmanager.start_proc(
+            mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote
+        ),
         return_exceptions=True,
     )
     # We should get `SimulationError`s here, not `OSError`s
@@ -228,8 +236,7 @@ def test_start_connect(world: scenario.World):
 
 
 def test_start_connect_timeout_init(world: World, caplog):
-    """Simulator takes too long to respond to the init call.
-    """
+    """Simulator takes too long to respond to the init call."""
     world.config["start_timeout"] = 0.1
 
     async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
@@ -367,7 +374,9 @@ def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]})
+        world.start(
+            "MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]}
+        )
 
 
 def test_sim_proxy_stop_impl(world):
@@ -410,7 +419,7 @@ def test_local_process_finalized(world):
 
 
 async def _rpc_get_progress(channel: Channel, world: World):
-    """ 
+    """
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
@@ -574,12 +583,15 @@ def test_mosaik_remote(
             sim_x.is_in_step = True
             sim_x.outputs = {1: {"2": {"attr": "val"}}}
             world.sims["X"] = sim_x
+
             class DummyProxy:
                 @property
                 def meta(self):
                     return {"type": "time-based", "models": {}}
+
                 async def stop(self):
                     pass
+
             sim_y = simmanager.SimRunner("Y", DummyProxy())
             world.sims["Y"] = sim_y
             sim_z = simmanager.SimRunner("Z", DummyProxy())
@@ -589,8 +601,10 @@ def test_mosaik_remote(
 
         async def run():
             channel_future: asyncio.Future[Channel] = asyncio.Future()
+
             async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
                 channel_future.set_result(Channel(r, w))
+
             server = await asyncio.start_server(on_connect, "127.0.0.1")
             try:
                 actual_addr = server.sockets[0].getsockname()
