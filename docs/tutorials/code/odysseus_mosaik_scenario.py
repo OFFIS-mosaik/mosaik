@@ -1,9 +1,7 @@
-import itertools
 import random
 
 from mosaik.util import connect_randomly, connect_many_to_one
 import mosaik
-import os
 
 
 sim_config = {
