@@ -1,0 +1,4 @@
+sphinx>=7.3.7
+sphinx-rtd-theme>=2.0.0
+sphinx-toolbox>=2.0.0
+mosaik-heatpump>=1.0.2
