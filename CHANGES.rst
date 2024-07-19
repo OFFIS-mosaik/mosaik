@@ -4,9 +4,9 @@ Changelog
 3.3.3 - 2024-05-21
 ------------------
 
-- [NEW] mosaik greeting with ASCII art and version information, contact links (https://gitlab.com/mosaik/mosaik/-/issues/216)
-- [NEW] Better error messages on remote errors (https://gitlab.com/mosaik/mosaik/-/issues/234)
-- [FIX] Error message for serialization errors assigns blame correctly (https://gitlab.com/mosaik/mosaik/-/issues/232)
+- [NEW] mosaik greeting with ASCII art and version information, contact links (`#216 <https://gitlab.com/mosaik/mosaik/-/issues/216>`_)
+- [NEW] Better error messages on remote errors (`#234 <https://gitlab.com/mosaik/mosaik/-/issues/234>`_)
+- [FIX] Error message for serialization errors assigns blame correctly (`#232 <https://gitlab.com/mosaik/mosaik/-/issues/232>`_)
 
 3.3.2 - 2024-04-12
 ------------------
@@ -16,43 +16,43 @@ Changelog
 3.3.1 - 2024-04-12
 ------------------
 
-- [FIX] Remote simulators didn't work with Python 3.12 (https://gitlab.com/mosaik/mosaik/-/issues/233)
+- [FIX] Remote simulators didn't work with Python 3.12 (`#233 <https://gitlab.com/mosaik/mosaik/-/issues/233>`_)
 
 3.3.0 - 2024-04-08
 ------------------
-- [NEW] A simulator can now be connected to itself if the connection is weak or time_shifted (https://gitlab.com/mosaik/mosaik/-/issues/156)
-- [NEW] mosaik now provides a couple of basic simulators (https://gitlab.com/mosaik/mosaik/-/issues/192 , https://mosaik.readthedocs.io/en/latest/ecosystem/index.html#mosaik-basic-simulators)
-- [NEW] Simulators can return extra_info for their entities to be used in scenario script (https://gitlab.com/mosaik/mosaik/-/issues/197)
-- [NEW] Simulators now can (and potentially must) be grouped in a scenario script for more fine-grained control over same-time loops (https://gitlab.com/mosaik/mosaik/-/issues/215)
-- [IMPROVEMENT] Internal rework and refactoring of the time handling in mosaik (https://gitlab.com/mosaik/mosaik/-/issues/162)
+- [NEW] A simulator can now be connected to itself if the connection is weak or time_shifted (`#156 <https://gitlab.com/mosaik/mosaik/-/issues/156>`_)
+- [NEW] mosaik now provides a couple of basic simulators (`#192 <https://gitlab.com/mosaik/mosaik/-/issues/192>`_ , `docs <https://mosaik.readthedocs.io/en/latest/ecosystem/index.html#mosaik-basic-simulators>`_)
+- [NEW] Simulators can return extra_info for their entities to be used in scenario script (`#197 <https://gitlab.com/mosaik/mosaik/-/issues/197>`_)
+- [NEW] Simulators now can (and potentially must) be grouped in a scenario script for more fine-grained control over same-time loops (`#215 <https://gitlab.com/mosaik/mosaik/-/issues/215>`_)
+- [IMPROVEMENT] Internal rework and refactoring of the time handling in mosaik (`#162 <https://gitlab.com/mosaik/mosaik/-/issues/162>`_)
 
 
 3.2.0 - 2023-08-31
 ------------------
-- [NEW] Visualizations for the simulation debug information (https://gitlab.com/mosaik/mosaik/-/issues/173)
-- [NEW] Allow to open a new console for simulator (https://gitlab.com/mosaik/mosaik/-/issues/84)
-- [FIX] Lift restriction of only one weak connection per cycle (https://gitlab.com/mosaik/mosaik/-/issues/151)
-- [FIX] Incorrect triggering when adding several edges (https://gitlab.com/mosaik/mosaik/-/issues/92)
-- [IMPROVEMENT] Switch from simpy to asycnio (https://gitlab.com/mosaik/mosaik/-/issues/103)
-- [CHANGE] Removed support for Python 3.7, added support for Python 3.11 (https://gitlab.com/mosaik/mosaik/-/issues/171)
+- [NEW] Visualizations for the simulation debug information (`#173 <https://gitlab.com/mosaik/mosaik/-/issues/173>`_)
+- [NEW] Allow to open a new console for simulator (`#84 <https://gitlab.com/mosaik/mosaik/-/issues/84>`_)
+- [FIX] Lift restriction of only one weak connection per cycle (`#151 <https://gitlab.com/mosaik/mosaik/-/issues/151>`_)
+- [FIX] Incorrect triggering when adding several edges (`#92 <https://gitlab.com/mosaik/mosaik/-/issues/92>`_)
+- [IMPROVEMENT] Switch from simpy to asycnio (`#103 <https://gitlab.com/mosaik/mosaik/-/issues/103>`_)
+- [CHANGE] Removed support for Python 3.7, added support for Python 3.11 (`#171 <https://gitlab.com/mosaik/mosaik/-/issues/171>`_)
 
 3.1.1 - 2023-01-11
 ------------------
 
-- [FIX] Fix compatibilty with mosaik 2 simulators (https://gitlab.com/mosaik/mosaik/-/issues/152)
+- [FIX] Fix compatibilty with mosaik 2 simulators (`#152 <https://gitlab.com/mosaik/mosaik/-/issues/152>`_)
 
 3.1.0 - 2022-11-23
 ------------------
-- [NEW] Add progress bar to visualize simulation progress (https://gitlab.com/mosaik/mosaik/-/merge_requests/58)
-- [NEW] Add type annotations (https://gitlab.com/mosaik/mosaik/-/issues/107)
-- [NEW] Add proper logging (https://gitlab.com/mosaik/mosaik/-/issues/98)
-- [DEPRECATED] Deprecated tags for set_data und async_requests (https://gitlab.com/mosaik/mosaik/-/issues/102)
-- [CHANGE] Improved benchmarks with new result table (https://gitlab.com/mosaik/mosaik/-/issues/94)
-- [FIX] Unexpected behavior of (time-based) simulators whose output is not used anymore (https://gitlab.com/mosaik/mosaik/-/issues/90)
-- [FIX] Lazy stepping does not work (https://gitlab.com/mosaik/mosaik/-/issues/89)
-- [FIX] Negative max_advance values in same time loop (https://gitlab.com/mosaik/mosaik/-/issues/82)
-- [FIX] Initial data for time-shifted connection for hybrid simulator (https://gitlab.com/mosaik/mosaik/-/issues/81)
-- [FIX] Bug related to None value for "dest_sim.next_step" in particular connection structure (https://gitlab.com/mosaik/mosaik/-/issues/80)
+- [NEW] Add progress bar to visualize simulation progress (`!58 <https://gitlab.com/mosaik/mosaik/-/merge_requests/58>`_)
+- [NEW] Add type annotations (`#107 <https://gitlab.com/mosaik/mosaik/-/issues/107>`_)
+- [NEW] Add proper logging (`#98 <https://gitlab.com/mosaik/mosaik/-/issues/98>`_)
+- [DEPRECATED] Deprecated tags for set_data und async_requests (`#102 <https://gitlab.com/mosaik/mosaik/-/issues/102>`_)
+- [CHANGE] Improved benchmarks with new result table (`#94 <https://gitlab.com/mosaik/mosaik/-/issues/94>`_)
+- [FIX] Unexpected behavior of (time-based) simulators whose output is not used anymore (`#90 <https://gitlab.com/mosaik/mosaik/-/issues/90>`_)
+- [FIX] Lazy stepping does not work (`#89 <https://gitlab.com/mosaik/mosaik/-/issues/89>`_)
+- [FIX] Negative max_advance values in same time loop (`#82 <https://gitlab.com/mosaik/mosaik/-/issues/82>`_)
+- [FIX] Initial data for time-shifted connection for hybrid simulator (`#81 <https://gitlab.com/mosaik/mosaik/-/issues/81>`_)
+- [FIX] Bug related to None value for "dest_sim.next_step" in particular connection structure (`#80 <https://gitlab.com/mosaik/mosaik/-/issues/80>`_)
 
 3.0.2 - 2022-06-01
 ------------------
@@ -312,10 +312,193 @@ Changelog
   - There is a repository containing a simple demo scenario for mosaik. See
     https://gitlab.com/mosaik/mosaik-demo.
 
-
- You can find information about older versions on the `history page`__
-
 __ https://gitlab.com/mosaik/mosaik-hdf5
 __ https://gitlab.com/mosaik/mosaik-api-python
 __ https://gitlab.com/mosaik/mosaik-api-java
-__ https://mosaik.readthedocs.org/en/latest/about/history.html
+
+2.0a4 – 2014-07-31
+------------------
+
+- [NEW] The model meta data may now contain the ``any_inputs`` which, if set
+  to ``True``, allows any attribute to be connected to that model (useful for
+  databases and alike).
+- [CHANGE] The dictionary of input values in the API's ``step()`` call now
+  also contains the source of a particular value. This is also usefull to for
+  databases. This may break existing simulators.
+- [CHANGE] "." is now used as separator in full entiy IDs instead of "/"
+  (issue #19).
+
+
+2.0a3 – 2014-06-26
+------------------
+
+- [NEW] Hierarchical entities: Entities can now have a list of child entities
+  (issue #14).
+- [NEW] The ``World`` class now has a ``get_data()`` method that allows you to
+  get data from entities while creating a scenario.
+- [NEW] ``World.connect(a, b, ('X', 'X'))`` can now be simplified to
+  ``World.connect(a, b, 'X')``.
+- [NEW] Attribute ``Entity.full_id`` which uniquely identifies an entity:
+  ``'<sid>/<eid>'``
+- [NEW] Attribute ``ModelFactory.meta`` which is the meta data dictionary of
+  a simulator.
+- [NEW] ``World()`` now accepts a configuration dictionary which can, e.g.,
+  specify the network address for mosaik.
+- [NEW] Overview section for the docs
+- [NEW] Description of the mosaik API in the docs
+- [CHANGE] When you create entities, mosaik checks if the model parameters
+  actually exists and raises an error if not (issue #9).
+- [CHANGE] The mosaik API’s ``init()`` function now receives the simulator ID
+  as first argument (issue #15).
+- [CHANGE] The behavior of the ``get_related_entities()`` RPC that simulators
+  can perform has been changed.
+- [CHANGE] Various internal improvements
+- [FIX] issue #18. Improved the error message if a Python simulator could
+  not be imported.
+- [REMOVED] Attribute ``Entity.rel``.
+
+
+2.0a2 – 2014-05-05
+------------------
+
+- [NEW] Preliminary documentation and installation instructions
+  (https://mosaik.readthedocs.org)
+
+- [NEW] Simulators can now set data to other simulators using the
+  asynchronous request *set_data* (issue #1).
+
+- [NEW] There is now a start timeout for external processes (issue #11).
+
+- [CHANGE] Mosaik now raises an error if a simulator uses the wrong API version
+  (issue #4).
+
+- [CHANGE] Mosaik prints everything to *stdout* instead of using the Python
+  logging module (issue #7).
+
+- [FIX] issue #2. Scheduling now works properly for processes using async.
+  requests. New keyword argument *async_requests* for ``World.connect()``.
+
+- [FIX] issue #3. Local (in-process) Simulators can now also perform async.
+  requests to mosaik (*get_progress*, *get_related_entities*, *get_data*,
+  *set_data*).
+
+- [FIX] issue #8. Cleaned up the code a bit.
+
+- [FIX] issue #10. Tests for the sim manager improved.
+
+
+2.0a1 – 2014-03-26
+------------------
+
+- Mosaik 2 is a complete rewrite of mosaik 1 in order to improve its
+  maintainability and flexibility. It is still an early alpha version and
+  neither feature complete nor bug free.
+
+- Removed features:
+
+  - The *mosl* DSL (including Eclipse xtext and Java) are now gone. Mosaik now
+    only uses Python.
+
+  - Mosaik now longer has executables but is now used as a library.
+
+  - The platform manager is gone.
+
+  - Mosaik no longer includes a database.
+
+  - Mosaik no longer includes a web UI.
+
+- Mosaik now consists of four core components with the following feature sets:
+
+  - mosaik API
+
+    - The API has bean cleaned up and simplified.
+
+    - Simulators and control strategies share the same API.
+
+    - There are only four calls from mosaik to a simulator: *init*, *create*,
+      *step* and *get_data*.
+
+    - Simulators / processes can make asynchronous requests to mosaik during a
+      step: *get_progress*, *get_related_entities*, *get_data*.
+
+    - ZeroMQ with JSON is replaced by plain network sockets with JSON.
+
+  - Scenarios:
+
+    - Pure Python is now used to describe scenarios. This offers you more
+      flexibility to create complex scenarios.
+
+    - Scenario creation simplified: Start a simulator to get a model factory.
+      Use the factory to create model instances (*entities*). Connect entities.
+      Run simulation.
+
+    - Connection rules are are no based on a primitive *connect* function that
+      only connects two entities with each other. On top of that, any
+      connection strategy can be implemented.
+
+  - Simulation Manager:
+
+    - Simulators written in Python 3 can be executed *in process*.
+
+    - Simulators can be started as external processes.
+
+    - Mosaik can connect to an already running instance of a simulator. This
+      can be used as a replacement for the now gone platform manager.
+
+  - Simulation execution:
+
+    - The simulation is now event-based. No schedule and no synchronization
+      points need to be computed.
+
+    - Simulators can have different and varying step sizes.
+
+- Mosaik ecosystem:
+
+  - A high-level implementation of the mosaik 2 API currently only exists for
+    Python. See https://gitlab.com/mosaik/mosaik-api-python.
+
+  - *mosaik-web* is a simple visualization for mosaik simulations. See
+    https://gitlab.com/mosaik/mosaik-web.
+
+  - *mosaik-pypower* is an adapter for the *PYPOWER* load flow analysis
+    library. See https://gitlab.com/mosaik/mosaik-pypower and
+    https://github.com/rwl/PYPOWER.
+
+  - *mosaik-csv* and *mosaik-householdsim* are simple demo simulators that you
+    can use to "simulate" CSV data sets and load-profile based households. See
+    https://gitlab.com/mosaik/mosaik-csv and
+    https://gitlab.com/mosaik/mosaik-householdsim.
+
+  - There is a repository containing a simple demo scenario for mosaik. See
+    https://gitlab.com/mosaik/mosaik-demo.
+
+
+1.1 – 2013-10-25
+----------------
+
+- [NEW] New API for control strategies.
+- [NEW] Mosaik can be configured via environment variables.
+- [NEW] Various changes and improvements implemented during Steffen’s
+  dissertation.
+
+
+1.0 – 2013-01-25
+----------------
+
+Mosaik 1 was nearly a complete rewrite of the previous version and already
+incorporated many of the concepts and features described in Steffen Schütte's
+`Phd thesis`__.
+
+It used *mosl*, a DSL implemented with Eclipse and xtext, to describe
+simulators and scenarios. Interprocess communication was done with ZeroMQ and
+JSON encoded messages.
+
+__ http://www.informatik.uni-oldenburg.de/download/Promotionen/dissertation_schuette_08012014.pdf
+
+
+0.5 – 2011-08-22
+----------------
+
+This was the first actual version of mosaik that actually worked. However, the
+simulators we were using at that time were hard coded into the simulation loop
+and we used XML-RPC to communicate with the simulators.
