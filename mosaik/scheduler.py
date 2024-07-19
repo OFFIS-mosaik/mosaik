@@ -21,26 +21,26 @@ from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
-    from mosaik.scenario import World
+    from mosaik.async_scenario import AsyncWorld
 
 
 SENTINEL = object()
 
 
 async def run(
-    world: World,
+    world: AsyncWorld,
     until: int,
     rt_factor: Optional[float] = None,
     rt_strict: bool = False,
     lazy_stepping: bool = True,
 ):
     """
-    Run the simulation for a :class:`~mosaik.scenario.World` until
+    Run the simulation for a :class:`~mosaik.scenario.AsyncWorld` until
     the simulation time *until* has been reached.
 
     Return the final simulation time.
 
-    See :meth:`mosaik.scenario.World.run()` for a detailed description of the
+    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed description of the
     *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
@@ -56,7 +56,7 @@ async def run(
     for sim in world.sims.values():
         sim.tqdm.set_postfix_str("setup")
         # Send a setup_done event to all simulators
-        setup_done_events.append(world.loop.create_task(sim.setup_done()))
+        setup_done_events.append(asyncio.create_task(sim.setup_done()))
 
     # Wait for all answers to be here
     await asyncio.gather(*setup_done_events)
@@ -64,7 +64,7 @@ async def run(
     # Start simulator processes
     processes: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
-        process = world.loop.create_task(
+        process = asyncio.create_task(
             sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping),
             name=f"Runner for {sim.sid}",
         )
@@ -77,7 +77,7 @@ async def run(
 
 
 async def sim_process(
-    world: World,
+    world: AsyncWorld,
     sim: SimRunner,
     until: int,
     rt_factor: Optional[float],
@@ -132,7 +132,7 @@ async def sim_process(
         raise SimulationError('Simulator "%s" closed its connection.' % sim.sid, e)
 
 
-async def next_step_settled(sim: SimRunner, world: World) -> bool:
+async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
     # When deciding when the next step will happen, we have two numbers
     # that approach each other: The earliest currently scheduled next
     # step (which might still go down) and the earliest potential next
@@ -169,7 +169,7 @@ async def next_step_settled(sim: SimRunner, world: World) -> bool:
     return False
 
 
-async def rt_sleep(sim: SimRunner, world: World) -> None:
+async def rt_sleep(sim: SimRunner, world: AsyncWorld) -> None:
     """
     If in real-time mode, check if to sleep and do so if necessary.
     """
@@ -188,7 +188,7 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
 
     Also notify any simulator that is already waiting to perform its next step.
 
-    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     futures: List[Coroutine[Any, Any, TieredTime]] = []
     next_step = sim.next_steps[0]
@@ -207,7 +207,7 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     await asyncio.gather(*futures)
 
 
-def get_input_data(world: World, sim: SimRunner) -> InputData:
+def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     """
     Return a dictionary with the input data for *sim*.
 
@@ -227,7 +227,7 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     loads for a node in a power grid) and cannot know how to aggregate that
     data (sum, max, ...?).
 
-    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
     # Input data starts with the data from set_data calls
@@ -285,7 +285,7 @@ def get_input_data(world: World, sim: SimRunner) -> InputData:
     return input_data
 
 
-def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
+def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     """
     Checks how far *sim* can safely advance its internal time during next step
     without causing a causality error.
@@ -302,7 +302,12 @@ def get_max_advance(world: World, sim: SimRunner, until: int) -> int:
     return min([*ancs_next_steps, *own_next_step, until + 1]) - 1
 
 
-async def step(world: World, sim: SimRunner, inputs: InputData, max_advance: int):
+async def step(
+    world: AsyncWorld,
+    sim: SimRunner,
+    inputs: InputData,
+    max_advance: int,
+):
     """
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
@@ -365,11 +370,11 @@ def rt_check(
                 )
 
 
-async def get_outputs(world: World, sim: SimRunner):
+async def get_outputs(world: AsyncWorld, sim: SimRunner):
     """
     Wait for all required output data from a simulator *sim*.
 
-    *world* is a mosaik :class:`~mosaik.scenario.World`.
+    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
     sid = sim.sid
@@ -427,7 +432,7 @@ def notify_dependencies(sim: SimRunner) -> None:
                 dest_sim.schedule_step(sim.output_time + delay)
 
 
-def prune_dataflow_cache(world: World):
+def prune_dataflow_cache(world: AsyncWorld):
     """
     Prunes the dataflow cache.
     """
@@ -458,7 +463,7 @@ def get_avg_progress(sims: Dict[SimId, SimRunner], until: int) -> int:
     return sum(times) // len(times)
 
 
-def advance_progress(sim: SimRunner, world: World):
+def advance_progress(sim: SimRunner, world: AsyncWorld):
     pre_sim_induced_progress: List[TieredTime] = [
         pre_sim.next_steps[0] + distance
         for pre_sim, distance in sim.triggering_ancestors.items()

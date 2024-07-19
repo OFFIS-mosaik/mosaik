@@ -101,9 +101,9 @@ def world_fixture(request: pytest.FixtureRequest):
         sims[5].successors[sims[4]] = TieredInterval(0)
         sims[4].input_delays[sims[5]] = TieredInterval(1)
 
-    world.until = 4
-    world.rt_factor = None
-    world.cache_triggering_ancestors()
+    world._async_world.until = 4
+    world._async_world.rt_factor = None
+    world._async_world.cache_triggering_ancestors()
     yield world
     world.shutdown()
 
@@ -126,7 +126,7 @@ def test_run(monkeypatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world.sims = {i: SimRunner(i, proxy) for i in range(2)}
+    world._async_world.sims = {i: SimRunner(i, proxy) for i in range(2)}
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:
@@ -337,7 +337,7 @@ async def test_step(world: World):
     assert (sim.last_step, sim.next_steps[0]) == (TieredTime(-1), TieredTime(0))
     sim.current_step = heappop(sim.next_steps)
 
-    await scheduler.step(world, sim, inputs, 0)
+    await scheduler.step(world._async_world, sim, inputs, 0)
     assert (sim.last_step, sim.next_steps) == (
         TieredTime(0),
         [TieredTime(1)] if sim.type == "time-based" else [],
@@ -457,7 +457,7 @@ def test_prune_dataflow_cache(world: World):
     for s in world.sims.values():
         s.last_step = TieredTime(1)
         s.tqdm = tqdm(disable=True)
-    scheduler.prune_dataflow_cache(world)
+    scheduler.prune_dataflow_cache(world._async_world)
 
     assert world.sims["Sim-0"].outputs == {
         1: {"foo": "bar"},
@@ -477,9 +477,9 @@ async def test_get_outputs_shifted(world: World):
     heappush(world.sims["Sim-4"].next_steps, TieredTime(2))
 
     sim.current_step = heappop(sim.next_steps)
-    await scheduler.get_outputs(world, sim)
+    await scheduler.get_outputs(world._async_world, sim)
     scheduler.notify_dependencies(sim)
-    scheduler.prune_dataflow_cache(world)
+    scheduler.prune_dataflow_cache(world._async_world)
     assert sim.outputs[1] == {
         "0": {"x": 0, "y": 1},
     }
