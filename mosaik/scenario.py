@@ -21,6 +21,7 @@ from typing import (
     Tuple,
     Union,
 )
+from loguru import logger
 from typing_extensions import Literal
 
 from mosaik_api_v3.types import Attr, ModelName, SimId
@@ -37,7 +38,7 @@ from mosaik.async_scenario import (
 from mosaik.in_or_out_set import InOrOutSet
 
 
-class World(object):
+class World():
     """
     The world holds all data required to specify and run the scenario.
 
@@ -77,8 +78,13 @@ class World(object):
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
+        skip_greetings: bool = False,
+        configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
+        if configure_logging:
+            logger.enable("mosaik")
+
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
@@ -87,11 +93,12 @@ class World(object):
 
         self._async_world = AsyncWorld(
             sim_config,
-            mosaik_config,
-            time_resolution,
-            debug,
-            cache,
-            max_loop_iterations,
+            mosaik_config=mosaik_config,
+            time_resolution=time_resolution,
+            debug=debug,
+            cache=cache,
+            max_loop_iterations=max_loop_iterations,
+            skip_greetings=skip_greetings,
         )
 
     def group(self):

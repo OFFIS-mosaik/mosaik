@@ -254,7 +254,7 @@ class AsyncWorld:
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
-        skip_greetings: bool = False,
+        skip_greetings: bool = True,
     ):
         if not skip_greetings:
             print_greetings()
@@ -596,7 +596,7 @@ class AsyncWorld:
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        print_progress: Union[bool, Literal["individual"]] = False,
         lazy_stepping: bool = True,
     ):
         """Start the simulation until the simulation time *until* is
