@@ -20,7 +20,17 @@ from copy import copy
 from dataclasses import dataclass
 from mosaik.greetings_util import print_greetings
 import itertools
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Self,
+    Set,
+    Tuple,
+    Union,
+)
 import warnings
 from loguru import logger
 import networkx
@@ -833,6 +843,25 @@ MOSAIK_METHODS = {
 FULL_ID = "%s.%s"
 
 
+class ExtraMethodsProxy:
+    _sim_id: SimId
+    _methods: Set[str]
+
+    def __init__(self, sim_id: SimId):
+        self._sim_id = sim_id
+        self._methods = set()
+
+    def _add_extra_method(self, name: str, wrapper: Callable[..., Any]) -> None:
+        setattr(self, name, wrapper)
+        self._methods.add(name)
+
+    def __iter__(self):
+        return iter(self._methods)
+
+    def __getattr__(self, name: str) -> Callable[..., Any]:
+        raise ScenarioError(f"`{name}` is not an extra method on '{self._sim_id}'")
+
+
 class AsyncModelFactory:
     """
     This is a facade for a simulator *sim* that allows the user to create
@@ -854,6 +883,7 @@ class AsyncModelFactory:
         self._group = group
         self._proxy = proxy
         self._sid = sid
+        self.call = ExtraMethodsProxy(sid)
 
         if "type" not in proxy.meta:
             raise ScenarioError(
@@ -905,9 +935,10 @@ class AsyncModelFactory:
                 wrapper.__name__ = meth_name
                 return wrapper
 
-            setattr(self, meth_name, get_wrapper(proxy, meth_name))
+            self.call._add_extra_method(meth_name, get_wrapper(proxy, meth_name))
 
-    def __getattr__(self, name: str):
+
+    def __getattr__(self, name: str) -> AsyncModelMock:
         # Implemented in order to improve error messages.
         models = self.meta["models"]
         if name in models:

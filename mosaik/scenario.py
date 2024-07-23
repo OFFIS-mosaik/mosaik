@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import inspect
 from typing import (
     Any,
+    Awaitable,
+    Callable,
     Dict,
     Iterable,
     Optional,
@@ -38,7 +39,7 @@ from mosaik.async_scenario import (
 from mosaik.in_or_out_set import InOrOutSet
 
 
-class World():
+class World:
     """
     The world holds all data required to specify and run the scenario.
 
@@ -323,21 +324,30 @@ class ModelFactory:
         self._async_model_factory = async_model_factory
         self._loop = loop
 
-    def __getattr__(self, name: str):
-        async_attr = getattr(self._async_model_factory, name)
+        for name in self._async_model_factory.call:
+            def get_wrapper(method: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
+                @functools.wraps(method)
+                def wrapper(*args: Any, **kwargs: Any):
+                    return self._loop.run_until_complete(method(*args, **kwargs))
+                return wrapper
 
-        if isinstance(async_attr, AsyncModelMock):
-            return ModelMock(async_attr, self._loop)
+            setattr(self, name, get_wrapper(getattr(self._async_model_factory.call, name)))
 
-        if inspect.iscoroutinefunction(async_attr):
+    @property
+    def _sid(self) -> SimId:
+        return self._async_model_factory._sid
 
-            @functools.wraps(async_attr)
-            def wrapper(*args, **kwargs):
-                return self._loop.run_until_complete(async_attr(*args, **kwargs))
+    @property
+    def type(self) -> Literal["time-based", "event-based", "hybrid"]:
+        return self._async_model_factory.type
 
-            return wrapper
+    def __getattr__(self, name: str) -> ModelMock:
+        value = getattr(self._async_model_factory, name)
 
-        return async_attr
+        if isinstance(value, AsyncModelMock):
+            return ModelMock(value, self._loop)
+
+        return value
 
 
 class ModelMock(object):
