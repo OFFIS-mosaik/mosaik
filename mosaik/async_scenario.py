@@ -49,6 +49,7 @@ from mosaik_api_v3.types import (
     OutputRequest,
     SimId,
 )
+from networkx import DiGraph
 from tqdm import tqdm
 from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
@@ -290,9 +291,7 @@ class AsyncWorld:
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[
-                Tuple[SimId, TieredTime]
-            ] = networkx.DiGraph()
+            self.execution_graph: DiGraph[Tuple[SimId, TieredTime]] = DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
