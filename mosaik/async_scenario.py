@@ -943,7 +943,6 @@ class AsyncModelFactory:
 
             self.call._add_extra_method(meth_name, get_wrapper(proxy, meth_name))
 
-
     def __getattr__(self, name: str) -> AsyncModelMock:
         # Implemented in order to improve error messages.
         models = self.meta["models"]

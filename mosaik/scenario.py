@@ -336,13 +336,19 @@ class ModelFactory:
         self._loop = loop
 
         for name in self._async_model_factory.call:
-            def get_wrapper(method: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
+
+            def get_wrapper(
+                method: Callable[..., Awaitable[Any]],
+            ) -> Callable[..., Any]:
                 @functools.wraps(method)
                 def wrapper(*args: Any, **kwargs: Any):
                     return self._loop.run_until_complete(method(*args, **kwargs))
+
                 return wrapper
 
-            setattr(self, name, get_wrapper(getattr(self._async_model_factory.call, name)))
+            setattr(
+                self, name, get_wrapper(getattr(self._async_model_factory.call, name))
+            )
 
     @property
     def _sid(self) -> SimId:
