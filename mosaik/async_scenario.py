@@ -14,36 +14,31 @@ user can instantiate model instances (*entities*). The method
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
 import contextlib
+import itertools
+import warnings
+from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
-from mosaik.greetings_util import print_greetings
-import itertools
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Self,
-    Set,
-    Tuple,
-    Union,
-)
-import warnings
-from loguru import logger
-import networkx
-from tqdm import tqdm
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
+    Dict,
     FrozenSet,
+    Iterable,
+    List,
     NoReturn,
+    Optional,
+    Set,
+    Tuple,
     TypeVar,
+    Union,
 )
-from typing_extensions import Literal, TypeAlias, TypedDict
 
+import networkx
+from loguru import logger
+from mosaik_api_v3.connection import RemoteException
 from mosaik_api_v3.types import (
     Attr,
     CreateResult,
@@ -51,18 +46,19 @@ from mosaik_api_v3.types import (
     FullId,
     ModelDescription,
     ModelName,
-    SimId,
     OutputRequest,
+    SimId,
 )
-from mosaik_api_v3.connection import RemoteException
+from tqdm import tqdm
+from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
-from mosaik import simmanager
+from mosaik import scheduler, simmanager
+from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.greetings_util import print_greetings
+from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
-from mosaik.simmanager import SimRunner, MosaikConfigTotal
-from mosaik import scheduler
-from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
+from mosaik.simmanager import MosaikConfigTotal, SimRunner
 from mosaik.tiered_time import TieredInterval, TieredTime
 
 if TYPE_CHECKING:
@@ -294,9 +290,9 @@ class AsyncWorld:
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[Tuple[SimId, TieredTime]] = (
-                networkx.DiGraph()
-            )
+            self.execution_graph: networkx.DiGraph[
+                Tuple[SimId, TieredTime]
+            ] = networkx.DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
