@@ -23,6 +23,7 @@ from mosaik_api_v3 import Attr, SimId
 import networkx as nx
 import datetime
 
+from mosaik.async_scenario import AsyncWorld
 from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
@@ -36,7 +37,7 @@ STANDARD_FOLDER = "figures"
 
 
 def connect_many_to_one(
-    world: World,
+    world: World | AsyncWorld,
     src_set: Iterable[Entity],
     dest: Entity,
     *attrs: Attr | Tuple[Attr, Attr],
@@ -52,7 +53,7 @@ def connect_many_to_one(
 
 
 def connect_randomly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
@@ -105,7 +106,7 @@ def connect_randomly(
 
 
 def _connect_evenly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
@@ -126,7 +127,7 @@ def _connect_evenly(
 
 
 def _connect_randomly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
@@ -359,7 +360,7 @@ def plot_dataflow_graph(
     )
 
 
-def plot_execution_graph(
+def plot_execution_graph(  # noqa: C901
     world: World,
     title: str = "",
     folder: str = STANDARD_FOLDER,
