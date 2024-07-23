@@ -302,6 +302,12 @@ class AsyncWorld:
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
 
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.shutdown()
+
     @contextlib.contextmanager
     def group(self):
         parent_group = self.current_group

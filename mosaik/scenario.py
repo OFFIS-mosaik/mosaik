@@ -70,6 +70,7 @@ class World:
 
     loop: asyncio.AbstractEventLoop
     _async_world: AsyncWorld
+    _no_shutdown_in_run: bool = False
 
     def __init__(
         self,
@@ -101,6 +102,13 @@ class World:
             max_loop_iterations=max_loop_iterations,
             skip_greetings=skip_greetings,
         )
+
+    def __enter__(self):
+        self._no_shutdown_in_run = True
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.shutdown()
 
     def group(self):
         return self._async_world.group()
@@ -226,6 +234,8 @@ class World:
         rt_strict: bool = False,
         print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
+        *,
+        shutdown: bool = True,
     ):
         """
         Start the simulation until the simulation time *until* is reached.
@@ -268,7 +278,8 @@ class World:
                 until, rt_factor, rt_strict, print_progress, lazy_stepping
             )
         )
-        self.shutdown()
+        if shutdown and not self._no_shutdown_in_run:
+            self.shutdown()
 
     def shutdown(self):
         """
@@ -398,13 +409,13 @@ class ModelMock(object):
     def name(self) -> ModelName:
         return self._async_model_mock.name
 
-    def __call__(self, **model_params):
+    def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.
         """
         return self._loop.run_until_complete(self._async_model_mock(**model_params))
 
-    def create(self, num: int, **model_params):
+    def create(self, num: int, **model_params: Any):
         """
         Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.
