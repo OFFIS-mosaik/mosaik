@@ -6,15 +6,17 @@ Currently, this is only :class:`mosaik.scenario.World`.
 
 """
 
-# Saying "import X as X" (with X repeated) is the standard way of
-# marking to linters and type checkers that something is re-exported.
 from loguru import logger
-from mosaik.scenario import SimConfig as SimConfig
-from mosaik.scenario import World as World
 
 from mosaik._version import version
 
-__all__ = ["World"]
+# Saying "import X as X" (with X repeated) is the standard way of
+# marking to linters and type checkers that something is re-exported.
+from mosaik.async_scenario import AsyncWorld as AsyncWorld
+from mosaik.scenario import SimConfig as SimConfig
+from mosaik.scenario import World as World
+
+__all__ = ["World", "AsyncWorld"]
 __version__ = version
 
 logger.disable(__name__)
