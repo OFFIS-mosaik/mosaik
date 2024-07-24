@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+from types import TracebackType
 from typing import (
     Any,
     Awaitable,
@@ -20,21 +21,22 @@ from typing import (
     Iterable,
     Optional,
     Tuple,
+    Type,
     Union,
 )
+
 from loguru import logger
+from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
-from mosaik_api_v3.types import Attr, ModelName, SimId
-
 from mosaik.async_scenario import (
+    SENTINEL,
     AsyncModelFactory,
     AsyncModelMock,
     AsyncWorld,
     Entity,
-    SimConfig,
-    SENTINEL,
     MosaikConfig,
+    SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
 
@@ -107,8 +109,12 @@ class World:
         self._no_shutdown_in_run = True
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: Type[Exception], exc: Exception, tb: TracebackType):
         self.shutdown()
+        # Don't suppress exceptions. Later on, we might want to add
+        # handling of mosaik exceptions here. (Make sure to unify
+        # this with the handling in `AsyncWorld`'s `__aexit__`.)
+        return False
 
     def group(self):
         return self._async_world.group()

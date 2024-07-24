@@ -20,6 +20,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -32,6 +33,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -300,8 +302,13 @@ class AsyncWorld:
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self, exc_type: Type[Exception], exc: Exception, tb: TracebackType
+    ):
         await self.shutdown()
+        # Don't suppress exceptions. Later on, we might want to add
+        # handling of mosaik exceptions here.
+        return False
 
     @contextlib.contextmanager
     def group(self):
