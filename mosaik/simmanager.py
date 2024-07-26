@@ -10,20 +10,20 @@ already running simulators and manage access to them.
 
 from __future__ import annotations
 
-from ast import literal_eval
 import asyncio
 import collections
 import heapq as hq
 import importlib
 import itertools
 import os
+import platform
 import shlex
 import subprocess
 import sys
-import platform
+from ast import literal_eval
 from json import JSONEncoder
-from loguru import logger
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Coroutine,
@@ -34,40 +34,41 @@ from typing import (
     OrderedDict,
     Set,
     Tuple,
-    TYPE_CHECKING,
     Union,
     cast,
 )
-import tqdm
-from typing_extensions import Literal, TypeAlias, TypedDict
 
 import mosaik_api_v3
+import tqdm
+from loguru import logger
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (
+    Attr,
+    EntityId,
+    FullId,
+    InputData,
     OutputData,
     OutputRequest,
     SimId,
     Time,
-    InputData,
-    Attr,
-    EntityId,
-    FullId,
 )
+from typing_extensions import Literal, TypeAlias, TypedDict
+
+from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import (
     NonSerializableOutputsError,
     ScenarioError,
     SimulationError,
 )
 from mosaik.progress import Progress
-from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
-from mosaik.adapters import init_and_get_adapter
+from mosaik.proxies import BaseProxy, LocalProxy, Proxy, RemoteProxy
 from mosaik.tiered_time import TieredInterval, TieredTime
 
 if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import World, ConnectModel, PythonModel, CmdModel
+    from mosaik.async_scenario import AsyncWorld, CmdModel, ConnectModel, PythonModel
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -82,7 +83,7 @@ class MosaikConfigTotal(TypedDict):
 
 
 async def start(
-    world: World,
+    world: AsyncWorld,
     sim_name: str,
     sim_id: SimId,
     time_resolution: float,
@@ -544,10 +545,10 @@ class SimRunner:
 
 
 class MosaikRemote(mosaik_api_v3.MosaikProxy):
-    world: World
+    world: AsyncWorld
     sid: SimId
 
-    def __init__(self, world: World, sid: SimId):
+    def __init__(self, world: AsyncWorld, sid: SimId):
         self.world = world
         self.sid = sid
 

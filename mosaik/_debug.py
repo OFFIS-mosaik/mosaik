@@ -9,11 +9,11 @@ from copy import deepcopy
 from time import perf_counter
 from typing import Dict, List, Optional, Tuple
 
+import networkx as nx
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3 import InputData, SimId
-import networkx as nx
 
-from mosaik import scheduler
+from mosaik import AsyncWorld, scheduler
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import TieredInterval, TieredTime
@@ -30,7 +30,7 @@ def enable():
     """
 
     async def wrapped_step(
-        world: World, sim: SimRunner, inputs: InputData, max_advance: int
+        world: AsyncWorld, sim: SimRunner, inputs: InputData, max_advance: int
     ):
         pre_step(world, sim, inputs)
         ret = await _originals["step"](world, sim, inputs, max_advance)
@@ -68,7 +68,7 @@ def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, TieredTi
     )
 
 
-def pre_step(world: World, sim: SimRunner, inputs: InputData):
+def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
     """
     Add a node for the current step and edges from all dependencies to the
     :attr:`mosaik.scenario.World.execution_graph`.
@@ -123,7 +123,7 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
             assert sims[suc].progress.time + TieredInterval(1) >= next_step
 
 
-def post_step(world: World, sim: SimRunner):
+def post_step(world: AsyncWorld, sim: SimRunner):
     """
     Record time after a step and add self-step edge.
     """
@@ -140,7 +140,7 @@ def post_step(world: World, sim: SimRunner):
         sim.next_self_step = None
 
 
-def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
+def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = []):
     actual_graph = world.execution_graph
     expected_graph = parse_execution_graph(expected_str)
     for node in extra_nodes:
@@ -196,7 +196,7 @@ def assert_graph(world: World, expected_str: str, extra_nodes: List[str] = []):
     assert actual_graph.adj == expected_graph.adj
 
 
-def assert_inputs(world: World, expected_inputs: Dict[str, InputData]):
+def assert_inputs(world: AsyncWorld, expected_inputs: Dict[str, InputData]):
     eg = world.execution_graph
     for node_str, expected_data in expected_inputs.items():
         node = parse_node(node_str)

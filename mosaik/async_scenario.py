@@ -28,6 +28,7 @@ from typing import (
     Dict,
     FrozenSet,
     Iterable,
+    Iterator,
     List,
     NoReturn,
     Optional,
@@ -241,7 +242,7 @@ class AsyncWorld:
     use_cache: bool
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
-    _sim_ids: Dict[ModelName, Iterable[int]]
+    _sim_ids: Dict[ModelName, Iterator[int]]
 
     main_group: SimGroup
     current_group: SimGroup
@@ -603,7 +604,7 @@ class AsyncWorld:
         for sid, task in requests.items():
             results_by_sim[sid] = task.result()
 
-        results = {}
+        results: Dict[Entity, Dict[Attr, Any]] = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
 
@@ -1101,7 +1102,7 @@ class AsyncModelMock(object):
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
 
-    async def __call__(self, **model_params):
+    async def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.
         """
