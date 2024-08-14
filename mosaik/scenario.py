@@ -45,6 +45,17 @@ class World:
     """
     The world holds all data required to specify and run the scenario.
 
+    We recommend that you use the world in a ``with`` block like so:
+
+        with mosaik.World(SIM_CONFIG) as world:
+            # Scenario setup ...
+
+            world.run(until=UNTIL)
+
+    This way, mosaik will keep the connection to the simulators alive
+    until the end of the with block and you can still call extra methods
+    on the to retrieve final simulation data, if needed.
+
     It provides a method to start a simulator process (:meth:`start()`) and
     manages the simulator instances.
 
@@ -244,7 +255,9 @@ class World:
         shutdown: bool = True,
     ):
         """
-        Start the simulation until the simulation time *until* is reached.
+        Start the simulation until the simulation time *until* is
+        reached. As mosaik has no way of resetting the simulators to
+        their starting state, this method can only be called once.
 
         In order to perform real-time simulations, you can set *rt_factor* to
         a number > 0. A rt-factor of 1. means that 1 second in simulated time
@@ -271,8 +284,19 @@ class World:
         ``False`` a simulator always steps as long all input is provided. This
         might decrease the simulation time but increase the memory consumption.
 
-        Before this method returns, it stops all simulators and closes mosaik's
-        server socket. So this method should only be called once.
+        At the end of the simulation, mosaik will stop all simulators
+        and close the connections to them. There are two exceptions to
+        this:
+
+        - If the flag *shutdown* is set, mosaik will not close the
+          connection. In this case, you have to call
+          :meth:`shutdown` yourself.
+        - If the :cls:`World` is used in a ``with`` block (recommended),
+          the connection will be closed at the end of that block,
+          instead.
+
+        (Keeping the connection open is useful to extract final data
+        from simulators using extra methods.)
         """
         if self.loop.is_closed():
             raise RuntimeError(
