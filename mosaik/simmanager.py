@@ -678,7 +678,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         .. warning::
             This method is deprecated and will be removed in a future release.
             Implement cyclic data flow using time-shifted and weak connections instead.
-  
+
         Set *data* as input data for all affected simulators.
 
         *data* is a dictionary mapping source entity IDs to destination entity

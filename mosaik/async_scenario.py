@@ -1141,7 +1141,7 @@ class AsyncModelMock(object):
         else:
             assert e["type"] in self._proxy.meta["models"], (
                 f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
-                'data.'
+                "data."
             )
 
 
