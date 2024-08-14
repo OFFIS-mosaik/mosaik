@@ -16,6 +16,7 @@ from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import proxies, scenario, simmanager, World
 from mosaik.exceptions import (
+    DuplicateEntityIdError,
     NonSerializableOutputsError,
     ScenarioError,
     SimulationError,
@@ -49,6 +50,9 @@ sim_config: scenario.SimConfig = {
     },
     "FixedOutputSim": {
         "python": "tests.simulators.fixed_output_sim:FixedOutputSim",
+    },
+    "EchoSim": {
+        "python": "tests.simulators.loop_simulators.echo_simulator:EchoSim",
     },
 }
 
@@ -662,3 +666,16 @@ def test_non_serializable_outputs_error(world: World):
     world.connect(src_entity, dest_entity, ("out", "val_in"))
     with pytest.raises(NonSerializableOutputsError):
         world.run(until=1)
+
+
+def test_repeated_entity_ids(world: World):
+    """A cls:`DuplicateEntityIdError` should be raised if a simulator
+    creates multiple entities with the same entity ID. (Otherwise,
+    values for those entities get mixed up during the simulation.)"""
+    # EchoSim always uses the entity ID "Echo"
+    echo_sim = world.start("EchoSim")
+    echo_sim.A()
+    with pytest.raises(DuplicateEntityIdError) as exc_info:
+        echo_sim.A()
+    assert exc_info.value.simulator == "EchoSim-0"
+    assert exc_info.value.entity_id == "Echo"
