@@ -51,7 +51,7 @@ from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
 from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
 from mosaik.tiered_time import TieredInterval, TieredTime
 
@@ -1119,7 +1119,13 @@ class AsyncModelMock(object):
             )
 
             entity_set.append(entity)
-            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
+            # Test for the `created` flag. (There might be other nodes
+            # in the graph that arise from edged between related
+            # entities where the second entity has not yet been
+            # processed.)
+            if entity_graph.nodes.get(entity.full_id, {}).get("created", False):
+                raise DuplicateEntityIdError(sid, entity.eid)
+            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
 

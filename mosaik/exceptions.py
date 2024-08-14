@@ -54,3 +54,31 @@ class NonSerializableOutputsError(SimulationError):
             )
             + "\nThis is likely a problem in the source simulator(s)."
         )
+
+
+class SimulatorError(Exception):
+    """This exception is raised if a simulator does not behave
+    correctly."""
+
+    simulator: str
+
+    def __init__(self, simulator: str, *args: Any) -> None:
+        self.simulator = simulator
+        super().__init__(*args)
+
+
+class DuplicateEntityIdError(SimulatorError):
+    """This exception is raised if a simulator returns multiple entities
+    with the same entity ID."""
+
+    entity_id: str
+
+    def __init__(self, simulator: str, entity_id: str, *args: Any) -> None:
+        self.entity_id = entity_id
+        super().__init__(simulator, *args)
+
+    def __str__(self) -> str:
+        return (
+            f"Simulator {self.simulator} returned multiple entities "
+            f"with entity ID '{self.entity_id}'."
+        )
