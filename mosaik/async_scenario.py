@@ -1122,7 +1122,7 @@ class AsyncModelMock(object):
             # Test for the `created` flag. (There might be other nodes
             # in the graph that arise from edges between related
             # entities where the second entity has not yet been
-            # tprocessed.)
+            # processed.)
             if entity_graph.nodes.get(entity.full_id, {}).get("created", False):
                 raise DuplicateEntityIdError(sid, entity.eid)
             entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
