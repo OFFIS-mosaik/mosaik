@@ -436,9 +436,10 @@ class AsyncWorld:
 
     def connect_async_requests(self, src: AsyncModelFactory, dest: AsyncModelFactory):
         warnings.warn(
-            "Connections with async_requests are deprecated. They and the set_data "
-            "function will be removed in a future release. Use time_shifted and weak "
-            "connections instead.",
+            "Connections using async_requests and the "
+            "set_data function are deprecated and will be "
+            "removed in a future release. Please use "
+            "time_shifted and weak connections instead.",
             category=DeprecationWarning,
         )
         src_sim = self.sims[src._sid]
@@ -1140,7 +1141,7 @@ class AsyncModelMock(object):
         else:
             assert e["type"] in self._proxy.meta["models"], (
                 f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
-                'data.'
+                "data."
             )
 
 

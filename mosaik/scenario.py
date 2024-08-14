@@ -142,6 +142,10 @@ class World(object):
         weak: bool = False,
     ):
         """
+        .. warning::
+            The keyword *async_requests* is deprecated and will be removed in a future release.
+            Implement cyclic data flow using time-shifted and weak connections instead.
+
         Connect the *src* entity to *dest* entity.
 
         Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in

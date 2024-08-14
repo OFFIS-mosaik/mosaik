@@ -621,6 +621,10 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
     async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
         """
+        .. warning::
+            This method is deprecated and will be removed in a future release.
+            Implement cyclic data flow using time-shifted and weak connections instead.
+
         Return the data for the requested attributes *attrs*.
 
         *attrs* is a dict of (fully qualified) entity IDs mapping to lists
@@ -671,6 +675,10 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
     async def set_data(self, data: Dict[FullId, Dict[Attr, Any]]):
         """
+        .. warning::
+            This method is deprecated and will be removed in a future release.
+            Implement cyclic data flow using time-shifted and weak connections instead.
+
         Set *data* as input data for all affected simulators.
 
         *data* is a dictionary mapping source entity IDs to destination entity
