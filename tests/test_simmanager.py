@@ -669,6 +669,10 @@ def test_non_serializable_outputs_error(world: World):
 
 
 def test_repeated_entity_ids(world: World):
+    """A cls:`DuplicateEntityIdError` should be raised if a simulator
+    creates multiple entities with the same entity ID. (Otherwise,
+    values for those entities get mixed up during the simulation.)"""
+    # EchoSim always uses the entity ID "Echo"
     echo_sim = world.start("EchoSim")
     echo_sim.A()
     with pytest.raises(DuplicateEntityIdError) as exc_info:
