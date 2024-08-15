@@ -20,7 +20,6 @@ default:
       - .cache/uv
 
 Linting:
-  allow_failure: true
   stage: Checks
   script:
     # Run rye twice (it's fast enough), so we see the output both in the job log
