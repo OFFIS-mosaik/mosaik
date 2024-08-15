@@ -2,8 +2,9 @@ variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 stages:
- - Tests
- - Release
+  - Checks # Quick checks which fail fast
+  - Tests # Longer tests
+  - Release # Only for tags on master
 
 workflow:
   rules:
@@ -37,8 +38,7 @@ Unit tests:
         path: coverage.xml
   coverage: /TOTAL.* (\d+.?\d*)%/
   rules:
-    - if: '$CI_COMMIT_TAG == null'
-  needs: []
+    - if: "$CI_COMMIT_TAG == null"
 
 Benchmark tests:
   allow_failure: true
@@ -49,37 +49,39 @@ Benchmark tests:
   script:
     - rye test -- --benchmarks tests/test_benchmarks.py
   rules:
-    - if: '$CI_COMMIT_TAG == null'
+    - if: "$CI_COMMIT_TAG == null"
       when: manual
-  needs: []
 
 Linting:
   allow_failure: true
-  stage: Tests
+  stage: Checks
   script:
     # Run rye twice (it's fast enough), so we see the output both in the job log
     # and in the code-quality report on the merge request.
-    - FORCE_COLOR=1 rye lint -- -e
-    - rye lint -- --output-format=gitlab > lintreport.json
+    - FORCE_COLOR=1 rye lint
+  after_script:
+    - rye lint -- -e --output-format=gitlab > lintreport.json
+    - cat lintreport.json
   artifacts:
     when: always
     reports:
       codequality: lintreport.json
   rules:
-    - if: '$CI_COMMIT_TAG == null'
+    - if: "$CI_COMMIT_TAG == null"
   needs: []
 
 Formatting:
-  stage: Tests
+  stage: Checks
   script:
-    - rye format --check
+    - rye format -- --diff
   rules:
-    - if: '$CI_COMMIT_TAG == null'
+    - if: "$CI_COMMIT_TAG == null"
   needs: []
 
 Type checking:
+  when: manual # These produce too much noise for now, so only run manually
   allow_failure: true
-  stage: Tests
+  stage: Checks
   before_script:
     - rye sync
   script:
