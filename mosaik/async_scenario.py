@@ -284,9 +284,9 @@ class AsyncWorld:
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[
-                Tuple[SimId, TieredTime]
-            ] = networkx.DiGraph()
+            self.execution_graph: networkx.DiGraph[Tuple[SimId, TieredTime]] = (
+                networkx.DiGraph()
+            )
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
