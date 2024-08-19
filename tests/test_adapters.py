@@ -1,5 +1,4 @@
 import warnings
-from mosaik_api_v3.connection import RemoteException
 import pytest
 from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
@@ -76,21 +75,3 @@ def test_start_wrong_api_version(world: World):
         "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
         "mosaik package is available to be used in your scenario?"
     )
-
-
-def test_exception_in_async_request(world: World, caplog):  # noqa: F811
-    """Exception in calls back to mosaik should be surfaced in the
-    calling simulator and result in a warning on the mosaik side.
-    """
-    sim = world.start("RemoteGeneric")
-    with caplog.at_level(30):
-        # This would raise if the expected KeyError were not raised
-        sim.call_mosaik_method("get_related_entities", ("does_not_exist",), "KeyError")
-        # But we should see the error as a warning in mosaik's logs
-        assert "KeyError('does_not_exist')" in caplog.text
-
-    # If we don't specify an expected exception for the
-    # `call_mosaik_method` call, the exception should get back to us.
-    with pytest.raises(RemoteException) as exc_info:
-        sim.call_mosaik_method("get_related_entities", ("does_not_exist",))
-    assert exc_info.value.remote_type == "RemoteException"

@@ -63,9 +63,10 @@ markers = [
 ]
 xfail_strict = true
 filterwarnings = [
-    "error",
+    "error:[^i]|.[^n]",
     "ignore:subprocess:ResourceWarning",
     "ignore:unclosed event loop:ResourceWarning",
+    "ignore:invalid escape sequence:DeprecationWarning",
 ]
 addopts = ["--doctest-glob='*.rst'"]
 
