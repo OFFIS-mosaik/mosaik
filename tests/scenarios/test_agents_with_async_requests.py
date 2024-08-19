@@ -27,7 +27,9 @@ def create_scenario(world: World):
     world.connect(model_a, agent_d, async_requests=True)
 
 
-@pytest.mark.filterwarnings("ignore:Connections with async_requests:DeprecationWarning")
+@pytest.mark.filterwarnings(
+    "ignore:Connections using async_requests:DeprecationWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=5)

@@ -266,7 +266,7 @@ def test_world_connect_any_inputs(world: World):
     }
 
 
-@pytest.mark.filterwarnings("ignore:Connections with async_requests")
+@pytest.mark.filterwarnings("ignore:Connections using async_requests")
 def test_world_connect_async_requests(world: World):
     a = world.start("ExampleSim").A(init_val=0)
     b = world.start("ExampleSim").B(init_val=0)

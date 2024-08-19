@@ -27,8 +27,10 @@ events : dict of {float: int}, default {}
 import asyncio
 import logging
 import mosaik_api_v3
+from mosaik_api_v3.connection import RemoteException
 import copy
 from time import sleep
+from typing import Any, List, Optional
 
 
 logger = logging.getLogger("test_simulator")
@@ -149,6 +151,30 @@ class TestSim(mosaik_api_v3.Simulator):
 
     def method_b(self, val):
         return f"method_b({val})"
+
+    def call_mosaik_method(
+        self,
+        func_name: str,
+        args: List[Any],
+        expect_except: Optional[str] = None,
+    ):
+        """Test a mosaik method. The method ``func_name`` will be called
+        with the arguments ``args``. If ``expect_except`` is
+        non-``None``, this raises if no ``RemoteException`` is raised by
+        that call, or if the remote type of the exception is not
+        ``expect_except``. If ``expect_except`` is ``None``, any
+        exception raised will be passed on to the caller, instead.
+        """
+        func = getattr(self.mosaik, func_name)
+        if expect_except is not None:
+            try:
+                yield func(*args)
+            except RemoteException as e:
+                assert e.remote_type == expect_except
+            else:
+                raise Exception(f"Expected exception {expect_except}.")
+        else:
+            yield func(*args)
 
     def event_setter(self):
         last_time = 0

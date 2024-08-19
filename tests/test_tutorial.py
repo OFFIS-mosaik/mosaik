@@ -19,7 +19,8 @@ CASES = glob.glob(os.path.join(glob.escape(CODE_DIR), "*.out"))
 @pytest.mark.parametrize("outfile", CASES)
 def test_tutorial(outfile: str):
     python_file = outfile.rsplit(".", 1)[0] + ".py"
-    expected = open(outfile).read()
+    with open(outfile) as f:
+        expected = f.read()
     out = subprocess.check_output(
         [sys.executable, python_file], cwd=CODE_DIR, universal_newlines=True
     )
