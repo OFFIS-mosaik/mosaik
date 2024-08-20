@@ -1,11 +1,9 @@
 [project]
 name = "mosaik"
 description = "mosaik is a flexible smart-grid co-simulation framework"
-authors = [
-    { name = "mosaik development team", email = "mosaik@offis.de" }
-]
+authors = [{ name = "mosaik development team", email = "mosaik@offis.de" }]
 dependencies = [
-    "mosaik-api-v3>=3.0.10",
+    "mosaik-api-v3>=3.0.12",
     "loguru>=0.6",
     "networkx>=2.5",
     "tqdm>=4.66.4",
@@ -61,15 +59,16 @@ packages = ["mosaik"]
 [tool.pytest.ini_options]
 markers = [
     "cmd_process: Contains a simulator started using cmd",
-    "weak: Contains a weak connection"
+    "weak: Contains a weak connection",
 ]
 xfail_strict = true
 filterwarnings = [
-    "error::pytest.PytestUnraisableExceptionWarning",
+    "error:[^i]|.[^n]",
+    "ignore:subprocess:ResourceWarning",
+    "ignore:unclosed event loop:ResourceWarning",
+    "ignore:invalid escape sequence:DeprecationWarning",
 ]
-addopts = [
-    "--doctest-glob='*.rst'"
-]
+addopts = ["--doctest-glob='*.rst'"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
@@ -86,4 +85,8 @@ stubPath = "typings"
 pythonPlatform = "Linux"
 
 [tool.ruff.lint]
-extend-select = ["C", "W"]
+extend-select = ["C", "W", "T20"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["T20"]
+"docs/*" = ["T20"]

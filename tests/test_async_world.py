@@ -17,10 +17,10 @@ async def test_async_world():
 
     world = AsyncWorld(sim_config, mosaik_config={"addr": ("127.0.0.1", None)})
 
-    sim_p = await world.start("Python")
-    sim_c = await world.start("Cmd")
+    await world.start("Python")
+    await world.start("Cmd")
 
-    sim_cs = await asyncio.gather(
+    await asyncio.gather(
         world.start("Cmd"),
         world.start("Cmd"),
     )

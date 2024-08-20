@@ -334,7 +334,7 @@ class AsyncWorld:
             self.sims[sim_id].outputs = {}
         return model_factory
 
-    def connect_one(
+    def connect_one(  # noqa: C901
         self,
         src: Entity,
         dest: Entity,
@@ -849,7 +849,9 @@ class AsyncModelFactory:
     type: Literal["event-based", "time-based", "hybrid"]
     models: Dict[ModelName, AsyncModelMock]
 
-    def __init__(self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy):
+    def __init__(  # noqa: C901
+        self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy
+    ):
         self.meta = proxy.meta
         self._world = world
         self._group = group

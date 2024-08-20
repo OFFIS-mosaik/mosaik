@@ -2,8 +2,9 @@ variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 stages:
- - Tests
- - Release
+  - Checks # Quick checks which fail fast
+  - Tests # Longer tests
+  - Release # Only for tags on master
 
 workflow:
   rules:
@@ -17,6 +18,43 @@ default:
   cache:
     paths:
       - .cache/uv
+
+Linting:
+  stage: Checks
+  script:
+    # Run rye twice (it's fast enough), so we see the output both in the job log
+    # and in the code-quality report on the merge request.
+    - FORCE_COLOR=1 rye lint
+  after_script:
+    - rye lint -- -e --output-format=gitlab > lintreport.json
+  artifacts:
+    when: always
+    reports:
+      codequality: lintreport.json
+  rules:
+    - if: "$CI_COMMIT_TAG == null"
+
+Formatting:
+  stage: Checks
+  script:
+    - rye format -- --diff
+  rules:
+    - if: "$CI_COMMIT_TAG == null"
+
+Type checking:
+  when: manual # These produce too much noise for now, so only run manually
+  allow_failure: true
+  stage: Checks
+  before_script:
+    - rye sync
+  script:
+    - pyright --outputjson > typecheck_raw.json
+  after_script:
+    - pyright-to-gitlab-ci --src typecheck_raw.json --output typecheck.json --base_path .
+  artifacts:
+    when: always
+    reports:
+      codequality: typecheck.json
 
 Unit tests:
   stage: Tests
@@ -37,8 +75,7 @@ Unit tests:
         path: coverage.xml
   coverage: /TOTAL.* (\d+.?\d*)%/
   rules:
-    - if: '$CI_COMMIT_TAG == null'
-  needs: []
+    - if: "$CI_COMMIT_TAG == null"
 
 Benchmark tests:
   allow_failure: true
@@ -49,44 +86,8 @@ Benchmark tests:
   script:
     - rye test -- --benchmarks tests/test_benchmarks.py
   rules:
-    - if: '$CI_COMMIT_TAG == null'
+    - if: "$CI_COMMIT_TAG == null"
       when: manual
-  needs: []
-
-Linting:
-  allow_failure: true
-  stage: Tests
-  script:
-    - rye lint -- --output-format=gitlab > lintreport.json
-  artifacts:
-    when: always
-    reports:
-      codequality: lintreport.json
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-  needs: []
-
-Formatting:
-  stage: Tests
-  script:
-    - rye format --check
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-  needs: []
-
-Type checking:
-  allow_failure: true
-  stage: Tests
-  before_script:
-    - rye sync
-  script:
-    - pyright --outputjson > typecheck_raw.json
-  after_script:
-    - pyright-to-gitlab-ci --src typecheck_raw.json --output typecheck.json --base_path .
-  artifacts:
-    when: always
-    reports:
-      codequality: typecheck.json
 
 # Basic job to upload the newly tagged version of mosaik to pypi. The server can be chosen, i.e., the test or production server.
 .pypi:

@@ -143,8 +143,9 @@ class World(object):
     ):
         """
         .. warning::
-            The keyword *async_requests* is deprecated and will be removed in a future release.
-            Implement cyclic data flow using time-shifted and weak connections instead.
+            The keyword *async_requests* is deprecated and will be
+            removed in a future release. Implement cyclic data flow
+            using time-shifted and weak connections instead.
 
         Connect the *src* entity to *dest* entity.
 
