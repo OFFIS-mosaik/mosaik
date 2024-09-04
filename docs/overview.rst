@@ -146,4 +146,32 @@ a co-simulation framework:
    perform their simulation step in parallel if they don't depend on each
    other's data.
 
-   :doc:`Read more … <scheduler>`
+Mosaik System Architecture
+==========================
+
+.. image:: _static/mosaik_overview.png
+   :width: 100%
+   :align: center
+   :alt: mosaik
+
+After taking a look at the components that make up mosaik, we now move on to the overall architecture in which these components are placed.
+The mosaik co-simulation architecture can be divided into three parts: the core framework, 
+the set of adapters, and additional utility software.
+
+The core provides the basic co-simulation functionality 
+via a set of interconnected modules, the central two being the simulation manager and the scheduler modules. 
+The simulation manager is responsible for setting up and maintaining the connections between mosaik and the simulators. 
+The scheduler, on the other hand, coordinates the data exchange between the simulators during runtime. 
+A simulator is always an independently executable piece of software that implements a simulation model. 
+
+For user interaction with mosaik, two APIs are provided. 
+The simulator API has to be used to establish an interface between mosaik and a simulator that was implemented by the user. 
+It specifies the socket connection used for data exchange and outlines what kind of data the simulator has to accept and provide.
+The scenario API, on the other hand, allows users to set up executable co-simulation scenarios 
+by specifying which simulators are to be used and how they should be parameterized and interconnected
+with each other. 
+
+During execution, a scenario script employs the functionalities of the sim-manager and the scheduler. 
+An overview of the mosaik core architecture is provided below.
+
+:doc:`Read more … <scheduler>`
