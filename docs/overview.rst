@@ -157,20 +157,18 @@ An overview is provided below.
    :alt: mosaik
 
 
-The mosaik co-simulation architecture can be divided into two parts: the core framework as one part and
-the set of APIs and built-in simulators as the other.
-
-The core provides the basic co-simulation functionality 
+At the heart of the mosaik co-simulation architecture sits the mosaik core. It provides the basic co-simulation functionality 
 via a set of interconnected modules, the central two being the simulation manager and the scheduler modules. 
 For user interaction with this mosaik core, two APIs are provided. 
+
 The scenario API, on the one hand, allows users to set up executable co-simulation scenarios 
 by specifying which simulators are to be used and how they should be parameterized and interconnected
 with each other. 
 
-On the other hand, the simulator API has to be used to establish an interface between mosaik and a simulator that was implemented by the user. 
-It specifies the socket connection used for data exchange and outlines what kind of data the simulator has to accept and provide.
+On the other hand, the simulator API is used to execute low-end communication between the mosaik core and a connected simulator. 
+Most users will not encounter this API directly since several user-friendly high-level language APIs such as the Python API or the Java API are provided 
+that abstract the low-level communication with the simulator API and are highly recommended to use.
+Only the users with special requirements for their API or users that want to connect a new programming language have to use the simulator API directly.
 
-This process may sound daunting, but it can be simplified if the user chooses to use the second part of the mosaik architecture, 
-the aforementioned set of APIs, for example the Python API or the FMI API.
 Additionally, users can also use any of the included, pre-built simulators that mosaik includes, such as the pandapower simulator. 
 A full list of accessable APIs can be found :ref:`here<mosaik-core>`, a list of all provided simulators can be found :ref:`here<mosaik-components>`.
