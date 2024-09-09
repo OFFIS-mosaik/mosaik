@@ -12,7 +12,7 @@ Mosaik uses integers for the representation of time (to avoid rounding errors
 etc.). Its unit (to how many seconds one integer step corresponds) can be
 defined in the scenario, and is passed to every simulation component via the
 :ref:`init function <api.init>` as key-word parameter *time_resolution*. It's
-a floating point number and defaults to *1.*.
+a floating point number and defaults to *1*.
 
 
 .. _time_paradigms:

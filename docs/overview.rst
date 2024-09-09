@@ -166,14 +166,11 @@ For user interaction with this mosaik core, two APIs are provided.
 The scenario API, on the one hand, allows users to set up executable co-simulation scenarios 
 by specifying which simulators are to be used and how they should be parameterized and interconnected
 with each other. 
+
 On the other hand, the simulator API has to be used to establish an interface between mosaik and a simulator that was implemented by the user. 
 It specifies the socket connection used for data exchange and outlines what kind of data the simulator has to accept and provide.
-If the users plans on 
 
-The simulator API can be accessed by using any of the high-level APIs of the aforementioned set of APIs, for example the python API or the FMI API.
-Furthermore, users can also use any of the included, pre-built simulator that mosaik includes, such as the pandapower simulator. 
-A list of accessable APIs and simulators can be found :doc:`here<mosaik ecosystem>`.
-
-During execution, a scenario script employs the functionalities of the sim-manager and the scheduler. 
-
-:doc:`Read more … <scheduler>`
+This process may sound daunting, but it can be simplified if the user chooses to use the second part of the mosaik architecture, 
+the aforementioned set of APIs, for example the Python API or the FMI API.
+Additionally, users can also use any of the included, pre-built simulators that mosaik includes, such as the pandapower simulator. 
+A full list of accessable APIs can be found :ref:`here<mosaik-core>`, a list of all provided simulators can be found :ref:`here<mosaik-components>`.
