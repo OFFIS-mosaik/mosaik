@@ -20,7 +20,7 @@ from mosaik.exceptions import (
     SimulationError,
 )
 from mosaik.proxies import BaseProxy, LocalProxy
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 
 VENV = os.path.dirname(sys.executable)
@@ -578,8 +578,8 @@ def test_mosaik_remote(
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             sim_x = simmanager.SimRunner("X", proxy_x)
-            sim_x.successors[sim_x] = TieredInterval(0)
-            sim_x.successors_to_wait_for[sim_x] = TieredInterval(0)
+            sim_x.successors[sim_x] = TieredDuration(0)
+            sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
             sim_x.last_step = TieredTime(1)
             sim_x.current_step = TieredTime(0)
             sim_x.is_in_step = True
@@ -599,7 +599,7 @@ def test_mosaik_remote(
             sim_z = simmanager.SimRunner("Z", DummyProxy())
             world.sims["Z"] = sim_z
 
-            sim_x.successors[sim_y] = TieredInterval(0)
+            sim_x.successors[sim_y] = TieredDuration(0)
 
         async def run():
             channel_future: asyncio.Future[Channel] = asyncio.Future()

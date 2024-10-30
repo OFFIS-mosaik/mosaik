@@ -9,7 +9,6 @@ def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(x + y for x, y in zip(xs, ys))
 
 
-@functools.total_ordering
 @dataclass(frozen=True)
 class TieredDuration:
     pre_length: int
@@ -56,21 +55,22 @@ class TieredDuration:
         assert len(tiers) == len(other)
         return TieredDuration(*tiers, pre_length=self.pre_length, cutoff=cutoff)
 
-    def __lt__(self, other: TieredDuration):
+    def __le__(self, other: TieredDuration) -> bool:
         assert len(self) == len(other)
         assert self.pre_length == other.pre_length
-        for i, (s, o) in enumerate(zip(self.tiers, other.tiers)):
-            s_add_o_ext = other.cutoff <= i < self.cutoff
-            o_add_s_ext = self.cutoff <= i < other.cutoff
-            if s < o:
-                if s_add_o_ext:
-                    assert False, f"{self} and {other} are incomparable"
-                return True
-            if o > s:
-                if o_add_s_ext:
-                    assert False, f"{self} and {other} are incomparable"
-                return False
-        return False
+        joint_cutoff = min(self.cutoff, other.cutoff)
+        if self.tiers[0:joint_cutoff] < other.tiers[0:joint_cutoff]:
+            return True
+        return self.tiers <= other.tiers and self.cutoff <= other.cutoff
+
+    def __lt__(self, other: TieredDuration) -> bool:
+        return self <= other and not self == other
+
+    def __ge__(self, other: TieredDuration) -> bool:
+        return other <= self
+
+    def __gt__(self, other: TieredDuration) -> bool:
+        return other < self
 
     def __repr__(self):
         return (
@@ -104,3 +104,26 @@ class TieredTime:
 
     def __repr__(self):
         return f"{':'.join(map(str, self.tiers))}"
+
+
+class MinimalDurations:
+    durations: Set[TieredDuration]
+    """All the minimal durations. Invariant: No two durations in this
+    set are comparable.
+    """
+
+    def __init__(self):
+        self.durations = set()
+
+    def insert(self, duration: TieredDuration):
+        displaced_durations: Set[TieredDuration] = set()
+        for existing_duration in self.durations:
+            if duration < existing_duration:
+                displaced_durations.add(existing_duration)
+            if existing_duration <= duration:
+                # Because of the invariant of self.durations, we don't
+                # insert duration, and no other existing_duration can be
+                # displaced by duration
+                return
+        self.durations.difference_update(displaced_durations)
+        self.durations.add(duration)
