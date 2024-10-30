@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 import asyncio
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from typing import Any, Dict, Iterator, List, Tuple
+from subprocess import Popen
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 from loguru import logger
 
 from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
@@ -148,11 +149,21 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikProxy
+    _process: Optional[Popen[str]]
+    """The subprocess to run this simulator, if it was started by
+    mosaik. (Used for properly killing the process at the end.)
+    """
 
-    def __init__(self, channel: Channel, mosaik_remote: MosaikProxy):
+    def __init__(
+        self,
+        channel: Channel,
+        mosaik_remote: MosaikProxy,
+        process: Optional[Popen[str]] = None,
+    ):
         super().__init__()
         self._channel = channel
         self._mosaik_remote = mosaik_remote
+        self._process = process
         self._reader_task = asyncio.create_task(
             self._handle_remote_requests(), name="handle remote requests for ???"
         )
@@ -202,6 +213,8 @@ class RemoteProxy(BaseProxy):
             pass
         await self._channel.close()
         await self._reader_task
+        if self._process:
+            self._process.wait()
 
 
 def extract_version(meta: Meta) -> List[int]:

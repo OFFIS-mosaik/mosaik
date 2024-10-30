@@ -67,7 +67,8 @@ if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.scenario import World, ConnectModel, PythonModel, CmdModel
+    from mosaik.scenario import ConnectModel, PythonModel, CmdModel
+    from mosaik.async_scenario import AsyncWorld
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -82,7 +83,7 @@ class MosaikConfigTotal(TypedDict):
 
 
 async def start(
-    world: World,
+    world: AsyncWorld,
     sim_name: str,
     sim_id: SimId,
     time_resolution: float,
@@ -272,7 +273,7 @@ async def start_proc(
                 )
 
         try:
-            subprocess.Popen(
+            process = subprocess.Popen(
                 cmd,
                 bufsize=1,
                 cwd=cwd,
@@ -296,8 +297,12 @@ async def start_proc(
             channel = await asyncio.wait_for(
                 channel_future, timeout=mosaik_config["start_timeout"]
             )
-            return RemoteProxy(channel, mosaik_remote)
+            return RemoteProxy(channel, mosaik_remote, process)
         except asyncio.TimeoutError:
+            # Kill the subprocess if it does not connect to us in time
+            # Is this really what we want to do?
+            process.terminate()
+            process.wait()
             raise SimulationError(
                 f'Simulator "{sim_name}" did not connect to mosaik in time.'
             )
@@ -544,10 +549,10 @@ class SimRunner:
 
 
 class MosaikRemote(mosaik_api_v3.MosaikProxy):
-    world: World
+    world: AsyncWorld
     sid: SimId
 
-    def __init__(self, world: World, sid: SimId):
+    def __init__(self, world: AsyncWorld, sid: SimId):
         self.world = world
         self.sid = sid
 

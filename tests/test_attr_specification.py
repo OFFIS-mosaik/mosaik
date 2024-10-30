@@ -6,11 +6,12 @@ from mosaik_api_v3.types import (
     Meta,
     ModelDescription,
 )
+import pytest_asyncio
 from typing_extensions import Type
 
 from mosaik.in_or_out_set import OutSet
-from mosaik.scenario import ModelMock, SimConfig, World
-from mosaik.async_scenario import parse_attrs
+from mosaik.scenario import ModelMock, SimConfig
+from mosaik.async_scenario import AsyncWorld, parse_attrs
 
 META: Meta = {
     "api_version": "3.0",
@@ -31,11 +32,12 @@ SIM_CONFIG: SimConfig = {
 }
 
 
-@pytest.fixture(name="world")
-def world_fixture():
-    world = World(SIM_CONFIG)
+@pytest_asyncio.fixture(name="world")
+async def world_fixture():
+    world = AsyncWorld(SIM_CONFIG)
     yield world
-    world.shutdown()
+    print("Shutting down world")
+    await world.shutdown()
 
 
 # Use parametrization to test many different cases. To make the
@@ -112,14 +114,15 @@ def test_parse_attrs(
             parse_attrs(model_description, type)
 
 
-def test_parse_attr_result_is_assigned_correctly(world: World):
+@pytest.mark.asyncio
+async def test_parse_attr_result_is_assigned_correctly(world: AsyncWorld):
     new_meta = deepcopy(META)
     del new_meta["models"]["ModelName"]["attrs"]
     new_meta["models"]["ModelName"]["trigger"] = []
     new_meta["models"]["ModelName"]["non-trigger"] = ["attr_1"]
     new_meta["models"]["ModelName"]["non-persistent"] = ["attr_2"]
     new_meta["models"]["ModelName"]["persistent"] = ["attr_3"]
-    model = cast(ModelMock, world.start("MetaMirror", meta=new_meta).ModelName)
+    model = cast(ModelMock, (await world.start("MetaMirror", meta=new_meta)).ModelName)
     assert model.measurement_inputs == frozenset(["attr_1"])
     assert model.event_inputs == frozenset()
     assert model.measurement_outputs == frozenset(["attr_3"])
@@ -128,9 +131,10 @@ def test_parse_attr_result_is_assigned_correctly(world: World):
     assert model.output_attrs == frozenset(["attr_2", "attr_3"])
 
 
-def test_parse_attr_result_called_by_world_start(world: World):
+@pytest.mark.asyncio
+async def test_parse_attr_result_called_by_world_start(world: AsyncWorld):
     new_meta = deepcopy(META)
     new_meta["type"] = "time-based"
     new_meta["models"]["ModelName"]["trigger"] = ["attr_1"]
     with pytest.raises(ValueError):
-        world.start("MetaMirror", meta=new_meta)
+        await world.start("MetaMirror", meta=new_meta)

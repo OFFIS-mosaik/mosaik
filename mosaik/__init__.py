@@ -10,6 +10,7 @@ Currently, this is only :class:`mosaik.scenario.World`.
 # marking to linters and type checkers that something is re-exported.
 from mosaik.scenario import SimConfig as SimConfig
 from mosaik.scenario import World as World
+from mosaik.async_scenario import AsyncWorld as AsyncWorld
 
 from mosaik._version import version
 

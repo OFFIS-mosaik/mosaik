@@ -149,7 +149,9 @@ def test_start_external_process(world: World):
 def test_start_proc_timeout_accept(world, caplog):
     world.config["start_timeout"] = 0.1
     with pytest.raises(SimulationError) as exc_info:
-        world.loop.run_until_complete(simmanager.start(world, "Fail", "", 1.0, {}))
+        proxy = world.loop.run_until_complete(
+            simmanager.start(world, "Fail", "", 1.0, {})
+        )
     assert (
         exc_info.value.args[0] == 'Simulator "Fail" did not connect to mosaik in time.'
     )
@@ -182,7 +184,7 @@ def test_start_external_process_with_environment_variables(world: World, tmpdir)
     """
     Assert that you can set environment variables for a new sub-process.
     """
-    # Replace sim_config for this test:z
+    # Replace sim_config for this test
     print(tmpdir.strpath)
     world._async_world.sim_config = {
         "SimulatorMockTmp": {

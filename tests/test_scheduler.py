@@ -5,11 +5,13 @@ from heapq import heappop, heappush
 from mosaik_api_v3 import InputData
 import pytest
 from pytest import mark, param
+import pytest_asyncio
 from tqdm import tqdm
 from typing import Any, Coroutine, Iterable, List
 
 from mosaik import exceptions, scenario, scheduler, simmanager, World
 from mosaik.adapters import init_and_get_adapter
+from mosaik.async_scenario import AsyncWorld
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
@@ -38,7 +40,7 @@ async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: i
     return task.cancelled()
 
 
-@pytest.fixture(name="world")
+@pytest.fixture(name="async_world")
 def world_fixture(request: pytest.FixtureRequest):
     """This fixture provides an example scenario for testing the
     scheduler. It looks like this:
@@ -65,7 +67,8 @@ def world_fixture(request: pytest.FixtureRequest):
     for i in range(6):
         sim_id = f"Sim-{i}"
         proxy = LocalProxy(
-            SimulatorMock(request.param), simmanager.MosaikRemote(world, sim_id)
+            SimulatorMock(request.param),
+            simmanager.MosaikRemote(world._async_world, sim_id),
         )
         proxy = world.loop.run_until_complete(
             init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
@@ -106,6 +109,74 @@ def world_fixture(request: pytest.FixtureRequest):
     world._async_world.cache_triggering_ancestors()
     yield world
     world.shutdown()
+
+
+@pytest_asyncio.fixture
+async def async_world(request: pytest.FixtureRequest):
+    """This fixture provides an example scenario for testing the
+    scheduler. It looks like this:
+
+    ┌───────┐                               ┌──────────────────────┐
+    │ Sim-0 ├─────────┐                     │ ┌───────┐            │
+    └───────┘         ▼                     │ │ Sim-4 │            │
+                  ┌───────┐     ┌───────┐   │ └─┬─────┘            │
+                  │ Sim-2 ├────►│ Sim-3 │   │   ▼   ▲time-shifted/ │
+                  └───────┘     └───────┘   │ ┌─────┴─┐   weak     │
+    ┌───────┐         ▲                     │ │ Sim-5 │            │
+    │ Sim-1 ├─────────┘                     │ └───────┘            │
+    └───────┘                               └──────────────────────┘
+
+    All connections are non-triggering if the param value is
+    "time-based", and are triggering if the param value is
+    "event-based". The edge marked time-shifted/weak is time-shifted or
+    weak in these two cases, respectively. The box (indicating a
+    simulator group) only exists in the event-based case.
+    """
+    event_based = request.param == "event-based"
+    world = scenario.AsyncWorld({})
+    sims: List[SimRunner] = []
+    for i in range(6):
+        sim_id = f"Sim-{i}"
+        proxy = LocalProxy(
+            SimulatorMock(request.param), simmanager.MosaikRemote(world, sim_id)
+        )
+        proxy = await init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
+        sim = SimRunner(sim_id, proxy)
+        world.sims[sim_id] = sim
+        sims.append(sim)
+
+    class DummyTask:
+        def done(self):
+            return False
+
+    for sim in world.sims.values():
+        sim.task = DummyTask()
+
+    for src, dest in [(0, 2), (1, 2), (2, 3)]:
+        sims[src].successors[sims[dest]] = TieredInterval(0)
+        sims[dest].input_delays[sims[src]] = TieredInterval(0)
+        if event_based:
+            sims[src].triggers.setdefault(("1", "x"), []).append(
+                (sims[dest], TieredInterval(0))
+            )
+    if event_based:
+        sims[4].successors[sims[5]] = TieredInterval(0, 0)
+        sims[5].input_delays[sims[4]] = TieredInterval(0, 0)
+        sims[5].successors[sims[4]] = TieredInterval(0, 0)
+        sims[4].input_delays[sims[5]] = TieredInterval(0, 1)
+        sims[4].triggers[("1", "x")] = [(sims[5], TieredInterval(0, 0))]
+        sims[5].triggers[("1", "x")] = [(sims[4], TieredInterval(0, 1))]
+    else:
+        sims[4].successors[sims[5]] = TieredInterval(0)
+        sims[5].input_delays[sims[4]] = TieredInterval(0)
+        sims[5].successors[sims[4]] = TieredInterval(0)
+        sims[4].input_delays[sims[5]] = TieredInterval(1)
+
+    world.until = 4
+    world.rt_factor = None
+    world.cache_triggering_ancestors()
+    yield world
+    await world.shutdown()
 
 
 def test_run(monkeypatch):
@@ -178,7 +249,7 @@ def any_unset(events: Iterable[asyncio.Event]) -> bool:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("world", ["time-based", "event-based"], indirect=True)
+@pytest.mark.parametrize("async_world", ["time-based", "event-based"], indirect=True)
 @pytest.mark.parametrize(
     "weak, number_waiting",
     [
@@ -186,12 +257,14 @@ def any_unset(events: Iterable[asyncio.Event]) -> bool:
         (False, 2),
     ],
 )
-async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: int):
+async def test_wait_for_dependencies(
+    async_world: AsyncWorld, weak: bool, number_waiting: int
+):
     """
     Test waiting for dependencies and triggering them.
     """
-    test_sim: SimRunner = world.sims["Sim-2"]
-    pred_sim: SimRunner = world.sims["Sim-1"]
+    test_sim: SimRunner = async_world.sims["Sim-2"]
+    pred_sim: SimRunner = async_world.sims["Sim-1"]
     heappush(test_sim.next_steps, TieredTime(0))
     test_sim.input_delays[pred_sim] = TieredInterval(0, 1)
     stalled = await does_coroutine_stall(
@@ -201,34 +274,34 @@ async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: i
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("world", ["time-based"], indirect=True)
-async def test_wait_for_dependencies_all_done(world: World):
+@pytest.mark.parametrize("async_world", ["time-based"], indirect=True)
+async def test_wait_for_dependencies_all_done(async_world: AsyncWorld):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    heappush(world.sims["Sim-2"].next_steps, TieredTime(0))
+    heappush(async_world.sims["Sim-2"].next_steps, TieredTime(0))
     for dep_sid in ["Sim-0", "Sim-1"]:
-        world.sims[dep_sid].progress.time = TieredTime(1)
+        async_world.sims[dep_sid].progress.time = TieredTime(1)
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
+        scheduler.wait_for_dependencies(async_world.sims["Sim-2"], True),
         max_pass_backs=3,
     )
     assert not stalled
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("world", ["time-based"], indirect=True)
+@pytest.mark.parametrize("async_world", ["time-based"], indirect=True)
 @pytest.mark.parametrize("progress, should_stall", [(0, True), (1, False)])
 async def test_wait_for_dependencies_shifted(
-    world: World, progress: int, should_stall: bool
+    async_world: AsyncWorld, progress: int, should_stall: bool
 ):
     """
     Shifted dependency has not/has stepped far enough. Waiting is/is not
     required.
     """
-    world.sims["Sim-5"].progress = Progress(TieredTime(progress))
+    async_world.sims["Sim-5"].progress = Progress(TieredTime(progress))
     # Move this simulators first step to 1
-    sim_under_test = world.sims["Sim-4"]
+    sim_under_test = async_world.sims["Sim-4"]
     sim_under_test.next_steps = [TieredTime(1)]
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(sim_under_test, lazy_stepping=False),
@@ -238,13 +311,13 @@ async def test_wait_for_dependencies_shifted(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("world", ["time-based"], indirect=True)
+@pytest.mark.parametrize("async_world", ["time-based"], indirect=True)
 @pytest.mark.parametrize("lazy_stepping", [True, False])
-async def test_wait_for_dependencies_lazy(world: World, lazy_stepping: bool):
+async def test_wait_for_dependencies_lazy(async_world: AsyncWorld, lazy_stepping: bool):
     """
     Test waiting for dependencies and triggering them.
     """
-    sim_under_test = world.sims["Sim-1"]
+    sim_under_test = async_world.sims["Sim-1"]
     sim_under_test.next_steps = [TieredTime(1)]
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(sim_under_test, lazy_stepping)

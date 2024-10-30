@@ -1,3 +1,4 @@
+import gc
 import pytest
 import logging
 from loguru import logger
@@ -14,6 +15,18 @@ def caplog(caplog: LogCaptureFixture):
     handler_id = logger.add(PropogateHandler(), format="{message}")
     yield caplog
     logger.remove(handler_id)
+
+
+# This is occasionally useful when trying to debug ResourceWarnings and
+# the like, because it will cause them to right after the test (instead
+# of whenever garbage collection happens to run.)
+# Usually, `autouse` should be set to `False`. Set it temporarily to
+# `True` for these purposes.
+@pytest.fixture(autouse=True)
+def ensure_gc():
+    yield  # Run the test first
+    print("Collecting garbage")
+    gc.collect()
 
 
 # This turns off benchmark tests by default. (They can be run by giving
