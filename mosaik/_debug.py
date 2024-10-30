@@ -16,7 +16,7 @@ import networkx as nx
 from mosaik import scheduler
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 _originals = {
     "step": scheduler.step,
@@ -120,7 +120,7 @@ def pre_step(world: World, sim: SimRunner, inputs: InputData):
         if sim.last_step >= TieredTime(0):
             suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress.time + TieredInterval(1) >= next_step
+            assert sims[suc].progress.time + TieredDuration(1) >= next_step
 
 
 def post_step(world: World, sim: SimRunner):

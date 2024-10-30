@@ -115,3 +115,6 @@ venv.bak/
 # tox temporary artifacts
 /mosaik-*.*.*/
 pytest.xml
+
+# artifacts from heatpump docs
+docs/ecosystem/components/mosaik-heatpump

@@ -53,7 +53,7 @@ from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -173,7 +173,7 @@ def connect_interval(
     if weak:
         assert cutoff >= 2
         list_tiers[cutoff - 1] = weak
-    return TieredInterval(*list_tiers, cutoff=cutoff, pre_length=pre_length)
+    return TieredDuration(*list_tiers, cutoff=cutoff, pre_length=pre_length)
 
 
 class AsyncWorld:
@@ -757,7 +757,7 @@ class AsyncWorld:
         recalculation
         """
         sim_descs: Dict[
-            SimRunner, Dict[SimRunner, Tuple[TieredInterval, List[SimRunner]]]
+            SimRunner, Dict[SimRunner, Tuple[TieredDuration, List[SimRunner]]]
         ] = {sim: {} for sim in self.sims.values()}
         """For each SimRunner, all its descendants that have been found
         so far with the shortest delay to them and the path that

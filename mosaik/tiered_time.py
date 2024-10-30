@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
+from typing import Set
 
 
 def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
@@ -10,7 +11,7 @@ def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
 
 @functools.total_ordering
 @dataclass(frozen=True)
-class TieredInterval:
+class TieredDuration:
     pre_length: int
     cutoff: int
     tiers: tuple[int, ...]
@@ -40,7 +41,7 @@ class TieredInterval:
     def ext(self) -> tuple[int, ...]:
         return self.tiers[self.cutoff :]
 
-    def __add__(self, other: TieredInterval) -> TieredInterval:
+    def __add__(self, other: TieredDuration) -> TieredDuration:
         assert len(self) == other.pre_length
         add = tuple_add(self.add, other.add)
         if self.cutoff >= other.cutoff:
@@ -53,9 +54,9 @@ class TieredInterval:
         tiers = add + ext
         cutoff = min(self.cutoff, other.cutoff)
         assert len(tiers) == len(other)
-        return TieredInterval(*tiers, pre_length=self.pre_length, cutoff=cutoff)
+        return TieredDuration(*tiers, pre_length=self.pre_length, cutoff=cutoff)
 
-    def __lt__(self, other: TieredInterval):
+    def __lt__(self, other: TieredDuration):
         assert len(self) == len(other)
         assert self.pre_length == other.pre_length
         for i, (s, o) in enumerate(zip(self.tiers, other.tiers)):
@@ -86,7 +87,7 @@ class TieredTime:
     def __init__(self, *tiers: int):
         object.__setattr__(self, "tiers", tiers)
 
-    def __add__(self, interval: TieredInterval) -> TieredTime:
+    def __add__(self, interval: TieredDuration) -> TieredTime:
         assert len(self.tiers) == interval.pre_length
         return TieredTime(*(tuple_add(self.tiers, interval.add) + interval.ext))
 
