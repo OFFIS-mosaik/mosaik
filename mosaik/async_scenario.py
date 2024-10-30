@@ -167,6 +167,11 @@ def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
 def connect_interval(
     src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0
 ):
+    """Given two `SimGroup`s, calculate a TieredInterval connecting
+    simulators in these groups. The tiers will be 0, unless
+    `time_shifted` or `weak` are specified, in which case the given
+    values are placed in the highest and lowest tier, respectively.
+    """
     ascent, _, common_group = group_path(src_group, dest_group)
 
     pre_length = src_group.depth
