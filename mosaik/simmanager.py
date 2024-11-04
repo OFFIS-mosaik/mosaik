@@ -61,7 +61,7 @@ from mosaik.exceptions import (
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
-from mosaik.tiered_time import TieredDuration, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
@@ -361,19 +361,30 @@ class SimRunner:
     """The actual proxy for this simulator."""
 
     # Connection setup
-    input_delays: Dict[SimRunner, TieredDuration]
+    input_delays: Dict[SimRunner, MinimalDurations]
     """For each simulator that provides data to this simulator, the
     minimum over all input delays. This is used while waiting for
     dependencies.
     """
+    # TODO: Saving the minimal durations here might actually be wrong.
+    # We probably want to save *all* triggering durations.
     triggers: Dict[Port, List[Tuple[SimRunner, TieredDuration]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
     edge.
     """
     successors: Dict[SimRunner, TieredDuration]
+    """The immediate successors of this simulator. This is used when
+    lazy stepping to ensure that we don't step ahead too far. Therefore,
+    the duration is only used as an adapter, and will always have all
+    tiers 0. (Thus, we don't need `MinimalDurations` here.)
+    """
     successors_to_wait_for: Dict[SimRunner, TieredDuration]
-    triggering_ancestors: Dict[SimRunner, TieredDuration]
+    """The immediate successors that we always need to wait for (due
+    to async requests.) The duration only serves as an adapter (so we
+    don't need `MinimalDurations` here.)
+    """
+    triggering_ancestors: Dict[SimRunner, MinimalDurations]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.

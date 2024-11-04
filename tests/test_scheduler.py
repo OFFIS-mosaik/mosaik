@@ -13,7 +13,7 @@ from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
-from mosaik.tiered_time import TieredDuration, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 from tests.mocks.simulator_mock import SimulatorMock
 
@@ -34,7 +34,10 @@ async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: i
         if not task.done():
             task.cancel()
 
-    await asyncio.gather(task, canceller(), return_exceptions=True)
+    try:
+        await asyncio.gather(task, canceller())
+    except asyncio.CancelledError:
+        pass  # We expect this one
     return task.cancelled()
 
 
@@ -83,23 +86,23 @@ def world_fixture(request: pytest.FixtureRequest):
 
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
         sims[src].successors[sims[dest]] = TieredDuration(0)
-        sims[dest].input_delays[sims[src]] = TieredDuration(0)
+        sims[dest].input_delays[sims[src]] = MinimalDurations(TieredDuration(0))
         if event_based:
             sims[src].triggers.setdefault(("1", "x"), []).append(
                 (sims[dest], TieredDuration(0))
             )
     if event_based:
         sims[4].successors[sims[5]] = TieredDuration(0, 0)
-        sims[5].input_delays[sims[4]] = TieredDuration(0, 0)
+        sims[5].input_delays[sims[4]] = MinimalDurations(TieredDuration(0, 0))
         sims[5].successors[sims[4]] = TieredDuration(0, 0)
-        sims[4].input_delays[sims[5]] = TieredDuration(0, 1)
+        sims[4].input_delays[sims[5]] = MinimalDurations(TieredDuration(0, 1))
         sims[4].triggers[("1", "x")] = [(sims[5], TieredDuration(0, 0))]
         sims[5].triggers[("1", "x")] = [(sims[4], TieredDuration(0, 1))]
     else:
         sims[4].successors[sims[5]] = TieredDuration(0)
-        sims[5].input_delays[sims[4]] = TieredDuration(0)
+        sims[5].input_delays[sims[4]] = MinimalDurations(TieredDuration(0))
         sims[5].successors[sims[4]] = TieredDuration(0)
-        sims[4].input_delays[sims[5]] = TieredDuration(1)
+        sims[4].input_delays[sims[5]] = MinimalDurations(TieredDuration(1))
 
     world._async_world.until = 4
     world._async_world.rt_factor = None
@@ -193,7 +196,7 @@ async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: i
     test_sim: SimRunner = world.sims["Sim-2"]
     pred_sim: SimRunner = world.sims["Sim-1"]
     heappush(test_sim.next_steps, TieredTime(0))
-    test_sim.input_delays[pred_sim] = TieredDuration(0, 1)
+    test_sim.input_delays[pred_sim] = MinimalDurations(TieredDuration(0, 1))
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(test_sim, True)
     )
@@ -416,7 +419,7 @@ async def test_get_outputs_buffered(world: scenario.World):
     ],
 )
 @pytest.mark.parametrize("progress", [2, 3])
-def test_notify_dependencies(
+def test_trigger_successors(
     world: World,
     output_time: TieredTime,
     next_steps: List[TieredTime],
@@ -430,19 +433,19 @@ def test_notify_dependencies(
 
     heappush(world.sims["Sim-2"].next_steps, TieredTime(2))
 
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
 
     assert world.sims["Sim-2"].next_steps == next_steps
 
 
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
-def test_notify_dependencies_trigger(world: World):
+def test_trigger_successors_trigger(world: World):
     sim = world.sims["Sim-0"]
     sim.progress = Progress(TieredTime(0))
 
     sim.data = {"1": {"x": 1}}
     sim.output_time = TieredTime(1)
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
 
     assert world.sims["Sim-2"].next_steps == [TieredTime(1)]
 
@@ -478,7 +481,7 @@ async def test_get_outputs_shifted(world: World):
 
     sim.current_step = heappop(sim.next_steps)
     await scheduler.get_outputs(world._async_world, sim)
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
     scheduler.prune_dataflow_cache(world._async_world)
     assert sim.outputs[1] == {
         "0": {"x": 0, "y": 1},

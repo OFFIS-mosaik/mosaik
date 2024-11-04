@@ -7,7 +7,7 @@ from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
 import pytest
 
-from mosaik.tiered_time import TieredDuration
+from mosaik.tiered_time import MinimalDurations, TieredDuration
 
 sim_config: scenario.SimConfig = {
     "ExampleSim": {
@@ -134,7 +134,7 @@ def test_world_connect(world: World):
     assert sim_0.successors == {sim_1: TieredDuration(0)}
     assert sim_0.successors_to_wait_for == {}
     assert sim_1.successors == {}
-    assert sim_1.input_delays[sim_0] == TieredDuration(0)
+    assert sim_1.input_delays[sim_0] == MinimalDurations(TieredDuration(0))
 
     assert sim_1.pulled_inputs[(sim_0, TieredDuration(0))] == {
         ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
@@ -259,7 +259,7 @@ def test_world_connect_any_inputs(world: World):
     }
 
     assert sim_a.successors == {sim_b: TieredDuration(0)}
-    assert sim_b.input_delays[sim_a] == TieredDuration(0)
+    assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(0))
     assert to_dict(world.entity_graph) == {
         "ExampleSim-0." + a.eid: {"MetaMirror-0." + b.eid: {}},
         "MetaMirror-0." + b.eid: {"ExampleSim-0." + a.eid: {}},
@@ -273,7 +273,9 @@ def test_world_connect_async_requests(world: World):
     world.connect(a, b, async_requests=True)
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    sim_a.successors_to_wait_for = {sim_b}
+    assert sim_a.successors_to_wait_for == {
+        sim_b: TieredDuration(0, cutoff=1, pre_length=1)
+    }
 
 
 def test_world_connect_time_shifted(world: World):
@@ -287,7 +289,7 @@ def test_world_connect_time_shifted(world: World):
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
     assert sim_a.successors == {sim_b: TieredDuration(0)}
-    assert sim_b.input_delays[sim_a] == TieredDuration(1)
+    assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(1))
     assert world.sims["ExampleSim-0"].outputs[-1] == {
         a.eid: {"val_out": 1.0},
     }

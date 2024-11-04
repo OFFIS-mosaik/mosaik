@@ -116,7 +116,7 @@ async def sim_process(
             rt_check(rt_factor, rt_start, rt_strict, sim)
             await get_outputs(world, sim)
             sim.current_step = None
-            notify_dependencies(sim)
+            trigger_successors(sim)
             # TODO: Reduce the number of sims that need to be advanced
             # (At least only to those that could potentially be
             # triggered by this step; maybe there's even a more clever
@@ -193,10 +193,11 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     futures: List[Coroutine[Any, Any, TieredTime]] = []
     next_step = sim.next_steps[0]
 
-    for pre_sim, delay in sim.input_delays.items():
+    for pre_sim, min_delays in sim.input_delays.items():
         # Wait for pre_sim if it hasn't progressed enough to provide
         # the input for our current step.
-        futures.append(pre_sim.progress.has_passed(next_step, shift=delay))
+        for delay in min_delays.durations:
+            futures.append(pre_sim.progress.has_passed(next_step, shift=delay))
 
     for suc_sim, adapt in sim.successors_to_wait_for.items():
         futures.append(suc_sim.progress.has_reached(next_step + adapt))
@@ -291,9 +292,10 @@ def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     without causing a causality error.
     """
     ancs_next_steps: List[Time] = []
-    for anc_sim, distance in sim.triggering_ancestors.items():
+    for anc_sim, distances in sim.triggering_ancestors.items():
         if anc_sim.next_steps:
-            ancs_next_steps.append((anc_sim.next_steps[0] + distance).time)
+            for distance in distances.durations:
+                ancs_next_steps.append((anc_sim.next_steps[0] + distance).time)
 
     own_next_step = [sim.next_steps[0].time] if sim.next_steps else []
 
@@ -422,7 +424,7 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
         sim.data = data
 
 
-def notify_dependencies(sim: SimRunner) -> None:
+def trigger_successors(sim: SimRunner) -> None:
     """
     Notify all simulators waiting for us.
     """
@@ -465,7 +467,7 @@ def get_avg_progress(sims: Dict[SimId, SimRunner], until: int) -> int:
 
 def advance_progress(sim: SimRunner, world: AsyncWorld):
     pre_sim_induced_progress: List[TieredTime] = [
-        pre_sim.next_steps[0] + distance
+        distance.earliest_sum(pre_sim.next_steps[0])
         for pre_sim, distance in sim.triggering_ancestors.items()
         if pre_sim.next_steps
     ]
