@@ -1,4 +1,5 @@
 variables:
+  UV_VERSION: 0.5
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 stages:
@@ -13,8 +14,11 @@ workflow:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
 
 default:
-  image: rye
-  tags: [prepared-rye]
+  image:
+    name: ghcr.io/astral-sh/uv:$UV_VERSION
+    entrypoint: [""]
+  after_script:
+    - uv cache prune --ci
   cache:
     paths:
       - .cache/uv
@@ -24,9 +28,8 @@ Linting:
   script:
     # Run rye twice (it's fast enough), so we see the output both in the job log
     # and in the code-quality report on the merge request.
-    - FORCE_COLOR=1 rye lint
-  after_script:
-    - rye lint -- -e --output-format=gitlab > lintreport.json
+    - FORCE_COLOR=1 uvx ruff check
+    - uvx ruff check -- -e --output-format=gitlab -o lintreport.json
   artifacts:
     when: always
     reports:
@@ -37,7 +40,7 @@ Linting:
 Formatting:
   stage: Checks
   script:
-    - rye format -- --diff
+    - uvx ruff format -- --diff
   rules:
     - if: "$CI_COMMIT_TAG == null"
 
@@ -46,9 +49,9 @@ Type checking:
   allow_failure: true
   stage: Checks
   before_script:
-    - rye sync
+    - uv sync
   script:
-    - pyright --outputjson > typecheck_raw.json
+    - uvx pyright --pythonpath .venv/bin/python --outputjson > typecheck_raw.json
   after_script:
     - pyright-to-gitlab-ci --src typecheck_raw.json --output typecheck.json --base_path .
   artifacts:
@@ -62,10 +65,9 @@ Unit tests:
     matrix:
       - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   before_script:
-    - rye pin $PYTHON
-    - rye sync
+    - uv python pin $PYTHON
   script:
-    - rye test -- --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
+    - uv run pytest --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
   artifacts:
     when: always
     reports:
@@ -81,10 +83,9 @@ Benchmark tests:
   allow_failure: true
   stage: Tests
   before_script:
-    - rye pin 3.12
-    - rye sync
+    - uv pin 3.12
   script:
-    - rye test -- --benchmarks tests/test_benchmarks.py
+    - uv run pytest --benchmarks tests/test_benchmarks.py
   rules:
     - if: "$CI_COMMIT_TAG == null"
       when: manual
@@ -96,10 +97,10 @@ Benchmark tests:
     - echo "Check that tag exists on master branch"
     - git fetch origin master --tags
     - git branch --contains $CI_COMMIT_TAG | grep remotes/origin/master
-    - rye build
-    - rye publish --repository-url "$REPOSITORY_URL" --token $TWINE_TOKEN --yes
+    - uv build
+    - uv publish --repository-url "$REPOSITORY_URL" --token $TWINE_TOKEN --yes
     - touch pypi.env
-    - echo "PACKAGE_VERSION=$(rye version)" >> pypi.env
+    - echo "PACKAGE_VERSION=$CI_COMMIT_TAG" >> pypi.env
   artifacts:
     reports:
       dotenv: pypi.env
