@@ -1,8 +1,6 @@
 variables:
-  UV_VERSION: 0.5
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   PYTHON: 3.12 # Use 3.12 by default; overwritten in test matrix
-  BASE_LAYER: bookworm-slim
 
 stages:
   - Checks # Quick checks which fail fast
@@ -16,7 +14,8 @@ workflow:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
 
 default:
-  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON-$BASE_LAYER
+  image: uv
+  tags: [prepared-rye]
   before_script:
     - uv python pin $PYTHON
     - uv sync
