@@ -1,6 +1,8 @@
 variables:
   UV_VERSION: 0.5
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  PYTHON: 3.12 # Use 3.12 by default; overwritten in test matrix
+  BASE_LAYER: bookworm-slim
 
 stages:
   - Checks # Quick checks which fail fast
@@ -14,9 +16,10 @@ workflow:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
 
 default:
-  image:
-    name: ghcr.io/astral-sh/uv:$UV_VERSION
-    entrypoint: [""]
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON-$BASE_LAYER
+  before_script:
+    - uv python pin $PYTHON
+    - uv sync
   after_script:
     - uv cache prune --ci
   cache:
@@ -48,11 +51,8 @@ Type checking:
   when: manual # These produce too much noise for now, so only run manually
   allow_failure: true
   stage: Checks
-  before_script:
-    - uv sync
   script:
     - uvx pyright --pythonpath .venv/bin/python --outputjson > typecheck_raw.json
-  after_script:
     - pyright-to-gitlab-ci --src typecheck_raw.json --output typecheck.json --base_path .
   artifacts:
     when: always
@@ -64,8 +64,6 @@ Unit tests:
   parallel:
     matrix:
       - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-  before_script:
-    - uv python pin $PYTHON
   script:
     - uv run pytest --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
   artifacts:
@@ -82,8 +80,6 @@ Unit tests:
 Benchmark tests:
   allow_failure: true
   stage: Tests
-  before_script:
-    - uv pin 3.12
   script:
     - uv run pytest --benchmarks tests/test_benchmarks.py
   rules:
