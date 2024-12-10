@@ -1216,11 +1216,12 @@ class Entity(object):
 
     def __str__(self):
         return (
-            f"{self.__class__.__name__}({self.full_id!r}, model={self.model_mock.name})"
+            f"{self.__class__.__name__}({self.full_id!r}, "
+            f"model={self.model_mock.name!r})"
         )
 
     def __repr__(self):
         return (
-            f"{self.__class__.__name__}({self.full_id!r}, "
-            f"model={self.model_mock.name}, children={self.children!r})"
+            f"{self.__class__.__name__}(full_id={self.full_id!r}, "
+            f"model_mock={self.model_mock!r}, children={self.children!r})"
         )
