@@ -62,7 +62,7 @@ Unit tests:
   stage: Tests
   parallel:
     matrix:
-      - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+      - PYTHON: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
   script:
     - uv run pytest --junit-xml=pytest.xml --cov=mosaik --cov-report xml --cov-report term
   artifacts:
