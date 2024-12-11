@@ -61,7 +61,7 @@ from mosaik.exceptions import (
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy, LocalProxy, BaseProxy, RemoteProxy
 from mosaik.adapters import init_and_get_adapter
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
@@ -361,29 +361,40 @@ class SimRunner:
     """The actual proxy for this simulator."""
 
     # Connection setup
-    input_delays: Dict[SimRunner, TieredInterval]
+    input_delays: Dict[SimRunner, MinimalDurations]
     """For each simulator that provides data to this simulator, the
     minimum over all input delays. This is used while waiting for
     dependencies.
     """
-    triggers: Dict[Port, List[Tuple[SimRunner, TieredInterval]]]
+    # TODO: Saving the minimal durations here might actually be wrong.
+    # We probably want to save *all* triggering durations.
+    triggers: Dict[Port, List[Tuple[SimRunner, TieredDuration]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
     edge.
     """
-    successors: Dict[SimRunner, TieredInterval]
-    successors_to_wait_for: Dict[SimRunner, TieredInterval]
-    triggering_ancestors: Dict[SimRunner, TieredInterval]
+    successors: Dict[SimRunner, TieredDuration]
+    """The immediate successors of this simulator. This is used when
+    lazy stepping to ensure that we don't step ahead too far. Therefore,
+    the duration is only used as an adapter, and will always have all
+    tiers 0. (Thus, we don't need `MinimalDurations` here.)
+    """
+    successors_to_wait_for: Dict[SimRunner, TieredDuration]
+    """The immediate successors that we always need to wait for (due
+    to async requests.) The duration only serves as an adapter (so we
+    don't need `MinimalDurations` here.)
+    """
+    triggering_ancestors: Dict[SimRunner, MinimalDurations]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, TieredInterval], Set[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], Set[Tuple[Port, Port]]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.
     """
-    output_to_push: Dict[Port, List[Tuple[SimRunner, TieredInterval, Port]]]
+    output_to_push: Dict[Port, List[Tuple[SimRunner, TieredDuration, Port]]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-time-entity-attribute triples
@@ -391,8 +402,8 @@ class SimRunner:
     occuring along the connection.
     """
 
-    to_world_time: TieredInterval
-    from_world_time: TieredInterval
+    to_world_time: TieredDuration
+    from_world_time: TieredDuration
 
     output_request: OutputRequest
 
@@ -459,8 +470,8 @@ class SimRunner:
         self.next_self_step = None
         self.progress = Progress(TieredTime(*([0] * depth)))
 
-        self.to_world_time = TieredInterval(0, cutoff=1, pre_length=depth)
-        self.from_world_time = TieredInterval(*([0] * depth), cutoff=1, pre_length=1)
+        self.to_world_time = TieredDuration(0, cutoff=1, pre_length=depth)
+        self.from_world_time = TieredDuration(*([0] * depth), cutoff=1, pre_length=1)
 
         self.inputs_from_set_data = {}
         self.persistent_inputs = {}

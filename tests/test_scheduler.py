@@ -13,7 +13,7 @@ from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 from tests.mocks.simulator_mock import SimulatorMock
 
@@ -34,7 +34,10 @@ async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: i
         if not task.done():
             task.cancel()
 
-    await asyncio.gather(task, canceller(), return_exceptions=True)
+    try:
+        await asyncio.gather(task, canceller())
+    except asyncio.CancelledError:
+        pass  # We expect this one
     return task.cancelled()
 
 
@@ -82,24 +85,24 @@ def world_fixture(request: pytest.FixtureRequest):
         sim.task = DummyTask()
 
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
-        sims[src].successors[sims[dest]] = TieredInterval(0)
-        sims[dest].input_delays[sims[src]] = TieredInterval(0)
+        sims[src].successors[sims[dest]] = TieredDuration(0)
+        sims[dest].input_delays[sims[src]] = MinimalDurations(TieredDuration(0))
         if event_based:
             sims[src].triggers.setdefault(("1", "x"), []).append(
-                (sims[dest], TieredInterval(0))
+                (sims[dest], TieredDuration(0))
             )
     if event_based:
-        sims[4].successors[sims[5]] = TieredInterval(0, 0)
-        sims[5].input_delays[sims[4]] = TieredInterval(0, 0)
-        sims[5].successors[sims[4]] = TieredInterval(0, 0)
-        sims[4].input_delays[sims[5]] = TieredInterval(0, 1)
-        sims[4].triggers[("1", "x")] = [(sims[5], TieredInterval(0, 0))]
-        sims[5].triggers[("1", "x")] = [(sims[4], TieredInterval(0, 1))]
+        sims[4].successors[sims[5]] = TieredDuration(0, 0)
+        sims[5].input_delays[sims[4]] = MinimalDurations(TieredDuration(0, 0))
+        sims[5].successors[sims[4]] = TieredDuration(0, 0)
+        sims[4].input_delays[sims[5]] = MinimalDurations(TieredDuration(0, 1))
+        sims[4].triggers[("1", "x")] = [(sims[5], TieredDuration(0, 0))]
+        sims[5].triggers[("1", "x")] = [(sims[4], TieredDuration(0, 1))]
     else:
-        sims[4].successors[sims[5]] = TieredInterval(0)
-        sims[5].input_delays[sims[4]] = TieredInterval(0)
-        sims[5].successors[sims[4]] = TieredInterval(0)
-        sims[4].input_delays[sims[5]] = TieredInterval(1)
+        sims[4].successors[sims[5]] = TieredDuration(0)
+        sims[5].input_delays[sims[4]] = MinimalDurations(TieredDuration(0))
+        sims[5].successors[sims[4]] = TieredDuration(0)
+        sims[4].input_delays[sims[5]] = MinimalDurations(TieredDuration(1))
 
     world._async_world.until = 4
     world._async_world.rt_factor = None
@@ -193,7 +196,7 @@ async def test_wait_for_dependencies(world: World, weak: bool, number_waiting: i
     test_sim: SimRunner = world.sims["Sim-2"]
     pred_sim: SimRunner = world.sims["Sim-1"]
     heappush(test_sim.next_steps, TieredTime(0))
-    test_sim.input_delays[pred_sim] = TieredInterval(0, 1)
+    test_sim.input_delays[pred_sim] = MinimalDurations(TieredDuration(0, 1))
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(test_sim, True)
     )
@@ -268,8 +271,8 @@ def test_get_input_data(world: World):
     sim_0.outputs = {0: {"1": {"x": 0, "y": 1}}}
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
     sim_2.inputs_from_set_data = {"0": {"in": {"3": 5}, "spam": {"3": "eggs"}}}
-    sim_2.pulled_inputs[(sim_0, TieredInterval(0))] = {(("1", "x"), ("0", "in"))}
-    sim_2.pulled_inputs[(sim_1, TieredInterval(0))] = {(("2", "z"), ("0", "in"))}
+    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = {(("1", "x"), ("0", "in"))}
+    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = {(("2", "z"), ("0", "in"))}
     data = scheduler.get_input_data(world, sim_2)
     assert data == {
         "0": {
@@ -288,7 +291,7 @@ def test_get_input_data_shifted(world: World):
     sim_5 = world.sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
-    sim_4.pulled_inputs[(sim_5, TieredInterval(1))] = {(("1", "z"), ("0", "in"))}
+    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = {(("1", "z"), ("0", "in"))}
     data = scheduler.get_input_data(world, world.sims["Sim-4"])
     assert data == {"0": {"in": {"Sim-5.1": 7}}}
 
@@ -395,8 +398,8 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ["x", "y", "z"]}
     sim.output_to_push = {
-        ("0", "x"): [(world.sims["Sim-2"], TieredInterval(0), ("0", "in"))],
-        ("0", "z"): [(world.sims["Sim-1"], TieredInterval(0), ("0", "in"))],
+        ("0", "x"): [(world.sims["Sim-2"], TieredDuration(0), ("0", "in"))],
+        ("0", "z"): [(world.sims["Sim-1"], TieredDuration(0), ("0", "in"))],
     }
 
     await scheduler.get_outputs(world, sim)
@@ -416,7 +419,7 @@ async def test_get_outputs_buffered(world: scenario.World):
     ],
 )
 @pytest.mark.parametrize("progress", [2, 3])
-def test_notify_dependencies(
+def test_trigger_successors(
     world: World,
     output_time: TieredTime,
     next_steps: List[TieredTime],
@@ -430,19 +433,19 @@ def test_notify_dependencies(
 
     heappush(world.sims["Sim-2"].next_steps, TieredTime(2))
 
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
 
     assert world.sims["Sim-2"].next_steps == next_steps
 
 
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
-def test_notify_dependencies_trigger(world: World):
+def test_trigger_successors_trigger(world: World):
     sim = world.sims["Sim-0"]
     sim.progress = Progress(TieredTime(0))
 
     sim.data = {"1": {"x": 1}}
     sim.output_time = TieredTime(1)
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
 
     assert world.sims["Sim-2"].next_steps == [TieredTime(1)]
 
@@ -478,7 +481,7 @@ async def test_get_outputs_shifted(world: World):
 
     sim.current_step = heappop(sim.next_steps)
     await scheduler.get_outputs(world._async_world, sim)
-    scheduler.notify_dependencies(sim)
+    scheduler.trigger_successors(sim)
     scheduler.prune_dataflow_cache(world._async_world)
     assert sim.outputs[1] == {
         "0": {"x": 0, "y": 1},
