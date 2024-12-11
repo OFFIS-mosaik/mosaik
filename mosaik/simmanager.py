@@ -104,6 +104,7 @@ async def start(
             'ExampleSimB': {
                 'cmd': 'example_sim %(addr)s',
                 'cwd': '.',
+                'auto_terminate': True,
             },
             'ExampleSimC': {
                 'connect': 'host:port',
@@ -117,6 +118,9 @@ async def start(
     *ExampleSimB* would be started by executing the command *example_sim* and
     passing the network address of mosaik das command line argument. You can
     optionally specify a *current working directory*. It defaults to ``.``.
+    You can also specify whether mosaik should attempt to terminate the
+    process at the end of the simulation using the *auto_terminate*
+    field. This defaults to ``True``.
 
     *ExampleSimC* can not be started by mosaik, so mosaik tries to connect to
     it.
@@ -273,7 +277,7 @@ async def start_proc(
                 )
 
         try:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 cmd,
                 bufsize=1,
                 cwd=cwd,
@@ -297,8 +301,14 @@ async def start_proc(
             channel = await asyncio.wait_for(
                 channel_future, timeout=mosaik_config["start_timeout"]
             )
-            return RemoteProxy(channel, mosaik_remote)
+            return RemoteProxy(
+                channel,
+                mosaik_remote,
+                process=(proc, sim_config.get("auto_terminate", True)),
+            )
         except asyncio.TimeoutError:
+            if sim_config.get("auto_terminate", True):
+                proc.terminate()
             raise SimulationError(
                 f'Simulator "{sim_name}" did not connect to mosaik in time.'
             )

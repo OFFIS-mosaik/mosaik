@@ -4,6 +4,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
+from subprocess import Popen
 from typing import Any, Dict, Iterator, List, Tuple
 
 from loguru import logger
@@ -149,14 +150,22 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikProxy
+    _process: Tuple[Popen[str], bool] | None
 
-    def __init__(self, channel: Channel, mosaik_remote: MosaikProxy):
+    def __init__(
+        self,
+        channel: Channel,
+        mosaik_remote: MosaikProxy,
+        *,
+        process: Tuple[Popen[str], bool] | None = None,
+    ):
         super().__init__()
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
             self._handle_remote_requests(), name="handle remote requests for ???"
         )
+        self._process = process
 
     async def _handle_remote_requests(self) -> None:
         try:
@@ -203,6 +212,8 @@ class RemoteProxy(BaseProxy):
             pass
         await self._channel.close()
         await self._reader_task
+        if self._process and self._process[1]:
+            self._process[0].terminate()
 
 
 def extract_version(meta: Meta) -> List[int]:
