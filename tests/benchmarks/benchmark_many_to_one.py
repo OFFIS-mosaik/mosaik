@@ -2,11 +2,11 @@
 import os
 import sys
 
-import mosaik
-import mosaik.util
-
 from argparser import argparser
 from comparison import compare_execution_graph
+
+import mosaik
+import mosaik.util
 
 sys.path.insert(0, os.getcwd())
 

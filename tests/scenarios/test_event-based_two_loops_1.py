@@ -6,6 +6,7 @@ This scenario tests for chained cyclic dependencies.
 """
 
 import pytest
+
 from mosaik import World
 
 

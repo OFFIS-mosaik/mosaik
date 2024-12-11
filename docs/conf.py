@@ -12,12 +12,14 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from typing import cast
-import mosaik
-import mosaik_components.heatpump
-from urllib.request import urlretrieve
 import os
 import shutil
+from typing import cast
+from urllib.request import urlretrieve
+
+import mosaik_components.heatpump
+
+import mosaik
 
 # Create a directory for the documentation of components of the mosaik ecosystem.
 component_docs_dir = os.path.join(

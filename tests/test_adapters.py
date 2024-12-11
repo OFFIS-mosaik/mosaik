@@ -1,10 +1,10 @@
 import warnings
+
 import pytest
+
 from mosaik import simmanager
 from mosaik.exceptions import ScenarioError
-
 from mosaik.scenario import SimConfig, World
-
 
 sim_config: SimConfig = {
     "MetaMirror": {

@@ -57,13 +57,13 @@ from tqdm import tqdm
 from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
 from mosaik.simmanager import MosaikConfigTotal, SimRunner
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison

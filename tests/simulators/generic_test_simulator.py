@@ -25,11 +25,11 @@ events : dict of {float: int}, default {}
 """
 
 import asyncio
-import logging
-import mosaik_api_v3
 import copy
+import logging
 from time import sleep
 
+import mosaik_api_v3
 
 logger = logging.getLogger("test_simulator")
 

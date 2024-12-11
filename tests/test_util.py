@@ -1,6 +1,7 @@
 import collections
-import pytest
 import random
+
+import pytest
 
 from mosaik import util
 

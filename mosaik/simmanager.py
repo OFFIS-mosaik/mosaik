@@ -62,7 +62,7 @@ from mosaik.exceptions import (
 )
 from mosaik.progress import Progress
 from mosaik.proxies import BaseProxy, LocalProxy, Proxy, RemoteProxy
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)

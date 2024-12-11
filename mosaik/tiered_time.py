@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import functools
+from dataclasses import dataclass
 from typing import Optional, Set, Union
 
 

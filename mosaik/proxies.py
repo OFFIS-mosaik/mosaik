@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import asyncio
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
 from typing import Any, Dict, Iterator, List, Tuple
-from loguru import logger
 
-from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
+from loguru import logger
+from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
+
 from mosaik.exceptions import ScenarioError
 
 

@@ -139,7 +139,7 @@ def post_step(world: AsyncWorld, sim: SimRunner):
         sim.next_self_step = None
 
 
-def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = []):
+def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = []):  # noqa: C901
     actual_graph = world.execution_graph
     expected_graph = parse_execution_graph(expected_str)
     for node in extra_nodes:

@@ -1,8 +1,7 @@
 import random
 
-from mosaik.util import connect_randomly, connect_many_to_one
 import mosaik
-
+from mosaik.util import connect_many_to_one, connect_randomly
 
 sim_config = {
     "CSV": {

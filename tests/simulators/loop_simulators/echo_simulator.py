@@ -6,10 +6,8 @@ features of the mosaik API.
 
 """
 
-from loguru import logger
-
 import mosaik_api_v3
-
+from loguru import logger
 
 example_sim_meta = {
     "type": "event-based",

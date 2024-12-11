@@ -4,7 +4,6 @@ import subprocess
 import mosaik
 import mosaik.util
 
-
 SIM_CONFIG = {
     "Controller": {
         "python": "controller_set_event:Controller",

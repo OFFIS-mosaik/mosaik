@@ -1,5 +1,6 @@
-import networkx as nx
 import sys
+
+import networkx as nx
 
 
 def remove_time_stamps(graph):

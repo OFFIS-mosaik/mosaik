@@ -6,6 +6,7 @@ This module contains some utility functions and classes.
 
 from __future__ import annotations
 
+import datetime
 import random
 from typing import (
     TYPE_CHECKING,
@@ -18,18 +19,18 @@ from typing import (
     Set,
     Tuple,
 )
-from typing_extensions import Literal
-from mosaik_api_v3 import Attr, SimId
+
 import networkx as nx
-import datetime
+from mosaik_api_v3 import Attr, SimId
+from typing_extensions import Literal
 
 from mosaik.async_scenario import AsyncWorld
 from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"

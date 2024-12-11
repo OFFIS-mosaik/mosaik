@@ -10,7 +10,6 @@ import sys
 
 import pytest
 
-
 benchmarks = [
     os.path.abspath(file) for file in glob.glob("tests/benchmarks/benchmark*.py")
 ]
