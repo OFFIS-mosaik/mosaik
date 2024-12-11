@@ -289,7 +289,9 @@ def test_world_connect_time_shifted(world: World):
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
     assert sim_a.successors == {sim_b: TieredDuration(0)}
-    assert sim_b.input_delays[sim_a] == TieredDuration(1)
+    assert sim_b.input_delays[sim_a] == MinimalDurations.from_duration(
+        TieredDuration(1)
+    )
     assert world.sims["ExampleSim-0"].outputs[-1] == {
         a.eid: {"val_out": 1.0},
     }

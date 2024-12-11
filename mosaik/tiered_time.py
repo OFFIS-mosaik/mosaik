@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
-from typing import Optional, Set, Union
+from typing import Any, Optional, Set, Union
 
 
 def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
@@ -170,7 +170,9 @@ class MinimalDurations:
                 result.insert(u + v)
         return result
 
-    def __eq__(self, other: MinimalDurations) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, MinimalDurations):
+            raise TypeError("cannot compare MinimalDurations to values of other types")
         return self.durations == other.durations
 
     def contains_zero(self) -> bool:
