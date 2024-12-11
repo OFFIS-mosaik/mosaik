@@ -14,26 +14,31 @@ user can instantiate model instances (*entities*). The method
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
 import contextlib
+import itertools
+import warnings
+from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
-from mosaik.greetings_util import print_greetings
-import itertools
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
-import warnings
-from loguru import logger
-import networkx
-from tqdm import tqdm
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
+    Dict,
     FrozenSet,
+    Iterable,
+    List,
     NoReturn,
+    Optional,
+    Set,
+    Tuple,
     TypeVar,
+    Union,
 )
-from typing_extensions import Literal, TypeAlias, TypedDict
 
+import networkx
+from loguru import logger
+from mosaik_api_v3.connection import RemoteException
 from mosaik_api_v3.types import (
     Attr,
     CreateResult,
@@ -41,19 +46,20 @@ from mosaik_api_v3.types import (
     FullId,
     ModelDescription,
     ModelName,
-    SimId,
     OutputRequest,
+    SimId,
 )
-from mosaik_api_v3.connection import RemoteException
+from tqdm import tqdm
+from typing_extensions import Literal, TypeAlias, TypedDict
 
-from mosaik import simmanager
+from mosaik import scheduler, simmanager
+from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
+from mosaik.greetings_util import print_greetings
+from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
-from mosaik.simmanager import SimRunner, MosaikConfigTotal
-from mosaik import scheduler
-from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
-from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
-from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
+from mosaik.simmanager import MosaikConfigTotal, SimRunner
+from mosaik.tiered_time import TieredTime, TieredDuration, MinimalDurations
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -1225,12 +1231,12 @@ class Entity(object):
 
     def __str__(self):
         return (
-            f"{self.__class__.__name__}(model={self.model!r}, eid={self.eid!r}, "
-            f"sid={self.sid!r})"
+            f"{self.__class__.__name__}({self.full_id!r}, "
+            f"model={self.model_mock.name!r})"
         )
 
     def __repr__(self):
         return (
-            f"{self.__class__.__name__}(model_mock={self.model_mock!r}, "
-            f"eid={self.eid!r}, sid={self.sid!r}, children={self.children!r})"
+            f"{self.__class__.__name__}(full_id={self.full_id!r}, "
+            f"model_mock={self.model_mock!r}, children={self.children!r})"
         )

@@ -1,13 +1,12 @@
 from typing import List, cast
 
+import pytest
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
-import pytest
-
-from mosaik.tiered_time import MinimalDurations, TieredDuration
+from mosaik.scenario import Entity, ModelFactory, World
+from mosaik.tiered_time import TieredDuration, MinimalDurations
 
 sim_config: scenario.SimConfig = {
     "ExampleSim": {
@@ -50,8 +49,8 @@ def test_entity():
     assert e.eid == "1"
     assert e.sim_name == "sim"
     assert e.type == "spam"
-    assert str(e) == "Entity(model='spam', eid='1', sid='0')"
-    assert repr(e) == "Entity(model_mock=ModelMockMock, eid='1', sid='0', children=[])"
+    assert str(e) == "Entity('0.1', model='spam')"
+    assert repr(e) == "Entity(full_id='0.1', model_mock=ModelMockMock, children=[])"
 
 
 def test_world():
