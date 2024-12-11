@@ -4,10 +4,8 @@ Mosaik interface for the example simulator.
 
 """
 
-import mosaik_api_v3
-
 import example_model
-
+import mosaik_api_v3
 
 META = {
     "type": "hybrid",

@@ -6,6 +6,7 @@ This scenario tests for a specific deadlock in cyclic dependencies.
 """
 
 import pytest
+
 from mosaik import World
 
 

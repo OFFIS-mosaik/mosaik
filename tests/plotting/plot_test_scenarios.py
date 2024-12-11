@@ -9,7 +9,6 @@ import os
 import sys
 
 from mosaik import scenario
-
 from mosaik.util import plot_execution_graph
 
 sys.path.insert(0, os.getcwd())

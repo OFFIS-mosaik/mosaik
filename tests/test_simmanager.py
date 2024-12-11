@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import StreamReader, StreamWriter
 import os
-import pytest
 import sys
+from asyncio import StreamReader, StreamWriter
 from typing import Any, Callable, Coroutine, Type, cast
 
-from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import Meta, __api_version__ as api_version
 import mosaik_api_v3.connection
+import pytest
+from example_sim.mosaik import ExampleSim
+from mosaik_api_v3 import Meta
+from mosaik_api_v3 import __api_version__ as api_version
 from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import proxies, scenario, simmanager, World
+from mosaik import World, proxies, scenario, simmanager
 from mosaik.exceptions import (
     DuplicateEntityIdError,
     NonSerializableOutputsError,
@@ -21,7 +22,6 @@ from mosaik.exceptions import (
 )
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.tiered_time import TieredDuration, TieredTime
-
 
 VENV = os.path.dirname(sys.executable)
 

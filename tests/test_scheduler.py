@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import asyncio
 from heapq import heappop, heappush
-from mosaik_api_v3 import InputData
-import pytest
-from pytest import mark, param
-from tqdm import tqdm
 from typing import Any, Coroutine, Iterable, List
 
-from mosaik import exceptions, scenario, scheduler, simmanager, World
+import pytest
+from mosaik_api_v3 import InputData
+from pytest import mark, param
+from tqdm import tqdm
+
+from mosaik import World, exceptions, scenario, scheduler, simmanager
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
-
 from tests.mocks.simulator_mock import SimulatorMock
 
 

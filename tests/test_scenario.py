@@ -1,12 +1,12 @@
 from typing import List, cast
 
+import pytest
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
-import pytest
-
+from mosaik.proxies import LocalProxy
+from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.tiered_time import MinimalDurations, TieredDuration
 
 sim_config: scenario.SimConfig = {
@@ -50,8 +50,8 @@ def test_entity():
     assert e.eid == "1"
     assert e.sim_name == "sim"
     assert e.type == "spam"
-    assert str(e) == "Entity(model='spam', eid='1', sid='0')"
-    assert repr(e) == "Entity(model_mock=ModelMockMock, eid='1', sid='0', children=[])"
+    assert str(e) == "Entity('0.1', model='spam')"
+    assert repr(e) == "Entity(full_id='0.1', model_mock=ModelMockMock, children=[])"
 
 
 def test_world():
@@ -92,8 +92,10 @@ def test_world_start(world: World):
     fac = world.start("ExampleSim", step_size=2)
     assert isinstance(fac, ModelFactory)
     assert len(world.sims) == 1
-    assert world.sims["ExampleSim-0"]._proxy == fac._proxy
-    assert fac._proxy.sim.step_size == 2
+    proxy = fac._async_model_factory._proxy
+    assert isinstance(proxy, LocalProxy)
+    assert world.sims["ExampleSim-0"]._proxy == proxy
+    assert proxy.sim.step_size == 2  # type: ignore
     assert world.time_resolution == 1.0
     assert "ExampleSim-0" in world.sims
 
@@ -109,7 +111,7 @@ def test_global_time_resolution():
     world = scenario.World(sim_config, time_resolution=60.0)
 
     try:
-        _fac = world.start("ExampleSim", step_size=2)
+        world.start("ExampleSim", step_size=2)
         # TODO: Test whether the resolution "reaches" the simulator
         assert world.time_resolution == 60.0
     finally:
@@ -224,8 +226,8 @@ def test_world_connect_no_attrs(world: World):
     sim_0 = world.sims["ExampleSim-0"]
     sim_1 = world.sims["ExampleSim-1"]
 
-    sim_0.successors = {sim_1}
-    sim_1.successors = set()
+    sim_0.successors = {sim_1: TieredDuration(0)}
+    sim_1.successors = {}
     sim_1.input_delays = {sim_0: TieredDuration(0)}
     assert world.entity_graph.adj == {
         "ExampleSim-0." + a.eid: {"ExampleSim-1." + b.eid: {}},
@@ -273,9 +275,7 @@ def test_world_connect_async_requests(world: World):
     world.connect(a, b, async_requests=True)
     sim_a = world.sims[a.sid]
     sim_b = world.sims[b.sid]
-    assert sim_a.successors_to_wait_for == {
-        sim_b: TieredDuration(0, cutoff=1, pre_length=1)
-    }
+    sim_a.successors_to_wait_for = {sim_b: TieredDuration(0)}
 
 
 def test_world_connect_time_shifted(world: World):
@@ -289,7 +289,9 @@ def test_world_connect_time_shifted(world: World):
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
     assert sim_a.successors == {sim_b: TieredDuration(0)}
-    assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(1))
+    assert sim_b.input_delays[sim_a] == MinimalDurations.from_duration(
+        TieredDuration(1)
+    )
     assert world.sims["ExampleSim-0"].outputs[-1] == {
         a.eid: {"val_out": 1.0},
     }
@@ -459,7 +461,7 @@ def test_model_mock_entity_graph(world: World):
         return entities
 
     fac = world.start("ExampleSim")
-    fac._proxy.send = send
+    fac._async_model_factory._proxy.send = send
 
     assert world.entity_graph.adj == {}
     fac.A.create(2)

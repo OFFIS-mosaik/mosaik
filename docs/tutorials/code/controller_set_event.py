@@ -1,12 +1,11 @@
 # controller_set_event.py
 
-import sys
-import zmq
-import threading
 import math
+import sys
+import threading
 
 import mosaik_api_v3
-
+import zmq
 
 META = {
     "type": "event-based",

@@ -6,6 +6,7 @@ This module contains some utility functions and classes.
 
 from __future__ import annotations
 
+import datetime
 import random
 from typing import (
     TYPE_CHECKING,
@@ -18,17 +19,18 @@ from typing import (
     Set,
     Tuple,
 )
-from typing_extensions import Literal
-from mosaik_api_v3 import Attr, SimId
-import networkx as nx
-import datetime
 
+import networkx as nx
+from mosaik_api_v3 import Attr, SimId
+from typing_extensions import Literal
+
+from mosaik.async_scenario import AsyncWorld
 from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"
@@ -36,7 +38,7 @@ STANDARD_FOLDER = "figures"
 
 
 def connect_many_to_one(
-    world: World,
+    world: World | AsyncWorld,
     src_set: Iterable[Entity],
     dest: Entity,
     *attrs: Attr | Tuple[Attr, Attr],
@@ -52,7 +54,7 @@ def connect_many_to_one(
 
 
 def connect_randomly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
@@ -105,7 +107,7 @@ def connect_randomly(
 
 
 def _connect_evenly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
@@ -126,7 +128,7 @@ def _connect_evenly(
 
 
 def _connect_randomly(
-    world: World,
+    world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | Tuple[Attr, Attr],

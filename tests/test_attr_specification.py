@@ -8,9 +8,9 @@ from mosaik_api_v3.types import (
 )
 from typing_extensions import Type
 
+from mosaik.async_scenario import parse_attrs
 from mosaik.in_or_out_set import OutSet
 from mosaik.scenario import ModelMock, SimConfig, World
-from mosaik.async_scenario import parse_attrs
 
 META: Meta = {
     "api_version": "3.0",

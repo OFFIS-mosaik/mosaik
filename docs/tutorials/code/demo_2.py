@@ -2,7 +2,6 @@
 import mosaik
 import mosaik.util
 
-
 # Sim config
 SIM_CONFIG = {
     "ExampleSim": {

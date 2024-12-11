@@ -12,41 +12,58 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import inspect
+from types import TracebackType
 from typing import (
     Any,
+    Awaitable,
+    Callable,
     Dict,
     Iterable,
     Optional,
     Tuple,
+    Type,
     Union,
 )
+
+from loguru import logger
+from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
-from mosaik_api_v3.types import Attr, ModelName, SimId
-
 from mosaik.async_scenario import (
+    SENTINEL,
     AsyncModelFactory,
     AsyncModelMock,
     AsyncWorld,
     Entity,
-    SimConfig,
-    SENTINEL,
     MosaikConfig,
+    SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
 
 
-class World(object):
+class World:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start()`) and
-    manages the simulator instances.
+    We recommend that you use the world in a ``with`` block like so:
 
-    You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start()`
-    for more details.
+        with mosaik.World(SIM_CONFIG) as world:
+            # Scenario setup ...
+
+            world.run(until=UNTIL)
+
+    This way, mosaik will keep the connection to the simulators alive
+    until the end of the with block and you can still call extra methods
+    on the to retrieve final simulation data, if needed.
+
+    However, you can also use a ``World`` outside of a ``with`` block.
+
+    The ``World`` provides a method to start a simulator process
+    (:meth:`start`) and manages the simulator instances.
+
+    You have to provide a *sim_config* which tells the world which
+    simulators are available and how to start them. See
+    :func:`mosaik.simmanager.start` for more details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set addional
     parameters overriding the defaults::
@@ -64,10 +81,19 @@ class World(object):
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
+
+    Using the *skip_greetings* and *configure_logging* parameters, you
+    can configure how "wordy" mosaik will be. If you set
+    *skip_greetings* to ``True``, the big mosaik logo will no longer be
+    shown when you create the world. If you set *configure_logging* to
+    ``False``, mosaik's logging messages will not be enabled in loguru.
+    You can still do this yourself by calling
+    ``logger.enable("mosaik")``.
     """
 
     loop: asyncio.AbstractEventLoop
     _async_world: AsyncWorld
+    _no_shutdown_in_run: bool = False
 
     def __init__(
         self,
@@ -77,8 +103,13 @@ class World(object):
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
+        skip_greetings: bool = False,
+        configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
+        if configure_logging:
+            logger.enable("mosaik")
+
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
@@ -87,12 +118,24 @@ class World(object):
 
         self._async_world = AsyncWorld(
             sim_config,
-            mosaik_config,
-            time_resolution,
-            debug,
-            cache,
-            max_loop_iterations,
+            mosaik_config=mosaik_config,
+            time_resolution=time_resolution,
+            debug=debug,
+            cache=cache,
+            max_loop_iterations=max_loop_iterations,
+            skip_greetings=skip_greetings,
         )
+
+    def __enter__(self):
+        self._no_shutdown_in_run = True
+        return self
+
+    def __exit__(self, exc_type: Type[Exception], exc: Exception, tb: TracebackType):
+        self.shutdown()
+        # Don't suppress exceptions. Later on, we might want to add
+        # handling of mosaik exceptions here. (Make sure to unify
+        # this with the handling in `AsyncWorld`'s `__aexit__`.)
+        return False
 
     def group(self):
         return self._async_world.group()
@@ -223,9 +266,13 @@ class World(object):
         rt_strict: bool = False,
         print_progress: Union[bool, Literal["individual"]] = True,
         lazy_stepping: bool = True,
+        *,
+        shutdown: bool = True,
     ):
         """
-        Start the simulation until the simulation time *until* is reached.
+        Start the simulation until the simulation time *until* is
+        reached. As mosaik has no way of resetting the simulators to
+        their starting state, this method can only be called once.
 
         In order to perform real-time simulations, you can set *rt_factor* to
         a number > 0. A rt-factor of 1. means that 1 second in simulated time
@@ -252,8 +299,19 @@ class World(object):
         ``False`` a simulator always steps as long all input is provided. This
         might decrease the simulation time but increase the memory consumption.
 
-        Before this method returns, it stops all simulators and closes mosaik's
-        server socket. So this method should only be called once.
+        At the end of the simulation, mosaik will stop all simulators
+        and close the connections to them. There are two exceptions to
+        this:
+
+        - If the flag *shutdown* is set to ``False``, mosaik will not
+          close the connection. In this case, you have to call
+          :meth:`shutdown` yourself.
+        - If the :cls:`World` is used in a ``with`` block (recommended),
+          the connection will be closed at the end of that block,
+          instead.
+
+        (Keeping the connection open is useful to extract final data
+        from simulators using extra methods.)
         """
         if self.loop.is_closed():
             raise RuntimeError(
@@ -265,7 +323,8 @@ class World(object):
                 until, rt_factor, rt_strict, print_progress, lazy_stepping
             )
         )
-        self.shutdown()
+        if shutdown and not self._no_shutdown_in_run:
+            self.shutdown()
 
     def shutdown(self):
         """
@@ -321,21 +380,36 @@ class ModelFactory:
         self._async_model_factory = async_model_factory
         self._loop = loop
 
-    def __getattr__(self, name: str):
-        async_attr = getattr(self._async_model_factory, name)
+        for name in self._async_model_factory.call:
 
-        if isinstance(async_attr, AsyncModelMock):
-            return ModelMock(async_attr, self._loop)
+            def get_wrapper(
+                method: Callable[..., Awaitable[Any]],
+            ) -> Callable[..., Any]:
+                @functools.wraps(method)
+                def wrapper(*args: Any, **kwargs: Any):
+                    return self._loop.run_until_complete(method(*args, **kwargs))
 
-        if inspect.iscoroutinefunction(async_attr):
+                return wrapper
 
-            @functools.wraps(async_attr)
-            def wrapper(*args, **kwargs):
-                return self._loop.run_until_complete(async_attr(*args, **kwargs))
+            setattr(
+                self, name, get_wrapper(getattr(self._async_model_factory.call, name))
+            )
 
-            return wrapper
+    @property
+    def _sid(self) -> SimId:
+        return self._async_model_factory._sid
 
-        return async_attr
+    @property
+    def type(self) -> Literal["time-based", "event-based", "hybrid"]:
+        return self._async_model_factory.type
+
+    def __getattr__(self, name: str) -> ModelMock:
+        value = getattr(self._async_model_factory, name)
+
+        if isinstance(value, AsyncModelMock):
+            return ModelMock(value, self._loop)
+
+        return value
 
 
 class ModelMock(object):
@@ -386,13 +460,13 @@ class ModelMock(object):
     def name(self) -> ModelName:
         return self._async_model_mock.name
 
-    def __call__(self, **model_params):
+    def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.
         """
         return self._loop.run_until_complete(self._async_model_mock(**model_params))
 
-    def create(self, num: int, **model_params):
+    def create(self, num: int, **model_params: Any):
         """
         Create *num* entities with the specified *model_params* and return
         a list with the entity dicts.

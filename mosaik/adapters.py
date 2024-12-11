@@ -22,10 +22,10 @@
 # this new adapter.
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 import warnings
-from loguru import logger  # noqa: F401  # type: ignore
+from typing import Any, Dict, Optional
 
+from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
 
 from mosaik.exceptions import ScenarioError

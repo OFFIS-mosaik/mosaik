@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import (
     Any,
     FrozenSet,
@@ -9,6 +10,7 @@ from typing import (
     TypeVar,
     Union,
 )
+
 from typing_extensions import TypeAlias
 
 E = TypeVar("E")
@@ -66,7 +68,7 @@ class OutSet(Generic[E]):
         return self._set == other._set  # type: ignore  (Pyright does not know E here)
 
     def __str__(self):
-        return f"OutSet({{{', '.join(self._set)}}})"
+        return f"OutSet({{{', '.join(map(str, self._set))}}})"
 
 
 InOrOutSet: TypeAlias = Union[FrozenSet[E], OutSet[E]]
