@@ -56,12 +56,14 @@ class World:
     until the end of the with block and you can still call extra methods
     on the to retrieve final simulation data, if needed.
 
-    It provides a method to start a simulator process (:meth:`start()`) and
-    manages the simulator instances.
+    However, you can also use a ``World`` outside of a ``with`` block.
 
-    You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start()`
-    for more details.
+    The ``World`` provides a method to start a simulator process
+    (:meth:`start`) and manages the simulator instances.
+
+    You have to provide a *sim_config* which tells the world which
+    simulators are available and how to start them. See
+    :func:`mosaik.simmanager.start` for more details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set addional
     parameters overriding the defaults::
@@ -79,6 +81,14 @@ class World:
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
+
+    Using the *skip_greetings* and *configure_logging* parameters, you
+    can configure how "wordy" mosaik will be. If you set
+    *skip_greetings* to ``True``, the big mosaik logo will no longer be
+    shown when you create the world. If you set *configure_logging* to
+    ``False``, mosaik's logging messages will not be enabled in loguru.
+    You can still do this yourself by calling
+    ``logger.enable("mosaik")``.
     """
 
     loop: asyncio.AbstractEventLoop
@@ -293,8 +303,8 @@ class World:
         and close the connections to them. There are two exceptions to
         this:
 
-        - If the flag *shutdown* is set, mosaik will not close the
-          connection. In this case, you have to call
+        - If the flag *shutdown* is set to ``False``, mosaik will not
+          close the connection. In this case, you have to call
           :meth:`shutdown` yourself.
         - If the :cls:`World` is used in a ``with`` block (recommended),
           the connection will be closed at the end of that block,

@@ -195,11 +195,11 @@ class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start()`) and
+    It provides a method to start a simulator process (:meth:`start`) and
     manages the simulator instances.
 
     You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start()`
+    are available and how to start them. See :func:`mosaik.simmanager.start`
     for more details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set addional
@@ -218,6 +218,18 @@ class AsyncWorld:
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
+
+    We recommend that you use ``AsyncWorld`` in an ``async with`` block
+    like so:
+
+        async with AsyncWorld(SIM_CONFIG) as world:
+            # call setup methods on world
+            ...
+            await world.run(UNTIL)
+
+    This will ensure that the connections to all remote simulators are
+    properly closed at the end of the simulation. Alternatively, you can
+    use the :meth:`shutdown` method manually.
     """
 
     sim_config: SimConfig
