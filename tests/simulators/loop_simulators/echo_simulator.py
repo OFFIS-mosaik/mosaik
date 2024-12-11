@@ -35,6 +35,9 @@ class EchoSim(mosaik_api_v3.Simulator):
         return self.meta
 
     def create(self, num, model):
+        # This simulator always returns the same entity ID. This would
+        # usually be an error, but we use this simulator to test
+        # mosaik's exception for this case.
         self.eid = "Echo"
         return [{"eid": self.eid, "type": model}]
 

@@ -16,7 +16,7 @@ from mosaik_api_v3 import InputData, SimId
 from mosaik import AsyncWorld, scheduler
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 _originals = {
     "step": scheduler.step,
@@ -93,8 +93,7 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
         for jj in ii.values()
         for kk in jj.keys()
     }
-    for pre_sim in sim.input_delays:
-        pre = pre_sim.sid
+    for pre_sim, min_delays in sim.input_delays.items():
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
             pre_node: Optional[Tuple[str, TieredTime]] = None
             pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
@@ -104,13 +103,13 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
             # stepped but didn't provide the connected output.
             for inode in eg.nodes:
                 node_sid, itime = inode
-                if node_sid == pre:
-                    if (
-                        next_step >= itime + sim.input_delays[pre_sim]
-                        and itime >= pre_time
-                    ):
-                        pre_node = inode
-                        pre_time = itime
+                if (
+                    node_sid == pre_sim.sid
+                    and next_step >= min_delays.earliest_sum(itime)
+                    and itime >= pre_time
+                ):
+                    pre_node = inode
+                    pre_time = itime
             if pre_node is not None:
                 eg.add_edge(pre_node, node_id)
                 assert eg.nodes[pre_node]["t"] <= eg.nodes[node_id]["t"]
@@ -120,7 +119,7 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
         if sim.last_step >= TieredTime(0):
             suc_node = (suc, sims[suc].last_step)
             eg.add_edge(suc_node, node_id)
-            assert sims[suc].progress.time + TieredInterval(1) >= next_step
+            assert sims[suc].progress.time + TieredDuration(1) >= next_step
 
 
 def post_step(world: AsyncWorld, sim: SimRunner):

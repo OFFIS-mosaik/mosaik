@@ -1,14 +1,14 @@
 from typing import List, cast
 
+import pytest
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
 from mosaik.proxies import LocalProxy
 from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.exceptions import ScenarioError
-import pytest
-
-from mosaik.tiered_time import TieredInterval
+from mosaik.scenario import Entity, ModelFactory, World
+from mosaik.tiered_time import TieredDuration, MinimalDurations
 
 sim_config: scenario.SimConfig = {
     "ExampleSim": {
@@ -51,8 +51,8 @@ def test_entity():
     assert e.eid == "1"
     assert e.sim_name == "sim"
     assert e.type == "spam"
-    assert str(e) == "Entity(model='spam', eid='1', sid='0')"
-    assert repr(e) == "Entity(model_mock=ModelMockMock, eid='1', sid='0', children=[])"
+    assert str(e) == "Entity('0.1', model='spam')"
+    assert repr(e) == "Entity(full_id='0.1', model_mock=ModelMockMock, children=[])"
 
 
 def test_world():
@@ -134,10 +134,10 @@ def test_world_connect(world: World):
     sim_1 = world.sims[sim_1._sid]
 
     # TODO: check for connections in new place
-    assert sim_0.successors == {sim_1: TieredInterval(0)}
+    assert sim_0.successors == {sim_1: TieredDuration(0)}
     assert sim_0.successors_to_wait_for == {}
     assert sim_1.successors == {}
-    assert sim_1.input_delays[sim_0] == TieredInterval(0)
+    assert sim_1.input_delays[sim_0] == MinimalDurations(TieredDuration(0))
 
     assert sim_1.pulled_inputs[(sim_0, TieredInterval(0))] == {
         ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
@@ -261,15 +261,15 @@ def test_world_connect_any_inputs(world: World):
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
 
-    assert sim_a.successors == {sim_b: TieredInterval(0)}
-    assert sim_b.input_delays[sim_a] == TieredInterval(0)
+    assert sim_a.successors == {sim_b: TieredDuration(0)}
+    assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(0))
     assert to_dict(world.entity_graph) == {
         "ExampleSim-0." + a.eid: {"MetaMirror-0." + b.eid: {}},
         "MetaMirror-0." + b.eid: {"ExampleSim-0." + a.eid: {}},
     }
 
 
-@pytest.mark.filterwarnings("ignore:Connections with async_requests")
+@pytest.mark.filterwarnings("ignore:Connections using async_requests")
 def test_world_connect_async_requests(world: World):
     a = world.start("ExampleSim").A(init_val=0)
     b = world.start("ExampleSim").B(init_val=0)
