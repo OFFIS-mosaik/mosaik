@@ -59,7 +59,7 @@ from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
 from mosaik.simmanager import MosaikConfigTotal, SimRunner
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import TieredTime, TieredDuration, MinimalDurations
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
