@@ -4,6 +4,7 @@ Scenario 17::
 """
 
 import pytest
+
 from mosaik import World
 
 

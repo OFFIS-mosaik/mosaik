@@ -5,10 +5,10 @@ Test a complete mosaik simulation using mosaik as a library.
 
 import importlib
 import time
+
 import pytest
 
 from mosaik import scenario
-
 from tests.scenarios.conftest import SIM_CONFIG
 
 

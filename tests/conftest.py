@@ -1,7 +1,8 @@
-import pytest
 import logging
-from loguru import logger
+
+import pytest
 from _pytest.logging import LogCaptureFixture
+from loguru import logger
 
 
 # From the loguru documentation, see https://loguru.readthedocs.io/en/latest/resources/migration.html#replacing-caplog-fixture-from-pytest-library

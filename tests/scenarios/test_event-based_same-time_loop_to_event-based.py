@@ -7,6 +7,7 @@ interrupted due to an earlier step.
 """
 
 import pytest
+
 from mosaik import World
 
 

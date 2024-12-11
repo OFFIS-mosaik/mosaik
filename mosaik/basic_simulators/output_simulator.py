@@ -1,19 +1,20 @@
-import mosaik
-import mosaik.exceptions
 from copy import deepcopy
-
 from typing import Any, Dict, List
+
 import mosaik_api_v3
 from mosaik_api_v3.types import (
     CreateResult,
+    InputData,
     Meta,
     ModelName,
-    InputData,
     OutputData,
     OutputRequest,
     SimId,
     Time,
 )
+
+import mosaik
+import mosaik.exceptions
 
 META: Meta = {
     "api_version": "3.0",

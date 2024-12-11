@@ -20,6 +20,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,11 +28,13 @@ from typing import (
     Dict,
     FrozenSet,
     Iterable,
+    Iterator,
     List,
     NoReturn,
     Optional,
     Set,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -49,8 +52,9 @@ from mosaik_api_v3.types import (
     OutputRequest,
     SimId,
 )
+from networkx import DiGraph
 from tqdm import tqdm
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
@@ -59,7 +63,7 @@ from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
 from mosaik.simmanager import MosaikConfigTotal, SimRunner
-from mosaik.tiered_time import TieredTime, TieredDuration, MinimalDurations
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -163,6 +167,11 @@ def group_path(src: SimGroup, dest: SimGroup) -> Tuple[int, int, SimGroup]:
 def connect_interval(
     src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0
 ):
+    """Given two `SimGroup`s, calculate a TieredInterval connecting
+    simulators in these groups. The tiers will be 0, unless
+    `time_shifted` or `weak` are specified, in which case the given
+    values are placed in the highest and lowest tier, respectively.
+    """
     ascent, _, common_group = group_path(src_group, dest_group)
 
     pre_length = src_group.depth
@@ -186,11 +195,11 @@ class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start()`) and
+    It provides a method to start a simulator process (:meth:`start`) and
     manages the simulator instances.
 
     You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start()`
+    are available and how to start them. See :func:`mosaik.simmanager.start`
     for more details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set addional
@@ -209,6 +218,18 @@ class AsyncWorld:
     If *execution_graph* is set to ``True``, an execution graph will be created
     during the simulation. This may be useful for debugging and testing. Note,
     that this increases the memory consumption and simulation time.
+
+    We recommend that you use ``AsyncWorld`` in an ``async with`` block
+    like so:
+
+        async with AsyncWorld(SIM_CONFIG) as world:
+            # call setup methods on world
+            ...
+            await world.run(UNTIL)
+
+    This will ensure that the connections to all remote simulators are
+    properly closed at the end of the simulation. Alternatively, you can
+    use the :meth:`shutdown` method manually.
     """
 
     sim_config: SimConfig
@@ -238,7 +259,7 @@ class AsyncWorld:
     use_cache: bool
     sims: Dict[SimId, simmanager.SimRunner]
     """A dictionary of already started simulators instances."""
-    _sim_ids: Dict[ModelName, Iterable[int]]
+    _sim_ids: Dict[ModelName, Iterator[int]]
 
     main_group: SimGroup
     current_group: SimGroup
@@ -260,7 +281,7 @@ class AsyncWorld:
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
-        skip_greetings: bool = False,
+        skip_greetings: bool = True,
     ):
         if not skip_greetings:
             print_greetings()
@@ -290,13 +311,22 @@ class AsyncWorld:
                 "graph afterwards."
             )
             self._debug = True
-            self.execution_graph: networkx.DiGraph[Tuple[SimId, TieredTime]] = (
-                networkx.DiGraph()
-            )
+            self.execution_graph: DiGraph[Tuple[SimId, TieredTime]] = DiGraph()
 
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self, exc_type: Type[Exception], exc: Exception, tb: TracebackType
+    ):
+        await self.shutdown()
+        # Don't suppress exceptions. Later on, we might want to add
+        # handling of mosaik exceptions here.
+        return False
 
     @contextlib.contextmanager
     def group(self):
@@ -587,7 +617,7 @@ class AsyncWorld:
         for sid, task in requests.items():
             results_by_sim[sid] = task.result()
 
-        results = {}
+        results: Dict[Entity, Dict[Attr, Any]] = {}
         for entity in entity_set:
             results[entity] = results_by_sim[entity.sid][entity.eid]
 
@@ -598,7 +628,7 @@ class AsyncWorld:
         until: int,
         rt_factor: Optional[float] = None,
         rt_strict: bool = False,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        print_progress: Union[bool, Literal["individual"]] = False,
         lazy_stepping: bool = True,
     ):
         """Start the simulation until the simulation time *until* is
@@ -855,6 +885,25 @@ MOSAIK_METHODS = {
 FULL_ID = "%s.%s"
 
 
+class ExtraMethodsProxy:
+    _sim_id: SimId
+    _methods: Set[str]
+
+    def __init__(self, sim_id: SimId):
+        self._sim_id = sim_id
+        self._methods = set()
+
+    def _add_extra_method(self, name: str, wrapper: Callable[..., Any]) -> None:
+        setattr(self, name, wrapper)
+        self._methods.add(name)
+
+    def __iter__(self):
+        return iter(self._methods)
+
+    def __getattr__(self, name: str) -> Callable[..., Any]:
+        raise ScenarioError(f"`{name}` is not an extra method on '{self._sim_id}'")
+
+
 class AsyncModelFactory:
     """
     This is a facade for a simulator *sim* that allows the user to create
@@ -878,6 +927,7 @@ class AsyncModelFactory:
         self._group = group
         self._proxy = proxy
         self._sid = sid
+        self.call = ExtraMethodsProxy(sid)
 
         if "type" not in proxy.meta:
             raise ScenarioError(
@@ -929,9 +979,9 @@ class AsyncModelFactory:
                 wrapper.__name__ = meth_name
                 return wrapper
 
-            setattr(self, meth_name, get_wrapper(proxy, meth_name))
+            self.call._add_extra_method(meth_name, get_wrapper(proxy, meth_name))
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> AsyncModelMock:
         # Implemented in order to improve error messages.
         models = self.meta["models"]
         if name in models:
@@ -1087,7 +1137,7 @@ class AsyncModelMock(object):
     def output_attrs(self) -> InOrOutSet[Attr]:
         return self.event_outputs | self.measurement_outputs
 
-    async def __call__(self, **model_params):
+    async def __call__(self, **model_params: Any):
         """
         Call :meth:`create()` to instantiate one model.
         """

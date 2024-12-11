@@ -1,8 +1,9 @@
-import mosaik
-import mosaik.util
-import mosaik.basic_simulators
-from mosaik.scenario import SimConfig
 from typing import Any, Dict, cast
+
+import mosaik
+import mosaik.basic_simulators
+import mosaik.util
+from mosaik.scenario import SimConfig
 
 
 def test_basic_simulators():

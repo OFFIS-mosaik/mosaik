@@ -6,18 +6,16 @@ from __future__ import annotations
 
 import asyncio
 from heapq import heappop
-from loguru import logger
 from math import ceil
 from time import perf_counter
+from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
+from loguru import logger
 from mosaik_api_v3 import InputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
-
-from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
-
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:

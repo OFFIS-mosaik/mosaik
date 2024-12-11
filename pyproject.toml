@@ -78,6 +78,7 @@ reportUnnecessaryIsInstance = "none"
 reportUnusedImport = "warning"
 reportMissingImports = true
 reportMissingTypeStubs = false
+reportPrivateUsage = false
 
 include = ["mosaik"]
 exclude = ["**/__pycache__"]
@@ -85,8 +86,4 @@ stubPath = "typings"
 pythonPlatform = "Linux"
 
 [tool.ruff.lint]
-extend-select = ["C", "W", "T20"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["T20"]
-"docs/*" = ["T20"]
+extend-select = ["C", "W", "I"]

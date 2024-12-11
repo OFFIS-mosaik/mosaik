@@ -7,7 +7,6 @@ import collections
 
 import mosaik_api_v3
 
-
 META = {
     "type": "event-based",
     "models": {

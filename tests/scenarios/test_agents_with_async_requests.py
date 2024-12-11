@@ -10,6 +10,7 @@ A(2) ⇄ C(2)
 # D 0--------3--- [0, 3)
 
 import pytest
+
 from mosaik import World
 
 

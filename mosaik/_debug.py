@@ -9,12 +9,11 @@ from copy import deepcopy
 from time import perf_counter
 from typing import Dict, List, Optional, Tuple
 
+import networkx as nx
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3 import InputData, SimId
-import networkx as nx
 
-from mosaik import scheduler
-from mosaik.async_scenario import AsyncWorld
+from mosaik import AsyncWorld, scheduler
 from mosaik.scenario import World
 from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import TieredDuration, TieredTime
@@ -140,9 +139,7 @@ def post_step(world: AsyncWorld, sim: SimRunner):
         sim.next_self_step = None
 
 
-def assert_graph(  # noqa: C901
-    world: World, expected_str: str, extra_nodes: List[str] = []
-):
+def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = []):  # noqa: C901
     actual_graph = world.execution_graph
     expected_graph = parse_execution_graph(expected_str)
     for node in extra_nodes:
@@ -198,7 +195,7 @@ def assert_graph(  # noqa: C901
     assert actual_graph.adj == expected_graph.adj
 
 
-def assert_inputs(world: World, expected_inputs: Dict[str, InputData]):
+def assert_inputs(world: AsyncWorld, expected_inputs: Dict[str, InputData]):
     eg = world.execution_graph
     for node_str, expected_data in expected_inputs.items():
         node = parse_node(node_str)

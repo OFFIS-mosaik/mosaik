@@ -1,8 +1,10 @@
-from textwrap import dedent
-from mosaik._version import version as mosaik_version
-from mosaik_api_v3 import __version__ as api_version
 import platform
 import sys
+from textwrap import dedent
+
+from mosaik_api_v3 import __version__ as api_version
+
+from mosaik._version import version as mosaik_version
 
 
 def print_greetings():

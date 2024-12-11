@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from loguru import logger  # type: ignore  # noqa: F401
 from typing import List, Tuple
 
-from mosaik.tiered_time import TieredDuration, TieredTime
+from loguru import logger  # type: ignore  # noqa: F401
 
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 TriggerSpec = Tuple[TieredTime, TieredDuration, bool]
 

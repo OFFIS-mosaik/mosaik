@@ -1,6 +1,8 @@
-from typing import Callable, Dict
-from typing_extensions import TypeVar
 import platform
+from typing import Callable, Dict
+
+from typing_extensions import TypeVar
+
 from mosaik._version import version
 
 K = TypeVar("K")
