@@ -53,7 +53,7 @@ from mosaik.simmanager import SimRunner, MosaikConfigTotal
 from mosaik import scheduler
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.in_or_out_set import OutSet, InOrOutSet, parse_set_triple, wrap_set
-from mosaik.tiered_time import TieredInterval, TieredTime
+from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -173,7 +173,7 @@ def connect_interval(
     if weak:
         assert cutoff >= 2
         list_tiers[cutoff - 1] = weak
-    return TieredInterval(*list_tiers, cutoff=cutoff, pre_length=pre_length)
+    return TieredDuration(*list_tiers, cutoff=cutoff, pre_length=pre_length)
 
 
 class AsyncWorld:
@@ -394,9 +394,7 @@ class AsyncWorld:
         dest_group = dest.model_mock._factory._group
         delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
 
-        dest_sim.input_delays[src_sim] = min(
-            dest_sim.input_delays.get(src_sim, delay), delay
-        )
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
 
         is_pulled = src_sim.outputs is not None and src.is_persistent(src_attr)
 
@@ -447,10 +445,7 @@ class AsyncWorld:
         delay = connect_interval(src._group, dest._group)
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
-        # Normally, we would only set the input delay if it is smaller
-        # than whatever is already there. However, in this case, the
-        # new value is the smallest possible, so no test is necessary.
-        dest_sim.input_delays[src_sim] = delay
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
 
     def connect(
         self,
@@ -727,7 +722,9 @@ class AsyncWorld:
         for sim in self.sims.values():
             for port_triggers in sim.triggers.values():
                 for dest_sim, delay in port_triggers:
-                    dest_sim.triggering_ancestors[sim] = delay
+                    dest_sim.triggering_ancestors.setdefault(
+                        sim, MinimalDurations()
+                    ).insert(delay)
                     dirty.add(dest_sim)
         while dirty:
             sim = dirty.pop()
@@ -735,12 +732,11 @@ class AsyncWorld:
                 for dest_sim, mid_to_dest in port_triggers:
                     for src_sim, src_to_mid in sim.triggering_ancestors.items():
                         src_to_dest = src_to_mid + mid_to_dest
-                        src_to_dest = update_min(
-                            dest_sim.triggering_ancestors.get(src_sim), src_to_dest
-                        )
-                        if src_to_dest is not None:
+                        was_updated = dest_sim.triggering_ancestors.setdefault(
+                            src_sim, MinimalDurations()
+                        ).insert_all(src_to_dest)
+                        if was_updated:
                             dirty.add(dest_sim)
-                            dest_sim.triggering_ancestors[src_sim] = src_to_dest
         return
 
     def ensure_no_dataflow_cycles(self):
@@ -756,9 +752,9 @@ class AsyncWorld:
         """Sims that have changed descendants and thus require
         recalculation
         """
-        sim_descs: Dict[
-            SimRunner, Dict[SimRunner, Tuple[TieredInterval, List[SimRunner]]]
-        ] = {sim: {} for sim in self.sims.values()}
+        sim_descs: Dict[SimRunner, Dict[SimRunner, MinPath]] = {
+            sim: {} for sim in self.sims.values()
+        }
         """For each SimRunner, all its descendants that have been found
         so far with the shortest delay to them and the path that
         exhibits this delay.
@@ -768,25 +764,39 @@ class AsyncWorld:
         # (direct) predecessors
         for sim in self.sims.values():
             for pred, delay in sim.input_delays.items():
-                sim_descs[pred][sim] = (delay, [pred, sim])
+                min_durations = MinimalDurations()
+                min_durations.insert_all(delay)
+                sim_descs[pred][sim] = {
+                    "delays": min_durations,
+                    "path": [pred, sim],
+                }
         while dirty:
             mid_sim = dirty.pop()
             # This sim has had updates to its descendants since we last
             # processed it. These changes are pushed to its predecessors
-            for src_sim, src_to_mid in mid_sim.input_delays.items():
-                for dest_sim, (mid_to_dest, path) in sim_descs[mid_sim].items():
-                    src_to_dest = src_to_mid + mid_to_dest
-                    src_to_dest = update_min(
-                        sim_descs[src_sim].get(dest_sim, (None,))[0], src_to_dest
+            for src_sim, src_to_mid_delays in mid_sim.input_delays.items():
+                for dest_sim, mid_to_dest in sim_descs[mid_sim].items():
+                    mid_to_dest_delays = mid_to_dest["delays"]
+                    src_to_dest_delays = src_to_mid_delays + mid_to_dest_delays
+                    was_updated = (
+                        sim_descs[src_sim]
+                        .setdefault(
+                            dest_sim,
+                            MinPath(
+                                delays=MinimalDurations(),
+                                path=[src_sim, dest_sim],
+                            ),
+                        )["delays"]
+                        .insert_all(src_to_dest_delays)
                     )
-                    # update_min only return as non-None value if the
-                    # existing value needs to be updated, i.e. a shorter
-                    # path was found
-                    if src_to_dest is not None:
+                    if was_updated:
                         # In this case we need to update the
                         # predecessor's shortest path to the descendant
                         # and reprocess the predecessor
-                        sim_descs[src_sim][dest_sim] = (src_to_dest, [src_sim] + path)
+                        sim_descs[src_sim][dest_sim]["path"] = [
+                            src_sim,
+                            *mid_to_dest["path"],
+                        ]
                         dirty.add(src_sim)
 
         # We need to raise an error if any sim has itself as a
@@ -794,10 +804,10 @@ class AsyncWorld:
         for sim, descs in sim_descs.items():
             if sim not in descs:
                 continue
-            (delay, path) = descs[sim]
-            if all(t == 0 for t in delay.tiers):
+            min_path = descs[sim]
+            if min_path["delays"].contains_zero():
                 raise ScenarioError(
-                    f"Your scenario contains cycles, for example: {path}."
+                    f"Your scenario contains cycles, for example: {min_path['path']}."
                 )
 
     async def shutdown(self):
@@ -806,6 +816,11 @@ class AsyncWorld:
         """
         for sim in self.sims.values():
             await sim.stop()
+
+
+class MinPath(TypedDict):
+    delays: MinimalDurations
+    path: List[SimRunner]
 
 
 if TYPE_CHECKING:
