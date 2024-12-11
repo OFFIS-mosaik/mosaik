@@ -151,6 +151,11 @@ class RemoteProxy(BaseProxy):
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikProxy
     _process: Tuple[Popen[str], bool] | None
+    """The process for this RemoteProxy (or None, if the connection
+    was established using connect). The second component of the tuple is
+    True if the process should be automatically terminated at the end of
+    the simulation.
+    """
 
     def __init__(
         self,
