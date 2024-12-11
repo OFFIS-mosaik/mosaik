@@ -6,7 +6,7 @@ from networkx import to_dict_of_dicts as to_dict
 from mosaik import scenario
 from mosaik.exceptions import ScenarioError
 from mosaik.scenario import Entity, ModelFactory, World
-from mosaik.tiered_time import TieredInterval
+from mosaik.tiered_time import TieredDuration, MinimalDurations
 
 sim_config: scenario.SimConfig = {
     "ExampleSim": {
