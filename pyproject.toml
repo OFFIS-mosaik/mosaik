@@ -61,8 +61,8 @@ cache-keys = [{ git = { commit = true, tags = true } }]
 
 [[tool.uv.index]]
 name = "pypi"
-url = "https://upload.pypi.org/simple/"
-publish-url = "https://upload.pypi.org/legacy/"
+url = "https://pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
 
 [[tool.uv.index]]
 name = "testpypi"
