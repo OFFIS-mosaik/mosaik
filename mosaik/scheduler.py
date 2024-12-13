@@ -382,7 +382,6 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
     if outattr:
         sim.tqdm.set_postfix_str("get_data")
         data = await sim.get_data(outattr)
-
         output_time: int
         output_time = data.get("time", sim.last_step.time)  # type: ignore
         if output_time == sim.current_step.time:
@@ -403,10 +402,24 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
         # than filter out this data here.
         if sim.outputs is not None:
             sim.outputs[output_time] = data
-
+        attrs_list = [key for entry in data.values() for key in entry.keys()]
+        for data_point in data:
+            if not _eid_exists(sim._factory.entities, data_point):
+                logger.warning(f"The eid {data_point} does not exist in simulator {sim.sid}.",
+                               "Data will not be transferred.")
+        for attr in attrs_list:
+            if not _attr_exists(sim._factory.meta, attr):
+                logger.warning(f"The attribute {attr} does not exist in simulator {sim.sid}.",
+                                "Data will not be transferred.")
+        #     if not attr_exists():
+        # print(sim._factory.meta)
+        # print(sim._factory.entities)
+        # print(data)
         # Push forward certain data
         for (src_eid, src_attr), destinations in sim.output_to_push.items():
             try:
+                print(src_eid)
+                print(src_attr)
                 val = data[src_eid][src_attr]
                 for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
                     dest_sim.timed_input_buffer.add(
@@ -488,3 +501,26 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
     )
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
+
+
+def _eid_exists(entities, data_point) -> bool:
+    for entity in entities:
+        if data_point in entity.full_id:
+            return True
+    return False
+
+
+def _attr_exists(meta, attr) -> bool:
+    attrs_values = extract_attrs_values(meta)
+    if attr in attrs_values:
+        return True
+    return False
+
+def extract_attrs_values(data):
+    attrs_values = []
+    for key, value in data.items():
+        if isinstance(value, dict):  # Check if the value is a dictionary
+            attrs_values.extend(extract_attrs_values(value))  # Recursively process nested dictionaries
+        elif key == 'attrs':  # Check for the key 'attrs'
+            attrs_values.append(value[0])
+    return attrs_values    

@@ -68,7 +68,7 @@ if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import AsyncWorld, CmdModel, ConnectModel, PythonModel
+    from mosaik.async_scenario import AsyncWorld, CmdModel, ConnectModel, PythonModel, AsyncModelFactory
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -448,6 +448,7 @@ class SimRunner:
 
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
+    _factory: AsyncModelFactory
 
     def __init__(
         self,
