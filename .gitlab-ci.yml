@@ -89,16 +89,14 @@ Benchmark tests:
 .pypi:
   script:
     - echo "Publishing version tagged $CI_COMMIT_TAG"
+
     - echo "Check that tag exists on master branch"
     - git fetch origin master --tags
-    - git branch --contains $CI_COMMIT_TAG | grep remotes/origin/master
+    - git branch --all --contains $CI_COMMIT_TAG | grep "remotes/origin/master"
+
+    - echo "Starting build process"
     - uv build
     - uv publish --repository-url "$REPOSITORY_URL" --token $TWINE_TOKEN --yes
-    - touch pypi.env
-    - echo "PACKAGE_VERSION=$CI_COMMIT_TAG" >> pypi.env
-  artifacts:
-    reports:
-      dotenv: pypi.env
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -136,7 +134,7 @@ GitLab release:
     assets:
       links:
         - name: PyPI download page
-          url: https://pypi.org/project/mosaik/$PACKAGE_VERSION/#files
+          url: https://pypi.org/project/mosaik/$CI_COMMIT_TAG/#files
           link_type: package
   cache:
     paths: []
