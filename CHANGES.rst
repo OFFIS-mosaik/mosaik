@@ -1,6 +1,15 @@
 Changelog
 =========
 
+3.4.0 - 2024-12-13
+------------------
+
+- [NEW] Use AsyncWorld for better integration in other programs (`#243 <https://gitlab.com/mosaik/mosaik/-/issues/243>`_)
+- [NEW] Better entity rendering (`#257 <https://gitlab.com/mosaik/mosaik/-/issues/257>`_)
+- [NEW] Save the Popen instance when starting a simulator using cmd (`#256 <https://gitlab.com/mosaik/mosaik/-/issues/256>`_)
+- [FIX] Mosaik does not recognize if entity IDs differ from one another (`#194 <https://gitlab.com/mosaik/mosaik/-/issues/194>`_)
+- [FIX] Incorrect shortest duration calculation (`#246 <https://gitlab.com/mosaik/mosaik/-/issues/246>`_)
+
 3.3.3 - 2024-05-21
 ------------------
 
