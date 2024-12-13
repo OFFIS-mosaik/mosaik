@@ -92,6 +92,7 @@ Benchmark tests:
 
     - echo "Check that tag exists on pipeline-fixing branch"
     - git fetch origin pipeline-fixing --tags
+    - git branch --contains $CI_COMMIT_TAG
     - git branch --contains $CI_COMMIT_TAG | grep "* pipeline-fixing"
 
     - echo "Check that tag exists on master branch"
