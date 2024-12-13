@@ -1,8 +1,9 @@
 import tkinter as tk
+
 import zmq
 
 
-class Tkinter():
+class Tkinter:
     def __init__(self):
         self.button = None
         self.window = tk.Tk()
@@ -17,14 +18,16 @@ class Tkinter():
 
     def create(self):
         # Open window having dimension 100x100
-        self.window.geometry('150x100')
-        self.window.title('External Events')
+        self.window.geometry("150x100")
+        self.window.title("External Events")
 
-        self.button = tk.Button(self.window, text="Set External Event", command=self.print_stuff)
+        self.button = tk.Button(
+            self.window, text="Set External Event", command=self.print_stuff
+        )
         self.button.pack(side=tk.LEFT)
 
     def show(self):
-        print('Show Tkinter window')
+        print("Show Tkinter window")
         self.window.mainloop()
 
 

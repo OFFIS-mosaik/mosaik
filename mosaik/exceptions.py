@@ -2,7 +2,6 @@
 This module provides mosaik specific exception types.
 """
 
-
 from typing import Any, List, Tuple
 
 from mosaik_api_v3 import SimId
@@ -22,12 +21,12 @@ class SimulationError(Exception):
     """
 
     def __init__(self, msg: str, exc: Any = None):
-        arg = ''
+        arg = ""
         if exc:
             orig = str(exc)
-            if orig.endswith('.'):
+            if orig.endswith("."):
                 orig = orig[:-1]
-            arg += '%s: ' % orig
+            arg += "%s: " % orig
         arg += msg
         super().__init__(arg)
 
@@ -42,7 +41,7 @@ class NonSerializableOutputsError(SimulationError):
 
     def add_error(self, dest_eid: str, dest_attr: str, src_id: str, error: TypeError):
         self.errors.append((dest_eid, dest_attr, src_id, error))
-    
+
     def __bool__(self):
         return bool(self.errors)
 
@@ -54,4 +53,32 @@ class NonSerializableOutputsError(SimulationError):
                 for dest_eid, dest_attr, src, error in self.errors
             )
             + "\nThis is likely a problem in the source simulator(s)."
+        )
+
+
+class SimulatorError(Exception):
+    """This exception is raised if a simulator does not behave
+    correctly."""
+
+    simulator: str
+
+    def __init__(self, simulator: str, *args: Any) -> None:
+        self.simulator = simulator
+        super().__init__(*args)
+
+
+class DuplicateEntityIdError(SimulatorError):
+    """This exception is raised if a simulator returns multiple entities
+    with the same entity ID."""
+
+    entity_id: str
+
+    def __init__(self, simulator: str, entity_id: str, *args: Any) -> None:
+        self.entity_id = entity_id
+        super().__init__(simulator, *args)
+
+    def __str__(self) -> str:
+        return (
+            f"Simulator {self.simulator} returned multiple entities "
+            f"with entity ID '{self.entity_id}'."
         )

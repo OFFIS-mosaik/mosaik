@@ -1,28 +1,32 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import StreamReader, StreamWriter
 import os
-from loguru import logger
-import pytest
 import sys
-import time
+from asyncio import StreamReader, StreamWriter
+from subprocess import TimeoutExpired
 from typing import Any, Callable, Coroutine, Type, cast
 
-from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import Meta, __api_version__ as api_version
 import mosaik_api_v3.connection
+import pytest
+from example_sim.mosaik import ExampleSim
+from mosaik_api_v3 import Meta
+from mosaik_api_v3 import __api_version__ as api_version
 from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import proxies, scenario, simmanager, World
-from mosaik.exceptions import NonSerializableOutputsError, ScenarioError, SimulationError
-from mosaik.proxies import BaseProxy, LocalProxy
-from mosaik.tiered_time import TieredInterval, TieredTime
-
+from mosaik import World, proxies, scenario, simmanager
+from mosaik.exceptions import (
+    DuplicateEntityIdError,
+    NonSerializableOutputsError,
+    ScenarioError,
+    SimulationError,
+)
+from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
+from mosaik.tiered_time import TieredDuration, TieredTime
 
 VENV = os.path.dirname(sys.executable)
 
-sim_config: scenario.SimConfig = {
+SIM_CONFIG: scenario.SimConfig = {
     "ExampleSimA": {
         "python": "example_sim.mosaik:ExampleSim",
     },
@@ -37,6 +41,14 @@ sim_config: scenario.SimConfig = {
     "Fail": {
         "cmd": '%(python)s -c "import time; time.sleep(0.2)"',
     },
+    "ProcTestTrue": {
+        "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+        "auto_terminate": True,
+    },
+    "ProcTestFalse": {
+        "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+        "auto_terminate": False,
+    },
     "SimulatorMock": {
         "python": "tests.mocks.simulator_mock:SimulatorMock",
     },
@@ -46,12 +58,15 @@ sim_config: scenario.SimConfig = {
     "FixedOutputSim": {
         "python": "tests.simulators.fixed_output_sim:FixedOutputSim",
     },
+    "EchoSim": {
+        "python": "tests.simulators.loop_simulators.echo_simulator:EchoSim",
+    },
 }
 
 
 @pytest.fixture(name="world")
 def world_fixture():
-    world = scenario.World(sim_config)
+    world = scenario.World(SIM_CONFIG)
     yield world
     world.shutdown()
 
@@ -63,12 +78,12 @@ def test_start(world, monkeypatch):
 
     class Proxy(BaseProxy):
         async def init(self, *args, **kwargs):
-            return list(map(int, api_version.split('.')))
+            return list(map(int, api_version.split(".")))
 
         @property
         def meta(self) -> Meta:
             raise NotImplementedError
-        
+
         async def send(self, request):
             return None
 
@@ -149,6 +164,34 @@ def test_start_proc_timeout_accept(world, caplog):
     )
 
 
+@pytest.mark.parametrize("auto_terminate", [True, False])
+def test_start_proc_auto_terminate(auto_terminate: bool):
+    with World(
+        {
+            "ProcTest": {
+                "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+                "auto_terminate": auto_terminate,
+            }
+        }
+    ) as world:
+        sim = world.start("ProcTest")
+        world.run(1)
+
+    proxy = sim._async_model_factory._proxy
+    assert isinstance(proxy, RemoteProxy)
+    assert proxy._process is not None
+    try:
+        proxy._process[0].wait(0.1)
+    except TimeoutExpired:
+        # Just wait a moment for terminate to go through, but not long
+        # enough for the thread in ProcTest to finish.
+        # This way, the process should only terminate if explicitly
+        # terminated by mosaik.
+        pass
+    # Check that the process has terminated
+    assert (proxy._process[0].poll() is not None) == auto_terminate
+
+
 @pytest.mark.asyncio
 async def test_start_proc_no_port_conflict():
     mosaik_config: scenario.MosaikConfigTotal = {
@@ -158,8 +201,12 @@ async def test_start_proc_no_port_conflict():
     }
     mosaik_remote = cast(simmanager.MosaikRemote, None)
     exc_1, exc_2 = await asyncio.gather(
-        simmanager.start_proc(mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
-        simmanager.start_proc(mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote),
+        simmanager.start_proc(
+            mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote
+        ),
+        simmanager.start_proc(
+            mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote
+        ),
         return_exceptions=True,
     )
     # We should get `SimulationError`s here, not `OSError`s
@@ -168,13 +215,13 @@ async def test_start_proc_no_port_conflict():
 
 
 @pytest.mark.cmd_process
-def test_start_external_process_with_environment_variables(world, tmpdir):
+def test_start_external_process_with_environment_variables(world: World, tmpdir):
     """
     Assert that you can set environment variables for a new sub-process.
     """
     # Replace sim_config for this test:z
     print(tmpdir.strpath)
-    world.sim_config = {
+    world._async_world.sim_config = {
         "SimulatorMockTmp": {
             "cmd": "%(python)s -m simulator_mock %(addr)s",
             "env": {
@@ -198,7 +245,7 @@ if __name__ == '__main__':
     mosaik_api_v3.start_simulation(SimulatorMock())
 """
     )
-    sim = world.start("SimulatorMockTmp")
+    _sim = world.start("SimulatorMockTmp")
 
 
 async def read_message(reader: asyncio.StreamReader):
@@ -228,8 +275,7 @@ def test_start_connect(world: scenario.World):
 
 
 def test_start_connect_timeout_init(world: World, caplog):
-    """Simulator takes too long to respond to the init call.
-    """
+    """Simulator takes too long to respond to the init call."""
     world.config["start_timeout"] = 0.1
 
     async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
@@ -367,7 +413,9 @@ def test_sim_proxy_illegal_extra_methods(world):
     with pytest.raises(ScenarioError):
         world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
     with pytest.raises(ScenarioError):
-        world.start("MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]})
+        world.start(
+            "MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]}
+        )
 
 
 def test_sim_proxy_stop_impl(world):
@@ -410,7 +458,7 @@ def test_local_process_finalized(world):
 
 
 async def _rpc_get_progress(channel: Channel, world: World):
-    """ 
+    """
     Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
     RPC.
     """
@@ -567,30 +615,35 @@ def test_mosaik_remote(
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             sim_x = simmanager.SimRunner("X", proxy_x)
-            sim_x.successors[sim_x] = TieredInterval(0)
-            sim_x.successors_to_wait_for[sim_x] = TieredInterval(0)
+            sim_x.successors[sim_x] = TieredDuration(0)
+            sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
             sim_x.last_step = TieredTime(1)
             sim_x.current_step = TieredTime(0)
             sim_x.is_in_step = True
             sim_x.outputs = {1: {"2": {"attr": "val"}}}
             world.sims["X"] = sim_x
+
             class DummyProxy:
                 @property
                 def meta(self):
                     return {"type": "time-based", "models": {}}
+
                 async def stop(self):
                     pass
+
             sim_y = simmanager.SimRunner("Y", DummyProxy())
             world.sims["Y"] = sim_y
             sim_z = simmanager.SimRunner("Z", DummyProxy())
             world.sims["Z"] = sim_z
 
-            sim_x.successors[sim_y] = TieredInterval(0)
+            sim_x.successors[sim_y] = TieredDuration(0)
 
         async def run():
             channel_future: asyncio.Future[Channel] = asyncio.Future()
+
             async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
                 channel_future.set_result(Channel(r, w))
+
             server = await asyncio.start_server(on_connect, "127.0.0.1")
             try:
                 actual_addr = server.sockets[0].getsockname()
@@ -629,13 +682,13 @@ def test_timed_input_buffer():
     assert input_dict == {"dest_eid": {"dest_var": {"src_sid.src_eid": 1}}}
 
 
-def test_global_time_resolution(world):
+def test_global_time_resolution(world: World):
     # Default time resolution set to 1.0
     simulator = world.start("SimulatorMock")
     assert simulator._proxy.sim.time_resolution == 1.0
 
     # Set global time resolution to 60.0
-    world.time_resolution = 60.0
+    world._async_world.time_resolution = 60.0
     simulator_2 = world.start("SimulatorMock")
     assert simulator_2._proxy.sim.time_resolution == 60.0
 
@@ -648,3 +701,16 @@ def test_non_serializable_outputs_error(world: World):
     world.connect(src_entity, dest_entity, ("out", "val_in"))
     with pytest.raises(NonSerializableOutputsError):
         world.run(until=1)
+
+
+def test_repeated_entity_ids(world: World):
+    """A cls:`DuplicateEntityIdError` should be raised if a simulator
+    creates multiple entities with the same entity ID. (Otherwise,
+    values for those entities get mixed up during the simulation.)"""
+    # EchoSim always uses the entity ID "Echo"
+    echo_sim = world.start("EchoSim")
+    echo_sim.A()
+    with pytest.raises(DuplicateEntityIdError) as exc_info:
+        echo_sim.A()
+    assert exc_info.value.simulator == "EchoSim-0"
+    assert exc_info.value.entity_id == "Echo"

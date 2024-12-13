@@ -6,7 +6,6 @@ This scenario tests for the right max_advance value if an earlier step is
 inserted.
 """
 
-
 from mosaik import World
 
 

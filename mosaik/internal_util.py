@@ -1,7 +1,9 @@
+import platform
 from typing import Callable, Dict
+
 from typing_extensions import TypeVar
 
-from importlib import metadata
+from mosaik._version import version
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -49,5 +51,12 @@ def merge_all(
 
 
 def doc_link(page: str, anchor: str) -> str:
-    version = metadata.version("mosaik")
     return f"https://mosaik.readthedocs.io/en/{version}/{page}.html#{anchor}"
+
+
+def get_python_version():
+    return platform.python_version()
+
+
+def get_os():
+    return platform.platform()

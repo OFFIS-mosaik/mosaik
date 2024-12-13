@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import asyncio
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
+from subprocess import Popen
 from typing import Any, Dict, Iterator, List, Tuple
-from loguru import logger
 
-from mosaik_api_v3 import check_api_compliance, MosaikProxy, Simulator
+from loguru import logger
+from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
+
 from mosaik.exceptions import ScenarioError
 
 
@@ -21,6 +23,7 @@ class Proxy(ABC):
     appropriate ``Adapter`` subclasses to bring the interface of the
     connected simulator in line with the most up-to-date API version.
     """
+
     @abstractmethod
     async def send(self, request: Any) -> Any:
         """Send a request to the connected simulator.
@@ -64,7 +67,7 @@ class BaseProxy(Proxy):
         """Initialize the simulator by sending the ``init`` call. The
         ``meta`` returned by the simulator will be saved to be retrieved
         using the ``meta`` property.
-        
+
         :param sid: The ``SimId`` that mosaik assigns to this simulator
         instance
         :param time_resolution: The time resolution of the simulation,
@@ -80,6 +83,7 @@ class LocalProxy(BaseProxy):
     Proxy for a local simulator. This mainly wraps each mosaik method in
     a coroutine.
     """
+
     sim: Simulator
     """The underlying ``mosaik_api.Simulator."""
 
@@ -146,15 +150,27 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikProxy
+    _process: Tuple[Popen[str], bool] | None
+    """The process for this RemoteProxy (or None, if the connection
+    was established using connect). The second component of the tuple is
+    True if the process should be automatically terminated at the end of
+    the simulation.
+    """
 
-    def __init__(self, channel: Channel, mosaik_remote: MosaikProxy):
+    def __init__(
+        self,
+        channel: Channel,
+        mosaik_remote: MosaikProxy,
+        *,
+        process: Tuple[Popen[str], bool] | None = None,
+    ):
         super().__init__()
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
-            self._handle_remote_requests(),
-            name="handle remote requests for ???"
+            self._handle_remote_requests(), name="handle remote requests for ???"
         )
+        self._process = process
 
     async def _handle_remote_requests(self) -> None:
         try:
@@ -170,15 +186,17 @@ class RemoteProxy(BaseProxy):
         except EndOfRequests:
             pass
         except RuntimeError as e:
-            if e.args[0] != 'Event loop is closed':
+            if e.args[0] != "Event loop is closed":
                 logger.exception(
                     "Something went wrong in _handle_remote_requests, "
-                    f"exception type {type(e)}")
+                    f"exception type {type(e)}"
+                )
                 await self.stop()
         except Exception as e:
             logger.exception(
                 "Something went wrong in _handle_remote_requests, "
-                f"exception type {type(e)}")
+                f"exception type {type(e)}"
+            )
             await self.stop()
 
     async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
@@ -199,6 +217,8 @@ class RemoteProxy(BaseProxy):
             pass
         await self._channel.close()
         await self._reader_task
+        if self._process and self._process[1]:
+            self._process[0].terminate()
 
 
 def extract_version(meta: Meta) -> List[int]:

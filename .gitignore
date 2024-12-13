@@ -27,6 +27,9 @@ wheels/
 *.egg
 MANIFEST
 poetry.lock
+requirements.lock
+requirements-dev.lock
+uv.lock
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -113,3 +116,6 @@ venv.bak/
 # tox temporary artifacts
 /mosaik-*.*.*/
 pytest.xml
+
+# artifacts from heatpump docs
+docs/ecosystem/components/mosaik-heatpump
