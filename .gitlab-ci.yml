@@ -92,12 +92,12 @@ Benchmark tests:
 
     - echo "Check that tag exists on pipeline-fixing branch"
     - git fetch origin pipeline-fixing --tags
-    - git branch --contains $CI_COMMIT_TAG
-    - git branch --contains $CI_COMMIT_TAG | grep "* pipeline-fixing"
+    - git branch --all --contains $CI_COMMIT_TAG
+    - git branch --all --contains $CI_COMMIT_TAG | grep "remotes/origin/pipeline-fixing"
 
     - echo "Check that tag exists on master branch"
     - git fetch origin master --tags
-    - git branch --contains $CI_COMMIT_TAG | grep "* master"
+    - git branch --all --contains $CI_COMMIT_TAG | grep "remotes/origin/master"
 
     - echo "Starting build process"
     - uv build
