@@ -96,7 +96,7 @@ Benchmark tests:
 
     - echo "Starting build process"
     - uv build
-    - uv publish --repository-url "$REPOSITORY_URL" --token $TWINE_TOKEN --yes
+    - uv publish --index "$INDEX" --token $TWINE_TOKEN --yes
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -107,7 +107,7 @@ Test release:
   extends: .pypi
   stage: Release
   variables:
-    REPOSITORY_URL: https://test.pypi.org/legacy/
+    INDEX: testpypi
     TWINE_TOKEN: $MOSAIK_TEST_PYPI_TOKEN
 
 # Release the newly tagged version of mosaik on pypi.
@@ -115,7 +115,7 @@ PyPI release:
   extends: .pypi
   stage: Release
   variables:
-    REPOSITORY_URL: https://upload.pypi.org/legacy/
+    INDEX: pypi
     TWINE_TOKEN: $MOSAIK_PYPI_PASSWORD
 
 GitLab release:
