@@ -24,8 +24,11 @@ def test_non_existing_entity_warning():
 
     test_model = test_sim.Test.create(2)
 
-    world.connect(test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=True)
+    world.connect(
+        test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=True
+    )
 
     world.run(until=END)
+
 
 test_non_existing_entity_warning()
