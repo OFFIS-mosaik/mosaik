@@ -90,6 +90,7 @@ class World:
     You can still do this yourself by calling
     ``logger.enable("mosaik")``.
     """
+
     loop: asyncio.AbstractEventLoop
     _async_world: AsyncWorld
     _no_shutdown_in_run: bool = False
@@ -122,7 +123,7 @@ class World:
             debug=debug,
             cache=cache,
             max_loop_iterations=max_loop_iterations,
-            configure_logging = configure_logging,
+            configure_logging=configure_logging,
             skip_greetings=skip_greetings,
         )
 

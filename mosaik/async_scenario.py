@@ -270,7 +270,7 @@ class AsyncWorld:
     Nodes are ``(sid, eid)`` tuples. Each note has an attribute
     *entity* with an :class:`Entity`.
     """
-    
+
     tqdm: tqdm[NoReturn]  # type: ignore  # set in run
     """The tqdm progress bar for the total progress."""
 
@@ -923,7 +923,6 @@ class AsyncModelFactory:
     models: Dict[ModelName, AsyncModelMock]
     entities: List[Entity]
 
-
     def __init__(  # noqa: C901
         self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy
     ):
@@ -997,7 +996,7 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
-        
+
     def get_entities(self) -> List[Entity]:
         return self.entities
 
