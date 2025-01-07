@@ -20,6 +20,7 @@ def test_basic_simulators():
 
     # Create World
     world = mosaik.World(SIM_CONFIG)
+
     def sample_function(time: int) -> str:
         # This function takes a Time object as an argument and returns a string.
         return f"The time is {time}"
@@ -46,4 +47,6 @@ def test_basic_simulators():
     assert len(test_dict) == END
     for key in test_dict:
         assert test_dict[key]["value"][test_input_eid] == f"The time is {key}"
+
+
 test_basic_simulators()

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 SENTINEL = object()
 
+
 async def run(
     world: AsyncWorld,
     until: int,
@@ -365,7 +366,8 @@ def rt_check(
             else:
                 warnings.warn(
                     f"Simulation too slow for real-time factor {rt_factor} - {delta}s "
-                    "behind time.",UserWarning
+                    "behind time.",
+                    UserWarning,
                 )
 
 
@@ -404,10 +406,16 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
         attrs_list = [key for entry in data.values() for key in entry.keys()]
         for data_point in data:
             if not _eid_exists(sim._factory.entities, data_point):
-                warnings.warn(f"The eid {data_point} does not exist in simulator {sim.sid}.Data will not be transferred.", UserWarning)
+                warnings.warn(
+                    f"The eid {data_point} does not exist in simulator {sim.sid}.Data will not be transferred.",
+                    UserWarning,
+                )
         for attr in attrs_list:
             if not _attr_exists(sim._factory.meta, attr):
-                warnings.warn(f"The attribute {attr} does not exist in simulator {sim.sid}.Data will not be transferred.", UserWarning)
+                warnings.warn(
+                    f"The attribute {attr} does not exist in simulator {sim.sid}.Data will not be transferred.",
+                    UserWarning,
+                )
         for (src_eid, src_attr), destinations in sim.output_to_push.items():
             try:
                 val = data[src_eid][src_attr]
@@ -506,11 +514,12 @@ def _attr_exists(meta, attr) -> bool:
         return True
     return False
 
+
 def extract_attrs_values(data):
     attrs_values = []
     for key, value in data.items():
         if isinstance(value, dict):
             attrs_values.extend(extract_attrs_values(value))
-        elif key == 'attrs':
+        elif key == "attrs":
             attrs_values.append(value[0])
-    return attrs_values    
+    return attrs_values

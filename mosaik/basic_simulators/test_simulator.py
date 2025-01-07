@@ -31,13 +31,13 @@ META: Meta = {
             "persistent": ["value"],
             "non-persistent": ["to_be_deleted"],
             "trigger": ["to_be_deleted"],
-            "non-trigger": ["value"]
+            "non-trigger": ["value"],
         },
     },
 }
 
-class TestSimulator(mosaik_api_v3.Simulator):
 
+class TestSimulator(mosaik_api_v3.Simulator):
     entities: Dict[str, Any]
 
     def __init__(self):
@@ -59,7 +59,12 @@ class TestSimulator(mosaik_api_v3.Simulator):
             entities.append({"eid": eid, "type": model})
         return entities
 
-    def step(self, time: Time, inputs: Dict[ModelName, Dict[ModelName, Dict[ModelName, Any]]], max_advance: Time) -> Time | None:
+    def step(
+        self,
+        time: Time,
+        inputs: Dict[ModelName, Dict[ModelName, Dict[ModelName, Any]]],
+        max_advance: Time,
+    ) -> Time | None:
         return time + 1
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
@@ -74,4 +79,4 @@ class TestSimulator(mosaik_api_v3.Simulator):
         self.entities["test_entity"] = 0
 
     def remove_attr(self, attr: str):
-            META["models"]["Dict"]["attrs"].remove(attr)
+        META["models"]["Dict"]["attrs"].remove(attr)
