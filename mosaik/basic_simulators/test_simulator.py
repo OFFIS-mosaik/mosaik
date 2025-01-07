@@ -1,10 +1,8 @@
-import random
 from typing import Any, Dict, List
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
     CreateResult,
-    InputData,
     Meta,
     ModelName,
     OutputData,
@@ -12,12 +10,6 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-
-import mosaik
-import mosaik.exceptions
-import mosaik.util
-from mosaik.scenario import SimConfig
-
 
 META: Meta = {
     "api_version": "3.0",

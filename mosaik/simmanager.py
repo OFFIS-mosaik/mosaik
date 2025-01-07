@@ -40,7 +40,6 @@ from typing import (
 
 import mosaik_api_v3
 import tqdm
-import mosaik.log_config
 import warnings
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (

@@ -5,21 +5,18 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 import asyncio
+import warnings
 from heapq import heappop
 from math import ceil
-import sys
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
-import logging
-import mosaik.log_config
-from loguru import logger
+
 from mosaik_api_v3 import InputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 from mosaik.tiered_time import TieredTime
-import warnings
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import AsyncWorld

@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
-import mosaik.log_config
+import sys
 import warnings
 from collections import defaultdict
 from copy import copy
@@ -285,6 +285,24 @@ class AsyncWorld:
         configure_logging: bool = False,
         skip_greetings: bool = True,
     ):
+        if configure_logging:
+            logger.enable("mosaik")
+            # Set up Loguru to handle Python warnings
+            logger.remove()  # Remove default handler
+            logger.add(
+                sink=sys.stderr,  # Console output
+                level="WARNING",  # Minimum log level
+                format="<green>{time}</green> <level>{level}</level> <cyan>{module}</cyan>: {message}",
+            )
+
+            # Redirect warnings to the logging system instead of sys.stderr
+            def custom_showwarning(
+                message, category, filename, lineno, file=None, line=None
+            ):
+                logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
+
+            warnings.showwarning = custom_showwarning
+
         if not skip_greetings:
             print_greetings()
         self.sim_config = sim_config

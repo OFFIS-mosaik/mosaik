@@ -2,7 +2,6 @@ from typing import Any, Dict, cast
 
 import mosaik
 import mosaik.basic_simulators
-from mosaik.simmanager import SimRunner
 import mosaik.util
 from mosaik.scenario import SimConfig
 

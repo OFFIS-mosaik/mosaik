@@ -107,9 +107,6 @@ class World:
         configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
-        if configure_logging:
-            logger.enable("mosaik")
-
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
