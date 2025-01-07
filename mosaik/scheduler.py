@@ -368,7 +368,7 @@ def rt_check(
                 )
 
 
-async def get_outputs(world: AsyncWorld, sim: SimRunner):
+async def get_outputs(world: AsyncWorld, sim: SimRunner): # noqa: C901
     """
     Wait for all required output data from a simulator *sim*.
 

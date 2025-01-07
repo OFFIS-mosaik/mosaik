@@ -25,7 +25,6 @@ from typing import (
     Union,
 )
 
-from loguru import logger
 from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 

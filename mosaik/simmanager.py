@@ -20,6 +20,7 @@ import platform
 import shlex
 import subprocess
 import sys
+import warnings
 from ast import literal_eval
 from json import JSONEncoder
 from typing import (
@@ -40,7 +41,6 @@ from typing import (
 
 import mosaik_api_v3
 import tqdm
-import warnings
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (
     Attr,
@@ -69,11 +69,11 @@ if "Windows" in platform.system():
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import (
+        AsyncModelFactory,
         AsyncWorld,
         CmdModel,
         ConnectModel,
         PythonModel,
-        AsyncModelFactory,
     )
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
