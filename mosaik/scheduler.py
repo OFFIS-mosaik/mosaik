@@ -7,9 +7,11 @@ from __future__ import annotations
 import asyncio
 from heapq import heappop
 from math import ceil
+import sys
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
-
+import logging
+import mosaik.log_config
 from loguru import logger
 from mosaik_api_v3 import InputData, SimId, Time
 
@@ -17,13 +19,12 @@ from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 from mosaik.tiered_time import TieredTime
+import warnings
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import AsyncWorld
 
-
 SENTINEL = object()
-
 
 async def run(
     world: AsyncWorld,
@@ -255,7 +256,7 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
             try:
                 val = cache[src_eid][src_attr]
             except KeyError:
-                logger.warning(
+                warnings.warn(
                     f"Simulator {src_sim.sid}'s entity {src_eid} did not produce "
                     f"output on its persistent attribute {src_attr} during its last "
                     "step. However, this value is now required by simulator "
@@ -362,11 +363,9 @@ def rt_check(
                     f"Simulation too slow for real-time factor {rt_factor}"
                 )
             else:
-                logger.warning(
-                    "Simulation too slow for real-time factor {rt_factor} - {delta}s "
-                    "behind time.",
-                    rt_factor=rt_factor,
-                    delta=delta,
+                warnings.warn(
+                    f"Simulation too slow for real-time factor {rt_factor} - {delta}s "
+                    "behind time.",UserWarning
                 )
 
 
@@ -405,21 +404,12 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
         attrs_list = [key for entry in data.values() for key in entry.keys()]
         for data_point in data:
             if not _eid_exists(sim._factory.entities, data_point):
-                logger.warning(f"The eid {data_point} does not exist in simulator {sim.sid}.",
-                               "Data will not be transferred.")
+                warnings.warn(f"The eid {data_point} does not exist in simulator {sim.sid}.Data will not be transferred.", UserWarning)
         for attr in attrs_list:
             if not _attr_exists(sim._factory.meta, attr):
-                logger.warning(f"The attribute {attr} does not exist in simulator {sim.sid}.",
-                                "Data will not be transferred.")
-        #     if not attr_exists():
-        # print(sim._factory.meta)
-        # print(sim._factory.entities)
-        # print(data)
-        # Push forward certain data
+                warnings.warn(f"The attribute {attr} does not exist in simulator {sim.sid}.Data will not be transferred.", UserWarning)
         for (src_eid, src_attr), destinations in sim.output_to_push.items():
             try:
-                print(src_eid)
-                print(src_attr)
                 val = data[src_eid][src_attr]
                 for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
                     dest_sim.timed_input_buffer.add(
@@ -519,8 +509,8 @@ def _attr_exists(meta, attr) -> bool:
 def extract_attrs_values(data):
     attrs_values = []
     for key, value in data.items():
-        if isinstance(value, dict):  # Check if the value is a dictionary
-            attrs_values.extend(extract_attrs_values(value))  # Recursively process nested dictionaries
-        elif key == 'attrs':  # Check for the key 'attrs'
+        if isinstance(value, dict):
+            attrs_values.extend(extract_attrs_values(value))
+        elif key == 'attrs':
             attrs_values.append(value[0])
     return attrs_values    

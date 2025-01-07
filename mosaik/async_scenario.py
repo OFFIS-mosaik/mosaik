@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
+import mosaik.log_config
 import warnings
 from collections import defaultdict
 from copy import copy
@@ -269,7 +270,7 @@ class AsyncWorld:
     Nodes are ``(sid, eid)`` tuples. Each note has an attribute
     *entity* with an :class:`Entity`.
     """
-
+    
     tqdm: tqdm[NoReturn]  # type: ignore  # set in run
     """The tqdm progress bar for the total progress."""
 
@@ -281,6 +282,7 @@ class AsyncWorld:
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
+        configure_logging: bool = False,
         skip_greetings: bool = True,
     ):
         if not skip_greetings:
@@ -304,7 +306,7 @@ class AsyncWorld:
 
         self._debug = False
         if debug:
-            logger.warning(
+            warnings.warn(
                 "You are running your simulation in debug mode. This can lead to "
                 "significant slow-downs, as it will create a graph of the entire "
                 "execution. Only use this mode if you intend to analyze the execution "
@@ -404,7 +406,7 @@ class AsyncWorld:
                     "requires initial data"
                 )
         elif initial_data is not SENTINEL:
-            logger.warning(
+            warnings.warn(
                 f"Gave initial data for connection from {src.full_id}.{src_attr} to "
                 f"{dest.full_id}.{dest_attr} where it is not needed"
             )
@@ -419,7 +421,7 @@ class AsyncWorld:
             dest_attr in dest.model_mock.measurement_inputs
             and src_attr in src.model_mock.event_outputs
         ):
-            logger.warning(
+            warnings.warn(
                 f"A connection between the non-persistent attribute {src_attr} of "
                 f"{src.sid} and the non-trigger attribute {dest_attr} of "
                 f"{dest.sid} is not recommended. This might cause problems in the "

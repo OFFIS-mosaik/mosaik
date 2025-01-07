@@ -40,7 +40,8 @@ from typing import (
 
 import mosaik_api_v3
 import tqdm
-from loguru import logger
+import mosaik.log_config
+import warnings
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (
     Attr,
@@ -267,7 +268,7 @@ async def start_proc(
             if "Windows" in platform.system():
                 creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
             else:
-                logger.warning(
+                warnings.warn(
                     f'Simulator "{sim_name}" could not be started in a new console: '
                     "Only available on Windows"
                 )
@@ -720,7 +721,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))
         else:
-            logger.warning(
+            warnings.warn(
                 "Event set at {event_time} by {sim_id} is after simulation end {until} "
                 "and will be ignored.",
                 event_time=event_time,

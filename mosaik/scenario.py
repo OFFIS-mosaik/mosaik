@@ -122,6 +122,7 @@ class World:
             debug=debug,
             cache=cache,
             max_loop_iterations=max_loop_iterations,
+            configure_logging = configure_logging,
             skip_greetings=skip_greetings,
         )
 
