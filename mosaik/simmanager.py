@@ -454,14 +454,16 @@ class SimRunner:
 
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
-    _factory: AsyncModelFactory
+    model_factory: AsyncModelFactory
 
     def __init__(
         self,
         sid: SimId,
         connection: Proxy,
+        model_factory: AsyncModelFactory,
         depth: int = 1,
     ):
+        self.model_factory = model_factory
         self.sid = sid
         self._proxy = connection
 
@@ -727,11 +729,9 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             sim.schedule_step(TieredTime(event_time))
         else:
             warnings.warn(
-                "Event set at {event_time} by {sim_id} is after simulation end {until} "
+                f"Event set at {event_time} by {sim_id} is after simulation end {until} "
                 "and will be ignored.",
-                event_time=event_time,
-                sim_id=sim.sid,
-                until=self.world.until,
+                UserWarning,
             )
 
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):

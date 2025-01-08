@@ -368,66 +368,83 @@ def rt_check(
                 )
 
 
-async def get_outputs(world: AsyncWorld, sim: SimRunner):  # noqa: C901
+async def get_outputs(world: AsyncWorld, sim: SimRunner):
     """
     Wait for all required output data from a simulator *sim*.
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
-    sid = sim.sid
     outattr = sim.output_request
-    if outattr:
-        sim.tqdm.set_postfix_str("get_data")
-        data = await sim.get_data(outattr)
-        output_time: int
-        output_time = data.get("time", sim.last_step.time)  # type: ignore
-        if output_time == sim.current_step.time:
-            output_tiered_time = sim.current_step
-        else:
-            output_tiered_time = TieredTime(
-                output_time, *([0] * (len(sim.current_step) - 1))
-            )
-        sim.output_time = output_tiered_time
-        if sim.last_step.time > output_time:
-            raise SimulationError(
-                'Output time (%s) is not >= time (%s) for simulator "%s"'
-                % (output_time, sim.last_step, sim.sid)
-            )
 
-        # Fill output cache. This will repeat some data that is also
-        # pushed forward below, but it is faster to just save everything
-        # than filter out this data here.
-        if sim.outputs is not None:
-            sim.outputs[output_time] = data
-        attrs_list = [key for entry in data.values() for key in entry.keys()]
-        for data_point in data:
-            if not _eid_exists(sim._factory.entities, data_point):
-                warnings.warn(
-                    f"The eid {data_point} does not exist in simulator {sim.sid}.Data will not be transferred.",
-                    UserWarning,
-                )
-        for attr in attrs_list:
-            if not _attr_exists(sim._factory.meta, attr):
-                warnings.warn(
-                    f"The attribute {attr} does not exist in simulator {sim.sid}.Data will not be transferred.",
-                    UserWarning,
-                )
-        for (src_eid, src_attr), destinations in sim.output_to_push.items():
-            try:
-                val = data[src_eid][src_attr]
-                for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
-                    dest_sim.timed_input_buffer.add(
-                        output_time + time_shift.tiers[0],
-                        sid,
-                        src_eid,
-                        dest_eid,
-                        dest_attr,
-                        val,
+    if not outattr:
+        return
+
+    sim.tqdm.set_postfix_str("get_data")
+    data = await sim.get_data(outattr)
+    output_time = data.get("time", sim.last_step.time)
+
+    validate_output_time(sim, output_time)
+    sim.output_time = determine_output_tiered_time(sim, output_time)
+
+    cache_output_data(sim, data, output_time)
+    validate_entities_and_attributes(sim, data)
+    push_output_data(sim, data, output_time)
+
+    sim.data = data
+
+
+def validate_output_time(sim: SimRunner, output_time: int):
+    if sim.last_step.time > output_time:
+        raise SimulationError(
+            f'Output time ({output_time}) is not >= time ({sim.last_step}) for simulator "{sim.sid}".'
+        )
+
+
+def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime:
+    if output_time == sim.current_step.time:
+        return sim.current_step
+    return TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
+
+
+def cache_output_data(sim: SimRunner, data: dict, output_time: int):
+    if sim.outputs is not None:
+        sim.outputs[output_time] = data
+
+
+def validate_entities_and_attributes(sim: SimRunner, eid_dict: dict):
+    for eid in eid_dict:
+        if eid not in sim.model_factory.entities.keys():
+            warnings.warn(
+                f"Simulator {sim.sid} returned data for the entity {eid} which was never created. This is likely an error in its get_data method.",
+                UserWarning,
+            )
+        else:
+            print(eid_dict[eid])
+            model_attrs = sim.model_factory.entities[eid].model_mock.output_attrs
+            for attr in eid_dict[eid]:
+                if attr not in model_attrs:
+                    warnings.warn(
+                        f"The attribute {attr} does not exist in model {sim.model_factory.entities[eid].model_mock.name}. Data will not be transferred.",
+                        UserWarning,
                     )
-            except KeyError:
-                pass
-        sim.data = data
+
+
+def push_output_data(sim: SimRunner, data: dict, output_time: int):
+    for (src_eid, src_attr), destinations in sim.output_to_push.items():
+        try:
+            val = data[src_eid][src_attr]
+            for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
+                dest_sim.timed_input_buffer.add(
+                    output_time + time_shift.tiers[0],
+                    sim.sid,
+                    src_eid,
+                    dest_eid,
+                    dest_attr,
+                    val,
+                )
+        except KeyError:
+            pass
 
 
 def trigger_successors(sim: SimRunner) -> None:
@@ -496,27 +513,3 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
     )
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
-
-
-def _eid_exists(entities, data_point) -> bool:
-    for entity in entities:
-        if data_point in entity.full_id:
-            return True
-    return False
-
-
-def _attr_exists(meta, attr) -> bool:
-    attrs_values = extract_attrs_values(meta)
-    if attr in attrs_values:
-        return True
-    return False
-
-
-def extract_attrs_values(data):
-    attrs_values = []
-    for key, value in data.items():
-        if isinstance(value, dict):
-            attrs_values.extend(extract_attrs_values(value))
-        elif key == "attrs":
-            attrs_values.append(value[0])
-    return attrs_values

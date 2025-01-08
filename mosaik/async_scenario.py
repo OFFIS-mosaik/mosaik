@@ -287,13 +287,6 @@ class AsyncWorld:
     ):
         if configure_logging:
             logger.enable("mosaik")
-            # Set up Loguru to handle Python warnings
-            logger.remove()  # Remove default handler
-            logger.add(
-                sink=sys.stderr,  # Console output
-                level="WARNING",  # Minimum log level
-                format="<green>{time}</green> <level>{level}</level> <cyan>{module}</cyan>: {message}",
-            )
 
             # Redirect warnings to the logging system instead of sys.stderr
             def custom_showwarning(
@@ -324,7 +317,7 @@ class AsyncWorld:
 
         self._debug = False
         if debug:
-            warnings.warn(
+            logger.warning(
                 "You are running your simulation in debug mode. This can lead to "
                 "significant slow-downs, as it will create a graph of the entire "
                 "execution. Only use this mode if you intend to analyze the execution "
@@ -385,8 +378,7 @@ class AsyncWorld:
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
-        self.sims[sim_id]._factory = model_factory
+        self.sims[sim_id] = SimRunner(sim_id, proxy, model_factory=model_factory, depth=self.current_group.depth)
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -939,7 +931,7 @@ class AsyncModelFactory:
 
     type: Literal["event-based", "time-based", "hybrid"]
     models: Dict[ModelName, AsyncModelMock]
-    entities: List[Entity]
+    entities: Dict[str, Entity]
 
     def __init__(  # noqa: C901
         self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy
@@ -950,7 +942,7 @@ class AsyncModelFactory:
         self._proxy = proxy
         self._sid = sid
         self.call = ExtraMethodsProxy(sid)
-        self.entities = []
+        self.entities = {}
 
         if "type" not in proxy.meta:
             raise ScenarioError(
@@ -1014,10 +1006,6 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
-
-    def get_entities(self) -> List[Entity]:
-        return self.entities
-
 
 def parse_attrs(
     model_desc: ModelDescription, type: Literal["time-based", "event-based", "hybrid"]
@@ -1228,7 +1216,8 @@ class AsyncModelMock(object):
             entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
-        self._factory.entities.extend(entity_set)
+        for entity in entity_set:
+            self._factory.entities[entity.eid] = entity
         return entity_set
 
     def _assert_model_type(
