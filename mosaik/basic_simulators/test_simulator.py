@@ -14,7 +14,7 @@ from mosaik_api_v3.types import (
 META: Meta = {
     "api_version": "3.0",
     "type": "hybrid",
-    "extra_methods": ["remove_entity", "remove_attr"],
+    "extra_methods": ["set_add_unregistered_attr", "set_add_unregistered_entity"],
     "models": {
         "Test": {
             "public": True,
@@ -31,10 +31,14 @@ META: Meta = {
 
 class TestSimulator(mosaik_api_v3.Simulator):
     entities: Dict[str, Any]
+    add_unregistered_entity: bool
+    add_unregistered_attr: bool
 
     def __init__(self):
         super().__init__(META)
-        self.entities = {}  # Maps EIDs to model instances/entities
+        self.entities = {}
+        self.add_unregistered_entity = False
+        self.add_unregistered_attr = False
 
     def init(self, sid: SimId, time_resolution: float = 1):
         return self.meta
@@ -63,12 +67,14 @@ class TestSimulator(mosaik_api_v3.Simulator):
         data: OutputData = {}
         for eid in outputs:
             data[eid] = {"value": self.entities[eid]}
-        data["non_existing_eid"] = {"non_existing_attr": self.entities["Test-0"]}
+        if self.add_unregistered_entity:
+            data["non_existing_eid"] = {"non_existing_attr": self.entities["Test-0"]}
+        if self.add_unregistered_attr:
+            data["Test-0"]["non_existing_attr"] = self.entities["Test-0"]
         return data
 
-    def remove_entity(self):
-        # self.entities.pop(random.choice(list(self.entities.keys())))
-        self.entities["test_entity"] = 0
+    def set_add_unregistered_entity(self, bool_value):
+        self.add_unregistered_entity = bool_value
 
-    def remove_attr(self, attr: str):
-        META["models"]["Dict"]["attrs"].remove(attr)
+    def set_add_unregistered_attr(self, bool_value):
+        self.add_unregistered_attr = bool_value

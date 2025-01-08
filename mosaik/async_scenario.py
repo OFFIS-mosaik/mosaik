@@ -288,12 +288,12 @@ class AsyncWorld:
             logger.enable("mosaik")
 
             # Redirect warnings to the logging system instead of sys.stderr
-            def custom_showwarning(
+            def user_warning(
                 message, category, filename, lineno, file=None, line=None
             ):
                 logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
 
-            warnings.showwarning = custom_showwarning
+            warnings.showwarning = user_warning
 
         if not skip_greetings:
             print_greetings()
