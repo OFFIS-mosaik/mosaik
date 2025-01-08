@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
-import sys
 import warnings
 from collections import defaultdict
 from copy import copy
@@ -378,7 +377,9 @@ class AsyncWorld:
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy, model_factory=model_factory, depth=self.current_group.depth)
+        self.sims[sim_id] = SimRunner(
+            sim_id, proxy, model_factory=model_factory, depth=self.current_group.depth
+        )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -1006,6 +1007,7 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
+
 
 def parse_attrs(
     model_desc: ModelDescription, type: Literal["time-based", "event-based", "hybrid"]

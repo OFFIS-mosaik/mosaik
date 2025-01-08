@@ -729,7 +729,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             sim.schedule_step(TieredTime(event_time))
         else:
             warnings.warn(
-                f"Event set at {event_time} by {sim_id} is after simulation end {until} "
+                f"Event set at {event_time} by {sim.sid} is after simulation end {self.world.until} "
                 "and will be ignored.",
                 UserWarning,
             )
