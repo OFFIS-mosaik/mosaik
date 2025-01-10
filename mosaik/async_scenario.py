@@ -414,7 +414,7 @@ class AsyncWorld:
 
         if problems:
             raise ScenarioError(
-                f"The are problems connecting {src.full_id}.{src_attr} to "
+                f"There are problems connecting {src.full_id}.{src_attr} to "
                 f"{dest.full_id}.{dest_attr}:\n- " + "\n- ".join(problems)
             )
 
