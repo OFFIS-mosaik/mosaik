@@ -109,6 +109,10 @@ class ModelOptionals(TypedDict, total=False):
     """Whether to split the given shell command using POSIX rules.
     (Default: ``False`` on Windows, ``True`` otherwise.)
     """
+    auto_terminate: bool
+    """Whether to terminate this process automatically at the end of the
+    simulation. (Default ``true``.)
+    """
 
 
 class PythonModel(ModelOptionals):
