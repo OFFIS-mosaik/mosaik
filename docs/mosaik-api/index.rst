@@ -1,6 +1,36 @@
-==============
-The mosaik API
-==============
+=======================
+Simulator API Reference
+=======================
+
+This is the reference for mosaik's simulator API, meaning the ways to connect new tools and programming languages to mosaik.
+If you are implementing a scenario using existing simulators, the scenario API reference is relevant, instead.
+
+
+The low- and high-level mosaik API
+==================================
+
+Communication between mosaik and the connected simulators can happen in two different ways:
+
+First, there is a protocol based on TCP connections and JSON datastructures.
+We call this the *low-level mosaik API*.
+For some programming languages (including Python, Java, and Julia), there are wrappers around this low-level API that abstract away the need to deal with JSON and TCP connections.
+We call these wrappers *high-level mosaik APIs*.
+
+Second, in the case of Python specifically, mosaik can also use simulators implementing the high-level API directly, skipping JSON and TCP entirely.
+
+The high-level API for Python is what is used in the tutorial and the Python-specific how-to guides.
+The reference for its classes and methods can be found here.
+
+For the high-level APIs in other programming languages, see their respective documentation.
+
+(TODO: add links)
+
+In the following, we will explain the low-level API.
+*You usually do not need to read this unless you are implementing a high-level API for a new programming language or you are writing a simulator in a programming language where no high-level API exists.*
+
+
+
+
 
 The mosaik API defines the communication protocol between mosaik and the
 simulators it couples. We differentiate between a *low-level* and

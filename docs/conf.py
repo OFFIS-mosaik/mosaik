@@ -30,11 +30,6 @@ os.makedirs(component_docs_dir, exist_ok=True)
 # Integrate mosaik-heatpump docuemtantion from https://gitlab.com/mosaik/components/energy/mosaik-heatpump
 # Files will be downloaded and integrated in mosaik documentation.
 
-# Install mosaik-heatpump to allow integration of documentation from the code.
-os.system("pip uninstall mosaik-heatpump -y")
-os.system(
-    "pip install git+https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git"
-)
 # Create a directory for the mosaik-heatpump documentation
 mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, "mosaik-heatpump")
 if os.path.exists(mosaik_heatpump_docs_dir):
@@ -98,7 +93,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mosaik"
-copyright = "2012-2024 OFFIS"
+copyright = "2012-2025 OFFIS"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

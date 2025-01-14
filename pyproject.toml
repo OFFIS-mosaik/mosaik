@@ -36,13 +36,18 @@ dev = [
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
 ]
-docs = ["sphinx>=7.2.5", "sphinx-rtd-theme>=1.3.0", "sphinx-toolbox>=3.5.0"]
-plotting = ["matplotlib>=3.8.2"]
+docs = [
+    "sphinx>=7.2.5; python_version>='3.9'",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-toolbox>=3.5.0",
+    "mosaik-heatpump>=1.0.2",
+]
+plotting = ["matplotlib>=3.8.2; python_version>='3.10'"]
 tutorial = [
-    "mosaik-pandapower-2>=0.3.1",
-    "mosaik-pv>=1.2",
+    "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
+    "mosaik-pv>=1.2; python_version>='3.9'",
     "pandapower>=2.13.1",
-    "numba>=0.59.0",
+    "numba>=0.59.0; python_version>='3.9'",
     "plotly>=5.19.0",
     "simbench>=1.4.0",
 ]
@@ -99,4 +104,4 @@ stubPath = "typings"
 pythonPlatform = "Linux"
 
 [tool.ruff.lint]
-extend-select = ["C", "W", "I"]
+extend-select = ["C", "W", "I", "E"]

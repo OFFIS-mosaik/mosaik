@@ -10,7 +10,7 @@ Installation
 
 The first step after installing mosaik itself is to install the packages necessary for our simulation.
 We will be using ``mosaik-pandapower-2`` and ``mosaik-pv``.
-Both of them are on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
+Both of them are available on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
 We will also use mosaik's built-in function simulator as a fake weather simulator and the built-in output simulator to see what's going on.
 
 Sic mundus creatus est
