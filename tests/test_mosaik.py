@@ -76,7 +76,9 @@ def test_rt_sim_too_slow(strict, caplog):
                 rt_strict=strict,
             )
         else:
-            with pytest.warns(UserWarning, match="Simulation too slow for real-time factor"):
+            with pytest.warns(
+                UserWarning, match="Simulation too slow for real-time factor"
+            ):
                 world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
     finally:
         world.shutdown()
