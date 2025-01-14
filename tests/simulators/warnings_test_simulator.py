@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
@@ -56,7 +56,7 @@ class WarningsTestSimulator(mosaik_api_v3.Simulator):
         time: Time,
         inputs: Dict[ModelName, Dict[ModelName, Dict[ModelName, Any]]],
         max_advance: Time,
-    ) -> Time | None:
+    ) -> Optional[Time]:
         return time + 1
 
     def get_data(self, outputs: OutputRequest) -> OutputData:

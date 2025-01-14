@@ -40,6 +40,7 @@ def test_call_two_extra_methods(sim_name: str):
     assert ret_b == "method_b(42)"
 
 
+@pytest.mark.filterwarnings("ignore:Simulation too slow:UserWarning")
 def test_rt_sim():
     fixture = importlib.import_module("tests.scenarios.test_single_self_stepping")
     world = scenario.World(SIM_CONFIG)
