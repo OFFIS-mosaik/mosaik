@@ -2,6 +2,7 @@
 Scenario 18::
    A() → B()
 """
+
 import pytest
 
 from mosaik import World
@@ -14,9 +15,8 @@ def create_scenario(world: World):
     model_b = world.start("RemoteGeneric", sim_id="B", step_type="event-based").A()
     world.connect(model_a, model_b, ("val_out", "val_in"))
 
-@pytest.mark.filterwarnings(
-    "ignore::UserWarning"
-)
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2, rt_factor=0.1)

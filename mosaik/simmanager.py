@@ -142,7 +142,7 @@ async def start(
         sim_config = world.sim_config[sim_name]
     except KeyError:
         raise ScenarioError(
-            'Simulator "%s" could not be started: Not found ' "in sim_config" % sim_name
+            'Simulator "%s" could not be started: Not found in sim_config' % sim_name
         )
 
     # Try available starters in that order and raise an error if none of them
@@ -721,8 +721,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         sim = self.world.sims[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
-                f"Simulator '{self.sid}' tried to set an event in non-real-time "
-                "mode."
+                f"Simulator '{self.sid}' tried to set an event in non-real-time mode."
             )
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))

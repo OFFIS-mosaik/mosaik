@@ -376,7 +376,10 @@ class AsyncWorld:
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self.sims[sim_id] = SimRunner(
-            sim_id, proxy, check_outputs=model_factory.validate_output_dict, depth=self.current_group.depth
+            sim_id,
+            proxy,
+            check_outputs=model_factory.validate_output_dict,
+            depth=self.current_group.depth,
         )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
@@ -1189,9 +1192,9 @@ class AsyncModelMock(object):
         self._check_params(**model_params)
 
         entities = await self._proxy.send(["create", (num, self.name), model_params])
-        assert (
-            len(entities) == num
-        ), f"{num} entities were requested but {len(entities)} were created."
+        assert len(entities) == num, (
+            f"{num} entities were requested but {len(entities)} were created."
+        )
 
         return self._make_entities(entities, assert_type=self.name)
 

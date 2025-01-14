@@ -27,12 +27,11 @@ def create_scenario(world: World):
     world.connect(model_b, model_a, ("val_out", "val_in"), weak=True)
     world.connect(model_b, model_c, ("val_out", "val_in"))
 
+
 @pytest.mark.filterwarnings(
     "ignore:A connection between the non-persistent attribute:UserWarning"
 )
-@pytest.mark.filterwarnings(
-    "ignore:Simulator B:UserWarning"
-)
+@pytest.mark.filterwarnings("ignore:Simulator B:UserWarning")
 @pytest.mark.weak
 def test_scenario(world: World):
     create_scenario(world)
