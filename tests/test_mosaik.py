@@ -57,6 +57,9 @@ def test_rt_sim():
 
 
 @pytest.mark.parametrize("strict", [True, False])
+@pytest.mark.filterwarnings(
+    "ignore:A connection between the non-persistent attribute:UserWarning"
+)
 def test_rt_sim_too_slow(strict, caplog):
     fixture = importlib.import_module("tests.scenarios.test_single_self_stepping")
     world = scenario.World(SIM_CONFIG)
@@ -73,7 +76,7 @@ def test_rt_sim_too_slow(strict, caplog):
                 rt_strict=strict,
             )
         else:
-            world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
-            assert "too slow for real-time factor" in caplog.text
+            with pytest.warns(UserWarning, match="too slow for real-time factor"):
+                world.run(until=fixture.UNTIL, rt_factor=factor, rt_strict=strict)
     finally:
         world.shutdown()

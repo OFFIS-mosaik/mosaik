@@ -388,7 +388,7 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
     sim.output_time = determine_output_tiered_time(sim, output_time)
 
     cache_output_data(sim, data, output_time)
-    validate_entities_and_attributes(sim, data)
+    sim.check_outputs(data)
     push_output_data(sim, data, output_time)
 
     sim.data = data
@@ -410,28 +410,6 @@ def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime
 def cache_output_data(sim: SimRunner, data: dict, output_time: int):
     if sim.outputs is not None:
         sim.outputs[output_time] = data
-
-
-def validate_entities_and_attributes(sim: SimRunner, eid_dict: dict):
-    for eid in eid_dict:
-        if eid not in sim.model_factory.entities.keys():
-            warnings.warn(
-                f"Simulator {sim.sid} returned data for the entity {eid} which "
-                "was never created. This is likely an error in its get_data method.",
-                UserWarning,
-            )
-        else:
-            print(eid_dict[eid])
-            model_attrs = sim.model_factory.entities[eid].model_mock.output_attrs
-            for attr in eid_dict[eid]:
-                if attr not in model_attrs:
-                    warnings.warn(
-                        f"Simulator {sim.sid} returned data for attribute"
-                        f"{attr} which does not exist in model "
-                        f"{sim.model_factory.entities[eid].model_mock.name}. "
-                        "This is likely an error in its get_data method.",
-                        UserWarning,
-                    )
 
 
 def push_output_data(sim: SimRunner, data: dict, output_time: int):

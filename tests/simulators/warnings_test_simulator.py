@@ -13,23 +13,19 @@ from mosaik_api_v3.types import (
 
 META: Meta = {
     "api_version": "3.0",
-    "type": "hybrid",
+    "type": "event-based",
     "extra_methods": ["set_add_unregistered_attr", "set_add_unregistered_entity"],
     "models": {
         "Test": {
             "public": True,
             "params": [],
             "attrs": ["value", "to_be_deleted"],
-            "persistent": ["value"],
-            "non-persistent": ["to_be_deleted"],
-            "trigger": ["to_be_deleted"],
-            "non-trigger": ["value"],
         },
     },
 }
 
 
-class TestSimulator(mosaik_api_v3.Simulator):
+class WarningsTestSimulator(mosaik_api_v3.Simulator):
     entities: Dict[str, Any]
     add_unregistered_entity: bool
     add_unregistered_attr: bool

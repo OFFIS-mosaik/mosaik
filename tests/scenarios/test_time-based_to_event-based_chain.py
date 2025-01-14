@@ -6,6 +6,8 @@ This scenario tests for a deadlock caused by lazy_stepping if event-based
 successor is not triggered.
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -28,6 +30,7 @@ def create_scenario(world: World):
     world.set_initial_event(model_c.sid, 1)
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=7)

@@ -6,6 +6,8 @@ triggers on the second attribute of the other simulator, although the input is
 non-trigger.
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -21,6 +23,7 @@ def create_scenario(world: World):
     world.connect(ent_0, ent_1, ("never_out", "trigger_in"), ("val_out", "val_in"))
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

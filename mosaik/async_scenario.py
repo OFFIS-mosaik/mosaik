@@ -376,7 +376,7 @@ class AsyncWorld:
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self.sims[sim_id] = SimRunner(
-            sim_id, proxy, model_factory=model_factory, depth=self.current_group.depth
+            sim_id, proxy, check_outputs=model_factory.validate_output_dict, depth=self.current_group.depth
         )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
@@ -1005,6 +1005,26 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
+
+    def validate_output_dict(self, eid_dict):
+        for eid in eid_dict:
+            if eid not in self.entities.keys():
+                warnings.warn(
+                    f"Simulator {self._sid} returned data for the entity {eid} which "
+                    "was never created. This is likely an error in its get_data method.",
+                    UserWarning,
+                )
+            else:
+                model_attrs = self.entities[eid].model_mock.output_attrs
+                for attr in eid_dict[eid]:
+                    if attr not in model_attrs:
+                        warnings.warn(
+                            f"Simulator {self._sid} returned data for attribute"
+                            f"{attr} which does not exist in model "
+                            f"{self.entities[eid].model_mock.name}. "
+                            "This is likely an error in its get_data method.",
+                            UserWarning,
+                        )
 
 
 def parse_attrs(

@@ -3,6 +3,8 @@ Scenario 11::
    A() → B()
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -14,7 +16,9 @@ def create_scenario(world: World):
     world.set_initial_event(model_a.sid)
     world.connect(model_a, model_b, ("val_out", "val_in"))
 
-
+@pytest.mark.filterwarnings(
+    "ignore::UserWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=3)

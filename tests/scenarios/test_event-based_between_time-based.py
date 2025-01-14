@@ -7,6 +7,8 @@ C
 A
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -26,6 +28,9 @@ def create_scenario(world: World):
     world.connect(model_b, model_d, ("val_out", "val_in"))
 
 
+@pytest.mark.filterwarnings(
+    "ignore:A connection between the non-persistent attribute:UserWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

@@ -73,7 +73,7 @@ def world_fixture(request: pytest.FixtureRequest):
         proxy = world.loop.run_until_complete(
             init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
         )
-        sim = SimRunner(sim_id, proxy)
+        sim = SimRunner(sim_id, proxy, check_outputs=lambda _: None)
         world.sims[sim_id] = sim
         sims.append(sim)
 
@@ -129,7 +129,7 @@ def test_run(monkeypatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world._async_world.sims = {i: SimRunner(i, proxy) for i in range(2)}
+    world._async_world.sims = {i: SimRunner(i, proxy, None) for i in range(2)}
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:

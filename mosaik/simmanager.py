@@ -69,7 +69,6 @@ if "Windows" in platform.system():
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import (
-        AsyncModelFactory,
         AsyncWorld,
         CmdModel,
         ConnectModel,
@@ -454,16 +453,16 @@ class SimRunner:
 
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
-    model_factory: AsyncModelFactory
+    check_outputs: Callable[[OutputData], None]
 
     def __init__(
         self,
         sid: SimId,
         connection: Proxy,
-        model_factory: AsyncModelFactory,
+        check_outputs: Callable[[OutputData], None],
         depth: int = 1,
     ):
-        self.model_factory = model_factory
+        self.check_outputs = check_outputs
         self.sid = sid
         self._proxy = connection
 

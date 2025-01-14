@@ -7,6 +7,7 @@ do not enter a same-time loop.
 
 where the connection from B to A is time_shifted.
 """
+import pytest
 
 from mosaik import World
 
@@ -26,7 +27,9 @@ def create_scenario(world: World):
         time_shifted=True,
     )
 
-
+@pytest.mark.filterwarnings(
+    "ignore::UserWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)
