@@ -416,7 +416,8 @@ def validate_entities_and_attributes(sim: SimRunner, eid_dict: dict):
     for eid in eid_dict:
         if eid not in sim.model_factory.entities.keys():
             warnings.warn(
-                f"Simulator {sim.sid} returned data for the entity {eid} which was never created. This is likely an error in its get_data method.",
+                f"Simulator {sim.sid} returned data for the entity {eid} which "
+                "was never created. This is likely an error in its get_data method.",
                 UserWarning,
             )
         else:
@@ -425,7 +426,10 @@ def validate_entities_and_attributes(sim: SimRunner, eid_dict: dict):
             for attr in eid_dict[eid]:
                 if attr not in model_attrs:
                     warnings.warn(
-                        f"The attribute {attr} does not exist in model {sim.model_factory.entities[eid].model_mock.name}. Data will not be transferred.",
+                        f"Simulator {sim.sid} returned data for attribute"
+                        f"{attr} which does not exist in model "
+                        f"{sim.model_factory.entities[eid].model_mock.name}. "
+                        "This is likely an error in its get_data method.",
                         UserWarning,
                     )
 
