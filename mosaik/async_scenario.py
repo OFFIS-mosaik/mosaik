@@ -288,9 +288,7 @@ class AsyncWorld:
             logger.enable("mosaik")
 
             # Redirect warnings to the logging system instead of sys.stderr
-            def user_warning(
-                message, category, filename, lineno, file=None, line=None
-            ):
+            def user_warning(message, category, filename, lineno, file=None, line=None):
                 logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
 
             warnings.showwarning = user_warning
