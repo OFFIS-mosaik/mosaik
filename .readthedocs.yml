@@ -15,8 +15,8 @@ build:
       - asdf plugin add uv
       - asdf install uv latest
       - asdf global uv latest
-      - uv venv $READTHEDOCS_VIRTUALENV_PATH
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv pip sync --python 3.11 --group docs
+      - ln --symbolic $READTHEDOCS_VIRTUALENV_PATH .venv
+      - uv sync --python 3.11 --group docs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
