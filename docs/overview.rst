@@ -11,12 +11,12 @@ a :term:`simulation scenario <scenario>`.
 What's mosaik supposed to do?
 =============================
 
-Mosaik's main goal is to use existing :term:`simulators <simulator>` in
+mosaik's main goal is to use existing :term:`simulators <simulator>` in
 a common context in order to perform a coordinated simulation of a given (Smart
 Grid) scenario.
 
 That means that all simulators (or other tools and hardware-in-the-loop)
-involved in a simulation usually run in their own process. Mosaik just tries to synchronize these processes and manages the exchange
+involved in a simulation usually run in their own process. mosaik just tries to synchronize these processes and manages the exchange
 of data between them.
 
 To allow this, mosaik
@@ -64,14 +64,14 @@ this:
 1. The household and PV simulator perform a simulation step for an interval
    *[0, t[*.
 
-2. Mosaik gets the values for, e.g., *P* and *Q* (active and reactive power)
+2. mosaik gets the values for, e.g., *P* and *Q* (active and reactive power)
    for every household and every PV module.
 
-3. Mosaik sets the values *P* and *Q* for every node of the power grid based on
+3. mosaik sets the values *P* and *Q* for every node of the power grid based on
    the data it collected in step 2. The load flow simulator performs
    a simulation step for *[0, t[* based on these inputs.
 
-4. Mosaik collects data from the load flow simulator, sends it to the
+4. mosaik collects data from the load flow simulator, sends it to the
    monitoring tool and lets it also perform a simulation step for *[0, t[*.
 
 5. Now the whole process is repeated for *[t, t+i[* and so forth until the
@@ -84,16 +84,16 @@ strategy) can set input values (e.g., a schedule) to another simulator (e.g.,
 for "intelligent" consumers).
 
 
-Mosaik's main components
+mosaik's main components
 ========================
 
-Mosaik consists of four main components that implement the different aspects of
+mosaik consists of four main components that implement the different aspects of
 a co-simulation framework:
 
 #. The **mosaik Sim API** defines the communication protocol between
    :term:`simulators <simulator>` and mosaik.
 
-   Mosaik uses plain network sockets and JSON encoded messages to communicate
+   mosaik uses plain network sockets and JSON encoded messages to communicate
    with the simulators. We call this the *low-level API*. For some programming
    languages there also exists a *high-level API* that implements everything
    networking related and offers an abstract base class. You then only have to
@@ -110,7 +110,7 @@ a co-simulation framework:
    You can then connect the entities with each other in order to establish
    :term:`data-flows <data-flow>` between the simulators.
 
-   Mosaik allows you both, connecting one entity at a time as well as
+   mosaik allows you both, connecting one entity at a time as well as
    connecting whole entity sets with each other.
 
    :doc:`Read more … <scenario-definition>`
@@ -131,19 +131,43 @@ a co-simulation framework:
 
    :doc:`Read more … <simmanager>`
 
-#. Mosaik's **Scheduler** uses the event-discrete simulation approach for the coordinated simulation of
+#. mosaik's **Scheduler** uses the event-discrete simulation approach for the coordinated simulation of
    a scenario.
 
-   Mosaik supports both time-discrete and event-discrete simulations as well
+   mosaik supports both time-discrete and event-discrete simulations as well
    as a combination of both paradigms.
 
-   Mosaik is able to handle simulators with different step sizes. A simulator
+   mosaik is able to handle simulators with different step sizes. A simulator
    may even vary its step size during the simulation.
 
-   Mosaik tracks the dependencies between the simulators and only
+   mosaik tracks the dependencies between the simulators and only
    lets them perform a simulation step if necessary (e.g., because its data is
    needed by another simulator). It is also able to let multiple simulators
    perform their simulation step in parallel if they don't depend on each
    other's data.
 
-   :doc:`Read more … <scheduler>`
+mosaik System Architecture
+==========================
+After taking a look at the components that make up mosaik, we now move on to the overall architecture in which these components are placed.
+An overview is provided below.
+
+.. image:: _static/mosaik_overview.png
+   :width: 100%
+   :align: center
+   :alt: mosaik
+
+
+At the heart of the mosaik co-simulation architecture sits the mosaik core. It provides the basic co-simulation functionality 
+via a set of interconnected modules, the central two being the simulation manager and the scheduler. 
+For user interaction with this mosaik core, two APIs are provided. 
+
+The scenario API allows users to set up executable co-simulation scenarios 
+by specifying which simulators are to be used and how they should be parameterized and interconnected.
+
+The low-level simulator API is used to execute communication between the mosaik core and a connected simulator. 
+Most users will not encounter this API directly since several user-friendly high-level language APIs such as the Python API or the Java API are provided 
+that abstract away the low-level communication with the simulator API and are highly recommended to use.
+Only users with special requirements for their API or users that want to connect a new programming language have to use the simulator API directly.
+
+Additionally, users can also use any of the pre-built simulators that the mosaik ecosystem includes, such as the pandapower simulator. 
+A list of available APIs can be found :ref:`here<mosaik-core>`, a list of provided simulators can be found :ref:`here<mosaik-components>`.
