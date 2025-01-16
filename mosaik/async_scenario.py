@@ -41,6 +41,7 @@ from typing import (
 
 import networkx
 from loguru import logger
+from mosaik_api_v3 import OutputData
 from mosaik_api_v3.connection import RemoteException
 from mosaik_api_v3.types import (
     Attr,
@@ -1013,7 +1014,7 @@ class AsyncModelFactory:
                 f'"{name}".'
             )
 
-    def validate_output_dict(self, eid_dict):
+    def validate_output_dict(self, eid_dict: OutputData):
         """
         Validate the structure and contents of an output dictionary.
 
@@ -1022,7 +1023,7 @@ class AsyncModelFactory:
         entity in the output dictionary was not created during initialization,
         or if any attribute is not part of the entity's model's output attributes,
         a warning is issued to notify of potential errors in the simulator's
-        `get_data` method.
+        :meth:`~Simulator.get_data` method.
 
         :param eid_dict: A dictionary of output data, where keys are entity IDs
             and values are dictionaries of attributes and their corresponding

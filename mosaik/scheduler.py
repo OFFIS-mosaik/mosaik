@@ -11,7 +11,7 @@ from math import ceil
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
-from mosaik_api_v3 import InputData, SimId, Time
+from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
@@ -438,7 +438,7 @@ def cache_output_data(sim: SimRunner, data: dict, output_time: int):
         sim.outputs[output_time] = data
 
 
-def push_output_data(sim: SimRunner, data: dict, output_time: int):
+def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
     """
     Push output data to connected simulators, applying time shifts as needed.
 
