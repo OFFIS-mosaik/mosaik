@@ -1229,7 +1229,9 @@ class AsyncModelMock(object):
             )
 
     def _make_entities(
-        self, entity_dicts: List[CreateResult], assert_type: Optional[ModelName] = None
+        self,
+        create_results: List[CreateResult],
+        assert_type: Optional[ModelName] = None,
     ) -> List[Entity]:
         """
         Recursively create lists of :class:`Entity` instance from a list
@@ -1239,7 +1241,7 @@ class AsyncModelMock(object):
         entity_graph = self._world.entity_graph
 
         entity_set: List[Entity] = []
-        for e in entity_dicts:
+        for e in create_results:
             self._assert_model_type(assert_type, e)
 
             children = e.get("children")
@@ -1251,17 +1253,12 @@ class AsyncModelMock(object):
             )
 
             entity_set.append(entity)
-            # Test for the `created` flag. (There might be other nodes
-            # in the graph that arise from edges between related
-            # entities where the second entity has not yet been
-            # processed.)
-            if entity_graph.nodes.get(entity.full_id, {}).get("created", False):
+            if entity.eid in self._factory.entities:
                 raise DuplicateEntityIdError(sid, entity.eid)
-            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
+            self._factory.entities[entity.eid] = entity
+            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
-        for entity in entity_set:
-            self._factory.entities[entity.eid] = entity
         return entity_set
 
     def _assert_model_type(
