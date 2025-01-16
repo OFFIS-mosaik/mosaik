@@ -15,7 +15,7 @@ from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
 from mosaik.simmanager import SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
-from tests.mocks.simulator_mock import SimulatorMock
+from tests.simulators.simulator_mock import SimulatorMock
 
 
 async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: int = 0):
