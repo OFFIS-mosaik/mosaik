@@ -1014,23 +1014,23 @@ class AsyncModelFactory:
             )
 
     def validate_output_dict(self, eid_dict):
-    """
-    Validate the structure and contents of an output dictionary.
+        """
+        Validate the structure and contents of an output dictionary.
 
-    This method checks that the entities and attributes in the output
-    dictionary are valid based on the simulator's internal state. If any
-    entity in the output dictionary was not created during initialization,
-    or if any attribute is not part of the entity's model's output attributes,
-    a warning is issued to notify of potential errors in the simulator's
-    `get_data` method.
+        This method checks that the entities and attributes in the output
+        dictionary are valid based on the simulator's internal state. If any
+        entity in the output dictionary was not created during initialization,
+        or if any attribute is not part of the entity's model's output attributes,
+        a warning is issued to notify of potential errors in the simulator's
+        `get_data` method.
 
-    :param eid_dict: A dictionary of output data, where keys are entity IDs
-        and values are dictionaries of attributes and their corresponding
-        data.
-    :raises UserWarning: If an entity ID in the output dictionary does not
-        correspond to a known entity, or if an attribute is not part of the
-        entity's model's defined output attributes.
-    """
+        :param eid_dict: A dictionary of output data, where keys are entity IDs
+            and values are dictionaries of attributes and their corresponding
+            data.
+        :raises UserWarning: If an entity ID in the output dictionary does not
+            correspond to a known entity, or if an attribute is not part of the
+            entity's model's defined output attributes.
+        """
         for eid in eid_dict:
             if eid not in self.entities.keys():
                 warnings.warn(
