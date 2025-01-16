@@ -396,7 +396,7 @@ def test_model_factory_wrong_model(world: World, mf: ModelFactory):
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)
     assert str(err.value) == (
-        'Entity "spam_0" has the wrong type: "Spam"; ' '"A" required.'
+        'Entity "spam_0" has the wrong type: "Spam"; "A" required.'
     )
 
 
@@ -429,7 +429,7 @@ def test_model_factory_hierarchical_entities_illegal_type(
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)
     assert str(err.value) == (
-        'Type "Spam" of entity "c" not found in sim\'s ' "meta data."
+        'Type "Spam" of entity "c" not found in sim\'s meta data.'
     )
 
 

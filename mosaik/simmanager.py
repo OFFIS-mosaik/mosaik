@@ -20,6 +20,7 @@ import platform
 import shlex
 import subprocess
 import sys
+import warnings
 from ast import literal_eval
 from json import JSONEncoder
 from typing import (
@@ -40,7 +41,6 @@ from typing import (
 
 import mosaik_api_v3
 import tqdm
-from loguru import logger
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (
     Attr,
@@ -68,7 +68,12 @@ if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import AsyncWorld, CmdModel, ConnectModel, PythonModel
+    from mosaik.async_scenario import (
+        AsyncWorld,
+        CmdModel,
+        ConnectModel,
+        PythonModel,
+    )
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -141,7 +146,7 @@ async def start(
         sim_config = world.sim_config[sim_name]
     except KeyError:
         raise ScenarioError(
-            'Simulator "%s" could not be started: Not found ' "in sim_config" % sim_name
+            'Simulator "%s" could not be started: Not found in sim_config' % sim_name
         )
 
     # Try available starters in that order and raise an error if none of them
@@ -271,7 +276,7 @@ async def start_proc(
             if "Windows" in platform.system():
                 creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
             else:
-                logger.warning(
+                warnings.warn(
                     f'Simulator "{sim_name}" could not be started in a new console: '
                     "Only available on Windows"
                 )
@@ -458,13 +463,16 @@ class SimRunner:
 
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
+    check_outputs: Callable[[OutputData], None]
 
     def __init__(
         self,
         sid: SimId,
         connection: Proxy,
+        check_outputs: Callable[[OutputData], None],
         depth: int = 1,
     ):
+        self.check_outputs = check_outputs
         self.sid = sid
         self._proxy = connection
 
@@ -723,18 +731,15 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         sim = self.world.sims[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
-                f"Simulator '{self.sid}' tried to set an event in non-real-time "
-                "mode."
+                f"Simulator '{self.sid}' tried to set an event in non-real-time mode."
             )
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))
         else:
-            logger.warning(
-                "Event set at {event_time} by {sim_id} is after simulation end {until} "
+            warnings.warn(
+                f"Event set at {event_time} by {sim.sid} is after simulation end {self.world.until} "
                 "and will be ignored.",
-                event_time=event_time,
-                sim_id=sim.sid,
-                until=self.world.until,
+                UserWarning,
             )
 
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):

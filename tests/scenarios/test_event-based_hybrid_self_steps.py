@@ -3,6 +3,8 @@ Scenario 20::
    A() → B() → C()
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -23,6 +25,9 @@ def create_scenario(world: World):
     world.set_initial_event(model_a.sid)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:A connection between the non-persistent attribute:UserWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=4)

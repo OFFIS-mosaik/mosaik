@@ -17,6 +17,7 @@ CASES = glob.glob(os.path.join(glob.escape(CODE_DIR), "*.out"))
 
 @pytest.mark.cmd_process
 @pytest.mark.parametrize("outfile", CASES)
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_tutorial(outfile: str):
     python_file = outfile.rsplit(".", 1)[0] + ".py"
     with open(outfile) as f:

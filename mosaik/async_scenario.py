@@ -41,6 +41,7 @@ from typing import (
 
 import networkx
 from loguru import logger
+from mosaik_api_v3 import OutputData
 from mosaik_api_v3.connection import RemoteException
 from mosaik_api_v3.types import (
     Attr,
@@ -285,8 +286,18 @@ class AsyncWorld:
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
+        configure_logging: bool = False,
         skip_greetings: bool = True,
     ):
+        if configure_logging:
+            logger.enable("mosaik")
+
+            # Redirect warnings to the logging system instead of sys.stderr
+            def user_warning(message, category, filename, lineno, file=None, line=None):
+                logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
+
+            warnings.showwarning = user_warning
+
         if not skip_greetings:
             print_greetings()
         self.sim_config = sim_config
@@ -369,7 +380,12 @@ class AsyncWorld:
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
+        self.sims[sim_id] = SimRunner(
+            sim_id,
+            proxy,
+            check_outputs=model_factory.validate_output_dict,
+            depth=self.current_group.depth,
+        )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -407,7 +423,7 @@ class AsyncWorld:
                     "requires initial data"
                 )
         elif initial_data is not SENTINEL:
-            logger.warning(
+            warnings.warn(
                 f"Gave initial data for connection from {src.full_id}.{src_attr} to "
                 f"{dest.full_id}.{dest_attr} where it is not needed"
             )
@@ -422,7 +438,7 @@ class AsyncWorld:
             dest_attr in dest.model_mock.measurement_inputs
             and src_attr in src.model_mock.event_outputs
         ):
-            logger.warning(
+            warnings.warn(
                 f"A connection between the non-persistent attribute {src_attr} of "
                 f"{src.sid} and the non-trigger attribute {dest_attr} of "
                 f"{dest.sid} is not recommended. This might cause problems in the "
@@ -922,6 +938,7 @@ class AsyncModelFactory:
 
     type: Literal["event-based", "time-based", "hybrid"]
     models: Dict[ModelName, AsyncModelMock]
+    entities: Dict[str, Entity]
 
     def __init__(  # noqa: C901
         self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy
@@ -932,6 +949,7 @@ class AsyncModelFactory:
         self._proxy = proxy
         self._sid = sid
         self.call = ExtraMethodsProxy(sid)
+        self.entities = {}
 
         if "type" not in proxy.meta:
             raise ScenarioError(
@@ -995,6 +1013,43 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
+
+    def validate_output_dict(self, eid_dict: OutputData):
+        """
+        Validate the structure and contents of an output dictionary.
+
+        This method checks that the entities and attributes in the output
+        dictionary are valid based on the simulator's internal state. If any
+        entity in the output dictionary was not created during initialization,
+        or if any attribute is not part of the entity's model's output attributes,
+        a warning is issued to notify of potential errors in the simulator's
+        :meth:`~Simulator.get_data` method.
+
+        :param eid_dict: A dictionary of output data, where keys are entity IDs
+            and values are dictionaries of attributes and their corresponding
+            data.
+        :raises UserWarning: If an entity ID in the output dictionary does not
+            correspond to a known entity, or if an attribute is not part of the
+            entity's model's defined output attributes.
+        """
+        for eid in eid_dict:
+            if eid not in self.entities.keys():
+                warnings.warn(
+                    f"Simulator {self._sid} returned data for the entity {eid} which "
+                    "was never created. This is likely an error in its get_data method.",
+                    UserWarning,
+                )
+            else:
+                model_attrs = self.entities[eid].model_mock.output_attrs
+                for attr in eid_dict[eid]:
+                    if attr not in model_attrs:
+                        warnings.warn(
+                            f"Simulator {self._sid} returned data for attribute"
+                            f"{attr} which does not exist in model "
+                            f"{self.entities[eid].model_mock.name}. "
+                            "This is likely an error in its get_data method.",
+                            UserWarning,
+                        )
 
 
 def parse_attrs(
@@ -1159,9 +1214,9 @@ class AsyncModelMock(object):
         self._check_params(**model_params)
 
         entities = await self._proxy.send(["create", (num, self.name), model_params])
-        assert (
-            len(entities) == num
-        ), f"{num} entities were requested but {len(entities)} were created."
+        assert len(entities) == num, (
+            f"{num} entities were requested but {len(entities)} were created."
+        )
 
         return self._make_entities(entities, assert_type=self.name)
 
@@ -1175,7 +1230,9 @@ class AsyncModelMock(object):
             )
 
     def _make_entities(
-        self, entity_dicts: List[CreateResult], assert_type: Optional[ModelName] = None
+        self,
+        create_results: List[CreateResult],
+        assert_type: Optional[ModelName] = None,
     ) -> List[Entity]:
         """
         Recursively create lists of :class:`Entity` instance from a list
@@ -1185,7 +1242,7 @@ class AsyncModelMock(object):
         entity_graph = self._world.entity_graph
 
         entity_set: List[Entity] = []
-        for e in entity_dicts:
+        for e in create_results:
             self._assert_model_type(assert_type, e)
 
             children = e.get("children")
@@ -1197,16 +1254,12 @@ class AsyncModelMock(object):
             )
 
             entity_set.append(entity)
-            # Test for the `created` flag. (There might be other nodes
-            # in the graph that arise from edges between related
-            # entities where the second entity has not yet been
-            # processed.)
-            if entity_graph.nodes.get(entity.full_id, {}).get("created", False):
+            if entity.eid in self._factory.entities:
                 raise DuplicateEntityIdError(sid, entity.eid)
-            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
+            self._factory.entities[entity.eid] = entity
+            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
-
         return entity_set
 
     def _assert_model_type(

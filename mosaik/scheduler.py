@@ -5,13 +5,13 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 import asyncio
+import warnings
 from heapq import heappop
 from math import ceil
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
-from loguru import logger
-from mosaik_api_v3 import InputData, SimId, Time
+from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
@@ -20,7 +20,6 @@ from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import AsyncWorld
-
 
 SENTINEL = object()
 
@@ -255,7 +254,7 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
             try:
                 val = cache[src_eid][src_attr]
             except KeyError:
-                logger.warning(
+                warnings.warn(
                     f"Simulator {src_sim.sid}'s entity {src_eid} did not produce "
                     f"output on its persistent attribute {src_attr} during its last "
                     "step. However, this value is now required by simulator "
@@ -362,11 +361,10 @@ def rt_check(
                     f"Simulation too slow for real-time factor {rt_factor}"
                 )
             else:
-                logger.warning(
-                    "Simulation too slow for real-time factor {rt_factor} - {delta}s "
+                warnings.warn(
+                    f"Simulation too slow for real-time factor {rt_factor} - {delta}s "
                     "behind time.",
-                    rt_factor=rt_factor,
-                    delta=delta,
+                    UserWarning,
                 )
 
 
@@ -377,49 +375,98 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
-    sid = sim.sid
     outattr = sim.output_request
-    if outattr:
-        sim.tqdm.set_postfix_str("get_data")
-        data = await sim.get_data(outattr)
 
-        output_time: int
-        output_time = data.get("time", sim.last_step.time)  # type: ignore
-        if output_time == sim.current_step.time:
-            output_tiered_time = sim.current_step
-        else:
-            output_tiered_time = TieredTime(
-                output_time, *([0] * (len(sim.current_step) - 1))
-            )
-        sim.output_time = output_tiered_time
-        if sim.last_step.time > output_time:
-            raise SimulationError(
-                'Output time (%s) is not >= time (%s) for simulator "%s"'
-                % (output_time, sim.last_step, sim.sid)
-            )
+    if not outattr:
+        return
 
-        # Fill output cache. This will repeat some data that is also
-        # pushed forward below, but it is faster to just save everything
-        # than filter out this data here.
-        if sim.outputs is not None:
-            sim.outputs[output_time] = data
+    sim.tqdm.set_postfix_str("get_data")
+    data = await sim.get_data(outattr)
+    output_time = data.get("time", sim.last_step.time)
 
-        # Push forward certain data
-        for (src_eid, src_attr), destinations in sim.output_to_push.items():
-            try:
-                val = data[src_eid][src_attr]
-                for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
-                    dest_sim.timed_input_buffer.add(
-                        output_time + time_shift.tiers[0],
-                        sid,
-                        src_eid,
-                        dest_eid,
-                        dest_attr,
-                        val,
-                    )
-            except KeyError:
-                pass
-        sim.data = data
+    validate_output_time(sim, output_time)
+    sim.output_time = determine_output_tiered_time(sim, output_time)
+
+    cache_output_data(sim, data, output_time)
+    sim.check_outputs(data)
+    push_output_data(sim, data, output_time)
+
+    sim.data = data
+
+
+def validate_output_time(sim: SimRunner, output_time: int):
+    """
+    Validate the output time against the simulation's current state.
+
+    This function ensures that the output time is greater than or equal to
+    the simulation's last recorded time step. If the output time is earlier,
+    it raises an error, as this would indicate an invalid state for processing
+    output data.
+
+    :param sim: The `SimRunner` instance representing the simulation.
+    :param output_time: The output time to validate.
+    :raises SimulationError: If the output time is less than the simulation's
+        last time step.
+    """
+    if sim.last_step.time > output_time:
+        raise SimulationError(
+            f'Output time ({output_time}) is not >= time ({sim.last_step}) for simulator "{sim.sid}".'
+        )
+
+
+def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime:
+    """
+    Determine the tiered time structure for the given output time.
+
+    If the output time matches the current simulation step's time, the
+    current tiered time is returned. Otherwise, a new `TieredTime` object
+    is created with the specified output time as the first tier and all
+    subsequent tiers set to zero.
+
+    :param sim: The `SimRunner` instance representing the simulator.
+    :param output_time: The desired output time.
+    :return: A `TieredTime` object structured
+        to match the current step's tiered time.
+    """
+    if output_time == sim.current_step.time:
+        return sim.current_step
+    return TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
+
+
+def cache_output_data(sim: SimRunner, data: dict, output_time: int):
+    if sim.outputs is not None:
+        sim.outputs[output_time] = data
+
+
+def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
+    """
+    Push output data to connected simulators, applying time shifts as needed.
+
+    This function retrieves the output data for each entity and attribute
+    specified in the simulation's output mappings. The data is then forwarded
+    to the connected simulators, with time shifts applied to ensure alignment
+    with their input timelines. If a required key is missing in the data, it
+    is skipped without raising an error.
+
+    :param sim: The `SimRunner` instance representing the simulator.
+    :param data: A dictionary of output data, where keys are entity IDs
+        and attributes, and values are the corresponding output values.
+    :param output_time: The time step at which the output data is pushed.
+    """
+    for (src_eid, src_attr), destinations in sim.output_to_push.items():
+        try:
+            val = data[src_eid][src_attr]
+            for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
+                dest_sim.timed_input_buffer.add(
+                    output_time + time_shift.tiers[0],
+                    sim.sid,
+                    src_eid,
+                    dest_eid,
+                    dest_attr,
+                    val,
+                )
+        except KeyError:
+            pass
 
 
 def trigger_successors(sim: SimRunner) -> None:

@@ -25,7 +25,6 @@ from typing import (
     Union,
 )
 
-from loguru import logger
 from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
@@ -107,9 +106,6 @@ class World:
         configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
-        if configure_logging:
-            logger.enable("mosaik")
-
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
@@ -123,6 +119,7 @@ class World:
             debug=debug,
             cache=cache,
             max_loop_iterations=max_loop_iterations,
+            configure_logging=configure_logging,
             skip_greetings=skip_greetings,
         )
 
