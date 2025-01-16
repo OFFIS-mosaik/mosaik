@@ -50,7 +50,7 @@ SIM_CONFIG: scenario.SimConfig = {
         "auto_terminate": False,
     },
     "SimulatorMock": {
-        "python": "tests.mocks.simulator_mock:SimulatorMock",
+        "python": "tests.simulators.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
