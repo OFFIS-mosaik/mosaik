@@ -55,6 +55,7 @@ provided in the `API folder <https://gitlab.com/mosaik/api>`_.
 - `API for Matlab <https://gitlab.com/mosaik/matlab-mosaik-toolbox>`_
 - `API for Matlab via Java <https://gitlab.com/mosaik/api/mosaik-api-matlab-over-java>`_
 - `API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`_
+- `API for Rust <https://github.com/ekut-es/mosaik-api>`_
 
 .. _mosaik-components:
 
