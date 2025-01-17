@@ -156,7 +156,7 @@ wheels = [
 
 [[package]]
 name = "mosaik"
-version = "3.3.4.dev125+g71b59b1.d20250114"
+version = "3.3.4.dev145+g0e0d9ba.d20250117"
 source = { editable = "." }
 dependencies = [
     { name = "loguru" },
