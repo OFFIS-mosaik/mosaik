@@ -399,6 +399,7 @@ class AsyncWorld:
         time_shifted: Union[bool, int] = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         if not dest_attr:
             dest_attr = src_attr
@@ -512,6 +513,7 @@ class AsyncWorld:
         time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         """
         Connect the *src* entity to *dest* entity.
@@ -558,6 +560,7 @@ class AsyncWorld:
                     time_shifted=time_shifted,
                     weak=weak,
                     initial_data=initial_data.get(src_attr, SENTINEL),
+                    transform=transform
                 )
             except ScenarioError as e:
                 errors.append(e)
