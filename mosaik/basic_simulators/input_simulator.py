@@ -28,7 +28,7 @@ META: Meta = {
         CONSTANT_KEY: {
             "public": True,
             "params": ["constant"],
-            "attrs": ["value"],
+            "attrs": ["value", "static_value"],
         },
     },
     "extra_methods": [],
@@ -64,6 +64,7 @@ class InputSimulator(mosaik_api_v3.Simulator):
         super().__init__(META)
         self.functions = {}
         self.constants = {}
+        self.static_value = 1
         self.step_size = 1
         self.time = 0
 
@@ -117,7 +118,10 @@ class InputSimulator(mosaik_api_v3.Simulator):
         data: OutputData = {}
         for eid in outputs:
             if CONSTANT_KEY in eid:
-                data[eid] = {"value": self.constants[eid]}
+                data[eid] = {
+                    "value": self.constants[eid],
+                    "static_value": self.static_value,
+                }
             else:
                 data[eid] = {"value": self.functions[eid](self.time)}
         return data
