@@ -63,7 +63,7 @@ from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.proxies import Proxy
-from mosaik.simmanager import MosaikConfigTotal, SimRunner
+from mosaik.simmanager import MosaikConfigTotal, OutputEntry, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
@@ -278,6 +278,7 @@ class AsyncWorld:
     tqdm: tqdm[NoReturn]  # type: ignore  # set in run
     """The tqdm progress bar for the total progress."""
 
+    default_transform_callable = Callable[[Any], Any]
     def __init__(
         self,
         sim_config: SimConfig,
@@ -297,6 +298,8 @@ class AsyncWorld:
                 logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
 
             warnings.showwarning = user_warning
+
+        self.default_transform_callable: Callable[[Any], Any]= lambda x: x
 
         if not skip_greetings:
             print_greetings()
@@ -399,7 +402,7 @@ class AsyncWorld:
         time_shifted: Union[bool, int] = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
-        transform: Callable[[Any], Any] = lambda x: x,
+        transform: Callable[[Any], Any] = default_transform_callable,
     ):
         if not dest_attr:
             dest_attr = src_attr
@@ -467,9 +470,10 @@ class AsyncWorld:
                 (src_port, dest_port)
             )
         else:
-            src_sim.output_to_push.setdefault(src_port, []).append(
-                (dest_sim, delay, dest_port)
-            )
+            src_sim.output_to_push.setdefault(src_port, OutputEntry(connections=[]))
+            src_sim.output_to_push[src_port].connections.append((dest_sim, delay, dest_port))
+            if transform is not self.default_transform_callable:
+                src_sim.output_to_push[src_port].callback = transform
 
         src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
 

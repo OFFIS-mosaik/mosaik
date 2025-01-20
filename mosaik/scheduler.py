@@ -453,19 +453,23 @@ def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
         and attributes, and values are the corresponding output values.
     :param output_time: The time step at which the output data is pushed.
     """
-    for (src_eid, src_attr), destinations in sim.output_to_push.items():
+    for (src_eid, src_attr), output_entry in sim.output_to_push.items():
         try:
+            # Retrieve the value for the current entity ID and attribute
             val = data[src_eid][src_attr]
-            for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
+            # Push data to connected simulators
+            for dest_sim, time_shift, (dest_eid, dest_attr) in output_entry.connections:
                 dest_sim.timed_input_buffer.add(
                     output_time + time_shift.tiers[0],
                     sim.sid,
                     src_eid,
                     dest_eid,
                     dest_attr,
-                    val,
+                    output_entry.callback(val),
                 )
+
         except KeyError:
+            # Skip if the data key is missing
             pass
 
 

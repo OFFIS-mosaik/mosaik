@@ -44,6 +44,7 @@ def test_transform_parameter_input_pulled():
     for key in test_dict:
         assert test_dict[key]["value"][input_model_const[0].full_id] == 2
 
+
 def test_transform_parameter_input_pushed():
     # Sim config. and other parameters
     SIM_CONFIG: SimConfig = {
@@ -80,8 +81,4 @@ def test_transform_parameter_input_pushed():
     assert test_dict != {}
     assert len(test_dict) == END
     for key in test_dict:
-        assert test_dict[key]["value"][input_model_const[0].full_id] == 2
-
-
-
-test_transform_parameter_input_pushed()
+        assert test_dict[key]["value"][input_model_const[0].full_id] == 2000
