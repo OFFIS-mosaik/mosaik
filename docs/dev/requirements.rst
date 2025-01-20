@@ -12,7 +12,7 @@ are:
 
    These simulators may range from open-source software to closed-source and
    commercial software as well as from simulators that can directly integrate
-   the mosaik API to simulators that offer their own API and that cannot be
+   the simulator API to simulators that offer their own API and that cannot be
    started or directly controlled by mosaik.
 
 #. Allow easy creation and execution of large-scale simulation :term:`scenarios
@@ -65,12 +65,12 @@ Types of simulators and models
    with them.
 
 #. Mosaik must be able to start and stop (open-source) simulators that can
-   directly implement the mosaik API. It should always use the fasted possible
+   directly implement the simulator API. It should always use the fasted possible
    method to communicate with them; e.g., inter-process communication if the
    simulator runs on the same machine or sockets if it runs on another machine.
 
 #. COTS integration: It must be possible to write adapters that translate
-   between the mosaik API and the API provided by commercial or closed-source
+   between the simulator API and the API provided by commercial or closed-source
    simulators.
 
    Mosaik also needs to handle simulators that it cannot start itself but can
@@ -87,7 +87,7 @@ Integrating simulators
    describe their capabilities, models, inputs, outputs, and so on. This
    self-description will later be used for creating scenarios.
 
-#. Mosaik API: There must be an (easy and well documented) API that simulators
+#. Simulator API: There must be an (easy and well documented) API that simulators
    can implement in order to communicate with mosaik.
 
 #. :term:`Control strategies <control strategy>` (like multi-agent systems)

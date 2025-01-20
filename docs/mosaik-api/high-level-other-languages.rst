@@ -4,7 +4,7 @@
 High-level APIs in other languages
 ==================================
 
-Mosaik provides high-level APIs not only for simulators written in Python, but also in various other languages.
+mosaik provides high-level APIs not only for simulators written in Python, but also in various other languages.
 Currently, Java and Julia are supported.
 
 Java API

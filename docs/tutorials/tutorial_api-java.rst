@@ -44,7 +44,7 @@ implementing these functionalities is called JSimulator.
    :language: java 
    :lines: 136-175
 
-Implementing the mosaik API
+Implementing the simulator API
 ===========================
 
 Finally we need to implement the mosaik-API methods. In our example this is

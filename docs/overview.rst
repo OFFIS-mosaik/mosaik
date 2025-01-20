@@ -4,7 +4,7 @@ Overview
 
 This section describes how mosaik works without going into too much detail.
 After reading this, you should have a general understanding of what mosaik does
-and how to proceed in order to implement the mosaik API or to create
+and how to proceed in order to implement the simulator API or to create
 a :term:`simulation scenario <scenario>`.
 
 
@@ -48,7 +48,7 @@ We have simulators for households (blue icon) and for photovoltaics (green).
 We're also gonna use a load flow analysis tool (grey), and a monitoring and
 analysis tool (yellow).
 
-First, we have to implement the mosaik API for each of these "simulators". When
+First, we have to implement the simulator API for each of these "simulators". When
 we are done with this, we can create a scenario where we connect the households
 to nodes in the power grid. Some of the households will also get a PV module.
 The monitoring / analysis tool will be connected to the power grid's

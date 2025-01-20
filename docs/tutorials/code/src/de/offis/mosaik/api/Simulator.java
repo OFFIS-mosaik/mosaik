@@ -95,7 +95,7 @@ public abstract class Simulator {
      * actual simulation is about to start. At this point, all entities 
      * and all connections between them are know but no simulator has 
      * been stepped yet. Implementing this method is optional.
-     * Added in mosaik API version 3.
+     * Added in simulator API version 3.
      * 
      * @throws Exception
      */

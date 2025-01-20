@@ -1,8 +1,8 @@
 ==============
-The mosaik API
+The simulator API
 ==============
 
-The mosaik API defines the communication protocol between mosaik and the
+The simulator API defines the communication protocol between mosaik and the
 simulators it couples. We differentiate between a *low-level* and
 a *high-level* version of the API.
 
