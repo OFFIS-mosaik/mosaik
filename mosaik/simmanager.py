@@ -366,6 +366,7 @@ class OutputEntry:
     connections: List[Tuple["SimRunner", "TieredDuration", "Port"]]
     callback: Callable[..., Any] | None = None
 
+
 class SimRunner:
     """
     Handler for an external simulator.

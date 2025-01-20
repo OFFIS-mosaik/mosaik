@@ -225,7 +225,7 @@ class World:
             time_shifted=time_shifted,
             initial_data=initial_data,
             weak=weak,
-            transform=transform
+            transform=transform,
         )
 
     def set_initial_event(self, sid: SimId, time: int = 0):

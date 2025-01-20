@@ -27,7 +27,8 @@ def test_transform_parameter_input_pulled():
     input = world.start("InputSim", step_size=1)
     input_model_const = input.Constant.create(1, constant=2)
 
-    multiply_by_thousand = lambda p: p * 1000
+    def multiply_by_thousand(p):
+        return p * 1000
 
     world.connect(
         input_model_const[0], output_model[0], "value", transform=multiply_by_thousand
@@ -66,7 +67,8 @@ def test_transform_parameter_input_pushed():
     input = world.start("InputSim", step_size=1)
     input_model_const = input.Constant.create(1, constant=2)
 
-    multiply_by_thousand = lambda p: p * 1000
+    def multiply_by_thousand(p):
+        return p * 1000
 
     world.connect(
         input_model_const[0], output_model[0], "value", transform=multiply_by_thousand

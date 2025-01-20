@@ -279,6 +279,7 @@ class AsyncWorld:
     """The tqdm progress bar for the total progress."""
 
     default_transform_callable = Callable[[Any], Any]
+
     def __init__(
         self,
         sim_config: SimConfig,
@@ -299,7 +300,7 @@ class AsyncWorld:
 
             warnings.showwarning = user_warning
 
-        self.default_transform_callable: Callable[[Any], Any]= lambda x: x
+        self.default_transform_callable: Callable[[Any], Any] = lambda x: x
 
         if not skip_greetings:
             print_greetings()
@@ -471,7 +472,9 @@ class AsyncWorld:
             )
         else:
             src_sim.output_to_push.setdefault(src_port, OutputEntry(connections=[]))
-            src_sim.output_to_push[src_port].connections.append((dest_sim, delay, dest_port))
+            src_sim.output_to_push[src_port].connections.append(
+                (dest_sim, delay, dest_port)
+            )
             if transform is not self.default_transform_callable:
                 src_sim.output_to_push[src_port].callback = transform
 
@@ -564,7 +567,7 @@ class AsyncWorld:
                     time_shifted=time_shifted,
                     weak=weak,
                     initial_data=initial_data.get(src_attr, SENTINEL),
-                    transform=transform
+                    transform=transform,
                 )
             except ScenarioError as e:
                 errors.append(e)
