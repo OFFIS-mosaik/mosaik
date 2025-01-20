@@ -90,7 +90,7 @@ mosaik's main components
 mosaik consists of four main components that implement the different aspects of
 a co-simulation framework:
 
-#. The **mosaik Sim API** defines the communication protocol between
+#. The **Simulator API** defines the communication protocol between
    :term:`simulators <simulator>` and mosaik.
 
    mosaik uses plain network sockets and JSON encoded messages to communicate
