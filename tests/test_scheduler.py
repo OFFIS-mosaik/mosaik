@@ -13,7 +13,7 @@ from mosaik import World, exceptions, scenario, scheduler, simmanager
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import OutputEntry, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 from tests.simulators.simulator_mock import SimulatorMock
 
@@ -398,8 +398,14 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ["x", "y", "z"]}
     sim.output_to_push = {
-        ("0", "x"): [(world.sims["Sim-2"], TieredDuration(0), ("0", "in"))],
-        ("0", "z"): [(world.sims["Sim-1"], TieredDuration(0), ("0", "in"))],
+        ("0", "x"): OutputEntry(
+            connections=[(world.sims["Sim-2"], TieredDuration(0), ("0", "in"))],
+            callback=lambda x: x,
+        ),
+        ("0", "z"): OutputEntry(
+            connections=[(world.sims["Sim-1"], TieredDuration(0), ("0", "in"))],
+            callback=lambda x: x,
+        ),
     }
 
     await scheduler.get_outputs(world, sim)

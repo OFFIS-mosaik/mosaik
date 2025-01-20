@@ -13,7 +13,7 @@ def create_scenario(world: World):
         "RemoteGeneric", sim_id="A", step_type="event-based", events={0.05: 1, 0.1: 2}
     ).A()
     model_b = world.start("RemoteGeneric", sim_id="B", step_type="event-based").A()
-    world.connect(model_a, model_b, ("P", "P[MW]"), conversion_factor=10e-6)
+    world.connect(model_a, model_b, ("P", "P[MW]"))
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
