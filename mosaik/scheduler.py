@@ -458,7 +458,10 @@ def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
             # Retrieve the value for the current entity ID and attribute
             val = data[src_eid][src_attr]
             # Push data to connected simulators
-            for dest_sim, time_shift, (dest_eid, dest_attr), transform in output_entry.connections:
+            for dest_sim, time_shift, (
+                dest_eid,
+                dest_attr,
+            ), transform in output_entry.connections:
                 dest_sim.timed_input_buffer.add(
                     output_time + time_shift.tiers[0],
                     sim.sid,
