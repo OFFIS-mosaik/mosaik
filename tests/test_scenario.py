@@ -138,7 +138,14 @@ def test_world_connect(world: World):
     assert sim_1.successors == {}
     assert sim_1.input_delays[sim_0] == MinimalDurations(TieredDuration(0))
 
-    assert sim_1.pulled_inputs[(sim_0, TieredDuration(0))] == {
+    connections = {
+        (src_port, dest_port)
+        for (src_port, dest_port), _ in sim_1.pulled_inputs[
+            (sim_0, TieredDuration(0))
+        ].connections
+    }
+
+    assert connections == {
         ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
         ((a[0].eid, "dummy_out"), (b[0].eid, "dummy_in")),
         ((a[1].eid, "val_out"), (b[1].eid, "val_in")),
@@ -256,9 +263,19 @@ def test_world_connect_any_inputs(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out")
 
-    assert sim_b.pulled_inputs[(sim_a, TieredDuration(0))] == {
+    # Extract only the source-destination pairs from `connections`
+    connections = {
+        (src_port, dest_port) for (src_port, dest_port), _ in sim_b.pulled_inputs[(sim_a, TieredDuration(0))].connections
+    }
+
+    # Expected connections
+    expected_connections = {
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
+
+    # Assert the actual connections match the expected set
+    assert connections == expected_connections
+
 
     assert sim_a.successors == {sim_b: TieredDuration(0)}
     assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(0))
@@ -285,9 +302,17 @@ def test_world_connect_time_shifted(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out", time_shifted=True, initial_data={"val_out": 1.0})
 
-    assert sim_b.pulled_inputs[(sim_a, TieredDuration(1))] == {
+    # Extract only the source-destination pairs from `connections`
+    connections = {
+        (src_port, dest_port) for (src_port, dest_port), _ in sim_b.pulled_inputs[(sim_a, TieredDuration(1))].connections
+    }
+
+    # Assert the actual connections match the expected set
+    expected_connections = {
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
+    assert connections == expected_connections
+
     assert sim_a.successors == {sim_b: TieredDuration(0)}
     assert sim_b.input_delays[sim_a] == MinimalDurations.from_duration(
         TieredDuration(1)

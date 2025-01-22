@@ -368,6 +368,13 @@ class PushDescription:
     )
 
 
+@dataclass
+class PullDescription:
+    connections: List[Tuple[Port, Port, Callable[[float], Any]]] = field(
+        default_factory=list
+    )
+
+
 class SimRunner:
     """
     Handler for an external simulator.
@@ -413,7 +420,7 @@ class SimRunner:
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], Set[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], PullDescription]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.

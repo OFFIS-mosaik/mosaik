@@ -13,7 +13,7 @@ from mosaik import World, exceptions, scenario, scheduler, simmanager
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
-from mosaik.simmanager import PushDescription, SimRunner
+from mosaik.simmanager import PullDescription, PushDescription, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 from tests.simulators.simulator_mock import SimulatorMock
 
@@ -271,8 +271,12 @@ def test_get_input_data(world: World):
     sim_0.outputs = {0: {"1": {"x": 0, "y": 1}}}
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
     sim_2.inputs_from_set_data = {"0": {"in": {"3": 5}, "spam": {"3": "eggs"}}}
-    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = {(("1", "x"), ("0", "in"))}
-    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = {(("2", "z"), ("0", "in"))}
+    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = PullDescription(
+        connections=[((("1", "x"), ("0", "in")), lambda x: x)]
+    )
+    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = PullDescription(
+        connections=[((("2", "z"), ("0", "in")), lambda x: x)]
+    )
     data = scheduler.get_input_data(world, sim_2)
     assert data == {
         "0": {
@@ -291,9 +295,12 @@ def test_get_input_data_shifted(world: World):
     sim_5 = world.sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
-    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = {(("1", "z"), ("0", "in"))}
-    data = scheduler.get_input_data(world, world.sims["Sim-4"])
+    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = PullDescription(
+        connections=[((("1", "z"), ("0", "in")), lambda x: x)]
+    )
+    data = scheduler.get_input_data(world, sim_4)
     assert data == {"0": {"in": {"Sim-5.1": 7}}}
+
 
 
 @pytest.mark.parametrize(
