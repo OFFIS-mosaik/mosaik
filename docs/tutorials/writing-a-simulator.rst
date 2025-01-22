@@ -90,7 +90,156 @@ This is not always necessary, but in this case, it will help in tracking which *
 The meta dictionary
 ===================
 
-All the design decisions for our simulator from the previous section culminate in our ``META``:
+All the design decisions for our simulator from the previous section culminate in our ``META``, which you may annotate with the type :class:`Meta` to get type checker support:
 
 .. literalinclude:: code/profits_simulator.py
    :end-before: # end
+
+The *api_version* always must be ``"3.0"``, and we determined above that our simulator should be hybrid.
+For each model of our simulator, we create an entry in the *models* dict; here, this is just *PVProfits*.
+In this dict, *public* determines whether entity of this model can be created by the user (in our case, they can).
+The key *params* lists the parameters of our simulator.
+(These are the names of the values that the user can or must provide when creating entities of this model.)
+
+We list the attributes (the inputs and outputs that our simulator receives and send *during* the simulation) under the keys *non-trigger* (for measurement inputs) and *non-persistent* (for event outputs). The keys *trigger* and *persistent* (for event inputs and measurement outputs, respectively) would also be possible. Finally, it used to be the case that you would simply list all attributes in the *attrs* list, without specifying whether they were intended for input or output.
+
+You might have noticed that we didn't specify how to give the energy price anywhere here.
+This is a small wart in mosaik API: the way it is set up, parameters to the simulator itself (as opposed to its entities) need to be transmitted before the simulator has a chance to reply with its meta.
+So even if the simulator did specify its own parameters, it would be too late.
+
+Parameters to the simulator itself therefore need to be documented externally.
+It is good practice to also document all other attributes and parameters in greater detail.
+
+
+Initialization
+==============
+
+Our simulator is written as a subclass of :class:`mosaik_api_v3.Simulator`.
+
+It has two initialization methods.
+
+First, there is the normal Python ``__init__`` method.
+If your simulator needs parameters that do not come from the user's scenario file, you would provide them here.
+The method should also call ``super().__init__`` with your simulator's meta.
+It will store the meta in the :attr:`~Simulator.meta` field.
+
+The second initialization method is mosaik's own :meth:`~Simulator.init`.
+It will be called when the user calls :meth:`~mosaik.scenario.World.start` the simulator in their scenario script.
+This method will always receive the parameters ``sid`` for its own simulator ID in the scenario and ``time_resolution``, specifying how many seconds correspond to one mosaik step.
+It will also receive additional parameters provided by the user.
+
+Here, we added a ``price`` argument to our method, which the user should use to specify the energy price in EUR/MWh.
+(We would specify this unit in the documentation.)
+
+The :meth:`~Simulator.init` method frequently just stores this information and returns ``self.meta``.
+(But it can do more, like set up database connections, etc.)
+
+So far, we have this:
+
+.. literalinclude:: code/profits_simulator.py
+   :start-at: class Simulator
+   :end-before: # end
+
+
+Entity creation
+===============
+
+For users to be able to use our simulator, we must enable them to create entities in it, as that is the only thing they can connect in their scenario script.
+Creating entities is the purview of the :meth:`~Simulator.create` method.
+:meth:`~Simulator.create` receives the following arguments besides ``self``:
+
+- ``num``---specifying how many entities should be created. (This allows creating entities in bulk without having to call :meth:`~Simulator.create` for each one.)
+- ``model``---the number of entities to create.
+- Other parameters specified by the user on creation, provided their names are listed in the *params* field of the model description for ``model`` in the meta; in our case, this is just ``eid``.
+
+The method must return a list of exactly ``num`` instances of :class:`~mosaik_api_v3.CreateResult`.
+Each :class:`~mosaik_api_v3.CreateResult` is a Python dict with the fields *eid* and *type*.
+(As it is a normal dict, the name :class:`~mosaik_api_v3.CreateResult` will only appear in type annotations.)
+
+The *eid* field specifies entity's **entity ID**. It will be used by mosaik to communicate to your simulator which input data is meant for which entity, and vice versa by your simulator to indicate which entity produced a given ountput. *As such, all entity IDs returned by your simulator must be unique, even accross multiple calls to* :meth:`~Simulator.create` *during the same simulation.*
+
+The *type* field must mirror the value given in ``model``. (It exists for simulators using child entities, see :doc:`/how-tos/existing-topologies`.)
+
+Because we want to allow users to set the entity ID, our :meth:`~Simulator.create` method is a bit involved. First, we sort out the entity ID business:
+
+.. literalinclude:: code/profits_simulator.py
+   :start-at: def create
+   :end-before: # end
+
+When the user creates entities, they can give the parameter ``eid``. There are three cases:
+- They might not specify it (or specify `None`). In this case, we create entity IDs looking like *PVProfits-42*. The numbers start with the number of already-existing entities. This ensures that we will not create the same entity ID twice, even if :meth:`~Simulator.create` is called multiple times. (This might run into problems if the user specifies entity IDs some of the time but we will catch those later.)
+- They might specify a single string. We only allow this if they also just create a single entity.
+- They might specify a list of entity IDs. In this case, we check that it has the right length.
+
+At the end of this process, ``eid`` is a list, and it contains ``num`` IDs.
+
+Using this list, we then create the entities:
+
+.. literalinclude:: code/profits_simulator.py
+   :start-at: new_entities:
+   :end-at: return new_entities
+
+For each entity ID we first make good on our promise above to not repeat ourselves.
+Then we create the new entity.
+Creating an entity can take many forms, depending on the complexity of your simulator.
+As ours is quite simple, we will just add the entity ID as a key to our ``entities`` dict.
+(We will use the associated value later to store the profits.)
+In more complex cases, we it is common to create a class representing an individual entity and to create and store and instance for that class to create an entity.
+
+Finally, we also need to inform mosaik about the entity.
+To this end, we add a dict of a certain structure (namely the one given by :class:`~mosaik_api_v3.CreateResult`) to the ``new_entities`` list.
+The *eid* that we specify there is the only thing that mosaik uses to identify our entity and associate inputs and outputs to it.
+
+
+Stepping
+========
+
+Next, we need to specify what our simulator does during the simulation.
+The place to do this is the :meth:`~Simulator.step` method.
+Besides ``self``, it gets three arguments:
+
+- ``time``---the current :term:`simulation time`.
+- ``inputs``---the inputs to our simulator for this step.
+- ``max_advance``---which is only relevant for advanced event-based simulators, see :doc:`/how-tos/max-advance`.
+
+This method of our simulator will automatically be called at time 0, and then again each time we return a non-``None`` value from this method.
+(If our simulator had trigger attributes, those could result in additional calls to :meth:`~Simulator.step`, see :doc:`/explanations/measurements-and-events`.)
+
+To perform our step, we need to read the data from the ``inputs`` argument.
+This is actually thrice-nested dictionary:
+
+- The outer-most level has entity IDs of our simulator as keys.
+- The middle level has attributes of those entities as keys.
+- The inner-most level has full IDs of source simulators.
+  These can often be ignored, unless your simulator has special needs that require it to know who sent the data.
+  (Usually, only simulators writing data to some file or database should use this.)
+- The values at the last level are the actual inputs.
+
+For example, for our simulator, ``inputs`` could look like this::
+
+   {
+       "PVProfits-0": {
+           "P[MW]": {
+               "PV.PV-0": 0.5,
+           },
+       },
+       "PVProfits-1": {
+           "P[MW]": {
+               "PV.PV-1": 1.2,
+               "PV.PV-2:" 0.8,
+           },
+       },
+   }
+
+Here, the user has connected two *PV* entities to our *PVProfits-1* entity.
+(Namely, the entities *PV.PV-1* and *PV.PV-2*.)
+It is up to our simulator how to deal with duplicate values.
+If there is no sensible resolution, a simulator should raise an Error.
+However, for power values, it is reasonable to simply add them.
+
+Once we have our power input, we can determine our profits with the formula
+
+.. math::
+   \mathsf{P[MW]} \times \frac{\mathsf{step_size} \times \mathsf{time\_resolution}}{3600} \times \mathsf{price}
+
+Here, :math:`\mathsf{step_size} \times \mathsf{time\_resolution}` gives the length of a step in seconds, which we divide by :math:`3600` to get a value in hours, compatible with our price unit.

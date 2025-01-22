@@ -13,19 +13,17 @@ Here, we provide the documentation about mosaik.
    :caption: Contents
    :maxdepth: 2
 
-   quickstart
-   installation
    overview
-   ecosystem/index
+   installation
    tutorials/index
+   api_reference/index
+   ecosystem/index
    mosaik-api/index
+   how-tos/index
+   explanations/index
    scenario-definition
-   simmanager
-   scheduler
-   upgrade_to_v3
    faq
    dev/index
-   api_reference/index
    about/index
    privacy
    legals

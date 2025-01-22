@@ -45,7 +45,7 @@ class World:
     """
     The world holds all data required to specify and run the scenario.
 
-    We recommend that you use the world in a ``with`` block like so:
+    We recommend that you use the world in a ``with`` block like so::
 
         with mosaik.World(SIM_CONFIG) as world:
             # Scenario setup ...
@@ -59,7 +59,7 @@ class World:
     However, you can also use a ``World`` outside of a ``with`` block.
 
     The ``World`` provides a method to start a simulator process
-    (:meth:`start`) and manages the simulator instances.
+    (:meth:`~World.start`) and manages the simulator instances.
 
     You have to provide a *sim_config* which tells the world which
     simulators are available and how to start them. See
@@ -270,48 +270,47 @@ class World:
         shutdown: bool = True,
     ):
         """
-        Start the simulation until the simulation time *until* is
+        Start the simulation until the simulation time ``until`` is
         reached. As mosaik has no way of resetting the simulators to
         their starting state, this method can only be called once.
 
-        In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. A rt-factor of 1. means that 1 second in simulated time
-        takes 1 second in real-time. An rt-factor 0f 0.5 will let the
-        simulation run twice as fast as real-time. For correct behavior of the
-        rt_factor the time_resolution of the scenario has to be set adequately,
-        which is 1. [second] by default.
-
-        If the simulators are too slow for the rt-factor you chose, mosaik
-        prints by default only a warning. In order to raise
-        a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
-
-        ``print_progress`` controls whether progress bars are printed while the
-        simulation is running. The default is to print one bar representing the
-        global progress of the simulation. You can also set
-        ``print_progress='individual'`` to get one bar per simulator in your
-        simulation (in addition to the global one). ``print_progress=False`
-        turns off the progress bars completely. The progress bars use
-        `tqdm <https://pypi.org/project/tqdm/>`_; see their documentation
-        on how to write to the console without interfering with the bars.
-
-        You can also set the *lazy_stepping* flag (default: ``True``). If
-        ``True`` a simulator can only run ahead one step of it's successors. If
-        ``False`` a simulator always steps as long all input is provided. This
-        might decrease the simulation time but increase the memory consumption.
-
-        At the end of the simulation, mosaik will stop all simulators
-        and close the connections to them. There are two exceptions to
-        this:
-
-        - If the flag *shutdown* is set to ``False``, mosaik will not
-          close the connection. In this case, you have to call
-          :meth:`shutdown` yourself.
-        - If the :cls:`World` is used in a ``with`` block (recommended),
-          the connection will be closed at the end of that block,
-          instead.
-
-        (Keeping the connection open is useful to extract final data
-        from simulators using extra methods.)
+        :param until: The end time for the simulation, exclusive (i.e.
+            the step at time ``until`` will *not* be performed.)
+        :param rt_factor: In order to perform real-time simulations,
+            you can set ``rt_factor`` to a number > 0. A real-time
+            factor of 1. means that 1 second in simulated time takes 1
+            second in real-time. An real-time factor of 0.5 will let the
+            simulation run twice as fast as real-time. For correct
+            behavior of the ``rt_factor``, the time resolution of the
+            scenario has to be set adequately, which is 1. [second] by
+            default.
+        :param rt_strict: If the simulators are too slow for the
+            real-time factor you chose, mosaik will emit a warning.
+            If you want it to raise a :exc:`RuntimeError`, instead, you
+            can set ``rt_strict`` to ``True``.
+        :param print_progress: This controls whether progress bars are
+            printed while the simulation is running. The default is to
+            print one bar representing the global progress of the
+            simulation. You can also set ``print_progress='individual'``
+            to get one bar per simulator in your simulation (in addition
+            to the global one). ``print_progress=False`` turns off the
+            progress bars completely. The progress bars use
+            `tqdm <https://pypi.org/project/tqdm/>`_; see their
+            documentation on how to write to the console without
+            interfering with the bars.
+        :param lazy_stepping: If ``True`` a simulator can only run ahead
+            one step of it's successors. If ``False`` a simulator always
+            steps as soon as all input is provided. This might decrease
+            the simulation time but increase the memory consumption.
+        :param shutdown: If ``True`` and this :class:`World` is not
+            being used in a ``with`` block, mosaik will stop all
+            simulators and close the connections to them at the end of
+            the simulation run. You can set this to ``False`` if you
+            want to keep the connections open and call :meth:`shutdown`
+            yourself, later. (This is useful if you want to call extra
+            methods on your simulator after the simulation is over;
+            however, we recommend that you use the :class:`World` in a
+            ``with`` block.)
         """
         if self.loop.is_closed():
             raise RuntimeError(

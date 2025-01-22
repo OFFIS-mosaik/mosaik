@@ -10,13 +10,13 @@ Glossary
       objects (simulated or real) of a power system or those that are somehow
       connected to the power system; for example a multi-agent system that
       controls the feed-in of decentralized producers.
-      
+
    Co-simulation
-      In co-simulation the different subsystems which form a coupled problem 
-      are modeled and simulated in a distributed manner. The modeling is done 
-      on the subsystem level without having the coupled problem in mind. The 
-      coupled simulation is carried out by running the subsystems in a 
-      black-box manner. During the simulation the subsystems will exchange 
+      In co-simulation the different subsystems which form a coupled problem
+      are modeled and simulated in a distributed manner. The modeling is done
+      on the subsystem level without having the coupled problem in mind. The
+      coupled simulation is carried out by running the subsystems in a
+      black-box manner. During the simulation the subsystems will exchange
       data. (source: `Wikipedia <http://en.wikipedia.org/wiki/Co-simulation>`_)
 
    Data-flow
@@ -34,19 +34,19 @@ Glossary
 
    Entity Set
       A set or list of :term:`entities <entity>`.
-      
+
    Framework
-      A software framework provides generic functionality that can be 
+      A software framework provides generic functionality that can be
       selectively changed and expanded by additional user-written code.
 
    Model
-      A Model is a simplified representation of a real world object or system. 
-      It reproduces the relevant aspects of that object or system for its 
+      A Model is a simplified representation of a real world object or system.
+      It reproduces the relevant aspects of that object or system for its
       systematic analysis.
 
    Scenario
-      Description of the system to be simulated. It includes the used 
-      :term:`models <model>` and their relations. It includes the state 
+      Description of the system to be simulated. It includes the used
+      :term:`models <model>` and their relations. It includes the state
       of the models and their data base. In the mosaik-context it includes also
       the :term:`simulators <simulator>`.
 
@@ -55,7 +55,12 @@ Glossary
 
    Simulation Model
       The representation of a :term:`model <model>` in programming code..
-      
+
+   Simulation time
+      The "internal" time of the simulation, i.e., the time of the simulated world.
+      In mosaik, this time is measured in steps starting from the start of the simulation.
+      Conventionally, one step represents one second, but this can be adjusted by changing the ``time_resolution`` when creating a :class:`mosaik.World`.
+
    Simulator
       A program that contains the implementation of one or more
       :term:`simulation models <simulation model>` and is able to execute these
@@ -64,15 +69,15 @@ Glossary
       Sometimes, the term *simulator* also refers all kinds of processes that
       can talk to mosaik, including actual simulators, control strategies,
       visualization servers, database adapters and so on.
-      
+
    Smart Grid
-      An electric power system that utilizes information exchange and control 
-      technologies, distributed computing and associated sensors and actuators, 
+      An electric power system that utilizes information exchange and control
+      technologies, distributed computing and associated sensors and actuators,
       for purposes such as:
 
       - to integrate the behaviour and actions of the network users and other stakeholders,
       - to efficiently deliver sustainable, economic and secure electricity supplies.
-         
+
       (source: `IEC <http://www.electropedia.org>`_)
 
    Step

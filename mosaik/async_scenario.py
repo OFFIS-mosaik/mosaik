@@ -2,7 +2,7 @@
 This module provides the async interface for users to create simulation
 scenarios for mosaik. For a version that handles the asynchronicity
 itself (but cannot be used within an existing event loop), see
-scenario.py.
+:py:mod:`mosaik.scenario`.
 
 The :class:`AsyncWorld` holds all necessary data for the simulation and
 allows the user to start simulators. It provides a
@@ -93,6 +93,8 @@ base_config: _MosaikConfigTotal = {
 SENTINEL = object()
 """Sentinel for initial data call (we can't  use None as the user might
 want to supply that value.)
+
+:meta private:
 """
 
 
@@ -220,7 +222,7 @@ class AsyncWorld:
     that this increases the memory consumption and simulation time.
 
     We recommend that you use ``AsyncWorld`` in an ``async with`` block
-    like so:
+    like so::
 
         async with AsyncWorld(SIM_CONFIG) as world:
             # call setup methods on world
@@ -1155,9 +1157,9 @@ class AsyncModelMock(object):
         self._check_params(**model_params)
 
         entities = await self._proxy.send(["create", (num, self.name), model_params])
-        assert (
-            len(entities) == num
-        ), f"{num} entities were requested but {len(entities)} were created."
+        assert len(entities) == num, (
+            f"{num} entities were requested but {len(entities)} were created."
+        )
 
         return self._make_entities(entities, assert_type=self.name)
 

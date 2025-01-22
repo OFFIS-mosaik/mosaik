@@ -167,3 +167,18 @@ Here is an example with a bit more context:
 
     if __name__ == '__main__':
         sys.exit(main())
+
+
+Helper classes
+--------------
+
+There are a bunch of helper classes to allow users to give more precise type annotations for their simulators.
+
+.. autoclass:: Meta
+   :members:
+
+.. autoclass:: CreateResult
+   :members:
+
+.. autoclass:: InputData
+   :members:
