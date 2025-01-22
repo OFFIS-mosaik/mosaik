@@ -25,6 +25,4 @@ def test_tutorial(outfile: str):
     out = subprocess.check_output(
         [sys.executable, python_file], cwd=CODE_DIR, universal_newlines=True
     )
-    print(out)
-    print(expected)
     assert out == expected

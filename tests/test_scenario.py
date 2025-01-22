@@ -265,7 +265,10 @@ def test_world_connect_any_inputs(world: World):
 
     # Extract only the source-destination pairs from `connections`
     connections = {
-        (src_port, dest_port) for (src_port, dest_port), _ in sim_b.pulled_inputs[(sim_a, TieredDuration(0))].connections
+        (src_port, dest_port)
+        for (src_port, dest_port), _ in sim_b.pulled_inputs[
+            (sim_a, TieredDuration(0))
+        ].connections
     }
 
     # Expected connections
@@ -275,7 +278,6 @@ def test_world_connect_any_inputs(world: World):
 
     # Assert the actual connections match the expected set
     assert connections == expected_connections
-
 
     assert sim_a.successors == {sim_b: TieredDuration(0)}
     assert sim_b.input_delays[sim_a] == MinimalDurations(TieredDuration(0))
@@ -304,7 +306,10 @@ def test_world_connect_time_shifted(world: World):
 
     # Extract only the source-destination pairs from `connections`
     connections = {
-        (src_port, dest_port) for (src_port, dest_port), _ in sim_b.pulled_inputs[(sim_a, TieredDuration(1))].connections
+        (src_port, dest_port)
+        for (src_port, dest_port), _ in sim_b.pulled_inputs[
+            (sim_a, TieredDuration(1))
+        ].connections
     }
 
     # Assert the actual connections match the expected set

@@ -302,7 +302,6 @@ def test_get_input_data_shifted(world: World):
     assert data == {"0": {"in": {"Sim-5.1": 7}}}
 
 
-
 @pytest.mark.parametrize(
     "world, next_steps, next_step_s1, expected",
     [

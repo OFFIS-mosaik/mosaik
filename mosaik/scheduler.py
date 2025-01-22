@@ -251,7 +251,6 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     for (src_sim, delay), entry in sim.pulled_inputs.items():
         # Retrieve the cached output for the current step, accounting for the delay
         cache = src_sim.get_output_for(sim.current_step.time - delay.tiers[0])
-        print(f"entry.connections: {entry.connections}")
 
         # Iterate over the connections in the entry
         for (src_port, dest_port), transform in entry.connections:
