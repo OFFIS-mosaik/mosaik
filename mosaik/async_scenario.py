@@ -1159,9 +1159,9 @@ class AsyncModelMock(object):
         self._check_params(**model_params)
 
         entities = await self._proxy.send(["create", (num, self.name), model_params])
-        assert (
-            len(entities) == num
-        ), f"{num} entities were requested but {len(entities)} were created."
+        assert len(entities) == num, (
+            f"{num} entities were requested but {len(entities)} were created."
+        )
 
         return self._make_entities(entities, assert_type=self.name)
 
