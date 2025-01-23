@@ -472,17 +472,26 @@ class AsyncWorld:
         src_sim.output_request.setdefault(src.eid, []).append(src_attr)
 
         if is_pulled:
-            output_entry = dest_sim.pulled_inputs.setdefault(
-                (src_sim, delay),
-                PullDescription(connections=[]),
+            output_entry = dest_sim.pulled_inputs.setdefault((src_sim, delay), [])
+            output_entry.append(
+                PullDescription(
+                    src_port=src_port, dest_port=dest_port, transform=transform
+                )
             )
-            output_entry.connections.append(((src_port, dest_port), transform))
 
         else:
             output_entry = src_sim.output_to_push.setdefault(
-                src_port, PushDescription(connections=[])
+                src_port,
+                [],
             )
-            output_entry.connections.append((dest_sim, delay, dest_port, transform))
+            output_entry.append(
+                PushDescription(
+                    sim_runner=dest_sim,
+                    tiered_duration=delay,
+                    dest_port=dest_port,
+                    transform=transform,
+                )
+            )
 
         src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
 

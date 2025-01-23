@@ -253,13 +253,13 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
         cache = src_sim.get_output_for(sim.current_step.time - delay.tiers[0])
 
         # Iterate over the connections in the entry
-        for (src_port, dest_port), transform in entry.connections:
+        for single_entry in entry:
             try:
-                val = cache[src_port[0]][src_port[1]]
+                val = cache[single_entry.src_port[0]][single_entry.src_port[1]]
             except KeyError:
                 warnings.warn(
-                    f"Simulator {src_sim.sid}'s entity {src_port[0]} did not produce "
-                    f"output on its persistent attribute {src_port[1]} during its last "
+                    f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did not produce "
+                    f"output on its persistent attribute {single_entry.src_port[1]} during its last "
                     "step. However, this value is now required by simulator "
                     f"{sim.sid}. This usually results from attributes that are marked "
                     "persistent despite working like events. Supplying `None` for now. "
@@ -267,13 +267,13 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
                 )
                 val = None
 
-            val = transform(val)
+            val = single_entry.transform(val)
 
             # Store the value in the input_data structure
-            input_vals = input_data.setdefault(dest_port[0], {}).setdefault(
-                dest_port[1], {}
-            )
-            input_vals[FULL_ID % (src_sim.sid, src_port[0])] = val
+            input_vals = input_data.setdefault(
+                single_entry.dest_port[0], {}
+            ).setdefault(single_entry.dest_port[1], {})
+            input_vals[FULL_ID % (src_sim.sid, single_entry.src_port[0])] = val
 
     # Merge the data back into the persistent inputs. Here, only keys
     # that already exist should be updated, as those are the persistent
@@ -463,26 +463,22 @@ def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
     :param output_time: The time step at which the output data is pushed.
     """
     for (src_eid, src_attr), output_entry in sim.output_to_push.items():
-        try:
-            # Retrieve the value for the current entity ID and attribute
-            val = data[src_eid][src_attr]
-            # Push data to connected simulators
-            for dest_sim, time_shift, (
-                dest_eid,
-                dest_attr,
-            ), transform in output_entry.connections:
-                dest_sim.timed_input_buffer.add(
-                    output_time + time_shift.tiers[0],
+        for single_output in output_entry:
+            try:
+                # Retrieve the value for the current entity ID and attribute
+                val = data[src_eid][src_attr]
+                # Push data to connected simulators
+                single_output.sim_runner.timed_input_buffer.add(
+                    output_time + single_output.tiered_duration.tiers[0],
                     sim.sid,
                     src_eid,
-                    dest_eid,
-                    dest_attr,
-                    transform(val),
+                    single_output.dest_port[0],
+                    single_output.dest_port[1],
+                    single_output.transform(val),
                 )
-
-        except KeyError:
-            # Skip if the data key is missing
-            pass
+            except KeyError:
+                # Skip if the data key is missing
+                pass
 
 
 def trigger_successors(sim: SimRunner) -> None:

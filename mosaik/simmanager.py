@@ -22,7 +22,7 @@ import subprocess
 import sys
 import warnings
 from ast import literal_eval
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from json import JSONEncoder
 from typing import (
     TYPE_CHECKING,
@@ -362,16 +362,17 @@ Port: TypeAlias = Tuple[EntityId, Attr]
 
 @dataclass
 class PushDescription:
-    connections: List[Tuple[SimRunner, TieredDuration, Port, Callable[..., Any]]] = (
-        field(default_factory=list)
-    )
+    sim_runner: SimRunner
+    tiered_duration: TieredDuration
+    dest_port: Port
+    transform: Callable[..., Any]
 
 
 @dataclass
 class PullDescription:
-    connections: List[Tuple[Port, Port, Callable[[float], Any]]] = field(
-        default_factory=list
-    )
+    src_port: Port
+    dest_port: Port
+    transform: Callable[..., Any]
 
 
 class SimRunner:
@@ -419,12 +420,12 @@ class SimRunner:
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], PullDescription]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], List[PullDescription]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
     are the source and destination entity-attribute pairs.
     """
-    output_to_push: Dict[Port, PushDescription]
+    output_to_push: Dict[Port, List[PushDescription]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs of this simulator with
     the corresponding list of simulator-time-entity-attribute triples

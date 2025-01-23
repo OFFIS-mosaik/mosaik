@@ -138,19 +138,22 @@ def test_world_connect(world: World):
     assert sim_1.successors == {}
     assert sim_1.input_delays[sim_0] == MinimalDurations(TieredDuration(0))
 
+    # Extract connections as source-destination pairs
     connections = {
-        (src_port, dest_port)
-        for (src_port, dest_port), _ in sim_1.pulled_inputs[
-            (sim_0, TieredDuration(0))
-        ].connections
+        ((pull.src_port[0], pull.src_port[1]), (pull.dest_port[0], pull.dest_port[1]))
+        for pull in sim_1.pulled_inputs[(sim_0, TieredDuration(0))]
     }
 
-    assert connections == {
+    # Expected connections set
+    expected_connections = {
         ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
         ((a[0].eid, "dummy_out"), (b[0].eid, "dummy_in")),
         ((a[1].eid, "val_out"), (b[1].eid, "val_in")),
         ((a[1].eid, "dummy_out"), (b[1].eid, "dummy_in")),
     }
+
+    # Assert the actual connections match the expected set
+    assert connections == expected_connections
 
     assert to_dict(world.entity_graph) == {
         "ExampleSim-0." + a[0].eid: {"ExampleSim-1." + b[0].eid: {}},
@@ -263,12 +266,10 @@ def test_world_connect_any_inputs(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out")
 
-    # Extract only the source-destination pairs from `connections`
+    # Extract only the source-destination pairs
     connections = {
-        (src_port, dest_port)
-        for (src_port, dest_port), _ in sim_b.pulled_inputs[
-            (sim_a, TieredDuration(0))
-        ].connections
+        ((pull.src_port[0], pull.src_port[1]), (pull.dest_port[0], pull.dest_port[1]))
+        for pull in sim_b.pulled_inputs[(sim_a, TieredDuration(0))]
     }
 
     # Expected connections
@@ -304,14 +305,15 @@ def test_world_connect_time_shifted(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out", time_shifted=True, initial_data={"val_out": 1.0})
 
+    connections = {}
     # Extract only the source-destination pairs from `connections`
-    connections = {
-        (src_port, dest_port)
-        for (src_port, dest_port), _ in sim_b.pulled_inputs[
-            (sim_a, TieredDuration(1))
-        ].connections
-    }
-
+    for single_output in sim_b.pulled_inputs[(sim_a, TieredDuration(1))]:
+        connections = {
+            (
+                (single_output.src_port[0], single_output.src_port[1]),
+                (single_output.dest_port[0], single_output.dest_port[1]),
+            )
+        }
     # Assert the actual connections match the expected set
     expected_connections = {
         ((a.eid, "val_out"), (b.eid, "val_out")),
