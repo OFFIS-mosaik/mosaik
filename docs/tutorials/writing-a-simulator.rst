@@ -240,6 +240,51 @@ However, for power values, it is reasonable to simply add them.
 Once we have our power input, we can determine our profits with the formula
 
 .. math::
-   \mathsf{P[MW]} \times \frac{\mathsf{step_size} \times \mathsf{time\_resolution}}{3600} \times \mathsf{price}
+   \mathsf{P[MW]} \times \frac{\mathsf{step\_size} \times \mathsf{time\_resolution}}{3600} \times \mathsf{price}
 
-Here, :math:`\mathsf{step_size} \times \mathsf{time\_resolution}` gives the length of a step in seconds, which we divide by :math:`3600` to get a value in hours, compatible with our price unit.
+Here, :math:`\mathsf{step\_size} \times \mathsf{time\_resolution}` gives the length of a step in seconds, which we divide by :math:`3600` to get a value in hours, compatible with our price unit.
+We store these profits in ``self.profits``, sorted by entity.
+
+Finally, we return ``time + self.step_size`` as the step at which we want to be called next:
+
+.. literalinclude:: code/profits_simulator.py
+   :start-at: def step
+   :end-at: return time
+
+Having calculated the profits, we now need to pass them to mosaik.
+For this, there is a second method, :meth:`~Simulator.get_data`.
+Usually, mosaik will call this immediately after the call to :meth:`~Simulator.step` has returned, except when our simulator's output is not used by any other simulator.
+
+:meth:`~Simulator.get_data` gets called with an :class:`~mosaik_api_v3.OutputRequest`, which is just a dictionary mapping entity IDs of our simulator to attribute names.
+Our simulator should return output for those attributes, which means
+
+- if the attribute is :ref:`persistent`, output should be provided
+- if the attribute is :ref:`non-persistent`, output should be provided to indicate that the corresponding event happened, if it happened
+
+The :class:`~mosaik_api_v3.OutputRequest` will only list those attributes that are connected to other simulators.
+However, if it makes implementing your simulator simpler (and the overhead is acceptable), you can also return output for non-requested attributes, which mosaik will simply ignore.
+(Output for non-existing attributes will result in at error, though, as this indicates a typo in the :meth:`~Simulator.get_data` implementation.)
+
+As output, we produce a dict of dicts, mapping each entity ID to a dict mapping attribute names to values.
+In our case, we simply send out all the profits that currently exist.
+Then we reset them so that we don't send the same profits again later.
+(Though, due to the calling behaviour of mosaik, this should not happen, anyway.)
+
+.. literalinclude: code/profits_simulator.py
+   :start-at: def get_data
+   :end-at: return data
+
+This concludes the writing of our toy simulator.
+When you are implementing an actual simulator, there are a couple of additional topics that might be of interest to you:
+
+- To learn more about the distinction between measurements and events in mosaik, see :doc:`/explanations/measurements-and-events`.
+- For efficient simulators with trigger inputs (i.e., events as inputs), you often need to know how far you can advance without potentially getting interrupted. See :doc:`/how-tos/max-advance` for more on this.
+- If your simulator communicates with other simulators at a high frequency (either to perform a joint convergence algorithm, or because it is implementing a control algorith that needs to communicate with other units), you might want to learn about same-time loops and :doc:`/explanations/tiered-time`.
+- This tutorial uses mosaik's simulator API for Python.
+  To learn more about which other simulator APIs exist, and for the necessary information to implement the simulator API for new programming languages, see :doc:`/mosaik-api/index`.
+
+
+Adapting our scenario
+=====================
+
+Finally, it is time to integrate our

@@ -1,6 +1,6 @@
 import mosaik_api_v3
-from mosaik_api_v3 import CreateResult, InputData, Meta, ModelName, Time
-from mosaik_api_v3.types import EntityId
+from mosaik_api_v3 import CreateResult, InputData, Meta, ModelName, OutputRequest, Time
+from mosaik_api_v3.types import EntityId, OutputData
 
 META: Meta = {
     "api_version": "3.0",
@@ -79,3 +79,10 @@ class Simulator(mosaik_api_v3.Simulator):
             )
 
         return time + self.step_size
+
+    def get_data(self, outputs: OutputRequest) -> OutputData:
+        data: OutputData = {}
+        for eid in outputs:
+            data[eid]["profits[EUR]"] = self.profits[eid]
+            self.profits[eid] = None
+        return data
