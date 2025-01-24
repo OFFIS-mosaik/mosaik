@@ -177,8 +177,17 @@ There are a bunch of helper classes to allow users to give more precise type ann
 .. autoclass:: Meta
    :members:
 
+.. autoclass:: mosaik_api_v3.types.ModelDescription
+   :members:
+
 .. autoclass:: CreateResult
    :members:
 
-.. autoclass:: InputData
+.. autoclass:: mosaik_api_v3.types.InputData
+   :members:
+
+.. autoclass:: OutputRequest
+   :members:
+
+.. autoclass:: OutputData
    :members:

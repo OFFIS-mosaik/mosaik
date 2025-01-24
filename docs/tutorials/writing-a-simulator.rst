@@ -287,4 +287,28 @@ When you are implementing an actual simulator, there are a couple of additional 
 Adapting our scenario
 =====================
 
-Finally, it is time to integrate our
+Finally, it is time to integrate our new simulator into our simulation from the :doc:`previous tutorial <a-first-scenario>`.
+
+We add it to the ``SIM_CONFIG``
+
+.. literalinclude:: code/scenario_2.py
+   :start-at: "Profits": {
+   :end-at: "Profits": {
+
+and start it together with the other simulators:
+
+.. literalinclude:: code/scenario_2.py
+   :start-at: profitssim =
+   :end-at: profitssim =
+
+We create a *PVProfits* entity for each PV entity by first creating a list of their eids and then using the :meth:`~mosaik.scenario.ModelMock.create` function:
+
+.. literalinclude:: code/scenario_2.py
+   :start-at: pv_profit_eids =
+   :end-before: # end
+
+Finally, we connect the PV systems to our profit simulator, and the profit simulator to the output simulator:
+
+.. literalinclude:: code/scenario_2.py
+   :start-after: # connect profits
+   :end-before: # end

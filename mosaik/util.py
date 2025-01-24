@@ -106,6 +106,17 @@ def connect_randomly(
     return connected
 
 
+def connect_zip(
+    world: World | AsyncWorld,
+    src_set: Collection[Entity],
+    dest_set: Collection[Entity],
+    *attrs: Attr | Tuple[Attr, Attr],
+    **kwargs,
+):
+    for src, dest in zip(src_set, dest_set, strict=True):
+        world.connect(src, dest, *attrs, **kwargs)
+
+
 def _connect_evenly(
     world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
@@ -321,14 +332,17 @@ def plot_dataflow_graph(
         )
         ax.add_artist(con)
 
-        # Attention: This is not the actual mid-point in the line
-        # I suspect its more like a control point in a bezier interpolation
-        # When the line is more curved, the middle point here is further away from the actual line
-        # One could suspect that the mid-point is actually the middle point in this array,
-        # but the array starts with the stating point, then has the curve-control point in the middle
-        # and then has the points that draw the arrow
-        # Why not calculating the middle point on the straight line? Because then by a 50/50 chance
-        # when you have a curved arrow back and forth between two points, you can have the annotation
+        # Attention: This is not the actual mid-point in the line!
+        # I suspect it's more like a control point in a bezier
+        # interpolation. When the line is more curved, the middle point
+        # here is further away from the actual line. One could suspect
+        # that the mid-point is actually the middle point in this array,
+        # but the array starts with the stating point, then has the
+        # curve-control point in the middle and then has the points that
+        # draw the arrow.
+        # Why not calculating the middle point on the straight line?
+        # Because then by a 50/50 chance when you have a curved arrow
+        # back and forth between two points, you can have the annotation
         # above the wrong arrow.
         midpoint: Tuple[float, float] = con.get_path().vertices[1]  # type: ignore  # close enough
 

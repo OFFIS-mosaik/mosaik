@@ -570,7 +570,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     async def get_progress(self) -> float:
         """
         Return the current simulation progress from
-        :attr:`~mosaik.scenario.World.sim_progress`.
+        :attr:`~mosaik.async_scenario.AsyncWorld.sim_progress`.
         """
         return self.world.sim_progress
 
