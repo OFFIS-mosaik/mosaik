@@ -272,7 +272,6 @@ def test_get_input_data(world: World):
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
     sim_2.inputs_from_set_data = {"0": {"in": {"3": 5}, "spam": {"3": "eggs"}}}
 
-    # Update `pulled_inputs` with the new PullDescription structure
     sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = [
         PullDescription(
             src_port=("1", "x"),
@@ -307,7 +306,6 @@ def test_get_input_data_shifted(world: World):
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
 
-    # Update `pulled_inputs` with the new PullDescription structure
     sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = [
         PullDescription(
             src_port=("1", "z"),

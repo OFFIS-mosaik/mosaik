@@ -138,13 +138,11 @@ def test_world_connect(world: World):
     assert sim_1.successors == {}
     assert sim_1.input_delays[sim_0] == MinimalDurations(TieredDuration(0))
 
-    # Extract connections as source-destination pairs
     connections = {
         ((pull.src_port[0], pull.src_port[1]), (pull.dest_port[0], pull.dest_port[1]))
         for pull in sim_1.pulled_inputs[(sim_0, TieredDuration(0))]
     }
 
-    # Expected connections set
     expected_connections = {
         ((a[0].eid, "val_out"), (b[0].eid, "val_in")),
         ((a[0].eid, "dummy_out"), (b[0].eid, "dummy_in")),
@@ -152,7 +150,6 @@ def test_world_connect(world: World):
         ((a[1].eid, "dummy_out"), (b[1].eid, "dummy_in")),
     }
 
-    # Assert the actual connections match the expected set
     assert connections == expected_connections
 
     assert to_dict(world.entity_graph) == {
@@ -266,18 +263,15 @@ def test_world_connect_any_inputs(world: World):
     sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out")
 
-    # Extract only the source-destination pairs
     connections = {
         ((pull.src_port[0], pull.src_port[1]), (pull.dest_port[0], pull.dest_port[1]))
         for pull in sim_b.pulled_inputs[(sim_a, TieredDuration(0))]
     }
 
-    # Expected connections
     expected_connections = {
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }
 
-    # Assert the actual connections match the expected set
     assert connections == expected_connections
 
     assert sim_a.successors == {sim_b: TieredDuration(0)}
@@ -306,7 +300,6 @@ def test_world_connect_time_shifted(world: World):
     world.connect(a, b, "val_out", time_shifted=True, initial_data={"val_out": 1.0})
 
     connections = {}
-    # Extract only the source-destination pairs from `connections`
     for single_output in sim_b.pulled_inputs[(sim_a, TieredDuration(1))]:
         connections = {
             (
@@ -314,7 +307,6 @@ def test_world_connect_time_shifted(world: World):
                 (single_output.dest_port[0], single_output.dest_port[1]),
             )
         }
-    # Assert the actual connections match the expected set
     expected_connections = {
         ((a.eid, "val_out"), (b.eid, "val_out")),
     }

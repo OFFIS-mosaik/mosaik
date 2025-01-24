@@ -82,9 +82,6 @@ def test_transform_parameter_input_pulled():
         ] == multiply_by_onehundred(key)
 
 
-test_transform_parameter_input_pulled()
-
-
 def test_transform_parameter_input_pushed():
     # Sim config. and other parameters
     SIM_CONFIG: SimConfig = {
@@ -147,6 +144,3 @@ def test_transform_parameter_input_pushed():
         assert test_dict2[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_onehundred(key)
-
-
-test_transform_parameter_input_pushed()

@@ -362,14 +362,38 @@ Port: TypeAlias = Tuple[EntityId, Attr]
 
 @dataclass
 class PushDescription:
-    sim_runner: SimRunner
-    tiered_duration: TieredDuration
+    """
+    Describes a connection for pushing data from one simulator to another.
+
+    :param src_sim: The `SimRunner` instance representing the simulator
+        sending the data.
+    :param delay: The `TieredDuration` representing the time shift (or delay)
+        applied to the data during transmission along the connection.
+    :param dest_port: The `Port` representing the entity-attribute pair
+        for the destination in the target simulator.
+    :param transform: A callable function applied to the data as it
+        is pushed to the destination.
+    """
+
+    src_sim: SimRunner
+    delay: TieredDuration
     dest_port: Port
     transform: Callable[..., Any]
 
 
 @dataclass
 class PullDescription:
+    """
+    Describes a connection for pulling data into a simulator.
+
+    :param src_port: The `Port` representing the entity-attribute pair
+        from which data is pulled in the connected simulator.
+    :param dest_port: The `Port` representing the entity-attribute pair
+        that is the destination for the pulled data.
+    :param transform: A callable function applied to the data as it is
+        forwarded to its destination.
+    """
+
     src_port: Port
     dest_port: Port
     transform: Callable[..., Any]
@@ -423,14 +447,17 @@ class SimRunner:
     pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], List[PullDescription]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source SimRunner and the time shift, the values
-    are the source and destination entity-attribute pairs.
+    are lists of PullDescription objects. Each
+    PullDescription specifies the source and destination
+    entity-attribute pairs along with an optional transformation
+    function applied to the data.
     """
     output_to_push: Dict[Port, List[PushDescription]]
     """This lists those connections that use the timed_input_buffer.
-    The keys are the entity-attribute pairs of this simulator with
-    the corresponding list of simulator-time-entity-attribute triples
-    describing the destinations for that data and the time-shift
-    occuring along the connection.
+    The keys are the entity-attribute pairs (Port) of this simulator, and the values
+    are lists of PushDescription objects. Each PushDescription specifies the
+    destination simulator, the entity-attribute pair for the target, and the
+    time shift occurring along the connection.
     """
 
     to_world_time: TieredDuration
