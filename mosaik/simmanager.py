@@ -365,8 +365,8 @@ class PushDescription:
     """
     Describes a connection for pushing data from one simulator to another.
 
-    :param src_sim: The `SimRunner` instance representing the simulator
-        sending the data.
+    :param dest_sim: The `SimRunner` instance representing the simulator
+        receiving the data.
     :param delay: The `TieredDuration` representing the time shift (or delay)
         applied to the data during transmission along the connection.
     :param dest_port: The `Port` representing the entity-attribute pair
@@ -375,7 +375,7 @@ class PushDescription:
         is pushed to the destination.
     """
 
-    src_sim: SimRunner
+    dest_sim: SimRunner
     delay: TieredDuration
     dest_port: Port
     transform: Callable[..., Any]

@@ -422,7 +422,7 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.output_to_push = {
         ("0", "x"): [
             PushDescription(
-                src_sim=world.sims["Sim-2"],
+                dest_sim=world.sims["Sim-2"],
                 delay=TieredDuration(0),
                 dest_port=("0", "in"),
                 transform=lambda x: x,

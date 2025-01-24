@@ -486,7 +486,7 @@ class AsyncWorld:
             )
             output_entry.append(
                 PushDescription(
-                    src_sim=dest_sim,
+                    dest_sim=dest_sim,
                     delay=delay,
                     dest_port=dest_port,
                     transform=transform,
