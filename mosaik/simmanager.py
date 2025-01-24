@@ -365,13 +365,13 @@ class PushDescription:
     """
     Describes a connection for pushing data from one simulator to another.
 
-    :param dest_sim: The `SimRunner` instance representing the simulator
+    ::param dest_sim:: The :class:`SimRunner` instance representing the simulator
         receiving the data.
-    :param delay: The `TieredDuration` representing the time shift (or delay)
+    ::param delay:: The `TieredDuration` representing the time shift (or delay)
         applied to the data during transmission along the connection.
-    :param dest_port: The `Port` representing the entity-attribute pair
+    ::param dest_port:: The `Port` representing the entity-attribute pair
         for the destination in the target simulator.
-    :param transform: A callable function applied to the data as it
+    ::param transform:: A callable function applied to the data as it
         is pushed to the destination.
     """
 
@@ -386,11 +386,11 @@ class PullDescription:
     """
     Describes a connection for pulling data into a simulator.
 
-    :param src_port: The `Port` representing the entity-attribute pair
+    ::param src_port:: The `Port` representing the entity-attribute pair
         from which data is pulled in the connected simulator.
-    :param dest_port: The `Port` representing the entity-attribute pair
+    ::param dest_port:: The `Port` representing the entity-attribute pair
         that is the destination for the pulled data.
-    :param transform: A callable function applied to the data as it is
+    ::param transform:: A callable function applied to the data as it is
         forwarded to its destination.
     """
 
