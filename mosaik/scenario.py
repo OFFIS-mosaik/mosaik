@@ -161,9 +161,10 @@ class World:
         time_shifted: Union[bool, int] = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         return self._async_world.connect_one(
-            src, dest, src_attr, dest_attr, time_shifted, weak, initial_data
+            src, dest, src_attr, dest_attr, time_shifted, weak, initial_data, transform
         )
 
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
@@ -180,6 +181,7 @@ class World:
         time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         """
         .. warning::
@@ -223,6 +225,7 @@ class World:
             time_shifted=time_shifted,
             initial_data=initial_data,
             weak=weak,
+            transform=transform,
         )
 
     def set_initial_event(self, sid: SimId, time: int = 0):

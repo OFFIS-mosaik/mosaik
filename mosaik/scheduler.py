@@ -248,23 +248,32 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     # Merge in pushed inputs from the timed input buffer
     input_data = sim.timed_input_buffer.get_input(input_data, sim.current_step.time)
 
-    for (src_sim, delay), dataflows in sim.pulled_inputs.items():
+    for (src_sim, delay), entry in sim.pulled_inputs.items():
+        # Retrieve the cached output for the current step, accounting for the delay
         cache = src_sim.get_output_for(sim.current_step.time - delay.tiers[0])
-        for (src_eid, src_attr), (dest_eid, dest_attr) in dataflows:
+
+        # Iterate over the connections in the entry
+        for single_entry in entry:
             try:
-                val = cache[src_eid][src_attr]
+                val = cache[single_entry.src_port[0]][single_entry.src_port[1]]
             except KeyError:
                 warnings.warn(
-                    f"Simulator {src_sim.sid}'s entity {src_eid} did not produce "
-                    f"output on its persistent attribute {src_attr} during its last "
+                    f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did not produce "
+                    f"output on its persistent attribute {single_entry.src_port[1]} during its last "
                     "step. However, this value is now required by simulator "
                     f"{sim.sid}. This usually results from attributes that are marked "
                     "persistent despite working like events. Supplying `None` for now. "
                     "This will be an error in future versions of mosaik."
                 )
                 val = None
-            input_vals = input_data.setdefault(dest_eid, {}).setdefault(dest_attr, {})
-            input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
+
+            val = single_entry.transform(val)
+
+            # Store the value in the input_data structure
+            input_vals = input_data.setdefault(
+                single_entry.dest_port[0], {}
+            ).setdefault(single_entry.dest_port[1], {})
+            input_vals[FULL_ID % (src_sim.sid, single_entry.src_port[0])] = val
 
     # Merge the data back into the persistent inputs. Here, only keys
     # that already exist should be updated, as those are the persistent
@@ -453,20 +462,23 @@ def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
         and attributes, and values are the corresponding output values.
     :param output_time: The time step at which the output data is pushed.
     """
-    for (src_eid, src_attr), destinations in sim.output_to_push.items():
-        try:
-            val = data[src_eid][src_attr]
-            for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
-                dest_sim.timed_input_buffer.add(
-                    output_time + time_shift.tiers[0],
+    for (src_eid, src_attr), output_entry in sim.output_to_push.items():
+        for single_output in output_entry:
+            try:
+                # Retrieve the value for the current entity ID and attribute
+                val = data[src_eid][src_attr]
+                # Push data to connected simulators
+                single_output.dest_sim.timed_input_buffer.add(
+                    output_time + single_output.delay.tiers[0],
                     sim.sid,
                     src_eid,
-                    dest_eid,
-                    dest_attr,
-                    val,
+                    single_output.dest_port[0],
+                    single_output.dest_port[1],
+                    single_output.transform(val),
                 )
-        except KeyError:
-            pass
+            except KeyError:
+                # Skip if the data key is missing
+                pass
 
 
 def trigger_successors(sim: SimRunner) -> None:

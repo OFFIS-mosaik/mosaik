@@ -13,7 +13,7 @@ from mosaik import World, exceptions, scenario, scheduler, simmanager
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import PullDescription, PushDescription, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 from tests.simulators.simulator_mock import SimulatorMock
 
@@ -271,8 +271,22 @@ def test_get_input_data(world: World):
     sim_0.outputs = {0: {"1": {"x": 0, "y": 1}}}
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
     sim_2.inputs_from_set_data = {"0": {"in": {"3": 5}, "spam": {"3": "eggs"}}}
-    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = {(("1", "x"), ("0", "in"))}
-    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = {(("2", "z"), ("0", "in"))}
+
+    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = [
+        PullDescription(
+            src_port=("1", "x"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = [
+        PullDescription(
+            src_port=("2", "z"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+
     data = scheduler.get_input_data(world, sim_2)
     assert data == {
         "0": {
@@ -291,8 +305,16 @@ def test_get_input_data_shifted(world: World):
     sim_5 = world.sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
-    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = {(("1", "z"), ("0", "in"))}
-    data = scheduler.get_input_data(world, world.sims["Sim-4"])
+
+    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = [
+        PullDescription(
+            src_port=("1", "z"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+
+    data = scheduler.get_input_data(world, sim_4)
     assert data == {"0": {"in": {"Sim-5.1": 7}}}
 
 
@@ -398,8 +420,19 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ["x", "y", "z"]}
     sim.output_to_push = {
-        ("0", "x"): [(world.sims["Sim-2"], TieredDuration(0), ("0", "in"))],
-        ("0", "z"): [(world.sims["Sim-1"], TieredDuration(0), ("0", "in"))],
+        ("0", "x"): [
+            PushDescription(
+                dest_sim=world.sims["Sim-2"],
+                delay=TieredDuration(0),
+                dest_port=("0", "in"),
+                transform=lambda x: x,
+            )
+        ],
+        ("0", "z"): [
+            PushDescription(
+                world.sims["Sim-1"], TieredDuration(0), ("0", "in"), lambda x: x
+            )
+        ],
     }
 
     await scheduler.get_outputs(world, sim)
