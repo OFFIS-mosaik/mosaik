@@ -55,7 +55,7 @@ Other usages annotations:
 Creating the simulator
 ======================
 
-The simulator implements an interface to the mosaik API.
+The simulator implements an interface to the simulator API.
 This util package has two new simulators you can inherit from.
 One for simulators with only one model and one for multi model simulation.
 The reason to have two simulators is simpler use of generics for single models compared to multi-model simulations.
