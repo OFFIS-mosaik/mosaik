@@ -38,8 +38,8 @@ async def run(
 
     Return the final simulation time.
 
-    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed description of the
-    *rt_factor* and *rt_strict* arguments.
+    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed
+    description of the *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
 
@@ -181,10 +181,11 @@ async def rt_sleep(sim: SimRunner, world: AsyncWorld) -> None:
 
 async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     """
-    Wait until all simulators that can provide input for this simulator have run for
-    this step.
+    Wait until all simulators that can provide input for this simulator
+    have run for this step.
 
-    Also notify any simulator that is already waiting to perform its next step.
+    Also notify any simulator that is already waiting to perform its
+    next step.
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -214,17 +215,21 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
         {
             'eid': {
-                'attrname': {'src_eid_0': val_0, ... 'src_eid_n': val_n},
+                'attrname': {
+                    'src_eid_0': val_0,
+                    ...,
+                    'src_eid_n': val_n,
+                },
                 ...
             },
             ...
         }
 
-    For every entity, there is an entry in the dict and each entry is itself
-    a dict with attributes and a list of values. This is, because we may have
-    inputs from multiple simulators (e.g., different consumers that provide
-    loads for a node in a power grid) and cannot know how to aggregate that
-    data (sum, max, ...?).
+    For every entity, there is an entry in the dict and each entry is
+    itself a dict with attributes and a list of values. This is, because
+    we may have inputs from multiple simulators (e.g., different
+    consumers that provide loads for a node in a power grid) and cannot
+    know how to aggregate that data (sum, max, ...?).
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -286,8 +291,8 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
 def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     """
-    Checks how far *sim* can safely advance its internal time during next step
-    without causing a causality error.
+    Checks how far *sim* can safely advance its internal time during
+    next step without causing a causality error.
     """
     ancs_next_steps: List[Time] = []
     for anc_sim, distances in sim.triggering_ancestors.items():
@@ -312,11 +317,12 @@ async def step(
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
 
-    *inputs* is a dictionary, that maps entity IDs to data dictionaries which
-    map attribute names to lists of values (see :func:`get_input_data()`).
+    *inputs* is a dictionary, that maps entity IDs to data dictionaries
+    which map attribute names to lists of values (see
+    :func:`get_input_data`).
 
-    *max_advance* is the simulation time until the simulator can safely advance
-    it's internal time without causing any causality errors.
+    *max_advance* is the simulation time until the simulator can safely
+    advance it's internal time without causing any causality errors.
     """
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")

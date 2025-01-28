@@ -63,35 +63,45 @@ def connect_randomly(
 ):
     """
     Randomly :meth:`~mosaik.scenario.World.connect` the entities from
-    *src_set* to the entities from *dest_set* and return a subset of *dest_set*
-    containing all entities with a connection.
+    ``src_set`` to the entities from ``dest_set`` and return a subset of
+    ``dest_set`` containing all entities with a connection.
 
-    *world* is an instance of the :class:`~mosaik.scenario.World` to which the
-    entities belong.
+    :param world: the instance of the :class:`~mosaik.scenario.World`
+        to which the entities belong.
 
-    *src_set* and *dest_set* are iterables containing
-    :class:`~mosaik.scenario.Entity` instances. *src_set* may be empty,
-    *dest_set* must not be empty. Each entity of *src_set* will be connected to
-    an entity of *dest_set*, but not every entity of *dest_set* will
-    necessarily have a connection (e.g., if you connect a set of three entities
-    to a set of four entities). A set of all entities from *dest_set*, to which
-    at least one entity from *src_set* was connected, will be returned.
+    :param src_set: a :class:`~collections.abc.MutableSequence`
+        (potentially empty) containing :class:`~mosaik.scenario.Entity`
+        instances. Each of these entities will be connected to an entity
+        of ``dest_set``.
 
-    *attrs* is a list of attribute names of pairs as in
-    :meth:`~mosaik.scenario.World.connect()`.
+    :param dest_set: a non-empty
+        :class:`~collections.abc.MutableSequence` of
+        :class:`~mosaik.scenario.Entity` instances. Not every of these
+        entities is necessarily connected (if ``src_set`` contains too
+        few entities)
 
-    If the flag *evenly* is set to ``True``, entities connections will be
-    distributed as evenly as possible. That means if you connect a set of three
-    entities to a set of three entities, there will be three 1:1 connections;
-    if you connect four entities to three entities, there will be one 2:1 and
-    two 1:1 connections. If *evenly* is set to ``False``, connections will be
-    truly random. That means if you connect three entities to three entities,
-    you may either have three 1:1 connections, one 2:1 and two 1:1 connections
-    or just one 3:1 connection.
+    :params attrs: the attribute names to connect as in
+        :meth:`~mosaik.scenario.World.connect()`.
 
-    *max_connects* lets you set the maximum number of connections that an
-    entity of *dest_set* may receive. This argument is only taken into account
-    if *evenly* is set to ``False``.
+    :param evenly: How to distribute the entities:
+
+        If ``True``, entity connections will be distributed
+        as evenly as possible. That means if you connect a set of three
+        entities to a set of three entities, there will be three 1:1
+        connections; if you connect four entities to three entities,
+        there will be one 2:1 and two 1:1 connections.
+
+        If ``False``, connections will be truly random. That means if
+        you connect three entities to three entities, you may either
+        have three 1:1 connections, one 2:1 and two 1:1 connections
+        or just one 3:1 connection.
+
+    :param max_connects: the maximum number of connections that an
+        entity of ``dest_set`` may receive. This argument is only taken
+        into account if ``evenly`` is set to ``False``.
+
+    :return: The :class:`list` of entities from ``dest_set`` to which
+        entities from ``src_set`` were actually connected.
     """
     dest_set = list(dest_set)
     assert dest_set
@@ -430,7 +440,8 @@ def plot_execution_graph(  # noqa: C901
     number_of_steps = 0
     colormap = ["black" for _ in world.sims]
     for i, sim_name in enumerate(world.sims):
-        # We need the number of steps in the simulation for correct plotting with slices
+        # We need the number of steps in the simulation for correct
+        # plotting with slices
         if number_of_steps < len(steps_st[sim_name]):
             number_of_steps = len(steps_st[sim_name])
 
@@ -442,7 +453,8 @@ def plot_execution_graph(  # noqa: C901
             )
         else:
             dot = ax.plot(steps_st[sim_name], [i] * len(steps_st[sim_name]), "o")
-        # Store the color that is used for the dots in this line (for this simulator)
+        # Store the color that is used for the dots in this line
+        # (for this simulator)
         colormap[i] = dot[0].get_color()
 
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -454,7 +466,8 @@ def plot_execution_graph(  # noqa: C901
     for sim_count, sim_name in enumerate(world.sims.keys()):
         y_pos[sim_name] = sim_count
 
-    # The slice values can be negative, so we want to have the correct time steps
+    # The slice values can be negative, so we want to have the correct
+    # time steps
     labels = None
     if slice is not None:
         labels = range(world.until)[slice[0] : slice[1]]
@@ -580,7 +593,8 @@ def get_execution_time_per_simulator_plot_data(
 ) -> List[float]:
     if slice is not None:
         plot_results = results[key][slice[0] : slice[1]]
-        # The slice values can be negative, so we want to have the correct time steps
+        # The slice values can be negative, so we want to have the
+        # correct time steps
         labels = range(len(results[key]))[slice[0] : slice[1]]
         sub_figure.set_xticks(range(0, len(labels)), map(str, labels))
     else:

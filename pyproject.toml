@@ -106,3 +106,9 @@ pythonPlatform = "Linux"
 
 [tool.ruff.lint]
 extend-select = ["C", "W", "I", "E"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
+[tool.ruff.lint.per-file-ignores]
+# "mosaik/util.py" = ["W505"]

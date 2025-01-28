@@ -1,11 +1,12 @@
 """
-This module provides the interface for users to create simulation scenarios for
-mosaik.
+This module provides the interface for users to create simulation
+scenarios for mosaik.
 
-The :class:`World` holds all necessary data for the simulation and allows the
-user to start simulators. It provides a :class:`ModelFactory` (and
-a :class:`ModelMock`) via which the user can instantiate model instances
-(*entities*). The method :meth:`World.run()` finally starts the simulation.
+The :class:`World` holds all necessary data for the simulation and
+allows the user to start simulators. It provides a :class:`ModelFactory`
+(and a :class:`ModelMock`) via which the user can instantiate model
+instances (*entities*). The method :meth:`World.run()` finally starts
+the simulation.
 """
 
 from __future__ import annotations
@@ -65,8 +66,8 @@ class World:
     simulators are available and how to start them. See
     :func:`mosaik.simmanager.start` for more details.
 
-    *mosaik_config* can be a dict or list of key-value pairs to set addional
-    parameters overriding the defaults::
+    *mosaik_config* can be a dict or list of key-value pairs to set
+    addional parameters overriding the defaults::
 
         {
             'addr': ('127.0.0.1', 5555),
@@ -74,13 +75,14 @@ class World:
             'stop_timeout': 2,   # seconds
         }
 
-    Here, *addr* is the network address that mosaik will bind its socket to.
-    *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
-    starting/stopping external simulator processes.
+    Here, *addr* is the network address that mosaik will bind its socket
+    to. *start_timeout* and *stop_timeout* specifiy a timeout (in
+    seconds) for starting/stopping external simulator processes.
 
-    If *execution_graph* is set to ``True``, an execution graph will be created
-    during the simulation. This may be useful for debugging and testing. Note,
-    that this increases the memory consumption and simulation time.
+    If *execution_graph* is set to ``True``, an execution graph will be
+    created during the simulation. This may be useful for debugging and
+    testing. Note, that this increases the memory consumption and
+    simulation time.
 
     Using the *skip_greetings* and *configure_logging* parameters, you
     can configure how "wordy" mosaik will be. If you set
@@ -192,31 +194,36 @@ class World:
 
         Connect the *src* entity to *dest* entity.
 
-        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
-        *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
-        you can optionally only pass one of them as a single string.
+        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple
+        in *attr_pairs*. If *src_attr* and *dest_attr* have the same
+        name, you can optionally only pass one of them as a single
+        string.
 
-        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
-        the same simulator instance, if at least one (src. or dest.) attribute
-        in *attr_pairs* does not exist, or if the connection would introduce
-        a cycle in the data-flow (e.g., A → B → C → A).
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities
+        share the same simulator instance, if at least one (src. or
+        dest.) attribute in *attr_pairs* does not exist, or if the
+        connection would introduce a cycle in the data-flow (e.g.,
+        A → B → C → A).
 
-        If the *dest* simulator may make asynchronous requests to mosaik to
-        query data from *src* (or set data to it), *async_requests* should be
-        set to ``True`` so that the *src* simulator stays in sync with *dest*.
+        If the *dest* simulator may make asynchronous requests to mosaik
+        to query data from *src* (or set data to it), *async_requests*
+        should be set to ``True`` so that the *src* simulator stays in
+        sync with *dest*.
 
-        An alternative to asynchronous requests are time-shifted connections.
-        Their data flow is always resolved after normal connections so that
-        cycles in the data-flow can be realized without introducing deadlocks.
-        For such a connection *time_shifted* should be set to ``True`` and
-        *initial_data* should contain a dict with input data for the first
-        simulation step of the receiving simulator.
+        An alternative to asynchronous requests are time-shifted
+        connections. Their data flow is always resolved after normal
+        connections so that cycles in the data-flow can be realized
+        without introducing deadlocks. For such a connection
+        *time_shifted* should be set to ``True`` and *initial_data*
+        should contain a dict with input data for the first simulation
+        step of the receiving simulator.
 
-        An alternative to using async_requests to realize cyclic data-flow
-        is given by the time_shifted kwarg. If set to ``True`` it marks the
-        connection as cycle-closing (e.g. C → A). It must always be used with
-        initial_data specifying a dict with the data sent to the destination
-        simulator at the first step (e.g. *{'src_attr': value}*).
+        An alternative to using async_requests to realize cyclic
+        data-flow is given by the time_shifted kwarg. If set to ``True``
+        it marks the connection as cycle-closing (e.g. C → A). It must
+        always be used with initial_data specifying a dict with the data
+        sent to the destination simulator at the first step (e.g.
+        *{'src_attr': value}*).
         """
         return self._async_world.connect(
             src,
@@ -230,7 +237,8 @@ class World:
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
-        Set an initial step for simulator *sid* at time *time* (default=0).
+        Set an initial step for simulator *sid* at time *time*
+        (default=0).
         """
         return self._async_world.set_initial_event(sid, time)
 
@@ -240,11 +248,12 @@ class World:
         *attributes: Attr,
     ) -> Dict[Entity, Dict[Attr, Any]]:
         """
-        Get and return the values of all *attributes* for each entity of an
-        *entity_set*.
+        Get and return the values of all *attributes* for each entity of
+        an *entity_set*.
 
-        The return value is a dict mapping the entities of *entity_set* to
-        dicts containing the values of each attribute in *attributes*::
+        The return value is a dict mapping the entities of *entity_set*
+        to dicts containing the values of each attribute in
+        *attributes*::
 
             {
                 Entity(...): {
@@ -360,14 +369,16 @@ class World:
 
 class ModelFactory:
     """
-    This is a facade for a simulator *sim* that allows the user to create
-    new model instances (entities) within that simulator.
+    This is a facade for a simulator *sim* that allows the user to
+    create new model instances (entities) within that simulator.
 
-    For every model that a simulator publicly exposes, the ``ModelFactory``
-    provides a :class:`ModelMock` attribute that actually creates the entities.
+    For every model that a simulator publicly exposes, the
+    :class:`ModelFactory` provides a :class:`ModelMock` attribute that
+    actually creates the entities.
 
-    If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
+    If you access an attribute that is not a model or if the model is
+    not marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError`
+    is raised.
     """
 
     _async_model_factory: AsyncModelFactory
@@ -414,12 +425,13 @@ class ModelFactory:
 class ModelMock(object):
     """
     Instances of this class are exposed as attributes of
-    :class:`ModelFactory` and allow the instantiation of simulator models.
+    :class:`ModelFactory` and allow the instantiation of simulator
+    models.
 
-    You can *call* an instance of this class to create exactly one entity:
-    ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
-    method to create multiple entities with the same set of parameters at once:
-    ``sim.ModelName.create(3, x=23)``.
+    You can *call* an instance of this class to create exactly one
+    entity: ``sim.ModelName(x=23)``. Alternatively, you can use the
+    :meth:`create` method to create multiple entities with the same set
+    of parameters at once: ``sim.ModelName.create(3, x=23)``.
     """
 
     _async_model_mock: AsyncModelMock
@@ -467,12 +479,12 @@ class ModelMock(object):
 
     def create(self, num: int, **model_params: Any):
         """
-        Create *num* entities with the specified *model_params* and return
-        a list with the entity dicts.
+        Create *num* entities with the specified *model_params* and
+        return a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
-        to every entity ID to make them globally unique.
+        :meth:`mosaik_api_v3.Simulator.create`, but the simulator is
+        prepended to every entity ID to make them globally unique.
         """
         return self._loop.run_until_complete(
             self._async_model_mock.create(num, **model_params)
