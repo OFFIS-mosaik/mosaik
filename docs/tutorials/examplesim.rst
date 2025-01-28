@@ -47,7 +47,7 @@ Here is a possible implementation of that simulation model in Python:
 Setup for the API implementation
 ================================
 
-So lets start implementing mosaik's Simulator API for this model. We can use the
+So lets start implementing the mosaik simulator API for this model. We can use the
 Python :doc:`high-level API </mosaik-api/high-level>` for this. This package
 eases our workload, because it already implements everything necessary for
 communicating with mosaik. It provides an abstract base class which we can
@@ -322,7 +322,7 @@ for an initial message from mosaik).
 Summary
 =======
 
-We have now implemented the mosaik Simulator API for our simulator. The following
+We have now implemented the mosaik simulator API for our simulator. The following
 listing combines all the bits explained above:
 
 .. literalinclude:: code/simulator_mosaik.py

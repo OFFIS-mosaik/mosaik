@@ -19,7 +19,7 @@ mosaik consists of a bunch of packages, mostly published on PyPI (except for non
 
 The package simply called *mosaik* contains mosaik’s core consisting of the scenario API (which is used to set up scenarios) and the scheduler (which runs them). It has the most up-to-date version of the Python simulator API as a dependency to reuse the types and network code contained within it.
 
-### simulator API
+### mosaik simulator API
 
 The *mosaik-api-v3* package contains the base class to implement new simulators for mosaik (the so-called *simulator API*) in Python. As such it also contains the basic types describing mosaik simulators and the shared networking code.
 

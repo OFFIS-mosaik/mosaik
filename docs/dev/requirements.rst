@@ -12,7 +12,7 @@ are:
 
    These simulators may range from open-source software to closed-source and
    commercial software as well as from simulators that can directly integrate
-   the simulator API to simulators that offer their own API and that cannot be
+   the mosaik simulator API to simulators that offer their own API and that cannot be
    started or directly controlled by mosaik.
 
 #. Allow easy creation and execution of large-scale simulation :term:`scenarios
@@ -40,7 +40,7 @@ are:
 
 #. Stability and robustness: Large simulations (comprising thousands of
    entities over a period of several months or a year of simulation time) may
-   take a while. Mosaik should not crash in the middle of a simulation, so
+   take a while. mosaik should not crash in the middle of a simulation, so
    everything needs to be tested as good as possible.
 
 The following sections describe these requirements in more detail.
@@ -53,10 +53,10 @@ Types of simulators and models
    with different implementations (i.e., programming languages, frameworks,
    tools).
 
-#. Different temporal resolutions: Mosaik must be able to compose simulations
+#. Different temporal resolutions: mosaik must be able to compose simulations
    from models with differing temporal resolutions.
 
-#. Multiple paradigms: Mosaik must be able to compose simulation models that
+#. Multiple paradigms: mosaik must be able to compose simulation models that
    use different paradigms with respect to the handling of time (e.g., discrete
    event or continuous).
 
@@ -64,8 +64,8 @@ Types of simulators and models
    process as mosaik, so that no networking is required in order to communicate
    with them.
 
-#. Mosaik must be able to start and stop (open-source) simulators that can
-   directly implement the simulator API. It should always use the fasted possible
+#. mosaik must be able to start and stop (open-source) simulators that can
+   directly implement the mosaik simulator API. It should always use the fasted possible
    method to communicate with them; e.g., inter-process communication if the
    simulator runs on the same machine or sockets if it runs on another machine.
 
@@ -73,21 +73,21 @@ Types of simulators and models
    between the simulator API and the API provided by commercial or closed-source
    simulators.
 
-   Mosaik also needs to handle simulators that it cannot start itself but can
+   mosaik also needs to handle simulators that it cannot start itself but can
    only connect to a running instance of them.
 
-#. Real-time simulators: Mosaik must be able to work with real-time
+#. Real-time simulators: mosaik must be able to work with real-time
    (wall-clock) simulators; e.g., real-time power grid simulators.
 
 
 Integrating simulators
 ----------------------
 
-#. Simulator self-description: Mosaik must provide a way for simulators do
+#. Simulator self-description: mosaik must provide a way for simulators do
    describe their capabilities, models, inputs, outputs, and so on. This
    self-description will later be used for creating scenarios.
 
-#. Simulator API: There must be an (easy and well documented) API that simulators
+#. mosaik simulator API: There must be an (easy and well documented) API that simulators
    can implement in order to communicate with mosaik.
 
 #. :term:`Control strategies <control strategy>` (like multi-agent systems)
@@ -108,7 +108,7 @@ Scenario definition
    outputs. For example, PV modules with a *P* and *Q* output can be connected
    to power grid nodes with a *P* and *Q* input.
 
-#. Filtering of entity sets: Mosaik must also offer means to automatically
+#. Filtering of entity sets: mosaik must also offer means to automatically
    filter sets of entities based on their attributes or on existing connections
    to other entities.
 
@@ -125,18 +125,18 @@ Scenario definition
    a :term:`model` (e.g., how nodes and lines in a power grid are
    interconnected) for building the complete physical topology.
 
-#. Moving entities: Mosaik must support the specification of scenarios with
+#. Moving entities: mosaik must support the specification of scenarios with
    moving resources like electric vehicles which may be connected to varying
    nodes in the power grid based on their current state.
 
-#. Scenario variants: Mosaik must offer means to easily create scenario
+#. Scenario variants: mosaik must offer means to easily create scenario
    variants to e.g., simulate a scenario for summer and winter months.
 
 
 Execution
 ---------
 
-#. Mosaik must be able to report the progress of a simulation.
+#. mosaik must be able to report the progress of a simulation.
 
 #. Data logging: mosaik must log data that is provided by the simulators
    for later evaluation. It must also be possible to filter what goes into
@@ -148,12 +148,12 @@ Execution
    processes on the same machine and over multiple different machines or
    servers.
 
-#. Mosaik should be usable as a library. That means, that the user who creates
+#. mosaik should be usable as a library. That means, that the user who creates
    a scenario makes calls to mosaik's functionality to execute their scenario.
    This will allow them to easily test the scenario and hook into mosaik e.g.,
    for debugging purposes.
 
-#. Mosaik should be able to run as a framework. That means that a mosaik
+#. mosaik should be able to run as a framework. That means that a mosaik
    process loads a scenario and executes a defined entry point (the scenario's
    *main* method). This allows to start a mosaik master process that manages
    the execution of multiple scenarios in parallel and that offers a weg GUI

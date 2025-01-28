@@ -345,7 +345,7 @@ __ https://gitlab.com/mosaik/mosaik-api-java
 - [NEW] ``World()`` now accepts a configuration dictionary which can, e.g.,
   specify the network address for mosaik.
 - [NEW] Overview section for the docs
-- [NEW] Description of the simulator API in the docs
+- [NEW] Description of the mosaik simulator API in the docs
 - [CHANGE] When you create entities, mosaik checks if the model parameters
   actually exists and raises an error if not (issue #9).
 - [CHANGE] The simulator API’s ``init()`` function now receives the simulator ID

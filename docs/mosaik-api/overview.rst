@@ -29,7 +29,7 @@ The following figure depicts the sequence of these messages:
 .. image:: /_static/mosaik-api-sequence.*
    :width: 500
    :align: center
-   :alt: Main sequence diagram for the simulator API.
+   :alt: Main sequence diagram for the mosaik simulator API.
 
 After ``create()`` or ``step()`` have been called, there may be an
 arbitrary amount of ``get_data()`` calls where mosaik requests the current
