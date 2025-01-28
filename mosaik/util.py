@@ -122,7 +122,22 @@ def connect_zip(
     dest_set: Collection[Entity],
     *attrs: Attr | Tuple[Attr, Attr],
     **kwargs,
-):
+) -> None:
+    """Connect entities in parallel. This works analogously to the
+    built-in :func:`zip` function: Each entity in ``src_set`` is
+    connected to the entity in ``dest_set`` at the corresponding index.
+
+    :param world: the world for this simulation
+    :param src_set: the collection of source entities
+    :param dest_set: the collection of destination entities
+    :param attrs: the attributes to connect, as in :meth:`world.connect
+        <mosaik.async_scenario.AsyncWorld.connect>
+    :param kwargs: the connection kwargs as in :meth:`world.connect
+        <mosaik.async_scenario.AsyncWorld.connect>`
+
+    :raise ValueError: if ``src_set`` and ``dest_set`` don't have the
+        same number of elements
+    """
     for src, dest in zip(src_set, dest_set, strict=True):
         world.connect(src, dest, *attrs, **kwargs)
 
