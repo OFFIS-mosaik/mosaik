@@ -4,15 +4,9 @@
 Converting units from one simulator to another in mosaik
 =============================
 
-Overview
---------
-
 The **transform function** feature in mosaik allows users to modify data dynamically when transferring outputs from one simulator to another. This feature provides a mechanism for applying transformations, scaling, filtering, or other processing steps before data reaches its destination.
 
-Transform functions are user-defined `Callable` objects that take an input value (typically a `float`) and return a processed value.
-
-Use Cases
----------
+Typical use cases for transform functions in mosaik are:
 
 - Filtering out invalid or noisy values
 - Scaling data points (i.e. applying unit conversions)
