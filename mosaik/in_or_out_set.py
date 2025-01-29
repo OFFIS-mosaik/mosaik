@@ -17,11 +17,12 @@ E = TypeVar("E")
 
 
 class OutSet(Generic[E]):
-    """An OutSet[E] represents all elements of the type E except for a finite number.
+    """An OutSet[E] represents all elements of the type E except for a
+    finite number.
 
-    In particular, `x in OutSet(elems)` is true whenever
-    `x not in elems`. Set operations between OutSets and normal FrozenSets
-    work as excepted.
+    In particular, ``x in OutSet(elems)`` is ``True`` whenever
+    ``x not in elems``. Set operations between :class:`OutSet`s and
+    normal :class:`~frozenset`s work as excepted.
 
     Note that by their nature it is not possible to iterate over an
     OutSet.

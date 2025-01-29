@@ -2,7 +2,7 @@
 How to ...
 ==========
 
-On this page, you will find a selection of how-to guides on how to use mosaik anw on more specific applications of mosaik
+On this page, you will find a selection of how-to guides on how to use mosaik and on more specific applications of mosaik
 
 .. toctree::
    :caption: How to ...
@@ -20,3 +20,4 @@ On this page, you will find a selection of how-to guides on how to use mosaik an
    :maxdepth: 1
 
    ... use existing topologies via child entities <existing-topologies>
+   ... avoid unnecessary simulator steps using max_advance <max-advance>

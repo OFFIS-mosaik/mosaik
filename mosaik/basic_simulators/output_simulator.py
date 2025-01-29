@@ -33,8 +33,9 @@ META: Meta = {
 
 class OutputSimulator(mosaik_api_v3.Simulator):
     """
-    This simulator takes the input it is given and writes it into a python dictionary
-    where the keys are the timestamps of the input and the values are the inputs values.
+    This simulator takes the input it is given and writes it into a
+    Python dictionary where the keys are the timestamps of the input and
+    the values are the inputs values.
 
     The dictionary can be retrieved using the :meth:`get_dict` method.
     """
@@ -72,10 +73,10 @@ class OutputSimulator(mosaik_api_v3.Simulator):
 
     def get_dict(self, eid: str) -> Dict[Time, Any]:
         """
-        Returns the dict of the simulator entity specified by the ``eid``.
+        Returns the dict of the simulator entity specified by the
+        ``eid``.
 
         :param eid: The entity id of the selected entity.
-        :type eid: str
 
         :return: The dict of the entity.
         """

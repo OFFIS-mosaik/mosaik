@@ -64,7 +64,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.graphviz",
-    "sphinx.ext.imgmath",
+    "sphinx.ext.mathjax",
     "sphinx.ext.linkcode",
     "sphinx_rtd_theme",
     "sphinx_toolbox.more_autodoc.autotypeddict",
