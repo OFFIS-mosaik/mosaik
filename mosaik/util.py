@@ -53,7 +53,9 @@ def connect_many_to_one(
     See the :meth:`~mosaik.scenario.World.connect` for more details.
     """
     for src in src_set:
-        world.connect(src, dest, *attrs, async_requests=async_requests, transform=transform)
+        world.connect(
+            src, dest, *attrs, async_requests=async_requests, transform=transform
+        )
 
 
 def connect_randomly(
