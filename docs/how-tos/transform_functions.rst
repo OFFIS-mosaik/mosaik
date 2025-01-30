@@ -1,10 +1,11 @@
-.. _transform_functions:
-
-=============================
+========================================================
 Converting units from one simulator to another in mosaik
-=============================
+========================================================
 
-The **transform function** feature in mosaik allows users to modify data dynamically when transferring outputs from one simulator to another. This feature provides a mechanism for applying transformations, scaling, filtering, or other processing steps before data reaches its destination.
+.. currentmodule:: mosaik.scenario
+
+The **transform function** feature in mosaik allows users to modify data dynamically when transferring outputs from one simulator to another. 
+This feature provides a mechanism for applying transformations, scaling, or other processing steps before data reaches its destination.
 
 Typical use cases for transform functions in mosaik are:
 
@@ -14,11 +15,11 @@ Typical use cases for transform functions in mosaik are:
 Defining a transform function
 -----------------------------
 
-A transform function must be a `Callable` (e.g., a function or lambda) that takes a single argument (the input value) and returns a modified value.
-It can be added to any world.connect (i.e. world.connect, world.connect_many_to_one, world.connect_one) call as a keyword argument using the key 'transform'.
+A transform function must be a :class:`~collections.abc.Callable` (e.g. a function or lambda) that takes a single argument (the input value) and returns a modified value. 
+It can be added to :meth:`~World.connect` and any of its derivatives (e.g. :func:`~mosaik.util.connect_many_to_one`, :meth:`~World.connect_one`) call as a keyword argument using the key 'transform'.
 
 Example 1: Scaling a value
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -30,7 +31,7 @@ Example 1: Scaling a value
 
 
 Example 2: Nullifying negative values
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -44,12 +45,9 @@ Example 2: Nullifying negative values
 Handling edge cases
 -------------------
 
-Since transform functions are user-defined, consider the following best practices:
-
-Ensure type consistency
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Transform functions should return a valid numerical value. If there is a possibility of invalid inputs, handle them properly:
+Transform functions are independent of the simulators they work with, which means that the user is responsible for 
+handling edge cases they want to avoid when handling these simulators.
+If the simulator that acts as the data source is prone to giving invalid values, take care of them in a way that suits your simulation.
 
 .. code-block:: python
 
@@ -58,24 +56,5 @@ Transform functions should return a valid numerical value. If there is a possibi
             return 0.0  # Provide a default value
         return value * 2
 
-Avoid exceptions
-^^^^^^^^^^^^^^^^
+    world.connect(entity_1, entity_2, 'value', transform=safe_transform)
 
-Unhandled exceptions in the transform function can disrupt the simulation. Always catch potential errors:
-
-.. code-block:: python
-
-    def robust_transform(value: float) -> float:
-        try:
-            return value ** 2  # Square the value
-        except TypeError:
-            return 0.0  # Default fallback
-
-Summary
--------
-
-- **Transform functions** enable dynamic data modification in mosaik.
-- Functions must be `Callable`, accept a single value and handle edge cases gracefully.
-- Properly designed transform functions enhance simulation flexibility and robustness.
-
-By integrating transform functions, you can fine-tune data exchange in mosaik to better suit your modeling needs.
