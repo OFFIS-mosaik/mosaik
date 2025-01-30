@@ -320,6 +320,8 @@ class World:
             methods on your simulator after the simulation is over;
             however, we recommend that you use the :class:`World` in a
             ``with`` block.)
+
+        :raise RuntimeError: if this world has already been run
         """
         if self.loop.is_closed():
             raise RuntimeError(

@@ -201,9 +201,9 @@ class AsyncWorld:
     It provides a method to start a simulator process (:meth:`start`)
     and manages the simulator instances.
 
-    You have to provide a *sim_config* which tells the world which
-    simulators are available and how to start them. See
-    :func:`mosaik.simmanager.start` for more details.
+    You have to provide a ``sim_config`` which tells the world which
+    simulators are available and how to start them. This will be stored
+    as :attr:`sim_config`; see there for details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set
     additional parameters overriding the defaults::
@@ -671,12 +671,17 @@ class AsyncWorld:
         print_progress: Union[bool, Literal["individual"]] = False,
         lazy_stepping: bool = True,
     ):
-        """Start the simulation until the simulation time *until* is
-        reached.
+        """Start the simulation and run it until the simulation time
+        ``until`` is reached.
 
-        Before this method returns, it stops all simulators and closes
-        mosaik's server socket. So this method should only be called
-        once.
+        As mosaik has no way of resetting simulators to their initial
+        state, this method can only be called once.
+
+        Unlike its counterpart :meth:`~mosaik.scenario.World.run` in the
+        synchronous :class:`~mosaik.scenario.World`, this method will
+        not automatically close the connection to connected simulators,
+        even outside of a ``with`` block. You need to call
+        :meth:`shutdown` manually afterwards (or use a ``with`` block).
 
         :param until: The end of the simulation in mosaik time steps
             (exclusive).

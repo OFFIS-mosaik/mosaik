@@ -131,7 +131,7 @@ def connect_zip(
     :param src_set: the collection of source entities
     :param dest_set: the collection of destination entities
     :param attrs: the attributes to connect, as in :meth:`world.connect
-        <mosaik.async_scenario.AsyncWorld.connect>
+        <mosaik.async_scenario.AsyncWorld.connect>`
     :param kwargs: the connection kwargs as in :meth:`world.connect
         <mosaik.async_scenario.AsyncWorld.connect>`
 
