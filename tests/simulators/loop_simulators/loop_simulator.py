@@ -1,8 +1,8 @@
 """
-Mosaik interface for the example simulator.
+mosaik interface for the example simulator.
 
-It more complex than it needs to be to be more flexible and show off various
-features of the mosaik API.
+It is more complex than it needs to be to be more flexible and show off various
+features of the simulator API.
 
 """
 

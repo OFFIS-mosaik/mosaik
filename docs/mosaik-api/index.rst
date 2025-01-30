@@ -25,30 +25,6 @@ For the high-level APIs in other programming languages, see their respective doc
 
 (TODO: add links)
 
-In the following, we will explain the low-level API.
-*You usually do not need to read this unless you are implementing a high-level API for a new programming language or you are writing a simulator in a programming language where no high-level API exists.*
-
-
-
-
-
-The mosaik API defines the communication protocol between mosaik and the
-simulators it couples. We differentiate between a *low-level* and
-a *high-level* version of the API.
-
-The low-level API uses plain `network sockets
-<http://en.wikipedia.org/wiki/Network_socket>`_ to exchange `JSON
-<http://www.json.org/>`_ encoded messages.
-
-The high-level API is an implementation of the low-level API in a specific
-programming language. It encapsulates all parts related to networking (socket
-handling, an event loop, message (de)serialization) and provides an abstract
-base class with a few methods that have to be implemented in a subclass.
-A high-level API implementation is currently available for `Python
-<https://gitlab.com/mosaik/mosaik-api-python>`_, `Java
-<https://gitlab.com/mosaik/mosaik-api-java>`_ and `Julia <https://mosaik.gitlab.io/api/mosaik-api-julia>`_. Implementations for other
-languages will be added when needed.
-
 The figure below depicts the differences between the two API levels.
 
 .. image:: /_static/mosaik-api.*
@@ -56,10 +32,13 @@ The figure below depicts the differences between the two API levels.
     :align: center
     :alt: Mosaik's low- and high-level API
 
-Contents:
+
+In this section, we document both the high-level API for Python, and the low-level API.
+*You generally do not need the documentation of the low-level API unless you are implementing a simulator in a programming language that has no high-level API or you are implementing a high-level API yourself.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Contents
 
    overview
    low-level

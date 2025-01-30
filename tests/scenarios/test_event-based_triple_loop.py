@@ -26,6 +26,7 @@ def create_scenario(world: World):
 
 
 @pytest.mark.weak
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=6)

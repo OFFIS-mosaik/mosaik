@@ -20,7 +20,9 @@ import platform
 import shlex
 import subprocess
 import sys
+import warnings
 from ast import literal_eval
+from dataclasses import dataclass
 from json import JSONEncoder
 from typing import (
     TYPE_CHECKING,
@@ -32,7 +34,6 @@ from typing import (
     NoReturn,
     Optional,
     OrderedDict,
-    Set,
     Tuple,
     Union,
     cast,
@@ -40,7 +41,6 @@ from typing import (
 
 import mosaik_api_v3
 import tqdm
-from loguru import logger
 from mosaik_api_v3.connection import Channel
 from mosaik_api_v3.types import (
     Attr,
@@ -68,7 +68,12 @@ if "Windows" in platform.system():
     from subprocess import CREATE_NEW_CONSOLE  # type: ignore (only Windows)
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import AsyncWorld, CmdModel, ConnectModel, PythonModel
+    from mosaik.async_scenario import (
+        AsyncWorld,
+        CmdModel,
+        ConnectModel,
+        PythonModel,
+    )
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -96,7 +101,6 @@ async def start(
     give it the ID ``sim_id`` and pass the ``time_resolution`` and the
     parameter dict ``sim_params`` to it.
 
-
     :param world: the :class:`~mosaik.async_scenario.AsyncWorld` for the
         simulation
     :param sim_name: the name of the simulator in
@@ -110,9 +114,6 @@ async def start(
 
     :return: the :class:`~mosaik.proxies.Proxy` representing the
         connection to this simulator
-
-    :raises ~mosaik.exceptions.SimulationError: if the simulator could
-        not be started
     """
     try:
         sim_config = world.sim_config[sim_name]
@@ -255,13 +256,13 @@ async def start_proc(
             if "Windows" in platform.system():
                 creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
             else:
-                logger.warning(
+                warnings.warn(
                     f'Simulator "{sim_name}" could not be started in a new console: '
                     "Only available on Windows"
                 )
 
         try:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 cmd,
                 bufsize=1,
                 cwd=cwd,
@@ -285,8 +286,14 @@ async def start_proc(
             channel = await asyncio.wait_for(
                 channel_future, timeout=mosaik_config["start_timeout"]
             )
-            return RemoteProxy(channel, mosaik_remote)
+            return RemoteProxy(
+                channel,
+                mosaik_remote,
+                process=(proc, sim_config.get("auto_terminate", True)),
+            )
         except asyncio.TimeoutError:
+            if sim_config.get("auto_terminate", True):
+                proc.terminate()
             raise SimulationError(
                 f'Simulator "{sim_name}" did not connect to mosaik in time.'
             )
@@ -331,6 +338,47 @@ async def start_connect(
 
 Port: TypeAlias = Tuple[EntityId, Attr]
 """Pair of an entity ID and an attribute of that entity"""
+
+
+@dataclass
+class PushDescription:
+    """
+    Describes a connection for pushing data from one simulator to
+    another.
+
+    :param dest_sim: The :class:`SimRunner` instance representing the
+        simulator receiving the data.
+    :param delay: The `TieredDuration` representing the time shift (or
+        delay) applied to the data during transmission along the
+        connection.
+    :param dest_port: The `Port` representing the entity-attribute pair
+        for the destination in the target simulator.
+    :param transform: A callable function applied to the data as it
+        is pushed to the destination.
+    """
+
+    dest_sim: SimRunner
+    delay: TieredDuration
+    dest_port: Port
+    transform: Callable[..., Any]
+
+
+@dataclass
+class PullDescription:
+    """
+    Describes a connection for pulling data into a simulator.
+
+    :param src_port: The `Port` representing the entity-attribute pair
+        from which data is pulled in the connected simulator.
+    :param dest_port: The `Port` representing the entity-attribute pair
+        that is the destination for the pulled data.
+    :param transform: A callable function applied to the data as it is
+        forwarded to its destination.
+    """
+
+    src_port: Port
+    dest_port: Port
+    transform: Callable[..., Any]
 
 
 class SimRunner:
@@ -378,17 +426,21 @@ class SimRunner:
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], Set[Tuple[Port, Port]]]
+    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], List[PullDescription]]
     """Output to pull in whenever this simulator performs a step.
-    The keys are the source SimRunner and the time shift, the values
-    are the source and destination entity-attribute pairs.
+    The keys are the source :class:`SimRunner` and the time shift, the
+    values are lists of :class:`PullDescription` objects. Each
+    :class:`PullDescription` specifies the source and destination
+    entity-attribute pairs along with an optional transformation
+    function applied to the data.
     """
-    output_to_push: Dict[Port, List[Tuple[SimRunner, TieredDuration, Port]]]
+    output_to_push: Dict[Port, List[PushDescription]]
     """This lists those connections that use the timed_input_buffer.
-    The keys are the entity-attribute pairs of this simulator with
-    the corresponding list of simulator-time-entity-attribute triples
-    describing the destinations for that data and the time-shift
-    occuring along the connection.
+    The keys are the entity-attribute pairs (Port) of this simulator,
+    and the values are lists of :class:`PushDescription` objects. Each
+    PushDescription specifies the destination simulator, the
+    entity-attribute pair for the target, and the time shift occurring
+    along the connection.
     """
 
     to_world_time: TieredDuration
@@ -441,13 +493,16 @@ class SimRunner:
 
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
+    check_outputs: Callable[[OutputData], None]
 
     def __init__(
         self,
         sid: SimId,
         connection: Proxy,
+        check_outputs: Callable[[OutputData], None],
         depth: int = 1,
     ):
+        self.check_outputs = check_outputs
         self.sid = sid
         self._proxy = connection
 
@@ -713,12 +768,10 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))
         else:
-            logger.warning(
-                "Event set at {event_time} by {sim_id} is after simulation end {until} "
-                "and will be ignored.",
-                event_time=event_time,
-                sim_id=sim.sid,
-                until=self.world.until,
+            warnings.warn(
+                f"Event set at {event_time} by {sim.sid} is after simulation end "
+                f"{self.world.until} and will be ignored.",
+                UserWarning,
             )
 
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):

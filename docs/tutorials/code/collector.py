@@ -4,6 +4,7 @@ A simple data collector that prints all data when the simulation finishes.
 """
 
 import collections
+import sys
 
 import mosaik_api_v3
 
@@ -50,6 +51,7 @@ class Collector(mosaik_api_v3.Simulator):
             print("- %s:" % sim)
             for attr, values in sorted(sim_data.items()):
                 print("  - %s: %s" % (attr, values))
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":

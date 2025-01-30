@@ -35,7 +35,7 @@ Connecting via mosaik protocol handler
 
 The easiest way to connect to mosaik is to use the mosaik protocol handler in 
 Odysseus, which is available as installable feature in Odysseus Studio. It uses 
-the mosaik API through remote procedure calls (RPC) and offers a close coupling 
+the mosaik simulator API through remote procedure calls (RPC) and offers a close coupling 
 of mosaik and Odysseus. With this, a blocked simulation in mosaik or a blocked 
 processing in Odysseus will block the other system as well. If this is a problem 
 in your use case, you should look in the section :ref:`zero_mq`.

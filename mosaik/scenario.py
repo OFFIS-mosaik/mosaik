@@ -26,7 +26,6 @@ from typing import (
     Union,
 )
 
-from loguru import logger
 from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
@@ -109,9 +108,6 @@ class World:
         configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
-        if configure_logging:
-            logger.enable("mosaik")
-
         if asyncio_loop:
             self.loop = asyncio_loop
         else:
@@ -125,6 +121,7 @@ class World:
             debug=debug,
             cache=cache,
             max_loop_iterations=max_loop_iterations,
+            configure_logging=configure_logging,
             skip_greetings=skip_greetings,
         )
 
@@ -166,9 +163,10 @@ class World:
         time_shifted: Union[bool, int] = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         return self._async_world.connect_one(
-            src, dest, src_attr, dest_attr, time_shifted, weak, initial_data
+            src, dest, src_attr, dest_attr, time_shifted, weak, initial_data, transform
         )
 
     def connect_async_requests(self, src: ModelFactory, dest: ModelFactory):
@@ -185,6 +183,7 @@ class World:
         time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         """
         .. warning::
@@ -233,6 +232,7 @@ class World:
             time_shifted=time_shifted,
             initial_data=initial_data,
             weak=weak,
+            transform=transform,
         )
 
     def set_initial_event(self, sid: SimId, time: int = 0):

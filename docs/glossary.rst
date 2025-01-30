@@ -5,6 +5,9 @@ Glossary
 
 .. glossary::
 
+   Component API
+      An outdated term for :term:`Simulator API <simulator api>`.
+
    Control strategy
       A program that is intended to observe and manipulate the state of
       objects (simulated or real) of a power system or those that are somehow
@@ -26,6 +29,9 @@ Glossary
       Example: the (re)active power feed-in of a PV model that is sent to
       a node of a power system simulator.
 
+   End-user API
+      An outdated term for :term:`Scenario API <scenario api>`.
+
    Entity
       Represents an instance of a :term:`Model` within a mosaik
       :term:`simulation`.  Entities can be connected to establish a data-flow
@@ -44,11 +50,19 @@ Glossary
       It reproduces the relevant aspects of that object or system for its
       systematic analysis.
 
+   mosaik API
+      An outdated term for :term:`Simulator API <simulator api>`.
+
    Scenario
       Description of the system to be simulated. It includes the used
       :term:`models <model>` and their relations. It includes the state
       of the models and their data base. In the mosaik-context it includes also
       the :term:`simulators <simulator>`.
+
+   Scenario API
+      A Python-based API that enables the creation of simulation :term:`scenarios <scenario>`.
+      It allows you to start :term:`simulators <simulator>`, instantiate models, and generate :term:`entity sets <entity set>`.
+      Entities can be connected individually or in sets to establish data flows between simulators.
 
    Simulation
       The process of executing a scenario (and the simulation models).
@@ -69,6 +83,12 @@ Glossary
       Sometimes, the term *simulator* also refers all kinds of processes that
       can talk to mosaik, including actual simulators, control strategies,
       visualization servers, database adapters and so on.
+
+   Simulator API
+      Allows for the communication between :term:`simulators <simulator>` and mosaik.
+
+   Sim-API
+      An outdated term for :term:`Simulator API <simulator api>`.
 
    Smart Grid
       An electric power system that utilizes information exchange and control

@@ -17,13 +17,13 @@ mosaik consists of a bunch of packages, mostly published on PyPI (except for non
 
 ### mosaik Core
 
-The package simply called *mosaik* contains mosaik’s core consisting of the scenario API (which is used to set up scenarios) and the scheduler (which runs them). It has the most up-to-date version of the Python mosaik API as a dependency to reuse the types and network code contained within it.
+The package simply called *mosaik* contains mosaik’s core consisting of the scenario API (which is used to set up scenarios) and the scheduler (which runs them). It has the most up-to-date version of the Python simulator API as a dependency to reuse the types and network code contained within it.
 
-### mosaik API
+### mosaik simulator API
 
-The *mosaik-api-v3* package contains the base class to implement new simulators for mosaik (the so-called *mosaik API*) in Python. As such it also contains the basic types describing mosaik simulators and the shared networking code.
+The *mosaik-api-v3* package contains the base class to implement new simulators for mosaik (the so-called *simulator API*) in Python. As such it also contains the basic types describing mosaik simulators and the shared networking code.
 
-**Why the “v3”?** This will enable us to publish further versions of the mosaik API that can be installed in parallel to the previous versions of the API. This means that users won’t need to update all their simulators right away. Major version numbers should coincide with mosaik versions.
+**Why the “v3”?** This will enable us to publish further versions of the simulator API that can be installed in parallel to the previous versions of the API. This means that users won’t need to update all their simulators right away. Major version numbers should coincide with mosaik versions.
 
 ### Simulators
 
@@ -33,7 +33,7 @@ All mosaik simulators written by the mosaik team should be placed under the `mos
 
 ### mosaik-api-java, mosaik-api-csharp, …
 
-These are implementations of the low-level mosaik API in the named programming languages to make it easier to write mosaik simulators in those languages.
+These are implementations of the low-level simulator API in the named programming languages to make it easier to write mosaik simulators in those languages.
 
 ## Coding Conventions
 

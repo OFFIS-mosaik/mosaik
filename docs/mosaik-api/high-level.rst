@@ -10,7 +10,7 @@ Currently, there are high-level APIs for Python, Java, C#, and MatLab.
 Installation
 ============
 
-The Python implementation of the mosaik API is available as a separate package
+The Python implementation of the mosaik simulator API is available as a separate package
 an can easily be installed via `pip <https://pip.pypa.io>`_:
 
 .. code-block:: bash

@@ -3,7 +3,7 @@ name = "mosaik"
 description = "mosaik is a flexible smart-grid co-simulation framework"
 authors = [{ name = "mosaik development team", email = "mosaik@offis.de" }]
 dependencies = [
-    "mosaik-api-v3>=3.0.12",
+    "mosaik-api-v3>=3.0.13",
     "loguru>=0.6",
     "networkx>=2.5",
     "tqdm>=4.66.4",

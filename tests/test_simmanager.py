@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 from asyncio import StreamReader, StreamWriter
+from subprocess import TimeoutExpired
 from typing import Any, Callable, Coroutine, Type, cast
 
 import mosaik_api_v3.connection
@@ -20,12 +21,12 @@ from mosaik.exceptions import (
     ScenarioError,
     SimulationError,
 )
-from mosaik.proxies import BaseProxy, LocalProxy
+from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.tiered_time import TieredDuration, TieredTime
 
 VENV = os.path.dirname(sys.executable)
 
-sim_config: scenario.SimConfig = {
+SIM_CONFIG: scenario.SimConfig = {
     "ExampleSimA": {
         "python": "example_sim.mosaik:ExampleSim",
     },
@@ -40,8 +41,16 @@ sim_config: scenario.SimConfig = {
     "Fail": {
         "cmd": '%(python)s -c "import time; time.sleep(0.2)"',
     },
+    "ProcTestTrue": {
+        "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+        "auto_terminate": True,
+    },
+    "ProcTestFalse": {
+        "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+        "auto_terminate": False,
+    },
     "SimulatorMock": {
-        "python": "tests.mocks.simulator_mock:SimulatorMock",
+        "python": "tests.simulators.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
@@ -57,7 +66,7 @@ sim_config: scenario.SimConfig = {
 
 @pytest.fixture(name="world")
 def world_fixture():
-    world = scenario.World(sim_config)
+    world = scenario.World(SIM_CONFIG)
     yield world
     world.shutdown()
 
@@ -153,6 +162,34 @@ def test_start_proc_timeout_accept(world, caplog):
     assert (
         exc_info.value.args[0] == 'Simulator "Fail" did not connect to mosaik in time.'
     )
+
+
+@pytest.mark.parametrize("auto_terminate", [True, False])
+def test_start_proc_auto_terminate(auto_terminate: bool):
+    with World(
+        {
+            "ProcTest": {
+                "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
+                "auto_terminate": auto_terminate,
+            }
+        }
+    ) as world:
+        sim = world.start("ProcTest")
+        world.run(1)
+
+    proxy = sim._async_model_factory._proxy
+    assert isinstance(proxy, RemoteProxy)
+    assert proxy._process is not None
+    try:
+        proxy._process[0].wait(0.1)
+    except TimeoutExpired:
+        # Just wait a moment for terminate to go through, but not long
+        # enough for the thread in ProcTest to finish.
+        # This way, the process should only terminate if explicitly
+        # terminated by mosaik.
+        pass
+    # Check that the process has terminated
+    assert (proxy._process[0].poll() is not None) == auto_terminate
 
 
 @pytest.mark.asyncio
@@ -394,7 +431,7 @@ def test_sim_proxy_stop_impl(world):
 
         meta = {"type": "time-based", "models": {}}
 
-    sim = simmanager.SimRunner("id", Test())
+    sim = simmanager.SimRunner("id", Test(), None)
     with pytest.raises(NotImplementedError):
         world.loop.run_until_complete(sim.stop())
 
@@ -403,7 +440,7 @@ def test_local_process(world):
     es = ExampleSim()
     proxy = LocalProxy(es, None)
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
-    sim = simmanager.SimRunner("ExampleSim-0", proxy)
+    sim = simmanager.SimRunner("ExampleSim-0", proxy, None)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
     assert sim.last_step == TieredTime(-1)
@@ -577,7 +614,7 @@ def test_mosaik_remote(
             channel = await channel_future
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
-            sim_x = simmanager.SimRunner("X", proxy_x)
+            sim_x = simmanager.SimRunner("X", proxy_x, None)
             sim_x.successors[sim_x] = TieredDuration(0)
             sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
             sim_x.last_step = TieredTime(1)
@@ -594,9 +631,9 @@ def test_mosaik_remote(
                 async def stop(self):
                     pass
 
-            sim_y = simmanager.SimRunner("Y", DummyProxy())
+            sim_y = simmanager.SimRunner("Y", DummyProxy(), None)
             world.sims["Y"] = sim_y
-            sim_z = simmanager.SimRunner("Z", DummyProxy())
+            sim_z = simmanager.SimRunner("Z", DummyProxy(), None)
             world.sims["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredDuration(0)
