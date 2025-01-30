@@ -8,7 +8,6 @@ The **transform function** feature in mosaik allows users to modify data dynamic
 
 Typical use cases for transform functions in mosaik are:
 
-- Filtering out invalid or noisy values
 - Scaling data points (i.e. applying unit conversions)
 - Implementing simple computational logic for real-time adjustments
 
@@ -16,6 +15,7 @@ Defining a transform function
 -----------------------------
 
 A transform function must be a `Callable` (e.g., a function or lambda) that takes a single argument (the input value) and returns a modified value.
+It can be added to any world.connect (i.e. world.connect, world.connect_many_to_one, world.connect_one) call as a keyword argument using the key 'transform'.
 
 Example 1: Scaling a value
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,10 @@ Example 1: Scaling a value
     def scale_value(value: float) -> float:
         return value * 1.5  # Scale up by a factor of 1.5
 
-Example 2: Filtering negative values
+    world.connect(entity_1, entity_2, 'value', transform=scale_value)
+
+
+Example 2: Nullifying negative values
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
@@ -34,6 +37,8 @@ Example 2: Filtering negative values
     # Define a function that ensures only non-negative values are passed
     def filter_negative(value: float) -> float:
         return max(value, 0)
+
+    world.connect(entity_1, entity_2, 'value', transform=filter_negative)
 
 
 Handling edge cases
@@ -65,18 +70,6 @@ Unhandled exceptions in the transform function can disrupt the simulation. Alway
             return value ** 2  # Square the value
         except TypeError:
             return 0.0  # Default fallback
-
-Test with different inputs
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Ensure your function behaves as expected for all possible values, including edge cases:
-
-.. code-block:: python
-
-    assert scale_value(10) == 15.0
-    assert filter_negative(-5) == 0
-    assert safe_transform(None) == 0.0
-    assert robust_transform("invalid") == 0.0
 
 Summary
 -------
