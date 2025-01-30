@@ -285,6 +285,8 @@ class AsyncWorld:
 
     default_transform_callable = Callable[[Any], Any]
 
+    paused:bool
+
     def __init__(
         self,
         sim_config: SimConfig,
@@ -325,7 +327,7 @@ class AsyncWorld:
         self.entity_graph = networkx.Graph()
 
         self.sim_progress = 0.0
-
+        self.paused = False
         self._debug = False
         if debug:
             logger.warning(

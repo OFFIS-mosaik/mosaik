@@ -5,6 +5,7 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 import asyncio
+import time
 import warnings
 from heapq import heappop
 from math import ceil
@@ -90,9 +91,14 @@ async def sim_process(
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
+            if world.paused:
+                await asyncio.sleep(1)  # Wait until resume is triggered
+                continue
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
+            if sim.current_step.tiers[0] == 7:
+                world.paused = False
             if sim.current_step != sim.progress.time:
                 raise SimulationError(
                     f"Simulator {sim.sid} is trying to perform a step at time "
@@ -326,13 +332,15 @@ async def step(
     *max_advance* is the simulation time until the simulator can safely advance
     it's internal time without causing any causality errors.
     """
+    print(sim.current_step)
+    if sim.current_step.tiers[0] == 2000:
+        world.paused = True
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
     sim.is_in_step = True
     next_step_time = await sim.step(sim.current_step.time, inputs, max_advance)
     sim.last_step = sim.current_step
     sim.is_in_step = False
-
     if next_step_time is not None:
         if not isinstance(next_step_time, int):
             raise SimulationError(

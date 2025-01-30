@@ -29,7 +29,7 @@ def test_transform_parameter_input_pulled():
         },
     }
 
-    END = 15  # 15 seconds
+    END = 15000  # 15 seconds
 
     # Create World
     world = mosaik.World(SIM_CONFIG)
@@ -80,7 +80,7 @@ def test_transform_parameter_input_pulled():
         assert test_dict2[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_onehundred(key)
-
+test_transform_parameter_input_pulled()
 
 def test_transform_parameter_input_pushed():
     # Sim config. and other parameters

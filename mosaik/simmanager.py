@@ -506,6 +506,7 @@ class SimRunner:
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
     check_outputs: Callable[[OutputData], None]
+    state: str
 
     def __init__(
         self,
@@ -554,6 +555,9 @@ class SimRunner:
         self.output_request = {}
 
         self.outputs = None
+
+        self.state = "RUNNING"  # Other states: PAUSED, STOPPED
+
 
     def schedule_step(self, tiered_time: TieredTime):
         """Schedule a step for this simulator at the given time. This
