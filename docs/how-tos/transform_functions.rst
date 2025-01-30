@@ -45,8 +45,7 @@ Example 2: Nullifying negative values
 Handling edge cases
 -------------------
 
-Transform functions are independent of the simulators they work with, which means that the user is responsible for 
-handling edge cases they want to avoid when handling these simulators.
+Transform functions are independent of the simulators they work with, which means that the user is responsible for handling edge cases they want to avoid when handling these simulators.
 If the simulator that acts as the data source is prone to giving invalid values, take care of them in a way that suits your simulation.
 
 .. code-block:: python
