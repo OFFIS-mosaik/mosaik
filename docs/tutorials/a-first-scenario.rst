@@ -11,7 +11,7 @@ Installation
 The first step after installing mosaik itself is to install the packages necessary for our simulation.
 We will be using ``mosaik-pandapower-2`` and ``mosaik-pv``.
 Both of them are available on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
-We will also use mosaik's built-in function simulator as a fake weather simulator and the built-in output simulator to see what's going on.
+We will also use mosaik's :doc:`two built-in simulators </api_referecne/mosaik.basic_simulators>`: the input simulator as a fake weather simulator and the output simulator to see what's going on.
 
 Sic mundus creatus est
 ======================
@@ -103,7 +103,7 @@ Having started our simulators, we now need to create entities in them.
    We recommend that you only start several instances of a simulator when you need it to run at multiple points within the same time step or when the simulator does not support multiple entities.
 
 Our highly realistic weather model will be based on random values provided by the built-in input simulator.
-In our example, we will assume that all PV systems are close enough together that they are governed by the same weather.
+Furthermore, we will assume that all PV systems are close enough together to be governed by the same weather.
 We therefore only need one weather entity, which we create by calling
 
 .. literalinclude:: code/scenario_1.py
@@ -135,7 +135,7 @@ When using ``create`` to create several entities, all of them will have the same
 If you want each entity to have different params, you will need to write a loop, after all.
 However, ``create`` is often a useful shortcut because each of the created entities can still have unique connections.
 
-Now, we create the grid by calling:
+Now, we create the grid by calling
 
 .. literalinclude:: code/scenario_1.py
    :start-at: grid =
@@ -212,7 +212,7 @@ First, each PV system needs access to the weather data:
 We loop over all elements of our ``pvs`` list.
 For each ``pv`` we establish a connection from the ``weather`` entity to the ``pv`` entity.
 To do this, we need to specify which attributes should be connected.
-*Attributes* are (the names for) the values that are exchanged while the simulation is running (as opposed to params that are used during setup).
+**Attributes**, or **attrs** for short, are (the names for) the values that are exchanged while the simulation is running, as opposed to params that are used during setup.
 Here, we connect the *value* attribute of the ``weather`` entity to the *DNI[W/m2]* attribute of the ``pv`` entity.
 (Having the units as part of the attribute name is a somewhat common convention.)
 The simulator’s documentation should list the attributes of its models, whether they are used for input or output, and in which format they expect or provide their data.

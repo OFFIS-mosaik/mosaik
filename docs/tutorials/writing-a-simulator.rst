@@ -82,7 +82,7 @@ We will call the output *profits[EUR]*.
 (We could technically use the € symbol, but that would make things harder to type for people with non-European keyboards.)
 
 Finally, we need to decide which parts of our simulator should be configurable.
-For this example, we will make the the energy price a parameter, so that it is constant for the duration of the simulation (we could also add an entity to feed in changing energy prices during the simulation, for example).
+For this example, we will make the energy price a parameter, so that it is constant for the duration of the simulation (we could also add an entity to feed in changing energy prices during the simulation, for example).
 We will also allow the user to pick the names of the entities.
 This is not always necessary, but in this case, it will help in tracking which *PVProfits* entity belongs to which *PV* entity.
 
@@ -156,20 +156,31 @@ The method must return a list of exactly ``num`` instances of :class:`~mosaik_ap
 Each :class:`~mosaik_api_v3.CreateResult` is a Python dict with the fields *eid* and *type*.
 (As it is a normal dict, the name :class:`~mosaik_api_v3.CreateResult` will only appear in type annotations.)
 
-The *eid* field specifies entity's **entity ID**. It will be used by mosaik to communicate to your simulator which input data is meant for which entity, and vice versa by your simulator to indicate which entity produced a given ountput. *As such, all entity IDs returned by your simulator must be unique, even accross multiple calls to* :meth:`~Simulator.create` *during the same simulation.*
+The *eid* field specifies the entity's **entity ID**.
+It will be used by mosaik to communicate to your simulator which input data is meant for which entity, and vice versa by your simulator to indicate which entity produced a given ountput.
+*As such, all entity IDs returned by your simulator must be unique, even accross multiple calls to* :meth:`~Simulator.create` *during the same simulation.*
 
-The *type* field must mirror the value given in ``model``. (It exists for simulators using child entities, see :doc:`/how-tos/existing-topologies`.)
+The *type* field must mirror the value given in ``model``.
+(It exists for simulators using child entities, see :doc:`/how-tos/existing-topologies`.)
 
-Because we want to allow users to set the entity ID, our :meth:`~Simulator.create` method is a bit involved. First, we sort out the entity ID business:
+Because we want to allow users to set the entity ID, our :meth:`~Simulator.create` method is a bit involved.
+First, we sort out the entity ID business:
 
 .. literalinclude:: code/profits_simulator.py
    :start-at: def create
    :end-before: # end
 
-When the user creates entities, they can give the parameter ``eid``. There are three cases:
-- They might not specify it (or specify `None`). In this case, we create entity IDs looking like *PVProfits-42*. The numbers start with the number of already-existing entities. This ensures that we will not create the same entity ID twice, even if :meth:`~Simulator.create` is called multiple times. (This might run into problems if the user specifies entity IDs some of the time but we will catch those later.)
-- They might specify a single string. We only allow this if they also just create a single entity.
-- They might specify a list of entity IDs. In this case, we check that it has the right length.
+When the user creates entities, they can give the parameter ``eid``.
+There are three cases:
+- They might not specify it (or specify `None`).
+  In this case, we create entity IDs looking like *PVProfits-42*.
+  The numbers start with the number of already-existing entities.
+  This ensures that we will not create the same entity ID twice, even if :meth:`~Simulator.create` is called multiple times.
+  (This might run into problems if the user specifies entity IDs some of the time but we will catch those later.)
+- They might specify a single string.
+  We only allow this if they also just create a single entity.
+- They might specify a list of entity IDs.
+  In this case, we check that it has the right length.
 
 At the end of this process, ``eid`` is a list, and it contains ``num`` IDs.
 

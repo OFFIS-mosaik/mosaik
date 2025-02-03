@@ -31,6 +31,7 @@ with mosaik.World(SIM_CONFIG) as world:
     )
     # end
     grid = gridsim.Grid(network_function="create_cigre_network_lv")
+    pprint(grid)
     # end
 
     # filter buses

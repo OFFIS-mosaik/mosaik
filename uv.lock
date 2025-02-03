@@ -1580,7 +1580,6 @@ wheels = [
 
 [[package]]
 name = "mosaik"
-version = "3.3.4.dev118+g1943103.d20250130"
 source = { editable = "." }
 dependencies = [
     { name = "loguru" },
@@ -1622,7 +1621,7 @@ tutorial = [
 [package.metadata]
 requires-dist = [
     { name = "loguru", specifier = ">=0.6" },
-    { name = "mosaik-api-v3", specifier = ">=3.0.12" },
+    { name = "mosaik-api-v3", specifier = ">=3.0.13" },
     { name = "networkx", specifier = ">=2.5" },
     { name = "tqdm", specifier = ">=4.66.4" },
     { name = "typing-extensions", specifier = ">=4.11.0" },
