@@ -22,6 +22,7 @@ class World(object):
         self.async_requests = async_requests
         self.src_connects.add(src)
         self.dest_connects[dest] += 1
+        self.transform = transform
 
 
 def test_connect_many_to_one():
@@ -39,6 +40,7 @@ def test_connect_many_to_one():
     assert world.async_requests is True
     assert world.src_connects == set(src_set)
     assert world.dest_connects == {dest: len(src_set)}
+    assert world.transform == transform
 
 
 @pytest.mark.parametrize(
