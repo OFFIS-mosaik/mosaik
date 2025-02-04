@@ -10,6 +10,8 @@ import datetime
 import random
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Callable,
     Collection,
     Dict,
     Iterable,
@@ -43,6 +45,7 @@ def connect_many_to_one(
     dest: Entity,
     *attrs: Attr | Tuple[Attr, Attr],
     async_requests: bool = False,
+    transform: Callable[[Any], Any] = lambda x: x,
 ):
     """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
@@ -50,7 +53,9 @@ def connect_many_to_one(
     See the :meth:`~mosaik.scenario.World.connect` for more details.
     """
     for src in src_set:
-        world.connect(src, dest, *attrs, async_requests=async_requests)
+        world.connect(
+            src, dest, *attrs, async_requests=async_requests, transform=transform
+        )
 
 
 def connect_randomly(

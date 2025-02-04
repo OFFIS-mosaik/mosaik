@@ -16,10 +16,13 @@ class World(object):
         self.dest_connects = collections.defaultdict(lambda: 0)
         self.async_requests = None
 
-    def connect(self, src, dest, *attr_pairs, async_requests=False):
+    def connect(
+        self, src, dest, *attr_pairs, async_requests=False, transform=lambda x: x
+    ):
         self.async_requests = async_requests
         self.src_connects.add(src)
         self.dest_connects[dest] += 1
+        self.transform = transform
 
 
 def test_connect_many_to_one():
@@ -27,11 +30,17 @@ def test_connect_many_to_one():
     src_set = [object() for i in range(3)]
     dest = object()
 
-    util.connect_many_to_one(world, src_set, dest, "a", "b", async_requests=True)
+    def transform(x):
+        return x
+
+    util.connect_many_to_one(
+        world, src_set, dest, "a", "b", async_requests=True, transform=transform
+    )
 
     assert world.async_requests is True
     assert world.src_connects == set(src_set)
     assert world.dest_connects == {dest: len(src_set)}
+    assert world.transform == transform
 
 
 @pytest.mark.parametrize(
