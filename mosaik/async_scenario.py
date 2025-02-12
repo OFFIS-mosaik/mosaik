@@ -285,7 +285,8 @@ class AsyncWorld:
 
     default_transform_callable = Callable[[Any], Any]
 
-    paused:bool
+    paused: bool
+    pause_step: int
 
     def __init__(
         self,
@@ -297,6 +298,7 @@ class AsyncWorld:
         max_loop_iterations: int = 100,
         configure_logging: bool = False,
         skip_greetings: bool = True,
+        pause_step: int = -1,
     ):
         if configure_logging:
             logger.enable("mosaik")
@@ -342,6 +344,7 @@ class AsyncWorld:
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
+        self.pause_step = pause_step
 
     async def __aenter__(self) -> Self:
         return self
@@ -396,10 +399,13 @@ class AsyncWorld:
             proxy,
             check_outputs=model_factory.validate_output_dict,
             depth=self.current_group.depth,
+            pause_step=self.pause_step,
         )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
+
+    # def set_pause(self, step_to_pause_at):
 
     def connect_one(  # noqa: C901
         self,

@@ -97,8 +97,8 @@ async def sim_process(
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
-            if sim.current_step.tiers[0] == 7:
-                world.paused = False
+            if sim.current_step.tiers[0] == sim.pause_step:
+                world.paused = True
             if sim.current_step != sim.progress.time:
                 raise SimulationError(
                     f"Simulator {sim.sid} is trying to perform a step at time "
@@ -333,8 +333,8 @@ async def step(
     it's internal time without causing any causality errors.
     """
     print(sim.current_step)
-    if sim.current_step.tiers[0] == 2000:
-        world.paused = True
+    #if sim.current_step.tiers[0] == 2000:
+    #    world.paused = True
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
     sim.is_in_step = True

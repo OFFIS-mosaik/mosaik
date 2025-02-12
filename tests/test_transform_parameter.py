@@ -20,7 +20,7 @@ def multiply_by_onehundred(p):
 
 def test_transform_parameter_input_pulled():
     # Sim config. and other parameters
-    SIM_CONFIG: SimConfig = {
+    SIM_CONFIG = {
         "OutputSim": {
             "python": "mosaik.basic_simulators:OutputSimulator",
         },
@@ -32,7 +32,7 @@ def test_transform_parameter_input_pulled():
     END = 15000  # 15 seconds
 
     # Create World
-    world = mosaik.World(SIM_CONFIG)
+    world = mosaik.World(SIM_CONFIG, pause_step=500)
 
     # Start simulators
     output_dict = world.start("OutputSim")
@@ -65,7 +65,9 @@ def test_transform_parameter_input_pulled():
     test_dict2: Dict[int, Dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
+
     world.run(until=END)
+
     print(test_dict)
     print(test_dict2)
 
@@ -75,12 +77,15 @@ def test_transform_parameter_input_pulled():
         assert test_dict[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_thousand(key)
-        # assert test_dict[key]["val_out_2"][input_model_const[0].full_id] == 10
+
     for key in test_dict2:
         assert test_dict2[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_onehundred(key)
+
+
 test_transform_parameter_input_pulled()
+
 
 def test_transform_parameter_input_pushed():
     # Sim config. and other parameters
