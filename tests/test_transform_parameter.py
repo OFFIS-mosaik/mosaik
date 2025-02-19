@@ -1,4 +1,8 @@
+import asyncio
+import threading
 from typing import Any, Dict, cast
+
+from pynput import keyboard
 
 import mosaik
 import mosaik.basic_simulators
@@ -18,8 +22,31 @@ def multiply_by_onehundred(p):
     return p * 100
 
 
-def test_transform_parameter_input_pulled():
-    # Sim config. and other parameters
+def keyboard_listener(async_event):
+    def on_press(key):
+        try:
+            if key.char == "p":
+                print("[keyboard] Pausing simulation...)")
+                async_event.clear()  # Pause
+                print("[keyboard] Paused. )")
+            elif key.char == "r":
+                print(
+                    "[keyboard] Resuming simulation... (Before: world.paused.is_set() = )"
+                )
+                async_event.set()  # Resume
+                print(
+                    "[keyboard] Resumed. (After: world.paused.is_set() = {world.paused.is_set()})"
+                )
+        except AttributeError:
+            pass  # Ignore special keys like Shift, Ctrl, etc.
+
+    # Start the keyboard listener in the main thread
+    with keyboard.Listener(on_press=on_press) as listener:
+        listener.join()
+
+
+async def start_mosaik(async_event):
+    # Sim config and other parameters
     SIM_CONFIG = {
         "OutputSim": {
             "python": "mosaik.basic_simulators:OutputSimulator",
@@ -29,10 +56,11 @@ def test_transform_parameter_input_pulled():
         },
     }
 
+    global END
     END = 15000  # 15 seconds
-
-    # Create World
-    world = mosaik.World(SIM_CONFIG, pause_step=500)
+    # Create World with an asyncio.Event for pausing
+    world = mosaik.AsyncWorld(SIM_CONFIG, pause_step=15000)
+    world.paused = async_event
 
     # Start simulators
     output_dict = world.start("OutputSim")
@@ -84,7 +112,26 @@ def test_transform_parameter_input_pulled():
         ] == multiply_by_onehundred(key)
 
 
-test_transform_parameter_input_pulled()
+async def main():
+    async_event = asyncio.Event()
+
+    # Start the Mosaik simulation in a separate thread
+    mosaik_thread = threading.Thread(
+        target=start_mosaik,
+        args=(async_event,),
+        daemon=False,  # Do not use daemon thread
+    )
+    await mosaik_thread.start()
+    keyboard_listener(async_event)
+
+    # Run the keyboard listener in the main thread
+
+    # Wait for the Mosaik simulation to finish
+    mosaik_thread.join()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 
 def test_transform_parameter_input_pushed():

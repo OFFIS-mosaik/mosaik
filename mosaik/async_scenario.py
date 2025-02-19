@@ -285,7 +285,7 @@ class AsyncWorld:
 
     default_transform_callable = Callable[[Any], Any]
 
-    paused: bool
+    paused: asyncio.Event
     pause_step: int
 
     def __init__(
@@ -329,7 +329,8 @@ class AsyncWorld:
         self.entity_graph = networkx.Graph()
 
         self.sim_progress = 0.0
-        self.paused = False
+        self.paused = asyncio.Event()  # Initially unset (simulation starts paused)
+        self.paused.set()  # Start unpaused
         self._debug = False
         if debug:
             logger.warning(

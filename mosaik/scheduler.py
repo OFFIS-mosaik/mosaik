@@ -82,57 +82,53 @@ async def sim_process(
     rt_strict: bool,
     lazy_stepping: bool,
 ):
-    """
-    Coroutine running the simulator *sim*.
-    """
     sim.started = True
-    sim.rt_start = rt_start = perf_counter()
+    sim.rt_start = perf_counter()
 
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
-            if world.paused:
-                await asyncio.sleep(1)  # Wait until resume is triggered
-                continue
+            print(
+                f"[sim_process] Before pause check: world.paused.is_set() = {world.paused.is_set()}"
+            )
+
+            # Debugging before waiting for the event
+            if not world.paused.is_set():
+                print("[sim_process] Simulation paused... waiting.")
+                await world.paused.wait()  # Wait here until the event is set again
+                print("[sim_process] Simulation resumed.")
+
+            print(
+                f"[sim_process] After wait: world.paused.is_set() = {world.paused.is_set()}"
+            )
+
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
+
             if sim.current_step.tiers[0] == sim.pause_step:
-                world.paused = True
-            if sim.current_step != sim.progress.time:
-                raise SimulationError(
-                    f"Simulator {sim.sid} is trying to perform a step at time "
-                    f"{sim.current_step}, but it has already progressed to time "
-                    f"{sim.progress.time}."
-                )
-            if any(t >= world.max_loop_iterations for t in sim.current_step.tiers[1:]):
-                raise SimulationError(
-                    f"Simulator {sim.sid} has performed a sub-step more than "
-                    f"{world.max_loop_iterations} times. (The complete now is "
-                    f"{sim.current_step}.) This might indicate that you have run into "
-                    "an infinite loop. If not, you can increase max_loop_iterations to "
-                    "get rid of this warning."
-                )
+                world.paused.clear()  # Pause the simulation at this step if required
+
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
             await step(world, sim, input_data, max_advance)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
+            rt_check(rt_factor, sim.rt_start, rt_strict, sim)
             await get_outputs(world, sim)
             sim.current_step = None
             trigger_successors(sim)
-            # TODO: Reduce the number of sims that need to be advanced
-            # (At least only to those that could potentially be
-            # triggered by this step; maybe there's even a more clever
-            # way.)
+
             for isim in world.sims.values():
                 advance_progress(isim, world)
+
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+
             if world.use_cache:
                 prune_dataflow_cache(world)
+
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
-        raise SimulationError('Simulator "%s" closed its connection.' % sim.sid, e)
+        raise SimulationError(f'Simulator "{sim.sid}" closed its connection.', e)
 
 
 async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
@@ -333,7 +329,7 @@ async def step(
     it's internal time without causing any causality errors.
     """
     print(sim.current_step)
-    #if sim.current_step.tiers[0] == 2000:
+    # if sim.current_step.tiers[0] == 2000:
     #    world.paused = True
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
