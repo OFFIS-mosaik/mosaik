@@ -12,6 +12,9 @@ Conceptually, a **measurement** is a value that exists continuously throughout t
 
 **Events**, on the other hand, exists only at certain points in time. Common examples of events are control signals and other types of messages.
 
+.. _persistent:
+.. _non-persistent:
+
 .. index::
    ! pair: attribute; persistent
    ! pair: attribute; non-persistent

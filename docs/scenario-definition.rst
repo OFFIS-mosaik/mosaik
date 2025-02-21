@@ -346,7 +346,7 @@ This leads to problems when naively setting up bi-directional or cyclic data flo
    world.connect(controller, battery, 'schedule')
 
 The problem is that mosaik cannot step either of the involved simulators as both are waiting for input from the other one.
-mosaik will recognize cycles like this and raise an error when you attempt to :meth:`run` a simulation containing them.
+mosaik will recognize cycles like this and raise an error when you attempt to :meth:`~World.run` a simulation containing them.
 To avoid this error, the standard connections in your scenario must form an acyclic (directed) graph (on the level of simulators).
 
 Of course, cyclic data flow is common in co-simulations and mosaik offers two options for this: time-shifted connections and weak connections.
@@ -667,7 +667,7 @@ The data-flow graph may, for example, look like this:
        }},
    }
 
-:attr:`World.entity_graph` is the undirected *entity graph*. It contains a node
+:meth:`World.entity_graph` is the undirected *entity graph*. It contains a node
 for every entity. The full entity ID (``'sim_id.entity_id'``) is used as node
 label.  Every node also stores the simulator name and entity type. An edge
 between two entities is inserted

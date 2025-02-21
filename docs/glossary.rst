@@ -112,3 +112,7 @@ Glossary
       corresponds) can be defined in the scenario, and is passed to every
       simulation component via the :ref:`init function <api.init>` as key-word
       parameter *time_resolution. It's a floating point number and defaults to *1.*.
+
+   Time resolution
+      In mosaik, how many seconds correspond to mosaik :term:`step`.
+      See the ``time_resolution`` argument of :class:`~mosaik.scenario.World` and :class:`~mosaik.async_scenario.AsyncWorld`.

@@ -1,7 +1,14 @@
+:orphan:
+
 .. _examplectrl:
 
 Adding a control mechanism to a scenario
 ========================================
+
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
 
 Now that we integrated our first simulator into mosaik and tested it in
 a simple scenario, we should implement a control mechanism and mess around with our

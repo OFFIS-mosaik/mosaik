@@ -350,6 +350,8 @@ class World:
 
     @property
     def entity_graph(self):
+        """The graph of all entities. See :attr:`AsyncWorld.entity_graph
+        <mosaik.async_scenario.AsyncWorld.entity_graph>."""
         return self._async_world.entity_graph
 
     @property

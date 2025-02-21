@@ -43,25 +43,6 @@ RCP-Server if you want to run your Java-simulator on a separate machine.
    writing-a-simulator
 
 .. toctree::
-   :caption: Old tutorial
-   :maxdepth: 1
-
-   introduction
-   examplesim
-   demo1
-   examplectrl
-   demo2
-   sametimeloops
-   set-external-events
-
-.. toctree::
-   :caption: Odysseus tutorial
-   :maxdepth: 1
-
-   odysseus
-   odysseus2
-
-.. toctree::
    :caption: Java API tutorial
    :maxdepth: 1
 
@@ -74,19 +55,7 @@ RCP-Server if you want to run your Java-simulator on a separate machine.
    tutorial_api-java-generics
 
 .. toctree::
-   :caption: Jupyter tutorial
-   :maxdepth: 1
-
-   jupyter_notebook
-
-.. toctree::
    :caption: Visualization tutorial
    :maxdepth: 1
 
    graphs
-
-.. toctree::
-   :caption: Apache Superset tutorial
-   :maxdepth: 1
-
-   apache-superset

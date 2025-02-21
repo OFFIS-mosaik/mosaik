@@ -1,3 +1,5 @@
+:orphan:
+
 .. _examplesim:
 
 .. role::  raw-html(raw)
@@ -6,6 +8,11 @@
 ========================================================
 Integrating a simulation model into the mosaik ecosystem
 ========================================================
+
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
 
 In this section we'll first implement a simple example simulator. We'll then
 implement mosaik's Simulator API step-by-step.

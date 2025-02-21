@@ -1,3 +1,5 @@
+:orphan:
+
 .. _demo1:
 
 .. currentmodule:: mosaik.scenario
@@ -5,6 +7,11 @@
 ================================================
 Creating and running simple simulation scenarios
 ================================================
+
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
 
 We will now create a simple scenario with mosaik in which we use
 a simple data collector to print some output from our simulation. That

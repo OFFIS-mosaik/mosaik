@@ -21,7 +21,7 @@ Installation of required components
 The first step after installing mosaik itself (see :doc:`/installation`) is to install the packages necessary for our simulation.
 We will be using ``mosaik-pandapower-2`` and ``mosaik-pv``.
 Both of them are available on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
-We will also use mosaik's :doc:`two built-in simulators </api_referecne/mosaik.basic_simulators>`: the input simulator as a fake weather simulator and the output simulator to see what's going on.
+We will also use mosaik's :doc:`two built-in simulators </api_reference/mosaik.basic_simulators>`: the input simulator as a fake weather simulator and the output simulator to see what's going on.
 
 
 Creating a world and starting the simulators

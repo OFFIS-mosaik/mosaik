@@ -1,6 +1,15 @@
+:orphan:
+
 ============
 Introduction
 ============
+
+.. orphan
+
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
 
 mosaik is a co-simulation tool: It enables you to connect different pieces of software (and to some degree, hardware) that perform simulations to combine them into a bigger *co-simulation*, exchanging data on the way. We will call the individual pieces of software *simulators*. mosaik will transfer data between these simulators and keep track of the *simulation time*, so that simulators are invoked at the right moments and always use the data as input that is appropriate for their current state.
 

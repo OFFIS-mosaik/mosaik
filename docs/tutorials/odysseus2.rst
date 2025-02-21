@@ -1,13 +1,20 @@
+:orphan:
+
 ==============================================================
 Using Odysseus to process, visualize and store simulation data
 ==============================================================
 
-This tutorial will give some examples on how you can use Odysseus to process, 
-visualize and store the data from mosaik. More information about connecting 
-mosaik and Odysseus can be found in the :doc:`first part <odysseus>` of the 
-tutorial and more about Odysseus in general can be found in its 
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   Please refer to `Odysseus' own website <http://odysseus.informatik.uni-oldenburg.de/>`_ for their documentation.
+
+This tutorial will give some examples on how you can use Odysseus to process,
+visualize and store the data from mosaik. More information about connecting
+mosaik and Odysseus can be found in the :doc:`first part <odysseus>` of the
+tutorial and more about Odysseus in general can be found in its
 `documentation <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS>`__.
-If you have no experience with Odysseus you should first visit the tutorials in 
+If you have no experience with Odysseus you should first visit the tutorials in
 its documentation. `Simple query processing <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Simple+Query+Processing>`_
 and `selection, projection and map <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Selection%2C+Projection+and+Map>`_
 should explain the basics.
@@ -71,5 +78,5 @@ If we want to save the results of our Odysseus query, we can use the `sender <ht
 .. literalinclude:: code/odysseus_tutorial.qry
    :lines: 39-47
 
-Odysseus also offers adapters to store the processed data to different databases (e.g. mysql, postgres and oracle). 
+Odysseus also offers adapters to store the processed data to different databases (e.g. mysql, postgres and oracle).
 More details can be found `here <https://wiki.odysseus.informatik.uni-oldenburg.de/display/ODYSSEUS/Database+Feature>`__.
