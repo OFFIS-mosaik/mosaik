@@ -5,6 +5,15 @@ A first scenario
 For our first scenario, we will couple a fake weather simulator (just creating random values) with a simulator for photovoltaic (PV) systems.
 We will connect these PV systems to a power grid simulation and observe the effects at the node in our grid that is connected to the external grid.
 
+The scenario we will create will look like this:
+
+.. figure:: /_static/tutorial1.png
+   :width: 600
+   :align: center
+   :alt: A chain connecting these simulators: Weather, PV, Grid, Output
+
+   The scenario setup
+
 
 Installation of required components
 ===================================

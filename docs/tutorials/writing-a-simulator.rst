@@ -293,6 +293,14 @@ Adapting our scenario
 =====================
 
 Finally, it is time to integrate our new simulator into our simulation from the :doc:`previous tutorial <a-first-scenario>`.
+It will end up looking like this:
+
+.. figure:: /_static/tutorial2.png
+   :width: 600
+   :align: center
+   :alt: A scenario consisting of the five simulators Weather, PV, Grid and Profits (both receiving input from PV), and Output (receiving input from both Grid and Profits)
+
+   The updated scenario
 
 We add it to the ``SIM_CONFIG``
 
