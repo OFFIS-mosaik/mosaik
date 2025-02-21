@@ -101,7 +101,8 @@ In this dict, *public* determines whether entity of this model can be created by
 The key *params* lists the parameters of our simulator.
 (These are the names of the values that the user can or must provide when creating entities of this model.)
 
-We list the attributes (the inputs and outputs that our simulator receives and send *during* the simulation) under the keys *non-trigger* (for measurement inputs) and *non-persistent* (for event outputs). The keys *trigger* and *persistent* (for event inputs and measurement outputs, respectively) would also be possible. Finally, it used to be the case that you would simply list all attributes in the *attrs* list, without specifying whether they were intended for input or output.
+We list the attributes (the inputs and outputs that our simulator receives and sends *during* the simulation) under the keys *non-trigger* (for measurement inputs) and *non-persistent* (for event outputs).
+The keys *trigger* and *persistent* (for event inputs and measurement outputs, respectively) would also be possible.
 
 You might have noticed that we didn't specify how to give the energy price anywhere here.
 This is a small wart in mosaik API: the way it is set up, parameters to the simulator itself (as opposed to its entities) need to be transmitted before the simulator has a chance to reply with its meta.
@@ -149,7 +150,7 @@ Creating entities is the purview of the :meth:`~Simulator.create` method.
 :meth:`~Simulator.create` receives the following arguments besides ``self``:
 
 - ``num``---specifying how many entities should be created. (This allows creating entities in bulk without having to call :meth:`~Simulator.create` for each one.)
-- ``model``---the number of entities to create.
+- ``model``---the name of the model.
 - Other parameters specified by the user on creation, provided their names are listed in the *params* field of the model description for ``model`` in the meta; in our case, this is just ``eid``.
 
 The method must return a list of exactly ``num`` instances of :class:`~mosaik_api_v3.CreateResult`.
@@ -172,6 +173,7 @@ First, we sort out the entity ID business:
 
 When the user creates entities, they can give the parameter ``eid``.
 There are three cases:
+
 - They might not specify it (or specify `None`).
   In this case, we create entity IDs looking like *PVProfits-42*.
   The numbers start with the number of already-existing entities.
@@ -217,7 +219,7 @@ This method of our simulator will automatically be called at time 0, and then ag
 (If our simulator had trigger attributes, those could result in additional calls to :meth:`~Simulator.step`, see :doc:`/explanations/measurements-and-events`.)
 
 To perform our step, we need to read the data from the ``inputs`` argument.
-This is actually thrice-nested dictionary:
+This is actually a thrice-nested dictionary:
 
 - The outer-most level has entity IDs of our simulator as keys.
 - The middle level has attributes of those entities as keys.
@@ -267,10 +269,11 @@ For this, there is a second method, :meth:`~Simulator.get_data`.
 Usually, mosaik will call this immediately after the call to :meth:`~Simulator.step` has returned, except when our simulator's output is not used by any other simulator.
 
 :meth:`~Simulator.get_data` gets called with an :class:`~mosaik_api_v3.OutputRequest`, which is just a dictionary mapping entity IDs of our simulator to attribute names.
-Our simulator should return output for those attributes, which means
+Our simulator should return output for the given attributes of those entities.
+There are two cases here:
 
-- if the attribute is :ref:`persistent`, output should be provided
-- if the attribute is :ref:`non-persistent`, output should be provided to indicate that the corresponding event happened, if it happened
+- If the attribute is :ref:`persistent`, output should always be provided.
+- If the attribute is :ref:`non-persistent` and the corresponding event occurred, output should be provided to indicate that occurrence to mosaik.
 
 The :class:`~mosaik_api_v3.OutputRequest` will only list those attributes that are connected to other simulators.
 However, if it makes implementing your simulator simpler (and the overhead is acceptable), you can also return output for non-requested attributes, which mosaik will simply ignore.

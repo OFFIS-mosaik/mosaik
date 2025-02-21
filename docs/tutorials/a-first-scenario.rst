@@ -5,22 +5,24 @@ A first scenario
 For our first scenario, we will couple a fake weather simulator (just creating random values) with a simulator for photovoltaic (PV) systems.
 We will connect these PV systems to a power grid simulation and observe the effects at the node in our grid that is connected to the external grid.
 
-Installation
-============
 
-The first step after installing mosaik itself is to install the packages necessary for our simulation.
+Installation of required components
+===================================
+
+The first step after installing mosaik itself (see :doc:`/installation`) is to install the packages necessary for our simulation.
 We will be using ``mosaik-pandapower-2`` and ``mosaik-pv``.
 Both of them are available on PyPI, so you can install them using your favorite way of managing Python packages (``pip install`` in your virtual environment, your editor's Python package management, etc.).
 We will also use mosaik's :doc:`two built-in simulators </api_referecne/mosaik.basic_simulators>`: the input simulator as a fake weather simulator and the output simulator to see what's going on.
 
-Sic mundus creatus est
-======================
+
+Creating a world and starting the simulators
+============================================
 
 Every mosaik scenario has its humble beginnings in importing mosaik.
-We will also be using Python's ``random`` module, a function from ``mosaik.util`` and Python's built-in pretty printer.
+We will also be using Python's ``random`` module, the built-in pretty printer, and a function from ``mosaik.util``:
 
 .. literalinclude:: code/scenario_1.py
-   :start-at: import mosaik
+   :start-after: # start imports
    :end-before: # end
 
 We then need to set up a dict that describes all the simulators that we intend to use in our simulation and how to start or connect to them.
@@ -76,7 +78,7 @@ In our case, we specify ``step_size=900`` for all simulators except the output s
 
    This step size is a common convention in mosaik as 900 seconds correspond to 15 minutes, which is the market interval on many energy markets.
 
-The output simulator does not need to know the step size because it is *event-based*, which means that it will run automatically whenever it receives input. (For more information on the different types of simulators, see the corresponding explanation: TODO)
+The output simulator does not need to know the step size because it is **event-based**, which means that it will run automatically whenever it receives input. (For more information on the different types of simulators, see :doc:`/explanations/measurements-and-events`.)
 
 In our scenario, we have created one instance of each simulator.
 When you need multiple copies of the "thing" provided by a simulator, you can start multiple instances of the same simulator by calling ``world.start`` with the same simulator name multiple times.
@@ -91,7 +93,7 @@ Having started our simulators, we now need to create entities in them.
 .. admonition:: What are entities?
 
    In co-simulations it is very common to want to simulate many copies each of only a few types of things, for example a number of PV systems which are each described by the same formulas (but with different parameters).
-   In the context of mosaik, we call these types *models* and each copy of them an *entity*.
+   In the context of mosaik, we call these types **models** and each copy of them an **entity**.
    If you are familiar with class-based object-oriented programming languages like Python or Java, a model is like a class and an entity is like an object.
    (Technically, this is always true, regardless of whether you are familiar with object orientation or not.)
 
@@ -110,11 +112,15 @@ We therefore only need one weather entity, which we create by calling
    :start-at: weather =
    :end-before: # end
 
-This will instruct the ``weathersim`` simulator to create one entity of the model *Function* (the model has the pretty generic name *Function* here because we are using the generic input simulator instead of a specialized weather simulator).
-When creating a *Function* entity, we need to specify a Python function which will be used to generate its outputs.
-This function will get the time as an input, though we just ignore this value here and return a random value between 0 and 1000 each time.
-(These values will serve as direct normal irradiance in W/m² later.)
-Data that we pass to a simulator while creating an entity of one of its models is called a *parameter* or short *param* of that model or entity.
+This will instruct the ``weathersim`` simulator to create one entity of the model *Function*.
+(The generic name *Function* is because we are using the generic input simulator.
+A real weather simulator would have appropriately-named models.)
+When creating a *Function* entity, we need to specify a Python function.
+When our the input simulator needs to create inputs to the rest of the simulation, it will call this function with the current time.
+The output of the function will be the output of the simulator.
+In our case here, we just ignore the time and return a random value between 0 and 1000.
+These values will serve as direct normal irradiance in W/m² later.
+Data that we pass to a simulator while creating an entity of one of its models is called a **parameter** or short **param** of that model or entity.
 So in this case, *function* is a param of the *Function* model.
 
 Each simulator and model will expect different data as its params.
@@ -141,7 +147,7 @@ Now, we create the grid by calling
    :start-at: grid =
    :end-before: # end
 
-Which creates a *Grid* entity using the function ``create_cigre_network_lv`` from the ``pandapower.networks`` module that is part of pandapower.
+According to the `grid simulator's documentation <https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2/#setup>`_, providing the ``network_function`` keyword argument here will result in a *Grid* entity based on the function ``create_cigre_network_lv`` from the ``pandapower.networks`` module.
 
 Here, we get to see another feature of entities: they may have children, which are additional entities created automatically when their parent entity is created.
 In the case of ``grid``, the children are all the grid elements like buses, lines, loads, transformers, and so on, that make up the grid topology that we specified when creating the grid entity.
@@ -178,7 +184,7 @@ In order, each object’s fields are:
 We can use these fields to filter the list for the entities that we want.
 We want to connect our PV entities to buses, so we only want entities of type *Bus*.
 We also want to connect our PV system to a low-voltage bus and not to any of the medium-voltage buses that represent the connection to the external grid.
-Luckily, the pandapower adapter reports the nominal voltage of each bus as so-called *extra info*, which is stored under the key ``"nominal voltage [kV]"`` in the ``extra_info`` dict of the corresponding entity.
+Luckily, the pandapower adapter reports the nominal voltage of each bus as so-called **extra info**, which is stored under the key ``"nominal voltage [kV]"`` in the ``extra_info`` dict of the corresponding entity.
 We can filter for the buses we want by looking for buses with a nominal voltage of :math:`0.4\,\mathrm{kV}` (i.e. :math:`400\,\mathrm{V}`), like so:
 
 .. literalinclude:: code/scenario_1.py
@@ -192,14 +198,15 @@ This connection is represented by the *ExternalGrid* entity which we get like th
    :start-at: ext_grid =
    :end-before: # end
 
-Finally, we create a *Dict* entity in the output simulator which will store the simulation results for us.
+Finally, we create a *Dict* entity in the output simulator which will store the simulation results for us:
 
 .. literalinclude:: code/scenario_1.py
    :start-at: output =
    :end-before: # end
 
-Doing Charlotte's work
-======================
+
+Connecting everything
+=====================
 
 The last step in setting up our simulation is to spin a web of connections between our entities.
 
@@ -212,7 +219,7 @@ First, each PV system needs access to the weather data:
 We loop over all elements of our ``pvs`` list.
 For each ``pv`` we establish a connection from the ``weather`` entity to the ``pv`` entity.
 To do this, we need to specify which attributes should be connected.
-**Attributes**, or **attrs** for short, are (the names for) the values that are exchanged while the simulation is running, as opposed to params that are used during setup.
+In mosaik, **attributes**, or **attrs** for short, are (the names for) the values that are exchanged while the simulation is running, as opposed to params that are used during setup.
 Here, we connect the *value* attribute of the ``weather`` entity to the *DNI[W/m2]* attribute of the ``pv`` entity.
 (Having the units as part of the attribute name is a somewhat common convention.)
 The simulator’s documentation should list the attributes of its models, whether they are used for input or output, and in which format they expect or provide their data.
@@ -228,10 +235,9 @@ It tries to avoid connecting several entities to the same target, if possible:
 
 The *p_mw* (real power in MW) attribute of each PV system is connected to the *P_gen[MW]* attribute of its randomly chosen bus.
 The *gen* suffix in the attribute names of the pandapower adapter says that these attributes follow the generator convention (i.e. power generation is positive).
-There are corresponding *load* attributes as well, that follow the consumer convention (i.e. consumption is positive).
 
 Finally, we want to see how our PV systems influence the power levels at the external grid.
-So connect the *ExternalGrid* entity that we extracted above to our output simulator:
+Therefore, we connect the *ExternalGrid* entity that we extracted above to our output simulator:
 
 .. literalinclude:: code/scenario_1.py
    :start-after: # connect ext_grid
@@ -245,13 +251,15 @@ This is actually a combination of two shortcuts in mosaik's ``connect`` method:
    mosaik will then use this name for both the output attribute of the source entity and input attribute of the destination entity.
 2. The ``connect`` method is variadic in the number of attribute connections.
    By giving multiple attributes (or attribute pairs), connections are established between all of them.
-   So in this case, the *P[MW]* output attribute of the ``ext_grid`` entity is connected to the *P[MW]* input attribute of the ``output`` entity, and likewise, the *Q[MVar]* output attribute is connected to the *Q[MVar]* input attribute.
+
+So in this case, the *P[MW]* output attribute of the ``ext_grid`` entity is connected to the *P[MW]* input attribute of the ``output`` entity, and likewise, the *Q[MVar]* output attribute is connected to the *Q[MVar]* input attribute.
 
 These shortcuts make things slightly more convenient whenever attribute names happen to line up.
 In the case of the output simulator, we can have it this way because it will accept input on any attribute and just store the input under that name in a dictionary.
 
-Run, mosaik, run
-================
+
+Running the scenario
+====================
 
 We are now set to run the scenario. This is done using the world's ``run`` method, like so:
 
@@ -259,7 +267,8 @@ We are now set to run the scenario. This is done using the world's ``run`` metho
    :start-at: world.run(
    :end-before: # end
 
-Given our convention of 900-second steps for all the simulators above, this will actually run 4 simulation steps at times 0, 900, 1800, and 2700. The given ``until`` time is already excluded.
+Given our convention of 900-second steps for all the simulators above, this will actually run 4 simulation steps at times 0, 900, 1800, and 2700.
+The given ``until`` time is already excluded.
 
 Finally, we can extract and print the output from our output simulator, by calling the output simulator's ``get_dict`` method, still within the ``with`` block that began with the creation of the world.
 
@@ -267,4 +276,29 @@ Finally, we can extract and print the output from our output simulator, by calli
    :start-at: result =
    :end-before: # end
 
-This concludes the ``with`` block. At this point, mosaik will shut down all the the simulators that it started and close the connections to all simulators to which it connected. Calling further methods on these simulators is then no longer possible.
+This concludes the ``with`` block.
+At this point, mosaik will shut down all the the simulators that it started and close the connections to all simulators to which it connected.
+Calling further methods on these simulators is then no longer possible.
+
+
+Where to go from here
+=====================
+
+We have now seen how to set up a very small example mosaik scenario.
+How to progress further depends on your goals when using mosaik.
+
+If you want to build scenarios to answer your own questions, using existing simulators, you can look at our :doc:`ecosystem page </ecosystem/index>` to see what is available.
+There are simulators for more different types of units to connect to the grid, and also more sophisticated simulators for input and output (for example, reading from CSV files or writing into a database).
+
+When your simulation setups become more involved, you will need to deal more explicitly with the distinction between time-based and event-based simulators, and with hybrid simulators.
+:doc:`/explanations/measurements-and-events` contains background information on this.
+:doc:`/tutorials/sametimeloops` tries to explain how to create more involved setups in practice.
+
+If you find simulators you want to use, but they are not quite compatible with each other, you might be able to fix this using :doc:`transform functions </how-tos/transform-functions>`.
+Maybe you also run into other problems, and our :doc:`tips on debugging </how-tos/debugging>` can help you.
+
+Last, you might be interested in implementing your own simulators, or in adapting simulators that you already have to use them with mosaik.
+If so, the :doc:`next tutorial <writing-a-simulator>` is for you.
+
+If you run into problems with any of this, you should feel free to head over to our `GitHub discussions <https://github.com/orgs/OFFIS-mosaik/discussions>`_.
+All levels of questions are welcome there.

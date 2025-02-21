@@ -39,7 +39,6 @@ RCP-Server if you want to run your Java-simulator on a separate machine.
    :caption: Basic tutorial
    :maxdepth: 1
 
-   installation
    a-first-scenario
    writing-a-simulator
 

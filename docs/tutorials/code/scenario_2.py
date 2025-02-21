@@ -1,4 +1,3 @@
-# start imports
 import random
 from pprint import pprint
 
@@ -12,6 +11,7 @@ SIM_CONFIG: mosaik.SimConfig = {
     "PV": {"python": "mosaik_components.pv.pvsimulator:PVSimulator"},
     "Grid": {"python": "mosaik_components.pandapower:Simulator"},
     "Output": {"python": "mosaik.basic_simulators:OutputSimulator"},
+    "Profits": {"python": "profits_simulator:Simulator"},
 }
 # end
 
@@ -22,6 +22,7 @@ with mosaik.World(SIM_CONFIG) as world:
         "PV", sim_id="PV", step_size=900, start_date="2023-06-01 12:00:00"
     )
     gridsim = world.start("Grid", sim_id="Grid", step_size=900)
+    profitssim = world.start("Profits")
     outputsim = world.start("Output")
     # end
 
@@ -30,9 +31,10 @@ with mosaik.World(SIM_CONFIG) as world:
     pvs = pvsim.PV.create(
         50, area=10, latitude=53.14, efficiency=0.5, el_tilt=32.0, az_tilt=0.0
     )
+    pv_profit_eids = [f"Profit-for-{pv.eid}" for pv in pvs]
+    pv_profits = profitssim.PVProfits.create(len(pv_profit_eids), eid=pv_profit_eids)
     # end
     grid = gridsim.Grid(network_function="create_cigre_network_lv")
-    pprint(grid)
     # end
 
     # filter buses
@@ -60,6 +62,11 @@ with mosaik.World(SIM_CONFIG) as world:
         lv_buses,
         ("P[MW]", "P_gen[MW]"),
     )
+    # end
+
+    # connect profits
+    mosaik.util.connect_zip(world, pvs, pv_profits, "P[MW]")
+    mosaik.util.connect_many_to_one(world, pv_profits, output, "profit[EUR]")
     # end
 
     # connect ext_grid
