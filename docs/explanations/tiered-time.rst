@@ -46,6 +46,7 @@ By having delays that can be combined nicely, mosaik can still assign a combined
 
 So, **tiered durations**, which is what we call the datatype of these delays, are not just a tuple of numbers representing the delay at each tier.
 They do have this, but additionally, there is an index called the **cut-off**.
+We write a tiered duration like :math:`(1, 2 | 3, 4)` with the vertical bar indicating the position of the cut-off.
 In the code, tiered durations are represented by the :class:`TieredDuration` class.
 
 When adding a tiered duration to something (a tiered time or another tiered duration), all the tiers before the cut-off are actually added to the corresponding tier of the something.
@@ -53,9 +54,17 @@ However, the tiered duration's tiers beyond the cut-off simply replace the remai
 When adding the tiered duration to a tiered time, the result is another tiered time.
 When adding two tiered durations, the result is a tiered duration, and its cut-off is the minimum cut-off of the two summands.
 
-TODO: Picture with examples
+The following is an example of the addition of two tiered durations.
+Note how the the last two tiers of the result are simply given by the last two components of the second summand, as they lie after the second summand's cut-off.
+The result has the length of the second summand; however, in this case, the result's cut-off is determined by the first summand, as it has the smaller cut-off.
 
-The addition of tiered durations is associative (and the duration of all zeros and a maximal cut-off is a neutral), but it is not commutative.
+.. math::
+
+     & ~( & 10 & , & ~20 & | & ~30 & , & ~40 & ) & \\
+   + & ~( &  1 & , &  ~2 & , &  ~3 & | &   4 & , & ~5) \\
+   = & ~( & 11 & , & ~22 & | & ~33 & , &   4 & , &  5)
+
+The addition of tiered durations is associative (and the duration of all zeros and a maximal cut-off is the neutral element), but it is not commutative.
 
 Tiered durations can be ordered in a limited way.
 Namely, tiered duration :math:`u` is shorter than tiered duration :math:`v` if it is either lexicographically smaller in the part before either of them is cut off, or if it is smaller lexicographically overall *and* its cut-off is smaller.
