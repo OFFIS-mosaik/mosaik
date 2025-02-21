@@ -22,7 +22,7 @@ with mosaik.World(SIM_CONFIG) as world:
         "PV", sim_id="PV", step_size=900, start_date="2023-06-01 12:00:00"
     )
     gridsim = world.start("Grid", sim_id="Grid", step_size=900)
-    profitssim = world.start("Profits")
+    profitssim = world.start("Profits", price=100)
     outputsim = world.start("Output")
     # end
 

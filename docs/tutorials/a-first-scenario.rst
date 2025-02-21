@@ -166,11 +166,9 @@ So we have an entity ``grid`` that represents the grid in its entirety.
 It has children, representing all the elements in that grid.
 They can be accessed via ``grid.children`` and if you print this, you will get a long list of objects each looking like this:
 
-TODO: This output format has changed
-
 .. code-block::
 
-   Entity('Grid', 'Bus-0', 'Grid', Bus, [], <mosaik.simmanager.LocalProcess object at 0x7fc60bdd2b60>)
+   Entity(full_id='Grid.Bus-0', model_mock=<mosaik.async_scenario.AsyncModelMock object at 0x76c35ba01350>, children=[])
 
 In order, each object’s fields are:
 

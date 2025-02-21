@@ -9,8 +9,10 @@ META: Meta = {
         "PVProfits": {
             "public": True,
             "params": ["eid"],
+            "trigger": [],
             "non-trigger": ["P[MW]"],
-            "non-persistent": ["profits[EUR]"],
+            "persistent": [],
+            "non-persistent": ["profit[EUR]"],
         }
     },
 }
@@ -83,6 +85,6 @@ class Simulator(mosaik_api_v3.Simulator):
     def get_data(self, outputs: OutputRequest) -> OutputData:
         data: OutputData = {}
         for eid in outputs:
-            data[eid]["profits[EUR]"] = self.profits[eid]
+            data[eid] = {"profit[EUR]": self.profits[eid]}
             self.profits[eid] = None
         return data

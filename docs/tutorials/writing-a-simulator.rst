@@ -261,8 +261,7 @@ We store these profits in ``self.profits``, sorted by entity.
 Finally, we return ``time + self.step_size`` as the step at which we want to be called next:
 
 .. literalinclude:: code/profits_simulator.py
-   :start-at: def step
-   :end-at: return time
+   :pyobject: Simulator.step
 
 Having calculated the profits, we now need to pass them to mosaik.
 For this, there is a second method, :meth:`~Simulator.get_data`.
@@ -285,8 +284,7 @@ Then we reset them so that we don't send the same profits again later.
 (Though, due to the calling behaviour of mosaik, this should not happen, anyway.)
 
 .. literalinclude: code/profits_simulator.py
-   :start-at: def get_data
-   :end-at: return data
+   :pyobject: Simulator.get_data
 
 This concludes the writing of our toy simulator.
 When you are implementing an actual simulator, there are a couple of additional topics that might be of interest to you:
