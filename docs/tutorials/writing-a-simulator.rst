@@ -78,7 +78,7 @@ As we want to use both measurements and events in our simulator, our simulator t
 To be able to track each PV system individually, we will package the profit tracking for one such system into an entity, which we will name *PVProfits*.
 For the input attribute, we choose the name *P[MW]*.
 This lines up nicely with the name of the output attribute of our PV simulator, so connections in the scenario can be written more concisely.
-We will call the output *profits[EUR]*.
+We will call the output *profit[EUR]*.
 (We could technically use the € symbol, but that would make things harder to type for people with non-European keyboards.)
 
 Finally, we need to decide which parts of our simulator should be configurable.
@@ -102,7 +102,7 @@ The key *params* lists the parameters of our simulator.
 (These are the names of the values that the user can or must provide when creating entities of this model.)
 
 We list the attributes (the inputs and outputs that our simulator receives and sends *during* the simulation) under the keys *non-trigger* (for measurement inputs) and *non-persistent* (for event outputs).
-The keys *trigger* and *persistent* (for event inputs and measurement outputs, respectively) would also be possible.
+We also need to specfy the keys *trigger* and *persistent* (for event inputs and measurement outputs, respectively), but both of them are simply empty lists, as our simulator has no such entities.
 
 You might have noticed that we didn't specify how to give the energy price anywhere here.
 This is a small wart in mosaik API: the way it is set up, parameters to the simulator itself (as opposed to its entities) need to be transmitted before the simulator has a chance to reply with its meta.
@@ -287,13 +287,6 @@ Then we reset them so that we don't send the same profits again later.
    :pyobject: Simulator.get_data
 
 This concludes the writing of our toy simulator.
-When you are implementing an actual simulator, there are a couple of additional topics that might be of interest to you:
-
-- To learn more about the distinction between measurements and events in mosaik, see :doc:`/explanations/measurements-and-events`.
-- For efficient simulators with trigger inputs (i.e., events as inputs), you often need to know how far you can advance without potentially getting interrupted. See :doc:`/how-tos/max-advance` for more on this.
-- If your simulator communicates with other simulators at a high frequency (either to perform a joint convergence algorithm, or because it is implementing a control algorith that needs to communicate with other units), you might want to learn about same-time loops and :doc:`/explanations/tiered-time`.
-- This tutorial uses mosaik's simulator API for Python.
-  To learn more about which other simulator APIs exist, and for the necessary information to implement the simulator API for new programming languages, see :doc:`/mosaik-api/index`.
 
 
 Adapting our scenario
@@ -324,3 +317,18 @@ Finally, we connect the PV systems to our profit simulator, and the profit simul
 .. literalinclude:: code/scenario_2.py
    :start-after: # connect profits
    :end-before: # end
+
+
+Where to go from here
+=====================
+
+When you are implementing an actual simulator, there are a couple of additional topics that might be of interest to you:
+
+- To learn more about the distinction between measurements and events in mosaik, see :doc:`/explanations/measurements-and-events`.
+- For efficient simulators with trigger inputs (i.e., events as inputs), you often need to know how far you can advance without potentially getting interrupted. See :doc:`/how-tos/max-advance` for more on this.
+- If your simulator communicates with other simulators at a high frequency (either to perform a joint convergence algorithm, or because it is implementing a control algorith that needs to communicate with other units), you might want to learn about same-time loops and :doc:`/explanations/tiered-time`.
+- This tutorial uses mosaik's simulator API for Python.
+  To learn more about which other simulator APIs exist, and for the necessary information to implement the simulator API for new programming languages, see :doc:`/mosaik-api/index`.
+
+If you have questions about any of this (or anything else concerning mosaik), feel free to contact us on `GitHub discussions <https://github.com/orgs/OFFIS-mosaik/discussions>`_.
+All levels of questions are welcome.
