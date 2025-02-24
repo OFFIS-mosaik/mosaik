@@ -76,7 +76,7 @@ In fact, there can be as many minimal elements as there are tiers in the tiered 
 For this reason, mosaik sometimes need to store not just one tiered duration for a connection, but several.
 (As there are rarely more than 2 or 3 tiers, this is still manageable.)
 For bookeeping, we have the :class:`MinimalDurations` class.
-It just stores the minimal elements of all those added to it.
-For example, if you add :math:`(0 | 2)` and :math:`(0, 1|)`, both will be stored as they are incomparable.
-If you try to add :math:`(0 | 3)`, nothing will happens, as it is bigger than the already-included :math:`(0 | 2)`.
-And finally, if you add :math:`(0 | 0)`, it will replace both elements, as it is smaller than either of them.
+It just stores the minimal elements of all those inserted into it.
+For example, if you insert :math:`(0 | 2)` and :math:`(0, 1|)`, both will be stored as they are incomparable.
+If you try to insert :math:`(0 | 3)`, nothing will happens, as it is bigger than the already-included :math:`(0 | 2)`.
+And finally, if you insert :math:`(0 | 0)`, it will replace both elements, as it is smaller than either of them.

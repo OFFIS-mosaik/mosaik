@@ -369,7 +369,8 @@ async def test_step(world: World):
     )
 
 
-# TODO: Test also for output_time if 'time' is indicated by event-based sims
+# TODO: Test also for output_time if 'time' is indicated by event-based
+# sims
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "world, cache", [("time-based", True), ("event-based", False)], indirect=["world"]
