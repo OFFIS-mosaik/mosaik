@@ -2,8 +2,8 @@
 Scenario 23:
    A → B → C
 
-This scenario tests for a deadlock caused by lazy_stepping if event-based
-successor is not triggered.
+This scenario tests for a deadlock caused by lazy_stepping if
+event-based successor is not triggered.
 """
 
 import pytest
