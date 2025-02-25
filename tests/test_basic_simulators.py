@@ -21,7 +21,8 @@ def test_basic_simulators():
     world = mosaik.World(SIM_CONFIG)
 
     def sample_function(time: int) -> str:
-        # This function takes a Time object as an argument and returns a string.
+        """This function takes zhe time as an argument and returns a
+        string."""
         return f"The time is {time}"
 
     # Start simulators

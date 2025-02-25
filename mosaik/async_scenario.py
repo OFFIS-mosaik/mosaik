@@ -2,7 +2,7 @@
 This module provides the async interface for users to create simulation
 scenarios for mosaik. For a version that handles the asynchronicity
 itself (but cannot be used within an existing event loop), see
-scenario.py.
+:py:mod:`mosaik.scenario`.
 
 The :class:`AsyncWorld` holds all necessary data for the simulation and
 allows the user to start simulators. It provides a
@@ -99,6 +99,8 @@ base_config: _MosaikConfigTotal = {
 SENTINEL = object()
 """Sentinel for initial data call (we can't  use None as the user might
 want to supply that value.)
+
+:meta private:
 """
 
 
@@ -134,9 +136,10 @@ class ConnectModel(ModelOptionals):
 
 class CmdModel(ModelOptionals):
     cmd: str
-    """The command to start this simulator. String %(python)s will be replaced
-    by the python command used to start this scenario, %(addr)s will be replaced
-    by the `host:port` combination to which the simulator should connect."""
+    """The command to start this simulator. String %(python)s will be
+    replaced by the python command used to start this scenario, %(addr)s
+    will be replaced by the `host:port` combination to which the
+    simulator should connect."""
 
 
 SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
@@ -205,15 +208,15 @@ class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start`) and
-    manages the simulator instances.
+    It provides a method to start a simulator process (:meth:`start`)
+    and manages the simulator instances.
 
-    You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start`
-    for more details.
+    You have to provide a ``sim_config`` which tells the world which
+    simulators are available and how to start them. This will be stored
+    as :attr:`sim_config`; see there for details.
 
-    *mosaik_config* can be a dict or list of key-value pairs to set addional
-    parameters overriding the defaults::
+    *mosaik_config* can be a dict or list of key-value pairs to set
+    additional parameters overriding the defaults::
 
         {
             'addr': ('127.0.0.1', 5555),
@@ -221,16 +224,17 @@ class AsyncWorld:
             'stop_timeout': 2,   # seconds
         }
 
-    Here, *addr* is the network address that mosaik will bind its socket to.
-    *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
-    starting/stopping external simulator processes.
+    Here, *addr* is the network address that mosaik will bind its socket
+    to. *start_timeout* and *stop_timeout* specifiy a timeout (in
+    seconds) for starting/stopping external simulator processes.
 
-    If *execution_graph* is set to ``True``, an execution graph will be created
-    during the simulation. This may be useful for debugging and testing. Note,
-    that this increases the memory consumption and simulation time.
+    If *execution_graph* is set to ``True``, an execution graph will be
+    created during the simulation. This may be useful for debugging and
+    testing. Note that this increases the memory consumption and
+    simulation time.
 
     We recommend that you use ``AsyncWorld`` in an ``async with`` block
-    like so:
+    like so::
 
         async with AsyncWorld(SIM_CONFIG) as world:
             # call setup methods on world
@@ -244,13 +248,42 @@ class AsyncWorld:
 
     sim_config: SimConfig
     """The config dictionary that tells mosaik how to start a simulator.
+
+    The sim config is a dictionary with one entry for every simulator.
+    The entry itself tells mosaik how to start the simulator::
+
+        {
+            'ExampleSimA': {
+                'python': 'example_sim.mosaik:ExampleSim',
+            },
+            'ExampleSimB': {
+                'cmd': 'example_sim %(addr)s',
+                'cwd': '.',
+            },
+            'ExampleSimC': {
+                'connect': 'host:port',
+            },
+        }
+
+    *ExampleSimA* is a pure Python simulator. Mosaik will import the
+    module ``example_sim.mosaik`` and instantiate the class
+    ``ExampleSim`` to start the simulator.
+
+    *ExampleSimB* would be started by executing the command
+    *example_sim* and passing the network address of mosaik das command
+    line argument. You can optionally specify a *current working
+    directory*. It defaults to ``.``.
+
+    *ExampleSimC* can not be started by mosaik, so mosaik tries to
+    connect to it.
     """
     config: MosaikConfigTotal
     """The config dictionary for general mosaik settings."""
     until: int  # type: ignore  # set in run
     """The time until which this simulation will run."""
     rt_factor: Optional[float]  # type: ignore  # set in run
-    """The number of real-time seconds corresponding to one mosaik step."""
+    """The number of real-time seconds corresponding to one mosaik step.
+    """
 
     time_resolution: float
     """The number of seconds that correspond to one mosaik time step in
@@ -303,7 +336,8 @@ class AsyncWorld:
         if configure_logging:
             logger.enable("mosaik")
 
-            # Redirect warnings to the logging system instead of sys.stderr
+            # Redirect warnings to the logging system instead of
+            # sys.stderr
             def user_warning(message, category, filename, lineno, file=None, line=None):
                 logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
 
@@ -549,31 +583,36 @@ class AsyncWorld:
         """
         Connect the *src* entity to *dest* entity.
 
-        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
-        *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
-        you can optionally only pass one of them as a single string.
+        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple
+        in *attr_pairs*. If *src_attr* and *dest_attr* have the same
+        name, you you can optionally only pass one of them as a single
+        string.
 
-        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
-        the same simulator instance, if at least one (src. or dest.) attribute
-        in *attr_pairs* does not exist, or if the connection would introduce
-        a cycle in the data-flow (e.g., A → B → C → A).
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities
+        share the same simulator instance, if at least one (src. or
+        dest.) attribute in *attr_pairs* does not exist, or if the
+        connection would introduce a cycle in the data-flow (e.g.,
+        A → B → C → A).
 
-        If the *dest* simulator may make asynchronous requests to mosaik to
-        query data from *src* (or set data to it), *async_requests* should be
-        set to ``True`` so that the *src* simulator stays in sync with *dest*.
+        If the *dest* simulator may make asynchronous requests to mosaik
+        to query data from *src* (or set data to it), *async_requests*
+        should be set to ``True`` so that the *src* simulator stays in
+        sync with *dest*.
 
-        An alternative to asynchronous requests are time-shifted connections.
-        Their data flow is always resolved after normal connections so that
-        cycles in the data-flow can be realized without introducing deadlocks.
-        For such a connection *time_shifted* should be set to ``True`` and
-        *initial_data* should contain a dict with input data for the first
-        simulation step of the receiving simulator.
+        An alternative to asynchronous requests are time-shifted
+        connections. Their data flow is always resolved after normal
+        connections so that cycles in the data-flow can be realized
+        without introducing deadlocks. For such a connection
+        *time_shifted* should be set to ``True`` and *initial_data*
+        should contain a dict with input data for the first simulation
+        step of the receiving simulator.
 
-        An alternative to using async_requests to realize cyclic data-flow
-        is given by the time_shifted kwarg. If set to ``True`` it marks the
-        connection as cycle-closing (e.g. C → A). It must always be used with
-        initial_data specifying a dict with the data sent to the destination
-        simulator at the first step (e.g. *{'src_attr': value}*).
+        An alternative to using async_requests to realize cyclic
+        data-flow is given by the time_shifted kwarg. If set to ``True``
+        it marks the connection as cycle-closing (e.g. C → A). It must
+        always be used with initial_data specifying a dict with the data
+        sent to the destination simulator at the first step (e.g.
+        *{'src_attr': value}*).
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
@@ -617,7 +656,8 @@ class AsyncWorld:
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
-        Set an initial step for simulator *sid* at time *time* (default=0).
+        Set an initial step for simulator *sid* at time *time*
+        (default=0).
         """
         sim = self.sims[sid]
         sim.next_steps = [TieredTime(time) + sim.from_world_time]
@@ -628,11 +668,12 @@ class AsyncWorld:
         *attributes: Attr,
     ) -> Dict[Entity, Dict[Attr, Any]]:
         """
-        Get and return the values of all *attributes* for each entity of an
-        *entity_set*.
+        Get and return the values of all *attributes* for each entity of
+        an *entity_set*.
 
-        The return value is a dict mapping the entities of *entity_set* to
-        dicts containing the values of each attribute in *attributes*::
+        The return value is a dict mapping the entities of *entity_set*
+        to dicts containing the values of each attribute in
+        *attributes*::
 
             {
                 Entity(...): {
@@ -685,12 +726,17 @@ class AsyncWorld:
         print_progress: Union[bool, Literal["individual"]] = False,
         lazy_stepping: bool = True,
     ):
-        """Start the simulation until the simulation time *until* is
-        reached.
+        """Start the simulation and run it until the simulation time
+        ``until`` is reached.
 
-        Before this method returns, it stops all simulators and closes
-        mosaik's server socket. So this method should only be called
-        once.
+        As mosaik has no way of resetting simulators to their initial
+        state, this method can only be called once.
+
+        Unlike its counterpart :meth:`~mosaik.scenario.World.run` in the
+        synchronous :class:`~mosaik.scenario.World`, this method will
+        not automatically close the connection to connected simulators,
+        even outside of a ``with`` block. You need to call
+        :meth:`shutdown` manually afterwards (or use a ``with`` block).
 
         :param until: The end of the simulation in mosaik time steps
             (exclusive).
@@ -960,14 +1006,16 @@ class ExtraMethodsProxy:
 
 class AsyncModelFactory:
     """
-    This is a facade for a simulator *sim* that allows the user to create
-    new model instances (entities) within that simulator.
+    This is a facade for a simulator *sim* that allows the user to
+    create new model instances (entities) within that simulator.
 
-    For every model that a simulator publicly exposes, the ``ModelFactory``
-    provides a :class:`ModelMock` attribute that actually creates the entities.
+    For every model that a simulator publicly exposes, the
+    :class:`AsyncModelFactory` provides a :class:`AsyncModelMock`
+    attribute that actually creates the entities.
 
-    If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
+    If you access an attribute that is not a model or if the model is
+    not marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError`
+    is raised.
     """
 
     type: Literal["event-based", "time-based", "hybrid"]
@@ -1052,25 +1100,27 @@ class AsyncModelFactory:
         """
         Validate the structure and contents of an output dictionary.
 
-        This method checks that the entities and attributes in the output
-        dictionary are valid based on the simulator's internal state. If any
-        entity in the output dictionary was not created during initialization,
-        or if any attribute is not part of the entity's model's output attributes,
-        a warning is issued to notify of potential errors in the simulator's
+        This method checks that the entities and attributes in the
+        output dictionary are valid based on the simulator's internal
+        state. If any entity in the output dictionary was not created
+        during initialization, or if any attribute is not part of the
+        entity's model's output attributes, a warning is issued to
+        notify of potential errors in the simulator's
         :meth:`~Simulator.get_data` method.
 
-        :param eid_dict: A dictionary of output data, where keys are entity IDs
-            and values are dictionaries of attributes and their corresponding
-            data.
-        :raises UserWarning: If an entity ID in the output dictionary does not
-            correspond to a known entity, or if an attribute is not part of the
-            entity's model's defined output attributes.
+        :param eid_dict: A dictionary of output data, where keys are
+            entity IDs and values are dictionaries of attributes and
+            their corresponding data.
+        :raises UserWarning: If an entity ID in the output dictionary
+            does not correspond to a known entity, or if an attribute is
+            not part of the entity's model's defined output attributes.
         """
         for eid in eid_dict:
             if eid not in self.entities.keys():
                 warnings.warn(
                     f"Simulator {self._sid} returned data for the entity {eid} which "
-                    "was never created. This is likely an error in its get_data method.",
+                    "was never created. This is likely an error in its get_data "
+                    "method.",
                     UserWarning,
                 )
             else:
@@ -1177,12 +1227,13 @@ def parse_attrs(
 class AsyncModelMock(object):
     """
     Instances of this class are exposed as attributes of
-    :class:`ModelFactory` and allow the instantiation of simulator models.
+    :class:`ModelFactory` and allow the instantiation of simulator
+    models.
 
-    You can *call* an instance of this class to create exactly one entity:
-    ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
-    method to create multiple entities with the same set of parameters at once:
-    ``sim.ModelName.create(3, x=23)``.
+    You can *call* an instance of this class to create exactly one
+    entity: ``sim.ModelName(x=23)``. Alternatively, you can use the
+    :meth:`create` method to create multiple entities with the same set
+    of parameters at once: ``sim.ModelName.create(3, x=23)``.
     """
 
     name: ModelName
@@ -1238,12 +1289,12 @@ class AsyncModelMock(object):
 
     async def create(self, num: int, **model_params: Any):
         """
-        Create *num* entities with the specified *model_params* and return
-        a list with the entity dicts.
+        Create *num* entities with the specified *model_params* and
+        return a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
-        to every entity ID to make them globally unique.
+        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is
+        prepended to every entity ID to make them globally unique.
         """
         self._check_params(**model_params)
 
@@ -1317,7 +1368,8 @@ class AsyncModelMock(object):
 
 class Entity(object):
     """
-    An entity represents an instance of a simulation model within mosaik.
+    An entity represents an instance of a simulation model within
+    mosaik.
     """
 
     __slots__ = ["sid", "eid", "sim_name", "model_mock", "children", "extra_info"]

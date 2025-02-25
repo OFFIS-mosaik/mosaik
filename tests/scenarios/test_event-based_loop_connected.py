@@ -1,7 +1,8 @@
 """
-This scenario consists of two event-based simulators in a weakly-resolved loop
-with a connected time-based simulator. This used to produce deadlocks in the
-scheduler when events where scheduled close to world.until.
+This scenario consists of two event-based simulators in a
+weakly-resolved loop with a connected time-based simulator. This used to
+produce deadlocks in the scheduler when events where scheduled close to
+world.until.
 
   A ⇄ B → C
 

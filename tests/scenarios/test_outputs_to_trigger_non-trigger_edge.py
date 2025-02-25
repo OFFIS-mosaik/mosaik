@@ -1,9 +1,9 @@
 """
-In this scenario we have two simulators, the first simulator has two outputs,
-one is connected to the trigger input and one is connected to the
-non-trigger input of the other simulator. Then an output of the first simulator
-triggers on the second attribute of the other simulator, although the input is
-non-trigger.
+In this scenario we have two simulators, the first simulator has two
+outputs, one is connected to the trigger input and one is connected to
+the non-trigger input of the other simulator. Then an output of the
+first simulator triggers on the second attribute of the other simulator,
+although the input is non-trigger.
 """
 
 import pytest

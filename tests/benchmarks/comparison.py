@@ -5,9 +5,10 @@ import networkx as nx
 
 def remove_time_stamps(graph):
     """
-    The execution graph contains data about the execution time, which will be removed here for comparison.
+    The execution graph contains data about the execution time, which
+    will be removed here for comparison.
 
-    @param graph: the graph to remove timestamps
+    :param graph: the graph to remove timestamps
     """
     nodes = list(graph.nodes(data=True))
     for node in nodes:
@@ -19,9 +20,10 @@ def remove_time_stamps(graph):
 
 def remove_ids_and_labels(graph):
     """
-    During saving the graph to file some elements are added, which will be removed here.
+    During saving the graph to file some elements are added, which will
+    be removed here.
 
-    @param graph: the graph to remove ids and labels
+    :param graph: the graph to remove ids and labels
     """
     for item in graph.adj:
         for item2 in graph.adj[item]:
@@ -36,9 +38,10 @@ def remove_ids_and_labels(graph):
 
 def fix_inputs(graph):
     """
-    The inputs dictionary is stored as string and has to be converted to dict again.
+    The inputs dictionary is stored as string and has to be converted to
+    dict again.
 
-    @param graph: the graph to be fixed
+    :param graph: the graph to be fixed
     """
     nodes = list(graph.nodes(data=True))
     for node in nodes:
@@ -50,8 +53,9 @@ def write_exeuction_graph(world, scenario_file_name):
     """
     Write the execution_graph of a world to file for later comparison.
 
-    @param world: the containing execution_graph of this world will be written to file
-    @param scenario_file_name: file name for storing the execution graph.
+    :param world: the containing execution_graph of this world will be
+        written to file
+    :param scenario_file_name: file name for storing the execution graph
     """
     remove_time_stamps(world.execution_graph)
     nx.write_gexf(world.execution_graph, scenario_file_name.replace(".py", ".gexf"))
@@ -59,11 +63,13 @@ def write_exeuction_graph(world, scenario_file_name):
 
 def compare_execution_graph(world, scenario_file_name):
     """
-    Compares the execution graph from a file and the provided world to check if the simulation resulted in the
-    expected results.
+    Compares the execution graph from a file and the provided world to
+    check if the simulation resulted in the expected results.
 
-    @param world: world object with the execution graph written (debug=True) to compare
-    @param scenario_file_name: file name to the old execution graph to compare the simulation results with
+    :param world: world object with the execution graph written
+        (debug=True) to compare
+    :param scenario_file_name: file name to the old execution graph to
+        compare the simulation results with
     """
     remove_time_stamps(world.execution_graph)
 

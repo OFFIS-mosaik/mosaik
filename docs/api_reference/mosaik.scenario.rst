@@ -8,11 +8,6 @@
 
 .. autodata:: SimConfig
 
-.. autotypeddict:: PythonModel
-
-.. autotypeddict:: ConnectModel
-
-.. autotypeddict:: CmdModel
 
 .. autoclass:: World
    :members:

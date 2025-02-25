@@ -22,7 +22,7 @@ def print_greetings():
          \033[35m\\____/\033[33m      \\\033[31m____/\033[0m         OS: {get_os()}
               \033[33m\\      /\033[0m            Docs: https://mosaik.readthedocs.io/en/{mosaik_version}/
                \033[33m\\____/\033[0m     Get in touch: https://github.com/orgs/OFFIS-mosaik/discussions
-        """
+        """  # noqa: E501
     print(dedent(greetings), file=sys.stderr)  # noqa: T201
 
 

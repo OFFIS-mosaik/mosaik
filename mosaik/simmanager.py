@@ -1,11 +1,11 @@
 """
-The simulation manager is responsible for starting simulation processes and
-shutting them down. It also manages the communication between mosaik and the
-processes.
+The simulation manager is responsible for starting simulation processes
+and shutting them down. It also manages the communication between mosaik
+and the processes.
 
 It is able to start pure Python simulators in-process (by importing and
-instantiating them), to start external simulation processes and to connect to
-already running simulators and manage access to them.
+instantiating them), to start external simulation processes and to
+connect to already running simulators and manage access to them.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
 
 
 class MosaikConfigTotal(TypedDict):
-    """A total version for :cls:`MosaikConfig` for internal use."""
+    """A total version for :class:`MosaikConfig` for internal use."""
 
     addr: Tuple[str, int | None]
     start_timeout: float
@@ -95,52 +95,25 @@ async def start(
     sim_params: Dict[str, Any],
 ) -> Proxy:
     """
-    Start the simulator *sim_name* based on the configuration im
-    *world.sim_config*, give it the ID *sim_id* and pass the time_resolution
-    and the parameters of the dict *sim_params* to it.
+    Start the simulator ``sim_name`` based on the configuration in
+    :attr:`world.sim_config
+    <mosaik.async_scenario.AsyncWorld.sim_config>`,
+    give it the ID ``sim_id`` and pass the ``time_resolution`` and the
+    parameter dict ``sim_params`` to it.
 
-    The sim config is a dictionary with one entry for every simulator. The
-    entry itself tells mosaik how to start the simulator::
+    :param world: the :class:`~mosaik.async_scenario.AsyncWorld` for the
+        simulation
+    :param sim_name: the name of the simulator in
+        :attr:`world.sim_config
+        <mosaik.async_scenario.AsyncWorld.sim_config>`
+    :param sim_id: the ID of this simulator instance
+    :param time_resolution: the number of seconds corresponding to one
+        mosaik time steps
+    :param sim_params: the additional keyword arguments given by the
+        user when starting this simulator
 
-        {
-            'ExampleSimA': {
-                'python': 'example_sim.mosaik:ExampleSim',
-            },
-            'ExampleSimB': {
-                'cmd': 'example_sim %(addr)s',
-                'cwd': '.',
-                'auto_terminate': True,
-            },
-            'ExampleSimC': {
-                'connect': 'host:port',
-            },
-        }
-
-    *ExampleSimA* is a pure Python simulator. Mosaik will import the module
-    ``example_sim.mosaik`` and instantiate the class ``ExampleSim`` to start
-    the simulator.
-
-    *ExampleSimB* would be started by executing the command *example_sim* and
-    passing the network address of mosaik das command line argument. You can
-    optionally specify a *current working directory*. It defaults to ``.``.
-    You can also specify whether mosaik should attempt to terminate the
-    process at the end of the simulation using the *auto_terminate*
-    field. This defaults to ``True``.
-
-    *ExampleSimC* can not be started by mosaik, so mosaik tries to connect to
-    it.
-
-    *time_resolution* (in seconds) is a global scenario parameter, which tells
-    the simulators what the integer time step means in seconds. Its default
-    value is 1., meaning one integer step corresponds to one second simulated
-    time.
-
-    The function returns a :class:`mosaik_api_v3.Simulator` instance.
-
-    It raises a :exc:`~mosaik.exceptions.SimulationError` if the simulator
-    could not be started.
-
-    Return a :class:`SimProxy` instance.
+    :return: the :class:`~mosaik.proxies.Proxy` representing the
+        connection to this simulator
     """
     try:
         sim_config = world.sim_config[sim_name]
@@ -149,8 +122,8 @@ async def start(
             'Simulator "%s" could not be started: Not found in sim_config' % sim_name
         )
 
-    # Try available starters in that order and raise an error if none of them
-    # matches. Default starters are:
+    # Try available starters in that order and raise an error if none of
+    # them matches. Default starters are:
     # - python: start_inproc
     # - cmd: start_proc
     # - connect: start_connect
@@ -196,13 +169,19 @@ async def start_inproc(
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
-    Import and instantiate the Python simulator *sim_name* based on its
-    config entry *sim_config*.
+    Import and instantiate the Python simulator ``sim_name`` based on
+    its config entry ``sim_config``.
 
-    Return a :class:`LocalProcess` instance.
+    :param mosaik_config: the configuration of mosaik itself
+    :param sim_name: the name of the simulator to be started
+    :param sim_config: the configuration of this specific simulator
+    :param mosaik_remote: the object used by this simulator to make
+        callbacks to mosaik
 
-    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
-    instantiated.
+    :return: the :class:`~mosaik.proxise.LocalProxy` for this simulator
+
+    :raise ~mosaik.exceptions.ScenarioError: if the simulator cannot be
+        instantiated.
     """
     try:
         mod_name, cls_name = sim_config["python"].split(":")
@@ -238,13 +217,13 @@ async def start_proc(
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
-    Start a new process for simulator *sim_name* based on its config entry
-    *sim_config*.
+    Start a new process for simulator *sim_name* based on its config
+    entry *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
-    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
-    instantiated.
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator
+    cannot be instantiated.
     """
     channel_future: asyncio.Future[Channel] = asyncio.Future()
 
@@ -264,12 +243,13 @@ async def start_proc(
         cmd = shlex.split(cmd, posix=bool(posix))
         cwd = sim_config.get("cwd", ".")
 
-        # Make a copy of the current env vars dictionary and update it with the
-        # user provided values (or an empty dict as a default):
+        # Make a copy of the current env vars dictionary and update it
+        # with the user provided values (or an empty dict as a default):
         env = dict(os.environ)
         env.update(sim_config.get("env", {}))
 
-        # CREATE_NEW_CONSOLE constant for subprocess is only available on Windows
+        # CREATE_NEW_CONSOLE constant for subprocess is only available
+        # on Windows
         creationflags: int = 0
         new_console = sim_config.get("new_console", False)
         if new_console:
@@ -291,9 +271,9 @@ async def start_proc(
                 creationflags=creationflags,
             )
         except (FileNotFoundError, NotADirectoryError) as e:
-            # This distinction has to be made due to a change in python 3.8.0.
-            # It might become unecessary for future releases supporting
-            # python >= 3.8 only.
+            # This distinction has to be made due to a change in python
+            # 3.8.0. It might become unecessary for future releases
+            # supporting python >= 3.8 only.
             if str(e).count(":") == 2:
                 eout = e.args[1]
             else:
@@ -328,13 +308,13 @@ async def start_connect(
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
     """
-    Connect to the already running simulator *sim_name* based on its config
-    entry *sim_config*.
+    Connect to the already running simulator *sim_name* based on its
+    config entry *sim_config*.
 
     Return a :class:`RemoteProcess` instance.
 
-    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator cannot be
-    instantiated.
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator
+    cannot be instantiated.
     """
     addr = sim_config["connect"]
     try:
@@ -363,12 +343,14 @@ Port: TypeAlias = Tuple[EntityId, Attr]
 @dataclass
 class PushDescription:
     """
-    Describes a connection for pushing data from one simulator to another.
+    Describes a connection for pushing data from one simulator to
+    another.
 
-    :param dest_sim: The :class:`SimRunner` instance representing the simulator
-        receiving the data.
-    :param delay: The `TieredDuration` representing the time shift (or delay)
-        applied to the data during transmission along the connection.
+    :param dest_sim: The :class:`SimRunner` instance representing the
+        simulator receiving the data.
+    :param delay: The `TieredDuration` representing the time shift (or
+        delay) applied to the data during transmission along the
+        connection.
     :param dest_port: The `Port` representing the entity-attribute pair
         for the destination in the target simulator.
     :param transform: A callable function applied to the data as it
@@ -403,8 +385,8 @@ class SimRunner:
     """
     Handler for an external simulator.
 
-    It stores its simulation state and own the proxy object to the external
-    simulator.
+    It stores its simulation state and own the proxy object to the
+    external simulator.
     """
 
     sid: SimId
@@ -446,18 +428,19 @@ class SimRunner:
     """
     pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], List[PullDescription]]
     """Output to pull in whenever this simulator performs a step.
-    The keys are the source SimRunner and the time shift, the values
-    are lists of PullDescription objects. Each
-    PullDescription specifies the source and destination
+    The keys are the source :class:`SimRunner` and the time shift, the
+    values are lists of :class:`PullDescription` objects. Each
+    :class:`PullDescription` specifies the source and destination
     entity-attribute pairs along with an optional transformation
     function applied to the data.
     """
     output_to_push: Dict[Port, List[PushDescription]]
     """This lists those connections that use the timed_input_buffer.
-    The keys are the entity-attribute pairs (Port) of this simulator, and the values
-    are lists of PushDescription objects. Each PushDescription specifies the
-    destination simulator, the entity-attribute pair for the target, and the
-    time shift occurring along the connection.
+    The keys are the entity-attribute pairs (Port) of this simulator,
+    and the values are lists of :class:`PushDescription` objects. Each
+    PushDescription specifies the destination simulator, the
+    entity-attribute pair for the target, and the time shift occurring
+    along the connection.
     """
 
     to_world_time: TieredDuration
@@ -478,9 +461,11 @@ class SimRunner:
     started: bool
 
     next_steps: List[TieredTime]
-    """The scheduled next steps this simulator will take, organized as a heap.
-    Once the immediate next step has been chosen (and the `has_next_step` event
-    has been triggered), the step is moved to `next_step` instead."""
+    """The scheduled next steps this simulator will take, organized as a
+    heap. Once the immediate next step has been chosen (and the
+    :attr:`has_next_step` event has been triggered), the step is moved
+    to :attr:`next_step` instead.
+    """
     newer_step: asyncio.Event
     next_self_step: Optional[TieredTime]
     """The next self-scheduled step for this simulator."""
@@ -488,16 +473,19 @@ class SimRunner:
     progress: Progress
     """This simulator's progress in mosaik time.
 
-    This simulator has done all its work before time `progress`, so
-    other simulator can rely on this simulator's output until this time.
+    This simulator has done all its work before time :attr:`progress`,
+    so other simulator can rely on this simulator's output until this
+    time.
     """
     last_step: TieredTime
     """The most recent step this simulator performed."""
     current_step: Optional[TieredTime]
 
     output_time: TieredTime  # type: ignore  # set on first get_data
-    """The output time associated with `data`. Usually, this will be equal to
-    `last_step` but simulators may specify a different time for their output."""
+    """The output time associated with `data`. Usually, this will be
+    equal to `last_step` but simulators may specify a different time for
+    their output.
+    """
     data: OutputData  # type: ignore  # set on first get_data
     """The newest data returned by this simulator."""
     task: asyncio.Task[None]
@@ -634,7 +622,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     async def get_progress(self) -> float:
         """
         Return the current simulation progress from
-        :attr:`~mosaik.scenario.World.sim_progress`.
+        :attr:`~mosaik.async_scenario.AsyncWorld.sim_progress`.
         """
         return self.world.sim_progress
 
@@ -659,8 +647,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                 ],
             }
 
-        If *entities* is a single string (e.g., ``sid_1.eid_0``), return a dict
-        containing all entities related to that entity::
+        If *entities* is a single string (e.g., ``sid_1.eid_0``), return
+        a dict containing all entities related to that entity::
 
             {
                 'sid_0.eid_0': {'type': 'A'},
@@ -668,8 +656,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             }
 
         If *entities* is a list of entity IDs (e.g., ``['sid_0.eid_0',
-        'sid_0.eid_1']``), return a dict mapping each entity to a dict of
-        related entities::
+        'sid_0.eid_1']``), return a dict mapping each entity to a dict
+        of related entities::
 
             {
                 'sid_0.eid_0': {
@@ -682,7 +670,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         """
         graph = self.world.entity_graph
         if entities is None:
-            # repackage NodeViews and EdgeViews to maintain compatibility
+            # repackage NodeViews and EdgeViews to maintain
+            # compatibility
             nodes_list = literal_eval(str(graph.nodes(data=True)))
             nodes_dict = {node[0]: node[1] for node in nodes_list}
 
@@ -698,18 +687,19 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
         """
         .. warning::
-            This method is deprecated and will be removed in a future release.
-            Implement cyclic data flow using time-shifted and weak connections instead.
+            This method is deprecated and will be removed in a future
+            release. Implement cyclic data flow using time-shifted and
+            weak connections instead.
 
         Return the data for the requested attributes *attrs*.
 
-        *attrs* is a dict of (fully qualified) entity IDs mapping to lists
-        of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
+        *attrs* is a dict of (fully qualified) entity IDs mapping to
+        lists of attribute names (``{'sid/eid': ['attr1', 'attr2']}``).
 
-        The return value is a dictionary, which maps the input entity IDs to
-        data dictionaries, which in turn map attribute names to their
-        respective values:
-        (``{'sid/eid': {'attr1': val1, 'attr2': val2}}``).
+        The return value is a dictionary, which maps the input entity
+        IDs to data dictionaries, which in turn map attribute names to
+        their respective values: (``{'sid/eid': {'attr1': val1, 'attr2':
+        val2}}``).
         """
         assert self.sim.is_in_step, "get_data must happen in step"
         assert self.sim.current_step is not None, "no current step time"
@@ -739,8 +729,6 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
             dep = self.world.sims[sid]
-            # assert dep.progress.value > self.sim.current_step >= dep.last_step, \
-            #    "sim progress wrong for async requests"
             dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -752,14 +740,16 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     async def set_data(self, data: Dict[FullId, Dict[Attr, Any]]):
         """
         .. warning::
-            This method is deprecated and will be removed in a future release.
-            Implement cyclic data flow using time-shifted and weak connections instead.
+            This method is deprecated and will be removed in a future
+            release. Implement cyclic data flow using time-shifted and
+            weak connections instead.
 
         Set *data* as input data for all affected simulators.
 
-        *data* is a dictionary mapping source entity IDs to destination entity
-        IDs with dictionaries of attributes and values (``{'src_full_id':
-        {'dest_full_id': {'attr1': 'val1', 'attr2': 'val2'}}}``).
+        *data* is a dictionary mapping source entity IDs to destination
+        entity IDs with dictionaries of attributes and values
+        (``{'src_full_id': {'dest_full_id': {'attr1': 'val1', 'attr2':
+        'val2'}}}``).
         """
         for src_full_id, dest in data.items():
             for full_id, attributes in dest.items():
@@ -783,15 +773,15 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
             sim.schedule_step(TieredTime(event_time))
         else:
             warnings.warn(
-                f"Event set at {event_time} by {sim.sid} is after simulation end {self.world.until} "
-                "and will be ignored.",
+                f"Event set at {event_time} by {sim.sid} is after simulation end "
+                f"{self.world.until} and will be ignored.",
                 UserWarning,
             )
 
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):
         """
-        Check if async. requests are allowed from *dest_sid* to *src_sid*
-        and raise a :exc:`ScenarioError` if not.
+        Check if async. requests are allowed from *dest_sid* to
+        *src_sid* and raise a :exc:`ScenarioError` if not.
         """
         if dest_sim not in src_sim.successors:
             raise ScenarioError(
@@ -808,14 +798,14 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
 class StarterCollection(object):
     """
-    This class provides a singleton instance of a collection of simulation
-    starters. Default starters are:
+    This class provides a singleton instance of a collection of
+    simulation starters. Default starters are:
     - python: start_inproc
     - cmd: start_proc
     - connect: start_connect
 
-    External packages may add additional methods of starting simulations by
-    adding new elements:
+    External packages may add additional methods of starting simulations
+    by adding new elements::
 
         from mosaik.simmanager import StarterCollection
         s = StarterCollection()
@@ -829,8 +819,7 @@ class StarterCollection(object):
 
     def __new__(cls) -> OrderedDict[str, Callable[..., Coroutine[Any, Any, BaseProxy]]]:
         if StarterCollection.__instance is None:
-            # Create collection with default starters (i.e., starters defined
-            # my mosaik core).
+            # These are the starters defined by mosaik itself:
             StarterCollection.__instance = collections.OrderedDict(
                 python=start_inproc, cmd=start_proc, connect=start_connect
             )
@@ -842,11 +831,11 @@ class TimedInputBuffer:
     """
     A buffer to store inputs with its corresponding *time*.
 
-    When the data is queried for a specific *step* time, all entries with
-    *time* <= *step* are added to the input_dictionary.
+    When the data is queried for a specific *step* time, all entries
+    with *time* <= *step* are added to the input_dictionary.
 
-    If there are several entries for the same connection at the same time, only
-    the most recent value is added.
+    If there are several entries for the same connection at the same
+    time, only the most recent value is added.
     """
 
     input_queue: List[Tuple[Time, int, FullId, EntityId, Attr, Any]]

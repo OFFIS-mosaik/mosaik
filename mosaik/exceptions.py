@@ -32,6 +32,20 @@ class SimulationError(Exception):
 
 
 class NonSerializableOutputsError(SimulationError):
+    """This exception is raised if a simulator started via ``"python"``
+    returns output that cannot be serialized to JSON but you try to
+    transmit this data to a simulator started via ``"cmd"`` or
+    ``"connect"``.
+
+    There are two possible resolutions:
+    - Contact the simulator author to have them change their output
+      datatypes to standard Python types that can be serialized.
+    - Start the destination simulator via ``"python"`` as well. This
+      resolution is mostly sensible if the two simulators are tightly
+      coupled and are supposed to exchange non-primitive objects
+      directly.
+    """
+
     dest: SimId
     errors: List[Tuple[str, str, str, TypeError]]
 
@@ -49,7 +63,8 @@ class NonSerializableOutputsError(SimulationError):
         return (
             f"Errors while trying to JSON-serialize inputs for {self.dest}:\n"
             + "\n".join(
-                f"- serializing output from {src} for {dest_eid}.{dest_attr}: {str(error)}"
+                f"- serializing output from {src} for {dest_eid}.{dest_attr}: "
+                f"{str(error)}"
                 for dest_eid, dest_attr, src, error in self.errors
             )
             + "\nThis is likely a problem in the source simulator(s)."
@@ -57,8 +72,13 @@ class NonSerializableOutputsError(SimulationError):
 
 
 class SimulatorError(Exception):
-    """This exception is raised if a simulator does not behave
-    correctly."""
+    """This is the supertype for exceptions raised if a simulator does
+    not behave correctly.
+
+    If you encounter one of these exceptions as a scenario author, you
+    should usually contact the auther of the simulator in question to
+    resolve the issue.
+    """
 
     simulator: str
 

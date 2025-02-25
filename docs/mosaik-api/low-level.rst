@@ -147,8 +147,8 @@ The return value *meta* is an object with meta data about the simulator::
         ]
     }
 
-The *api_version* is a string that defines which version of the mosaik API the
-simulator implements.  Since mosaik API version 2.2, the simulator's `major
+The *api_version* is a string that defines which version of the mosaik simulator API the
+simulator implements.  Since simulator API version 2.2, the simulator's `major
 version <http://semver.org/>`_ ("x", in the snippet above) has to be equal to
 mosaik's.  Mosaik will cancel the simulation if a version mismatch occurs.
 
@@ -311,7 +311,7 @@ simulator has been stepped yet.
 
 Implementing this method is optional.
 
-*Added in mosaik API version 2.2.*
+*Added in mosaik simulator API version 2.2.*
 
 
 Example

@@ -38,8 +38,8 @@ async def run(
 
     Return the final simulation time.
 
-    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed description of the
-    *rt_factor* and *rt_strict* arguments.
+    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed
+    description of the *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
 
@@ -182,10 +182,11 @@ async def rt_sleep(sim: SimRunner, world: AsyncWorld) -> None:
 
 async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     """
-    Wait until all simulators that can provide input for this simulator have run for
-    this step.
+    Wait until all simulators that can provide input for this simulator
+    have run for this step.
 
-    Also notify any simulator that is already waiting to perform its next step.
+    Also notify any simulator that is already waiting to perform its
+    next step.
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -215,17 +216,21 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
         {
             'eid': {
-                'attrname': {'src_eid_0': val_0, ... 'src_eid_n': val_n},
+                'attrname': {
+                    'src_eid_0': val_0,
+                    ...,
+                    'src_eid_n': val_n,
+                },
                 ...
             },
             ...
         }
 
-    For every entity, there is an entry in the dict and each entry is itself
-    a dict with attributes and a list of values. This is, because we may have
-    inputs from multiple simulators (e.g., different consumers that provide
-    loads for a node in a power grid) and cannot know how to aggregate that
-    data (sum, max, ...?).
+    For every entity, there is an entry in the dict and each entry is
+    itself a dict with attributes and a list of values. This is, because
+    we may have inputs from multiple simulators (e.g., different
+    consumers that provide loads for a node in a power grid) and cannot
+    know how to aggregate that data (sum, max, ...?).
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -251,7 +256,8 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     input_data = sim.timed_input_buffer.get_input(input_data, sim.current_step.time)
 
     for (src_sim, delay), entry in sim.pulled_inputs.items():
-        # Retrieve the cached output for the current step, accounting for the delay
+        # Retrieve the cached output for the current step, accounting
+        # for the delay
         cache = src_sim.get_output_for(sim.current_step.time - delay.tiers[0])
 
         # Iterate over the connections in the entry
@@ -260,12 +266,13 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
                 val = cache[single_entry.src_port[0]][single_entry.src_port[1]]
             except KeyError:
                 warnings.warn(
-                    f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did not produce "
-                    f"output on its persistent attribute {single_entry.src_port[1]} during its last "
-                    "step. However, this value is now required by simulator "
-                    f"{sim.sid}. This usually results from attributes that are marked "
-                    "persistent despite working like events. Supplying `None` for now. "
-                    "This will be an error in future versions of mosaik."
+                    f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did "
+                    "not produce output on its persistent attribute "
+                    f"{single_entry.src_port[1]} during its last step. However, this "
+                    "value is now required by simulator {sim.sid}. This usually "
+                    "results from attributes that are marked persistent despite "
+                    "working like events. Supplying `None` for now. This will be an "
+                    "error in future versions of mosaik."
                 )
                 val = None
 
@@ -296,8 +303,8 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
 def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     """
-    Checks how far *sim* can safely advance its internal time during next step
-    without causing a causality error.
+    Checks how far *sim* can safely advance its internal time during
+    next step without causing a causality error.
     """
     ancs_next_steps: List[Time] = []
     for anc_sim, distances in sim.triggering_ancestors.items():
@@ -322,11 +329,12 @@ async def step(
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
 
-    *inputs* is a dictionary, that maps entity IDs to data dictionaries which
-    map attribute names to lists of values (see :func:`get_input_data()`).
+    *inputs* is a dictionary, that maps entity IDs to data dictionaries
+    which map attribute names to lists of values (see
+    :func:`get_input_data`).
 
-    *max_advance* is the simulation time until the simulator can safely advance
-    it's internal time without causing any causality errors.
+    *max_advance* is the simulation time until the simulator can safely
+    advance it's internal time without causing any causality errors.
     """
     print(sim.current_step)
     # if sim.current_step.tiers[0] == 2000:
@@ -411,19 +419,20 @@ def validate_output_time(sim: SimRunner, output_time: int):
     """
     Validate the output time against the simulation's current state.
 
-    This function ensures that the output time is greater than or equal to
-    the simulation's last recorded time step. If the output time is earlier,
-    it raises an error, as this would indicate an invalid state for processing
-    output data.
+    This function ensures that the output time is greater than or equal
+    to the simulation's last recorded time step. If the output time is
+    earlier, it raises an error, as this would indicate an invalid state
+    for processing output data.
 
     :param sim: The `SimRunner` instance representing the simulation.
     :param output_time: The output time to validate.
-    :raises SimulationError: If the output time is less than the simulation's
-        last time step.
+    :raises SimulationError: if the output time is less than the
+        simulation's last time step.
     """
     if sim.last_step.time > output_time:
         raise SimulationError(
-            f'Output time ({output_time}) is not >= time ({sim.last_step}) for simulator "{sim.sid}".'
+            f"Output time ({output_time}) is not >= time ({sim.last_step}) for "
+            f'simulator "{sim.sid}".'
         )
 
 
@@ -432,9 +441,10 @@ def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime
     Determine the tiered time structure for the given output time.
 
     If the output time matches the current simulation step's time, the
-    current tiered time is returned. Otherwise, a new `TieredTime` object
-    is created with the specified output time as the first tier and all
-    subsequent tiers set to zero.
+    current tiered time is returned. Otherwise, a new
+    :class:`~mosaik.tiered_time.TieredTime` object is created with the
+    specified output time as the first tier and all subsequent tiers set
+    to zero.
 
     :param sim: The `SimRunner` instance representing the simulator.
     :param output_time: The desired output time.
@@ -453,23 +463,27 @@ def cache_output_data(sim: SimRunner, data: dict, output_time: int):
 
 def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
     """
-    Push output data to connected simulators, applying time shifts as needed.
+    Push output data to connected simulators, applying time shifts as
+    needed.
 
-    This function retrieves the output data for each entity and attribute
-    specified in the simulation's output mappings. The data is then forwarded
-    to the connected simulators, with time shifts applied to ensure alignment
-    with their input timelines. If a required key is missing in the data, it
-    is skipped without raising an error.
+    This function retrieves the output data for each entity and
+    attribute specified in the simulation's output mappings. The data is
+    then forwarded to the connected simulators, with time shifts applied
+    to ensure alignment with their input timelines. If a required key is
+    missing in the data, it is skipped without raising an error.
 
-    :param sim: The `SimRunner` instance representing the simulator.
+    :param sim: The :class:`~mosaik.simmanager.SimRunner` instance
+        representing the simulator.
     :param data: A dictionary of output data, where keys are entity IDs
         and attributes, and values are the corresponding output values.
-    :param output_time: The time step at which the output data is pushed.
+    :param output_time: The time step at which the output data is
+        pushed.
     """
     for (src_eid, src_attr), output_entry in sim.output_to_push.items():
         for single_output in output_entry:
             try:
-                # Retrieve the value for the current entity ID and attribute
+                # Retrieve the value for the current entity ID and
+                # attribute
                 val = data[src_eid][src_attr]
                 # Push data to connected simulators
                 single_output.dest_sim.timed_input_buffer.add(

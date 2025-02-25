@@ -5,16 +5,17 @@
 # Required
 version: 2
 
-python:
-  install:
-    - path: .
-    - requirements: docs/requirements.txt
-
 # Set the OS, Python version and other tools you might need
 build:
-  os: ubuntu-22.04
+  os: ubuntu-24.04
   tools:
     python: "3.11"
+  jobs:
+    install:
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+      - UV_PROJECT_ENVIRONMENT=$READTHEDOCS_VIRTUALENV_PATH uv sync --python 3.11 --group docs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

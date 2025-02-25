@@ -1,6 +1,6 @@
 """
-This module allows you to activate some debugging functionality that makes
-mosaik collect more data when the simulation is being executed.
+This module allows you to activate some debugging functionality that
+makes mosaik collect more data when the simulation is being executed.
 """
 
 from __future__ import annotations
@@ -70,8 +70,8 @@ def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, TieredTi
 
 def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
     """
-    Add a node for the current step and edges from all dependencies to the
-    :attr:`mosaik.scenario.World.execution_graph`.
+    Add a node for the current step and edges from all dependencies to
+    the :attr:`mosaik.scenario.World.execution_graph`.
 
     Also perform some checks and annotate the graph with the dataflows.
     """
@@ -97,10 +97,11 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
             pre_node: Optional[Tuple[str, TieredTime]] = None
             pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
-            # We check for all nodes if it is from the predecessor and it its
-            # step time is before the current step of sim. There might be cases
-            # where this simple procedure is wrong, e.g. when the pred has
-            # stepped but didn't provide the connected output.
+            # We check for all nodes if it is from the predecessor and
+            # it its step time is before the current step of sim. There
+            # might be cases where this simple procedure is wrong, e.g.
+            # when the pred has stepped but didn't provide the connected
+            # output.
             for inode in eg.nodes:
                 node_sid, itime = inode
                 if (
@@ -176,10 +177,12 @@ def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = 
         actual_pres = set(actual_graph.predecessors(node))
         expected_pres = set(expected_graph.predecessors(node))
         if actual_pres != expected_pres:
+            extraneous = ", ".join(
+                map(format_node, sorted(actual_pres - expected_pres))
+            )
+            missing = ", ".join(map(format_node, sorted(expected_pres - actual_pres)))
             predecessor_errors.append(
-                f"- {format_node(node)} ("
-                f"extraneous {', '.join(map(format_node, sorted(actual_pres - expected_pres)))}; "
-                f"missing {', '.join(map(format_node, sorted(expected_pres - actual_pres)))})"
+                f"- {format_node(node)} (extraneous {extraneous}; missing {missing})"
             )
     if predecessor_errors:
         errors.append("The following simulator invocations had incorrect sources:")

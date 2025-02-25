@@ -27,65 +27,35 @@ These external events come from a simple button click-event of a graphical user 
 Therefore, with this new mosaik 3.0 feature it is possible to do Human-in-the-Loop simulations to support human interactions.
 
 The **Odysseus tutorial** you'll learn how to connect the data-stream-management-tool
-Odysseus to mosaik. The second part shows some examples on how to use Odysseus. 
+Odysseus to mosaik. The second part shows some examples on how to use Odysseus.
 This tutorial may also be of some use when you want to connect any other component
 via ZeroMQ.
 
-The **Java API tutorial** shows you how to use the Java API. This API is intended to 
-connect simulators written in Java to mosaik. You can use the Java-API also as a 
+The **Java API tutorial** shows you how to use the Java API. This API is intended to
+connect simulators written in Java to mosaik. You can use the Java-API also as a
 RCP-Server if you want to run your Java-simulator on a separate machine.
 
-Basic tutorial
-
 .. toctree::
+   :caption: Basic tutorial
    :maxdepth: 1
 
-   examplesim
-   demo1
-   examplectrl
-   demo2
-   sametimeloops
-   set-external-events
-
-Odysseus tutorial
+   a-first-scenario
+   writing-a-simulator
 
 .. toctree::
-   :maxdepth: 1
-
-   odysseus
-   odysseus2
-
-Java API tutorial
-
-.. toctree::
+   :caption: Java API tutorial
    :maxdepth: 1
 
    tutorial_api-java
 
-Java Generics API tutorial
-
 .. toctree::
+   :caption: Java-Generics API tutorial
    :maxdepth: 1
 
    tutorial_api-java-generics
 
-Jupyter tutorial
-
 .. toctree::
-   :maxdepth: 1
-
-   jupyter_notebook
-
-Visualize scenarios
-
-.. toctree::
+   :caption: Visualization tutorial
    :maxdepth: 1
 
    graphs
-
-Connecting mosaik with Apache Superset
-
-.. toctree::
-   :maxdepth: 1
-
-   apache-superset

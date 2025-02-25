@@ -1,5 +1,6 @@
 ===============================
-``mosaik`` --- The end-user API
+``mosaik`` --- The Scenario API
 ===============================
 
 .. automodule:: mosaik
+   :members:

@@ -1,7 +1,14 @@
+:orphan:
+
 .. _demo2:
 
 Integrating a control mechanism
 ===============================
+
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
 
 The scenario that we're going to create in this part of the tutorial will
 be similar to the one we created before but incorporate the control mechanism

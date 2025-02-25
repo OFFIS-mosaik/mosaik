@@ -2,362 +2,52 @@
 Installation
 ============
 
-This guide contains detailed installation instructions for :ref:`linux`,
-:ref:`os-x` and :ref:`windows`.
+mosaik is a Python library, so you need a working installation of Python to use it.
+You might already have one, but if you don't, you will need to install Python.
+Python's official website is https://python.org.
+They also have a beginner's guide with installation instructions for different operating systems here: https://wiki.python.org/moin/BeginnersGuide/Download.
 
-It covers the installation of the mosaik framework followed by the instructions
-to install the demo.
+mosaik itself is then published on the Python Package Index *PyPI* `here <https://pypi.org/project/mosaik/>`_.
+If you have a preferred way of installing Python packages, we recommend that you keep using that.
+(Python's built-in tool ``pip``; ``uv`` (`here <https://github.com/astral-sh/uv>`_); packaging tools integrated into your text editor or IDE; Anaconda; etc.)
 
+If you are entirely new to this, we recommend that you start with virtual environments.
+They help to separate Python packages used for different projects which greatly reduces the number of versioning conflicts that you will encounter.
+A good tutorial can be found in Python's official documentation here: https://docs.python.org/3/tutorial/venv.html.
 
-.. _linux:
 
-Linux
-=====
+The mosaik demo
+===============
 
-This guide is based on *(K)ubuntu 18.04 Bionic Beaver, 64bit*.
+We have a (somewhat out-dated) demo scenario that you can try here: <https://gitlab.com/mosaik/examples/mosaik-demo>.
+Download and unpack it (or better yet, clone it with Git).
+Then, create a virtual environment in the *mosaik-demo* folder and activate it, as explaining in the official documentation we linked above.
+With the virtual environment active, install the demo's requirements by calling ``pip install -r requirements.txt``.
+Then, you can run the scenario with ``python demo.py``.
+Open a webbrowser to http://localhost:8000 to see the running simulation.
 
-Mosaik and the demo scenario require `Python`__ >= 3.8, which should be fine
-for any recent linux distribution. Note that we test mosaik only for the most
-(typically three) recent python versions though.
 
-1. We also need `pip`__, a package manager for Python packages, and
-   `virtualenv`__, which can create isolated Python environments for different
-   projects:
+Getting help
+============
 
-   .. code-block:: bash
+Sometimes things go wrong, but we are usually quite willing to help.
+The best place to ask questions is our `GitHub discussions forum`_, where we and other people might be able to answer your questions.
 
-      $ wget https://bootstrap.pypa.io/get-pip.py
-      $ sudo python get-pip.py
-      $ sudo pip install -U virtualenv
+.. _GitHub discussions forum: https://github.com/orgs/OFFIS-mosaik/discussions
 
-2. Now we need to create a virtual environment for mosaik and its dependencies.
-   The common location for venvs is under :file:`~/.virtualenvs/`:
+If you think that you have found a bug in mosaik, or if you want to propose a new feature, you can do that using our `issue tracker on GitLab`_.
+(Yes, mosaik is present on both GitHub and GitLab for historic reasons.)
+Note that our team is small and often bound by other project work, so we cannot promise that we will follow up on every feature request.
+However, we are genuinely interested in constantly improving mosaik, and every feedback helps.
 
-   .. code-block:: bash
+.. _issue tracker on GitLab: https://gitlab.com/mosaik/mosaik/-/issues
 
-      $ virtualenv -p /usr/bin/python3 ~/.virtualenvs/mosaik
-      $ source ~/.virtualenvs/mosaik/bin/activate
+Finally, if your question is not suited for a public forum, you can also reach us via e-mail at <mosaik@offis.de>.
 
-   Your command line prompt should now start with "(mosaik)" and roughly look
-   like this: ``(mosaik)user@kubuntu:~$``.
 
-3. The final step is to install mosaik:
+Working with the source
+=======================
 
-   .. code-block:: bash
-
-       (mosaik)$ pip install mosaik
-
-   Mosaik should now be installed successfully.
-
-__ https://www.python.org/
-__ https://pip.readthedocs.org/
-__ https://virtualenv.readthedocs.org/
-
-
-Running the demo
-----------------
-
-Mosaik alone is not very useful (because it needs other simulators to perform
-a simulation), so we also provide a small demo scenario and some simple
-simulators as well as a mosaik binding for `PYPOWER`__.
-
-1. PYPOWER requires *NumPy* and *SciPy*. We also need to install the revision
-   control tool *git*. You can use the packages shipped
-   with Ubuntu. We use :program:`apt-get` to install NumPy, SciPy, and h5py as 
-   well as git. By default, venvs are isolated from globally installed
-   packages. To make them visible, we also have to recreate the venv and set
-   the ``--system-site-packages`` flag:
-
-   .. code-block:: bash
-
-      $ sudo apt-get install git python3-numpy python3-scipy python3-h5py
-      $ rm -rf ~/.virtualenvs/mosaik
-      $ virtualenv -p /usr/bin/python3 --system-site-packages ~/.virtualenvs/mosaik
-      $ source ~/.virtualenvs/mosaik/bin/activate
-
-
-2. You can now clone the `mosaik-demo repository`__ into a folder where you
-   store all your code and repositories (we'll use :file:`~/Code/`):
-
-   .. code-block:: bash
-
-      (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://gitlab.com/mosaik/mosaik-demo.git ~/Code/mosaik-demo
-
-3. Now we only need to install all requirements (mosaik and the simulators) and
-   can finally run the demo:
-
-   .. code-block:: bash
-
-      (mosaik)$ cd ~/Code/mosaik-demo/
-      (mosaik)$ pip install -r requirements.txt
-      (mosaik)$ python demo.py
-
-   If no errors occur, the last command will start the demo. The web visualisation
-   shows the demo in your browser: http://localhost:8000. You can click the nodes of the 
-   topology graph to show a time series of their values. You can also drag them 
-   around to rearrange them.
-   
-   You can cancel the simulation by pressing :kbd:`Ctrl-C`.
-
-__ https://github.com/rwl/PYPOWER
-__ https://gitlab.com/mosaik/mosaik-demo
-
-
-.. _os-x:
-
-OS X
-====
-
-This guide is based on *OS X 10.11 El Capitan*.
-
-1. Mosaik and the demo scenario require `Python`__ >= 3.8. OS X only ships with
-   some outdated versions of Python, so we need to install a recent Python 2
-   and 3 first. The `recommended way`__ of doing this is with the packet manager `homebrew`__.
-   To install homebrew, we need to open a *Terminal* and execute the following command:
-
-   .. code-block:: bash
-
-      $ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-
-   The homebrew installer asks you to install the *command line developer
-   tools* for "xcode-select". Install them. When you are done, go back to the
-   terminal and press :kbd:`Enter` so that the installer continues.
-
-   If this doesn't work for you, you'll find more detailed instructions in the
-   `homebrew wiki`__.
-
-   Once the installation is successful, we can install ``python`` and
-   ``python3``:
-
-   .. code-block:: bash
-
-      $ brew install python python3
-
-   This will also install the Python package manager `pip`__.
-
-2. Next, we need `virtualenv`__ which can create isolated Python
-   environments for different projects:
-
-   .. code-block:: bash
-
-      $ pip install -U virtualenv
-
-
-3. Now we need to create a virtual environment for mosaik and its dependencies.
-   The common location for venvs is under :file:`~/.virtualenvs/`:
-
-   .. code-block:: bash
-
-      $ virtualenv -p /usr/local/bin/python3 ~/.virtualenvs/mosaik
-      $ source ~/.virtualenvs/mosaik/bin/activate
-
-   Your command line prompt should now start with "(mosaik)" and roughly look
-   like this: ``(mosaik)user@macbook:~$``.
-
-4. The final step is to install mosaik:
-
-   .. code-block:: bash
-
-       (mosaik)$ pip install mosaik
-
-   Mosaik should now be installed successfully.
-
-__ https://www.python.org/
-__ http://docs.python-guide.org/en/latest/starting/install/osx/
-__ http://brew.sh/
-__ https://github.com/Homebrew/homebrew/wiki/Installation
-__ https://pip.readthedocs.org/
-__ https://virtualenv.readthedocs.org/
-
-
-Running the demo
-----------------
-
-Mosaik alone is not very useful (because it needs other simulators to perform
-a simulation), so we also provide a small demo scenario and some simple
-simulators as well as a mosaik binding for `PYPOWER`__.
-
-1. To clone the demo repository, we need to install *git*. In order to
-   compile *NumPy*, *SciPy* and *h5py* (which are required by PYPOWER and the
-   database adapter) we also need to install *gfortran* which is included in *gcc*. You should deactivate
-   the venv for this:
-
-   .. code-block:: bash
-
-      (mosaik)$ deactivate
-      $ brew install git gcc hdf5
-      $ source ~/.virtualenvs/mosaik/bin/activate
-
-2. For NumPy and SciPy we build binary `wheel`__ packages that we can later
-   reuse without re-compiling everything. We'll store these *wheels* in
-   :file:`~/wheelhouse/`:
-
-   .. code-block:: bash
-
-      (mosaik)$ pip install wheel
-      (mosaik)$ pip wheel numpy
-      (mosaik)$ pip install wheelhouse/numpy-1.10.1-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
-      (mosaik)$ pip wheel scipy
-      (mosaik)$ pip install wheelhouse/scipy-0.16.0-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
-      (mosaik)$ pip wheel h5py
-      (mosaik)$ pip install wheelhouse/h5py-2.5.0-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl
-      
-.. note::
-    The file names of the *wheels* (\*.whl-files) may change when version-numbers 
-    change. Please check the output of *pip install* or the directory :file:`~/wheelhouse/`
-    for the exact file names.
-      
-2. You can now clone the `mosaik-demo repository`__ into a folder where you
-   store all your code and repositories (we'll use :file:`~/Code/`):
-
-   .. code-block:: bash
-
-      (mosaik)$ mkdir ~/Code
-      (mosaik)$ git clone https://gitlab.com/mosaik/mosaik-demo.git ~/Code/mosaik-demo
-
-3. Now we only need to install all requirements (mosaik and the simulators) and
-   can finally run the demo:
-
-   .. code-block:: bash
-
-      (mosaik)$ cd ~/Code/mosaik-demo/
-      (mosaik)$ pip install -r requirements.txt
-      (mosaik)$ python demo.py
-
-   If no errors occur, the last command will start the demo. The web visualisation
-   shows the demo in your browser: http://localhost:8000. You can click the nodes of the 
-   topology graph to show a time series of their values. You can also drag them 
-   around to rearrange them.
-
-   You can cancel the simulation by pressing :kbd:`Ctrl-C`.
-
-__ https://github.com/rwl/PYPOWER
-__ https://wheel.readthedocs.org/
-__ https://gitlab.com/mosaik/mosaik-demo
-
-
-.. _windows:
-
-Windows
-=======
-
-This guide is based on *Windows 10, 64bit*.
-
-1. Mosaik and the demo scenario require `Python`__ >= 3.8. By default, it will
-   offer you a 32bit installer. You can find the *Windows x86-64 MSI installer*
-   `here`__.
-
-   1. When the download finished, double-click the installer.
-
-   2. Select *Install for all users* and click *Next >*.
-
-   3. The default installation path is okay. Click *Next >*.
-
-   4. In the *Customize Python* page, click on the *Python* node and select
-      *Entire feature will be installed on local hard drive*. Make sure that
-      *Add python.exe to Path* is enabled. Click *Next >*.
-
-   5. When Windows asks you to allow the installation, allow the installation.
-      Wait. Click *Finish*.
-
-   This also install the Python package manager `pip`__.
-
-2. We also need `virtualenv`__ which can create isolated Python environments
-   for different projects.
-
-   Open a terminal window: Press the :kbd:`Windows` key (or click on the start
-   menu) and enter ``cmd``. Press :kbd:`Enter`. Your terminal prompt should
-   look like ``C:\Users\yourname>``. Execute the following command to install
-   virtualenv:
-
-   .. code-block:: bat
-
-      C:\Users\yourname> pip install -U virtualenv
-
-   .. note::
-
-      If your Windows account type is *Standard User*, you need to open the
-      terminal with administarator privileges (right-click the Terminal icon,
-      then *open as Administrator*). Make then sure that you are in your user
-      directory:
-
-      .. code-block:: bat
-
-         C:\Windows\system32> cd C:\Users\yourname
-         C:\Users\yourname>
-
-3. Now we need to create a virtual environment for mosaik and its dependencies.
-   The common location for venvs is under :file:`Envs/` in your users
-   directory:
-
-   .. code-block:: bat
-
-      C:\Users\yourname> virtualenv -p path\to\python.exe Envs\mosaik
-      
-
-   To activate the virtual environment use the following command:
-
-   .. code-block:: bat
-
-      C:\Users\yourname> Envs\mosaik\Scripts\activate
-   
-   This command should also function when using the powershell, however the execution policy might need to be changed.
-
-   Your command line prompt should now start with "(mosaik)" and roughly look
-   like this: ``(mosaik) C:\Users\yourname>``.
-
-4. The final step is to install mosaik:
-
-   .. code-block:: bat
-
-       (mosaik) C:\Users\yourname> pip install mosaik
-
-   Mosaik should now be installed successfully.
-
-__ https://www.python.org/
-__ https://www.python.org/downloads/release/python-382/
-__ https://pip.readthedocs.org/
-__ https://virtualenv.readthedocs.org/
-
-
-Running the demo
-----------------
-
-Mosaik alone is not very useful (because it needs other simulators to perform
-a simulation), so we also provide a small demo scenario and some simple
-simulators as well as a mosaik binding for `PYPOWER`__.
-
-1. Download and install `git`__.
-
-   **Restart the command** prompt (as Admin if necessary and make sure you are
-   in the right directory again) and activate the virtualenv again:
-
-   .. code-block:: bat
-
-      C:\Users\yourname> Envs\mosaik\Scripts\activate
-
-2. Clone the demo repository:
-
-   .. code-block:: bat
-
-      (mosaik)C:\Users\yourname> git clone https://gitlab.com/mosaik/mosaik-demo.git
-
-3. Now we only need to install all requirements (mosaik and the simulators) and
-   can finally run the demo:
-
-   .. code-block:: bat
-
-      (mosaik)C:\Users\yourname> cd mosaik-demo
-      (mosaik)C:\Users\yourname\mosaik-demo> pip install -r requirements.txt
-      (mosaik)C:\Users\yourname\mosaik-demo> python demo.py
-
-   The web visualisation shows the demo in your browser: http://localhost:8000. 
-   You can click the nodes of the topology graph to show a timeline of their values.
-   You can also drag them around to rearrange them.
-
-   You can cancel the simulation by pressing :kbd:`Ctrl-C`. More exceptions
-   may be raised. No problem. :-)
-
-__ https://github.com/rwl/PYPOWER
-__ https://git-scm.com/downloads
+If you want to play around with mosaik's source code yourself, you can find it on GitLab `here <https://gitlab.com/mosaik/mosaik>`_, where you can also clone the repository.
+Note that we do not recommend installing mosaik this way if you just want to use it.
+Installing the package from PyPI will make it much easier to update to a new version.
