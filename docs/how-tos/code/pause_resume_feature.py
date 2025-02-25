@@ -1,3 +1,5 @@
+# Simulation set up
+
 import asyncio
 import queue
 import threading
@@ -29,8 +31,9 @@ async def start_mosaik(
     world = mosaik.AsyncWorld(SIM_CONFIG, pause_step=15000)
     world.paused = event
     pause_queue.put((event, loop))
+    # End: Simulation set up
 
-    # Start simulators
+    # Simulator set up
     output_dict = await world.start("OutputSim")
     output_model = await output_dict.Dict.create(2)
 
@@ -52,8 +55,10 @@ async def start_mosaik(
     )
 
     await world.run(until=END)
+    # End: Simulator set up
 
 
+# Keyboard input
 def on_press(key, event, loop):
     try:
         if key.char == "p":
@@ -66,8 +71,9 @@ def on_press(key, event, loop):
             print(f"[keyboard] Resumed. (After: {event.is_set() = })")
     except AttributeError:
         pass
+# End: Keyboard input
 
-
+# Start keyboard listener and mosaik in different threads
 def main():
     my_very_own_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
@@ -93,3 +99,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# End: Start keyboard listener and mosaik in different threads
