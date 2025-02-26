@@ -21,7 +21,6 @@ Here, we provide the documentation about mosaik.
    mosaik-api/index
    how-tos/index
    explanations/index
-   scenario-definition
    faq
    dev/index
    about/index
