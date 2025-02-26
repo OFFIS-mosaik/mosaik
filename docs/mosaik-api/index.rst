@@ -24,6 +24,11 @@ The figure below depicts the differences between the two API levels.
 
 Second, in the case of Python specifically, mosaik can also use simulators implementing the high-level API directly, skipping JSON and TCP entirely.
 
+.. toctree::
+   :titlesonly:
+
+   More detailed overview <overview>
+
 High-level API for Python
 =========================
 
