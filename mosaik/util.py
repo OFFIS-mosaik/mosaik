@@ -274,8 +274,8 @@ def plot_dataflow_graph(
             df_graph.add_edge(
                 pred.sid,
                 sim.sid,
-                time_shifted=delay.tiers[0] > 0,
-                weak=any(t > 0 for t in delay.tiers[1:]),
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
             )
     positions = nx.spring_layout(df_graph)
 
@@ -648,3 +648,125 @@ def _tiered_time_pos(time: TieredTime, base: float = 0.1) -> float:
         result += factor * tier
         factor *= base
     return result
+
+
+def plot_dataflow(
+    world: World,
+    file_name: str | None = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
+    return_figure: bool = True,
+    seed: int | None = None,
+    **kwargs: Any,
+) -> None | Tuple[Figure, Axes]:
+    """Creates an image visualizing the data flow graph of a mosaik
+    scenario. Using the spring layout from Matplotlib (Fruchterman-
+    Reingold force-directed algorithm) to position the nodes.
+
+    :param world: mosaik world object
+    :param file_name: a full file name including a folder to store the image
+    :param dpi: DPI for created images
+    :param format: format for created image
+    :param show_plot: whether open a window to show the plot
+    :param return_figure: return figure and axis
+    :param seed: needed to fix graph layout
+    :param **kwargs: extra parameters will be passed to fig.savefig()
+    :return: ``None`` but image file will be written to ``file name`` if given.
+        It returns tuple with figure and axis instead if return_figure is True
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import ConnectionPatch
+
+    # Recreate the df_graph for plotting. There might be additional
+    # useful information to be extracted from the SimRunners.
+    df_graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, delay in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
+            )
+    positions = nx.spring_layout(df_graph, seed=seed)
+
+    fig, ax = plt.subplots()
+
+    for node in df_graph.nodes:
+        # Draw a dot for the simulator
+        ax.plot(positions[node][0], positions[node][1], "o")
+        # Put the name of the simulator on the dot. If we put an
+        # absolute distance, we depend on the scaling, which can effect
+        # seemingly random distances from the dot
+        text_x = positions[node][0]
+        text_y = positions[node][1]
+        label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
+        label.set_alpha(0.6)
+
+    for edge in list(df_graph.edges()):
+        edge_infos = df_graph.adj[edge[0]][edge[1]]
+        annotation = ""
+        color = "grey"
+        linestyle = "solid"
+        if edge_infos["time_shifted"]:
+            color = "tab:red"
+            annotation = "time_shifted"
+
+        if edge_infos["weak"]:
+            annotation += " weak"
+            linestyle = "dotted"
+
+        x_pos0 = positions[edge[0]][0]
+        x_pos1 = positions[edge[1]][0]
+        y_pos0 = positions[edge[0]][1]
+        y_pos1 = positions[edge[1]][1]
+
+        con = ConnectionPatch(
+            (x_pos0, y_pos0),
+            (x_pos1, y_pos1),
+            "data",
+            "data",
+            arrowstyle="->",
+            linestyle=linestyle,
+            connectionstyle="arc3,rad=0.1",
+            shrinkA=5,
+            shrinkB=5,
+            mutation_scale=20,
+            fc="w",
+            color=color,
+            alpha=0.6,
+        )
+        ax.add_artist(con)
+
+        midpoint: Tuple[float, float] = con.get_path().vertices[1]
+
+        ax.annotate(
+            annotation,
+            (midpoint[0], midpoint[1]),
+            xytext=(0, 0),
+            textcoords="offset points",
+            color=color,
+            fontsize=5,
+        )
+
+    plt.axis("off")
+
+    if file_name:
+        kwargs.setdefault("facecolor", "white")
+        kwargs.setdefault("edgecolor", "auto")
+        kwargs.setdefault("transparent", True)
+        kwargs.setdefault("bbox_inches", "tight")
+        fig.savefig(
+            file_name,
+            format=format,
+            dpi=dpi,
+            **kwargs,
+        )
+
+    if show_plot:
+        plt.show()
+
+    if return_figure:
+        return fig, ax
