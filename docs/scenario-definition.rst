@@ -449,7 +449,7 @@ Weak connections between two simulators will increase the sub-time component ass
 Asynchronous requests
 ---------------------
 
-.. deprecation:
+.. warning::
 
    This type of connection is deprecated because it couples the involved simulators too closely.
    We recommend that you use time-shifted and/or weak connections, instead.
