@@ -5,7 +5,6 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 import asyncio
-import time
 import warnings
 from heapq import heappop
 from math import ceil
@@ -88,19 +87,8 @@ async def sim_process(
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
-            print(
-                f"[sim_process] Before pause check: world.paused.is_set() = {world.running.is_set()}"
-            )
-
-            # Debugging before waiting for the event
             if not world.running.is_set():
-                print("[sim_process] Simulation paused... waiting.")
                 await world.running.wait()  # Wait here until the event is set again
-                print("[sim_process] Simulation resumed.")
-
-            print(
-                f"[sim_process] After wait: world.paused.is_set() = {world.running.is_set()}"
-            )
 
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)

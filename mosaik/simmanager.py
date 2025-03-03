@@ -502,7 +502,7 @@ class SimRunner:
         connection: Proxy,
         check_outputs: Callable[[OutputData], None],
         depth: int = 1,
-        pause_step = -1
+        pause_step=-1,
     ):
         self.check_outputs = check_outputs
         self.sid = sid

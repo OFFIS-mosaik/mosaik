@@ -71,7 +71,10 @@ def on_press(key, event, loop):
             print(f"[keyboard] Resumed. (After: {event.is_set() = })")
     except AttributeError:
         pass
+
+
 # End: Keyboard input
+
 
 # Start keyboard listener and mosaik in different threads
 def main():

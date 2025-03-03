@@ -1,9 +1,10 @@
 import asyncio
+import queue
 import threading
 import time
-from pynput import keyboard
-import queue
 from functools import partial
+
+from pynput import keyboard
 
 
 async def count(
