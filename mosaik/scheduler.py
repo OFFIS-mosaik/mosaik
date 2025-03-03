@@ -89,17 +89,17 @@ async def sim_process(
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
             print(
-                f"[sim_process] Before pause check: world.paused.is_set() = {world.paused.is_set()}"
+                f"[sim_process] Before pause check: world.paused.is_set() = {world.running.is_set()}"
             )
 
             # Debugging before waiting for the event
-            if not world.paused.is_set():
+            if not world.running.is_set():
                 print("[sim_process] Simulation paused... waiting.")
-                await world.paused.wait()  # Wait here until the event is set again
+                await world.running.wait()  # Wait here until the event is set again
                 print("[sim_process] Simulation resumed.")
 
             print(
-                f"[sim_process] After wait: world.paused.is_set() = {world.paused.is_set()}"
+                f"[sim_process] After wait: world.paused.is_set() = {world.running.is_set()}"
             )
 
             sim.tqdm.set_postfix_str("await input")
@@ -107,7 +107,7 @@ async def sim_process(
             sim.current_step = heappop(sim.next_steps)
 
             if sim.current_step.tiers[0] == sim.pause_step:
-                world.paused.clear()  # Pause the simulation at this step if required
+                world.running.clear()  # Pause the simulation at this step if required
 
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)

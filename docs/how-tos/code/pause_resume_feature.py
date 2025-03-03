@@ -25,11 +25,11 @@ async def start_mosaik(
         },
     }
     global END
-    END = 15000
+    END = 300
     event = asyncio.Event()
     loop = asyncio.get_running_loop()
     world = mosaik.AsyncWorld(SIM_CONFIG, pause_step=15000)
-    world.paused = event
+    world.running = event
     pause_queue.put((event, loop))
     # End: Simulation set up
 

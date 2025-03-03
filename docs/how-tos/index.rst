@@ -17,6 +17,7 @@ On this page, you will find a selection of how-to guides on how to use mosaik an
    ... visualize your results with Apache Superset </tutorials/apache-superset>
    ... upgrade from mosaik 2 </upgrade_to_v3>
    ... convert units of data flowing from one simulator to another <transform-functions>
+   ... pause and resume a mosaik simulation <pause-resume>
 
 ..., as a simulator author, ...
 ===============================
