@@ -9,6 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.skipif("CI" in os.environ, reason="Requires X server")
 
+
 # A simple fake key class to mimic pynput's key object.
 class FakeKey:
     def __init__(self, char: str):
