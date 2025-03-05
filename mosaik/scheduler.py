@@ -324,9 +324,7 @@ async def step(
     *max_advance* is the simulation time until the simulator can safely
     advance it's internal time without causing any causality errors.
     """
-    print(sim.current_step)
-    # if sim.current_step.tiers[0] == 2000:
-    #    world.paused = True
+
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
     sim.is_in_step = True

@@ -62,13 +62,9 @@ async def start_mosaik(
 def on_press(key, event, loop):
     try:
         if key.char == "p":
-            print("[keyboard] Pausing simulation...)")
             event.clear()  # Pause
-            print("[keyboard] Paused. )")
         elif key.char == "r":
-            print(f"[keyboard] Resuming simulation... (Before: {event.is_set() = })")
             loop.call_soon_threadsafe(event.set)  # Resume
-            print(f"[keyboard] Resumed. (After: {event.is_set() = })")
     except AttributeError:
         pass
 
