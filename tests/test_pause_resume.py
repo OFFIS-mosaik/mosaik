@@ -1,14 +1,18 @@
 import asyncio
+import os
 import queue
 import threading
 from functools import partial
 
+import pytest
 from pynput import keyboard
 
 import mosaik
 import mosaik.basic_simulators
 import mosaik.util
 from mosaik.scenario import SimConfig
+
+pytestmark = pytest.mark.skipif("CI" in os.environ, reason="Requires X server")
 
 
 async def start_mosaik(
