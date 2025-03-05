@@ -1,9 +1,13 @@
 import asyncio
+import os
 import queue
 import runpy
 import threading
 from functools import partial
 
+import pytest
+
+pytestmark = pytest.mark.skipif("CI" in os.environ, reason="Requires X server")
 
 # A simple fake key class to mimic pynput's key object.
 class FakeKey:
