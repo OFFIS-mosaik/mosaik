@@ -5,6 +5,7 @@ import queue
 import threading
 from functools import partial
 
+from loguru import logger
 from pynput import keyboard
 
 import mosaik
@@ -62,9 +63,11 @@ async def start_mosaik(
 def on_press(key, event, loop):
     try:
         if key.char == "p":
-            event.clear()  # Pause
+            loop.call_soon_threadsafe(event.clear())  # Pause
+            logger.info("mosaik simulation has been paused.")
         elif key.char == "r":
             loop.call_soon_threadsafe(event.set)  # Resume
+            logger.info("mosaik simulation is resuming.")
     except AttributeError:
         pass
 

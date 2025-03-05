@@ -20,7 +20,7 @@ def test_pause_resume():
     pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
     )
-    script_path = "docs/how-tos/code/pause_resume_feature.py"
+    script_path = "docs/how-tos/code/pause_resume_how_to.py"
     result = runpy.run_path(script_path)
     start_mosaik = result["start_mosaik"]
     on_press = result["on_press"]
