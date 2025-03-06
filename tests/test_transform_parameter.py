@@ -79,9 +79,6 @@ def test_transform_parameter_input_pulled():
         ] == multiply_by_onehundred(key)
 
 
-test_transform_parameter_input_pulled()
-
-
 def test_transform_parameter_input_pushed():
     # Sim config. and other parameters
     SIM_CONFIG: SimConfig = {

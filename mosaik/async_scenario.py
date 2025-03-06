@@ -440,8 +440,6 @@ class AsyncWorld:
             self.sims[sim_id].outputs = {}
         return model_factory
 
-    # def set_pause(self, step_to_pause_at):
-
     def connect_one(  # noqa: C901
         self,
         src: Entity,
