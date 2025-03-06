@@ -77,18 +77,18 @@ def on_press(key, event, loop):
 
 # Start keyboard listener and mosaik in different threads
 def main():
-    my_very_own_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
+    comm_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
     )
 
     mosaik_thread = threading.Thread(
         target=asyncio.run,
-        args=(start_mosaik(my_very_own_queue),),
+        args=(start_mosaik(comm_queue),),
         daemon=False,
     )
     mosaik_thread.start()
 
-    (event, loop) = my_very_own_queue.get()
+    (event, loop) = comm_queue.get()
 
     on_press_with_args = partial(on_press, event=event, loop=loop)
 
