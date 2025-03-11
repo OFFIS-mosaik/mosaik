@@ -2,40 +2,34 @@
 Welcome to mosaik's documentation!
 ==================================
 
-Mosaik is a flexible Smart Grid co-simulation framework.
+mosaik is a flexible smart-grid co-simulation framework.
 
-Mosaik allows you to reuse and combine existing simulation models and simulators to 
-create large-scale Smart Grid scenarios – and by large-scale we mean thousands of 
-simulated entities distributed over multiple simulator processes. These scenarios can 
-then serve as a test bed for various types of control strategies (e.g., multi-agent 
-systems (MAS) or centralized control).
+mosaik allows you to reuse and combine existing simulation models and simulators to create large-scale smart grid scenarios – and by large-scale we mean thousands of simulated entities distributed over multiple simulator processes.
+These scenarios can then serve as a test bed for various types of control strategies (e.g., multi-agent systems (MAS) or centralized control).
 
 Here, we provide the documentation about mosaik.
 
-Contents:
-
 .. toctree::
+   :caption: Contents
    :maxdepth: 2
 
-   quickstart
-   installation
    overview
-   ecosystem/index
+   installation
    tutorials/index
+   api_reference/index
+   ecosystem/index
    mosaik-api/index
-   scenario-definition
-   simmanager
-   scheduler
-   upgrade_to_v3
+   how-tos/index
+   explanations/index
    faq
    dev/index
-   api_reference/index
    about/index
    privacy
    legals
    datenschutz
    impressum
    glossary
+   genindex
 
 
 
@@ -45,4 +39,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

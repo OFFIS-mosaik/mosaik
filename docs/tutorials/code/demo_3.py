@@ -17,7 +17,7 @@ SIM_CONFIG = {
         "cmd": "%(python)s collector.py %(addr)s",
     },
 }
-END = 6  # 10 seconds
+END = 6  # 6 seconds
 
 # Create World
 world = mosaik.World(SIM_CONFIG)

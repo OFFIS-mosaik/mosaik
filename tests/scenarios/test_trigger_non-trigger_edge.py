@@ -1,7 +1,7 @@
 """
-In this scenario, we add two edges between the same simulators, one trigger,
-one non-trigger. The second edge's non-triggering behaviour should not
-overwrite the first edges triggering behaviour.
+In this scenario, we add two edges between the same simulators, one
+trigger, one non-trigger. The second edge's non-triggering behaviour
+should not overwrite the first edges triggering behaviour.
 """
 
 from mosaik import World

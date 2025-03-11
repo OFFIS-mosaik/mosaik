@@ -2,8 +2,8 @@
 Scenario 21::
    A() ⇄ B()
 
-This scenario tests if the data provided in initial_data is sent correcntly from a hybrid simulator to a
-time-based simulator
+This scenario tests if the data provided in initial_data is sent
+correctly from a hybrid simulator to a time-based simulator.
 """
 
 from mosaik import World

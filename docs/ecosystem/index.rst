@@ -2,6 +2,7 @@
 mosaik ecosystem
 ================
 
+
 Mosaik as a co-simulation tool organizes the data exchange between simulators
 and coordinates the execution of the connected simulaters. This part is called
 |mosaik| `mosaik-core`_ and contains mosaik itself and APIs for multiple
@@ -21,7 +22,7 @@ programming languages.
 Mosaik-core without any connected simulators doesn't do much. This is why we
 provide some simple and free simulators so that it is possible to start with
 a working Smart-Grid simulation. These simulators belong to a part of mosaik's ecosystem called
-|mosaik| `mosaik-components`_. More detailed documentation for some components can be found in the 
+|mosaik| `mosaik-components`_. More detailed documentation for some components can be found in the
 |mosaik| `component documentation`_.
 
 To see how these components can be coupled to simulations, also some example scenarios are
@@ -42,7 +43,7 @@ of the |mosaik| `external components`_ and |mosaik| `external scenarios`_ we kno
 
 .. _mosaik-core:
 
-|mosaik| **mosaik-core** 
+|mosaik| **mosaik-core**
 
 The `root folder <https://gitlab.com/mosaik>`_ contains mosaik itself and the high-level API implementations are
 provided in the `API folder <https://gitlab.com/mosaik/api>`_.
@@ -98,7 +99,7 @@ This lists the mosaik components that are available on pypi. There are always co
     - `mosaik-web <https://gitlab.com/mosaik/components/data/mosaik-web>`_ is a web
       visualization for mosaik simulations.
 
-    - `mosaik-csv <https://gitlab.com/mosaik/components/data/mosaik-csv>`_ 
+    - `mosaik-csv <https://gitlab.com/mosaik/components/data/mosaik-csv>`_
       is a simple demo simulators that you can use to integrate CSV data sets into simulation.
       It can also write data into CSV data sets.
 
@@ -113,7 +114,7 @@ This lists the mosaik components that are available on pypi. There are always co
 
     - `mosaik-sql adapter <https://gitlab.com/mosaik/components/data/mosaik-sql>`_ to store simulation
       results into SQL database.
-    
+
     - `mosaik-timescaledb adapter <https://gitlab.com/mosaik/components/data/mosaik-timescaledb>`_ to store simulation
       results into a postgres or timescale database.
 
@@ -122,9 +123,9 @@ This lists the mosaik components that are available on pypi. There are always co
 
     - :doc:`Odysseus-adapter </tutorials/odysseus>` to write results to the data stream management system
       `Odysseus <https://odysseus.informatik.uni-oldenburg.de/>`_ to mosaik.
-      
+
 - `communication <https://gitlab.com/mosaik/components/energy>`_ related components:
-    
+
     - `communication simulator <https://gitlab.com/mosaik/components/communication/mosaik-communication>`_ is a
       basic communication suite using delays.
 
@@ -133,7 +134,7 @@ This lists the mosaik components that are available on pypi. There are always co
 
 - `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_ allows to couple Functional Mockup Units (FMU),
   which are based on the `FMI standard <https://fmi-standard.org>`_.
-    
+
 .. _component documentation:
 
 |mosaik| **component documentation**
@@ -148,7 +149,7 @@ For components which need a more detailled documentation to describe how they wo
    :hidden:
 
    components/mosaik-heatpump/overview
-    
+
 .. _mosaik-examples:
 
 |mosaik| **mosaik-examples**
@@ -162,10 +163,10 @@ For components which need a more detailled documentation to describe how they wo
 - `COmmunication SIMulation for Agents (cosima) <https://gitlab.com/mosaik/examples/cosima>`_ is an example scenario
   with integrated communication simulation based on OMNeT++.
 
-- The `aiomas demo <https://gitlab.com/mosaik/examples/mosaik-aiomas-demo>`_ is an example project, demonstrating how to couple a 
+- The `aiomas demo <https://gitlab.com/mosaik/examples/mosaik-aiomas-demo>`_ is an example project, demonstrating how to couple a
   multi-agent system written in aiomas to mosaik.
 
-- The `mango demo <https://gitlab.com/mosaik/examples/mosaik-mango-demo>`_ is an example project, demonstrating how to couple a 
+- The `mango demo <https://gitlab.com/mosaik/examples/mosaik-mango-demo>`_ is an example project, demonstrating how to couple a
   multi-agent system written in mango to mosaik.
 
 - The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains python notebooks with example scenraios that can be executed on mybinder.
@@ -234,7 +235,5 @@ the flawless practicability.
 - `ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`_ contains the research and development of digitalized
   energy systems in ZLE using mosaik (collection of simulation scenarios).
 
-- `QEMS - Quarter Energy Management System Scenarios <https://gitlab.com/qems/scenarios>`_ contains scenarios of an energy 
+- `QEMS - Quarter Energy Management System Scenarios <https://gitlab.com/qems/scenarios>`_ contains scenarios of an energy
   management system for neighborhoods for analyzing and optimizing energy flows.
-
-.. |mosaik| image:: /_static/favicon.png

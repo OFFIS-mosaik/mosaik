@@ -69,8 +69,14 @@ def create_scenario(world):
 
     # Web visualization
     # webvis = world.start('WebVis', start_date=START, step_size=60)
-    # webvis.set_config(ignore_types=['Topology', 'ResidentialLoads', 'Grid',
-    #                                 'Database'])
+    # webvis.set_config(
+    #     ignore_types=[
+    #         'Topology',
+    #         'ResidentialLoads',
+    #         'Grid',
+    #         'Database',
+    #     ]
+    # )
     # vis_topo = webvis.Topology()
 
     connect_many_to_one(world, nodes, ody, "P", "Vm")

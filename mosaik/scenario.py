@@ -1,11 +1,12 @@
 """
-This module provides the interface for users to create simulation scenarios for
-mosaik.
+This module provides the interface for users to create simulation
+scenarios for mosaik.
 
-The :class:`World` holds all necessary data for the simulation and allows the
-user to start simulators. It provides a :class:`ModelFactory` (and
-a :class:`ModelMock`) via which the user can instantiate model instances
-(*entities*). The method :meth:`World.run()` finally starts the simulation.
+The :class:`World` holds all necessary data for the simulation and
+allows the user to start simulators. It provides a :class:`ModelFactory`
+(and a :class:`ModelMock`) via which the user can instantiate model
+instances (*entities*). The method :meth:`World.run()` finally starts
+the simulation.
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ class World:
     """
     The world holds all data required to specify and run the scenario.
 
-    We recommend that you use the world in a ``with`` block like so:
+    We recommend that you use the world in a ``with`` block like so::
 
         with mosaik.World(SIM_CONFIG) as world:
             # Scenario setup ...
@@ -58,14 +59,14 @@ class World:
     However, you can also use a ``World`` outside of a ``with`` block.
 
     The ``World`` provides a method to start a simulator process
-    (:meth:`start`) and manages the simulator instances.
+    (:meth:`~World.start`) and manages the simulator instances.
 
     You have to provide a *sim_config* which tells the world which
     simulators are available and how to start them. See
     :func:`mosaik.simmanager.start` for more details.
 
-    *mosaik_config* can be a dict or list of key-value pairs to set addional
-    parameters overriding the defaults::
+    *mosaik_config* can be a dict or list of key-value pairs to set
+    addional parameters overriding the defaults::
 
         {
             'addr': ('127.0.0.1', 5555),
@@ -73,13 +74,14 @@ class World:
             'stop_timeout': 2,   # seconds
         }
 
-    Here, *addr* is the network address that mosaik will bind its socket to.
-    *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
-    starting/stopping external simulator processes.
+    Here, *addr* is the network address that mosaik will bind its socket
+    to. *start_timeout* and *stop_timeout* specifiy a timeout (in
+    seconds) for starting/stopping external simulator processes.
 
-    If *execution_graph* is set to ``True``, an execution graph will be created
-    during the simulation. This may be useful for debugging and testing. Note,
-    that this increases the memory consumption and simulation time.
+    If *execution_graph* is set to ``True``, an execution graph will be
+    created during the simulation. This may be useful for debugging and
+    testing. Note, that this increases the memory consumption and
+    simulation time.
 
     Using the *skip_greetings* and *configure_logging* parameters, you
     can configure how "wordy" mosaik will be. If you set
@@ -191,31 +193,36 @@ class World:
 
         Connect the *src* entity to *dest* entity.
 
-        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
-        *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
-        you can optionally only pass one of them as a single string.
+        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple
+        in *attr_pairs*. If *src_attr* and *dest_attr* have the same
+        name, you can optionally only pass one of them as a single
+        string.
 
-        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
-        the same simulator instance, if at least one (src. or dest.) attribute
-        in *attr_pairs* does not exist, or if the connection would introduce
-        a cycle in the data-flow (e.g., A → B → C → A).
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities
+        share the same simulator instance, if at least one (src. or
+        dest.) attribute in *attr_pairs* does not exist, or if the
+        connection would introduce a cycle in the data-flow (e.g.,
+        A → B → C → A).
 
-        If the *dest* simulator may make asynchronous requests to mosaik to
-        query data from *src* (or set data to it), *async_requests* should be
-        set to ``True`` so that the *src* simulator stays in sync with *dest*.
+        If the *dest* simulator may make asynchronous requests to mosaik
+        to query data from *src* (or set data to it), *async_requests*
+        should be set to ``True`` so that the *src* simulator stays in
+        sync with *dest*.
 
-        An alternative to asynchronous requests are time-shifted connections.
-        Their data flow is always resolved after normal connections so that
-        cycles in the data-flow can be realized without introducing deadlocks.
-        For such a connection *time_shifted* should be set to ``True`` and
-        *initial_data* should contain a dict with input data for the first
-        simulation step of the receiving simulator.
+        An alternative to asynchronous requests are time-shifted
+        connections. Their data flow is always resolved after normal
+        connections so that cycles in the data-flow can be realized
+        without introducing deadlocks. For such a connection
+        *time_shifted* should be set to ``True`` and *initial_data*
+        should contain a dict with input data for the first simulation
+        step of the receiving simulator.
 
-        An alternative to using async_requests to realize cyclic data-flow
-        is given by the time_shifted kwarg. If set to ``True`` it marks the
-        connection as cycle-closing (e.g. C → A). It must always be used with
-        initial_data specifying a dict with the data sent to the destination
-        simulator at the first step (e.g. *{'src_attr': value}*).
+        An alternative to using async_requests to realize cyclic
+        data-flow is given by the time_shifted kwarg. If set to ``True``
+        it marks the connection as cycle-closing (e.g. C → A). It must
+        always be used with initial_data specifying a dict with the data
+        sent to the destination simulator at the first step (e.g.
+        *{'src_attr': value}*).
         """
         return self._async_world.connect(
             src,
@@ -230,7 +237,8 @@ class World:
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
-        Set an initial step for simulator *sid* at time *time* (default=0).
+        Set an initial step for simulator *sid* at time *time*
+        (default=0).
         """
         return self._async_world.set_initial_event(sid, time)
 
@@ -240,11 +248,12 @@ class World:
         *attributes: Attr,
     ) -> Dict[Entity, Dict[Attr, Any]]:
         """
-        Get and return the values of all *attributes* for each entity of an
-        *entity_set*.
+        Get and return the values of all *attributes* for each entity of
+        an *entity_set*.
 
-        The return value is a dict mapping the entities of *entity_set* to
-        dicts containing the values of each attribute in *attributes*::
+        The return value is a dict mapping the entities of *entity_set*
+        to dicts containing the values of each attribute in
+        *attributes*::
 
             {
                 Entity(...): {
@@ -270,48 +279,49 @@ class World:
         shutdown: bool = True,
     ):
         """
-        Start the simulation until the simulation time *until* is
+        Start the simulation until the simulation time ``until`` is
         reached. As mosaik has no way of resetting the simulators to
         their starting state, this method can only be called once.
 
-        In order to perform real-time simulations, you can set *rt_factor* to
-        a number > 0. A rt-factor of 1. means that 1 second in simulated time
-        takes 1 second in real-time. An rt-factor 0f 0.5 will let the
-        simulation run twice as fast as real-time. For correct behavior of the
-        rt_factor the time_resolution of the scenario has to be set adequately,
-        which is 1. [second] by default.
+        :param until: The end time for the simulation, exclusive (i.e.
+            the step at time ``until`` will *not* be performed.)
+        :param rt_factor: In order to perform real-time simulations,
+            you can set ``rt_factor`` to a number > 0. A real-time
+            factor of 1. means that 1 second in simulated time takes 1
+            second in real-time. An real-time factor of 0.5 will let the
+            simulation run twice as fast as real-time. For correct
+            behavior of the ``rt_factor``, the time resolution of the
+            scenario has to be set adequately, which is 1. [second] by
+            default.
+        :param rt_strict: If the simulators are too slow for the
+            real-time factor you chose, mosaik will emit a warning.
+            If you want it to raise a :exc:`RuntimeError`, instead, you
+            can set ``rt_strict`` to ``True``.
+        :param print_progress: This controls whether progress bars are
+            printed while the simulation is running. The default is to
+            print one bar representing the global progress of the
+            simulation. You can also set ``print_progress='individual'``
+            to get one bar per simulator in your simulation (in addition
+            to the global one). ``print_progress=False`` turns off the
+            progress bars completely. The progress bars use
+            `tqdm <https://pypi.org/project/tqdm/>`_; see their
+            documentation on how to write to the console without
+            interfering with the bars.
+        :param lazy_stepping: If ``True`` a simulator can only run ahead
+            one step of it's successors. If ``False`` a simulator always
+            steps as soon as all input is provided. This might decrease
+            the simulation time but increase the memory consumption.
+        :param shutdown: If ``True`` and this :class:`World` is not
+            being used in a ``with`` block, mosaik will stop all
+            simulators and close the connections to them at the end of
+            the simulation run. You can set this to ``False`` if you
+            want to keep the connections open and call :meth:`shutdown`
+            yourself, later. (This is useful if you want to call extra
+            methods on your simulator after the simulation is over;
+            however, we recommend that you use the :class:`World` in a
+            ``with`` block.)
 
-        If the simulators are too slow for the rt-factor you chose, mosaik
-        prints by default only a warning. In order to raise
-        a :exc:`RuntimeError`, you can set *rt_strict* to ``True``.
-
-        ``print_progress`` controls whether progress bars are printed while the
-        simulation is running. The default is to print one bar representing the
-        global progress of the simulation. You can also set
-        ``print_progress='individual'`` to get one bar per simulator in your
-        simulation (in addition to the global one). ``print_progress=False`
-        turns off the progress bars completely. The progress bars use
-        `tqdm <https://pypi.org/project/tqdm/>`_; see their documentation
-        on how to write to the console without interfering with the bars.
-
-        You can also set the *lazy_stepping* flag (default: ``True``). If
-        ``True`` a simulator can only run ahead one step of it's successors. If
-        ``False`` a simulator always steps as long all input is provided. This
-        might decrease the simulation time but increase the memory consumption.
-
-        At the end of the simulation, mosaik will stop all simulators
-        and close the connections to them. There are two exceptions to
-        this:
-
-        - If the flag *shutdown* is set to ``False``, mosaik will not
-          close the connection. In this case, you have to call
-          :meth:`shutdown` yourself.
-        - If the :cls:`World` is used in a ``with`` block (recommended),
-          the connection will be closed at the end of that block,
-          instead.
-
-        (Keeping the connection open is useful to extract final data
-        from simulators using extra methods.)
+        :raise RuntimeError: if this world has already been run
         """
         if self.loop.is_closed():
             raise RuntimeError(
@@ -340,6 +350,8 @@ class World:
 
     @property
     def entity_graph(self):
+        """The graph of all entities. See :attr:`AsyncWorld.entity_graph
+        <mosaik.async_scenario.AsyncWorld.entity_graph>."""
         return self._async_world.entity_graph
 
     @property
@@ -361,14 +373,16 @@ class World:
 
 class ModelFactory:
     """
-    This is a facade for a simulator *sim* that allows the user to create
-    new model instances (entities) within that simulator.
+    This is a facade for a simulator *sim* that allows the user to
+    create new model instances (entities) within that simulator.
 
-    For every model that a simulator publicly exposes, the ``ModelFactory``
-    provides a :class:`ModelMock` attribute that actually creates the entities.
+    For every model that a simulator publicly exposes, the
+    :class:`ModelFactory` provides a :class:`ModelMock` attribute that
+    actually creates the entities.
 
-    If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
+    If you access an attribute that is not a model or if the model is
+    not marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError`
+    is raised.
     """
 
     _async_model_factory: AsyncModelFactory
@@ -415,12 +429,13 @@ class ModelFactory:
 class ModelMock(object):
     """
     Instances of this class are exposed as attributes of
-    :class:`ModelFactory` and allow the instantiation of simulator models.
+    :class:`ModelFactory` and allow the instantiation of simulator
+    models.
 
-    You can *call* an instance of this class to create exactly one entity:
-    ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
-    method to create multiple entities with the same set of parameters at once:
-    ``sim.ModelName.create(3, x=23)``.
+    You can *call* an instance of this class to create exactly one
+    entity: ``sim.ModelName(x=23)``. Alternatively, you can use the
+    :meth:`create` method to create multiple entities with the same set
+    of parameters at once: ``sim.ModelName.create(3, x=23)``.
     """
 
     _async_model_mock: AsyncModelMock
@@ -468,12 +483,12 @@ class ModelMock(object):
 
     def create(self, num: int, **model_params: Any):
         """
-        Create *num* entities with the specified *model_params* and return
-        a list with the entity dicts.
+        Create *num* entities with the specified *model_params* and
+        return a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
-        to every entity ID to make them globally unique.
+        :meth:`mosaik_api_v3.Simulator.create`, but the simulator is
+        prepended to every entity ID to make them globally unique.
         """
         return self._loop.run_until_complete(
             self._async_model_mock.create(num, **model_params)

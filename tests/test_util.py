@@ -65,12 +65,14 @@ def test_connect_randomly(src_size, dest_size, evenly, max_c, dest_connects):
     """
     Test if connect_randomly() connects the correct amount of entities.
 
-    *src_size* and *dest_size* denote the size of the src/dest entity sets.
+    *src_size* and *dest_size* denote the size of the src/dest entity
+    sets.
 
-    *evenly* and *max_c* are passed as keyword arguments to the function.
+    *evenly* and *max_c* are passed as keyword arguments to the
+    function.
 
-    *dest_connects* is a ``(min, max)`` tuple describing how many entities of
-    the dest set have at least or most to be connected.
+    *dest_connects* is a ``(min, max)`` tuple describing how many
+    entities of the dest set have at least or most to be connected.
     """
     for seed in range(100):
         random.seed(seed)

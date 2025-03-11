@@ -66,8 +66,6 @@ def test_transform_parameter_input_pulled():
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
-    print(test_dict)
-    print(test_dict2)
 
     assert test_dict != {}
     assert len(test_dict) == END
@@ -75,7 +73,7 @@ def test_transform_parameter_input_pulled():
         assert test_dict[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_thousand(key)
-        # assert test_dict[key]["val_out_2"][input_model_const[0].full_id] == 10
+        assert test_dict[key]["val_out_2"][input_model_const[0].full_id] == 10
     for key in test_dict2:
         assert test_dict2[key]["value"][
             input_model_const[0].full_id

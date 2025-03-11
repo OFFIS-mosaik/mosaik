@@ -35,6 +35,23 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
+    "pynput>=1.7.7",
+]
+docs = [
+    "sphinx>=8.0.0; python_version>='3.10'",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-toolbox>=3.5.0",
+    "mosaik-heatpump>=1.0.2",
+    "setuptools>=75; python_version<'3.12'",
+]
+plotting = ["matplotlib>=3.8.2; python_version>='3.10'"]
+tutorial = [
+    "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
+    "mosaik-pv>=1.2; python_version>='3.9'",
+    "pandapower>=2.13.1",
+    "numba>=0.59.0; python_version>='3.9'",
+    "plotly>=5.19.0",
+    "simbench>=1.4.0",
 ]
 
 [build-system]
@@ -89,4 +106,10 @@ stubPath = "typings"
 pythonPlatform = "Linux"
 
 [tool.ruff.lint]
-extend-select = ["C", "W", "I"]
+extend-select = ["C", "W", "I", "E"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
+[tool.ruff.lint.per-file-ignores]
+# "mosaik/util.py" = ["W505"]

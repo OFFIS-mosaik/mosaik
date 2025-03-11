@@ -357,7 +357,8 @@ def test_start_user_error(sim_config, err_msg):
         with pytest.raises(ScenarioError) as exc_info:
             world.loop.run_until_complete(simmanager.start(world, "spam", "", 1.0, {}))
         if sys.platform != "win32":  # pragma: no cover
-            # Windows has strange error messages which do not want to check :(
+            # Windows has strange error messages which we do not want to
+            # check :(
             assert str(exc_info.value) == (
                 f'Simulator "spam" could not be started: {err_msg}'
             )
@@ -459,8 +460,8 @@ def test_local_process_finalized(world):
 
 async def _rpc_get_progress(channel: Channel, world: World):
     """
-    Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
-    RPC.
+    Helper for :func:`test_mosaik_remote()` that checks the
+    "get_progress()" RPC.
     """
     progress = await channel.send(["get_progress", [], {}])
     assert progress == 23
@@ -498,7 +499,8 @@ async def _rpc_get_related_entities(channel: Channel, world: World):
         "X.2": {"sim": "ExampleSim", "type": "A"},
     }
 
-    # List of strings yields dicts with related entities grouped by input ids
+    # List of strings yields dicts with related entities grouped by
+    # input ids
     entities = await channel.send(["get_related_entities", [["X.1", "X.2"]], {}])
     assert entities == {
         "X.1": {
@@ -669,8 +671,8 @@ def test_mosaik_remote(
 
 
 def test_timed_input_buffer():
-    """Test TimedInputBuffer, especially if a lower value is added at the same
-    time for the same connection.
+    """Test TimedInputBuffer, especially if a lower value is added at
+    the same time for the same connection.
     """
     buffer = simmanager.TimedInputBuffer()
     buffer.add(1, "src_sid", "src_eid", "dest_eid", "dest_var", 2)

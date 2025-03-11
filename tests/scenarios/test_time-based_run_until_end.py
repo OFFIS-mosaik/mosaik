@@ -2,9 +2,9 @@
 Scenario 29:
    A → B
 
-This scenario tests that self-stepping simulators run until they're done even
-if their successors have already finished. This is a change in the intended
-behaviour.
+This scenario tests that self-stepping simulators run until they're done
+even if their successors have already finished. This is a change in the
+intended behaviour.
 """
 
 from mosaik import World

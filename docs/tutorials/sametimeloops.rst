@@ -1,105 +1,84 @@
-.. _sametimeloops:
+========================================
+How to simulate at different time scales
+========================================
 
-===============
-Same-time loops
-===============
+When your co-simulation involves a simulated communication layer, you will potentially run into the following challenge:
+Your "main" simulation progresses at a leisurely pace (say in 15-minute intervals).
+However, the communication happens at a much faster scale (with sub-second transmission delays, for example).
+To resolve this, you have a couple of options:
 
-Important use cases for :ref:`same-time loops <same-time_loops>` can be the initialization of simulation and communication between controllers or agents.
-As the scenario definition has to provide initialization values for cyclic data-flows and every cyclic data-flow will lead to an incrementing simulation time, it may take some simulation steps until all simulation components are in a stable state, especially, for simulations consisting of multiple physical systems.
-The communication between controllers or agents usually takes place at a different time scale than the simulation of the technical systems.
-Thus, same-time loops can be helpful to model this behavior in a realistic way.
+- You could exagerate the transmission times (say, 1 second each).
+  This way, you can step normally.
+  However, you need to be careful not to exagerate too much.
+  After all, if you send too many messages, your total communication might take longer than one step of the main simulation.
+- You could use realistic simulation times, by reducing the :term:`time resolution` of your simulation.
+  In some cases, you might still run into the problem of your communication catching up with the main step size; however, this would model realistic consequences, in this case.
+  (Unless it is caused by a programming error, of course.)
 
-To give an example of same-time loops in mosaik, the previously shown :doc:`scenario </tutorials/demo2>` is extended with a master controller, which takes control over the other controllers.
-The communication between these two layers of controllers will take place in the same step without incrementing the simulation time.
-The code of the previous scenario is used as a base and extended as shown in the following.
+In both cases, you potentially find a second challenge, though:
+Even simulators that are not involved in the communication might need to know about it to some degree.
+Namely, because some simulators communicate, their final valid output is not available at the expected stepping times (say 0 seconds, 900 seconds (= 15 minutes), 1800 seconds, etc.) but only a bit later (for example, at 5 seconds, 907 seconds, 1803 seconds, etc.).
+Depending on the simulators in the main part of your simulation, this might be cumbersome.
 
-Master controller
-=================
+You could also try to have the simulators run a bit early, but this does not work well for the first step, and it requires you to guess correctly how long the communication will take at most.
 
-The master controller bases on the code of the :doc:`controller </tutorials/examplectrl>` of the previous scenario.
-The first small change for the master controller is in the meta data dictionary, where new attribute names are defined.
-The 'delta_in' represent the delta values of the controllers, which will be limited by the master controller.
-The results of this control function will be returned to the controllers as 'delta_out'.
+Luckily, mosaik offers a third option, that is often a good trade-off:
+**Simulator groups** and **weak connections**.
+(In the past, we also had **same-time loops** with slightly different semantics.)
+This how-to explains what they are and how to use them.
 
-.. literalinclude:: code/controller_master.py
-   :lines: 9-18
 
-``__init__`` is extended with ``self.cache`` for storing the inputs and ``self.time`` for storing the current simulation time, which is initialized with 0.
+What are simulator groups?
+==========================
 
-.. literalinclude:: code/controller_master.py
-   :lines: 21-27
+Simulator groups are sets of some simulators in your simulation.
+They can be nested, but not overlap in other ways.
 
-The ``step`` is changed, so that first the current time is updated in the ``self.time`` variable.
-Also the control function is changed.
-The master controller gets the delta output of the other controllers as 'delta_in' and stores the last value of each controller in the ``self.cache``.
-This is needed, because the controllers are event-based and the current values are only sent if the values changes.
-The control function of the master controller limits the sum of all deltas to be ``< 1`` and ``> -1``.
-If these limits are exceeded the delta of all controllers will be overwritten by the master controller with ``0`` and sent to the other controller as 'delta_out'.
+After creating your ``world``, you can create a new simulator group by calling::
 
-.. literalinclude:: code/controller_master.py
-   :lines: 39-52
+    with world.group():
+        ...
 
-Additionally, two small changes in the ``get_data`` method were done.
-First, the name was updated to 'delta_out' in the check for the correct attribute name.
-Second, the current time, which was stored previously in the ``step``, is added to the output cache dictionary.
-This informs mosaik that the simulation should start or stay in a same-time loop if also output data for 'delta_out' is provided.
+All the simulators *started* within that ``with`` block will be part of this group.
+Once the ``with`` block ends, no more simulators can be added to that group.
+mosaik calls other than :meth:`world.start <mosaik.scenario.World.start>` (and its async counterpart if your ``world`` is an :class:`~mosaik.async_scenario.AsyncWorld`) are not affected by whether they're in a group or not.
+Finally, to nest groups, simply nest the ``with world.group()`` blocks.
 
-.. literalinclude:: code/controller_master.py
-   :lines: 54-64
+If two simulators were started within the same group (including the case where they belong to different sub-groups), you can use the ``weak`` keyword argument in :meth:`world.connect <mosaik.scenario.World.connect>` and other connection methods.
+Usually, you will just set it to ``True``, but occasionally, you will also use integer values for finer control.
+Data-flow cycles within a simulator group are permissible as long as at least one connection in each cycle is marked as weak.
 
-Controller
-==========
+When simulating such weak cycles, mosaik will not advance the main time of the simulators.
+Instead, a hidden, second "tier" of time will be advanced.
+Only once the simulators in the group proceed to the next main step will this trigger steps of connected simulators outside of the group.
+These simulators will receive the latest outputs of the simulators in the group.
+They will not see all the sub-steps taken within the group.
 
-The :doc:`controller </tutorials/examplectrl>` has to be extended to handle the 'delta_out' from the master controller as input.
-If it receives an input value for the attribute 'delta', it will not calculate a new delta value, but use the one from the master controller.
+(When you nest groups, each nested group will receive yet an additional tier of time, and steps of this sub-group will not be visible to the containing group.)
 
-.. literalinclude:: code/controller_demo_3.py
-   :lines: 38-45
 
-The same-time loop in this scenario will always be finished after the second iteration, because the master controller will overwrite the deltas of the controller and will get back zeros as 'delta_in'.
-Thus, it will produce no output in the second iteration and the same-time loop will be finished.
+How to use simulator groups in practice
+=======================================
 
-Scenario
-========
+To effectively make use of simulator groups, you need to first identify the different timescales of your simulation that you want to separate.
+In energy system simulations, you will commonly have the a main time progressing in 15-minute steps and a second tier for an information and communication technology (ICT) layer.
 
-This scenario is based on the :doc:`previous scenario </tutorials/demo2>`.
-In the following description only the changes are explained, but the full code is shown.
-The updated controller and the new master controller are added to the sim config of the scenario.
+In these cases, you will only need one simulator group.
+All of the simulators involved in the communications (such as controllers, and assets that report their state to those controllers) will be part of the group.
+Simulators that are not directly involved in the communication (such as the power grid simulator) are started outside of the group.
 
-.. literalinclude:: code/demo_3.py
-   :end-before: End: Create World
+Within the group, some connections need to marked as weak.
+Whenever the connection from simulator A to simulator B is marked as weak, simulator B will perform its first sub-step of each main time step without receiving information from simulator A for that time step.
+Instead, it will receive the previous main time step's output, if it is persistent, i.e., a measurement.
+This allows starting the communication cycle.
+(You can also mark both connections as weak, in which case both simulators will start and run in parallel.)
 
-The master controller is also started and initialized.
-The controllers get different 'init_val' values compared to the previous scenario.
-Here, it is changed to ``(-2, 0, -2)`` to have the right timing to get into the same-time loop.
+The time synchronization within a group is really quite similar to the time synchronization of mosaik as a whole, except that *weak* is used instead of *time-shifted*.
+As simulators cannot return self-steps for the sub-steps, groups also require enough use of events to keep the cycle alive.
 
-.. literalinclude:: code/demo_3.py
-   :start-at: Start simulators
-   :end-before: End: Instantiate models
+This also indicates how a simulator author must prepare their simulator for use within a group:
+The simulator must be partially event-based, and it must stop sending events on the the attributes used in the feedback cycles once it is satisfied that the calculation for the current main step has converged.
 
-The 'delta' outputs of the controllers are connected to the new master controller and the 'delta_out' of the master controller is connected to the respective controller.
-The ``weak=True`` argument defines, that the connection from the controllers to the master controller will be the first to be executed by mosaik.
-
-.. literalinclude:: code/demo_3.py
-   :start-at: Connect entities
-
-The printed output of the collector shows the states of the different simulators.
-The collector just shows the final result of the same-time loop and not the steps during the loop.
-It can be seen that the 'delta' of 'Agent_1' changes to -1 at time step 2 and at time step 4 all 'delta' attributes are set to 0 by the master controller.
-
-.. literalinclude:: code/demo_3.out
-
-A visualization of the execution graph shows the data flows in the simulation.
-For the first two time steps, only the controllers are executed, as they do not provide any output for 'delta'.
-Thus, the master controller was not stepped and the simulation was proceeded directly with the next simulation time step.
-At simulation time 2, the master controller is stepped, but as the sum of delta values is not exceeding the limits no control action takes place.
-At simulation time 4, the master controller is stepped again and this time sends back a value to the controllers to limit their 'delta' value.
-It can be seen, that the controllers are stepped a second time within the same simulation time and send data again to the master controller.
-After this second step of the master controller, it does not send an output again and the simulation proceeds to simulation time 5, where the same-time loop occures again.
-
-.. figure:: /_static/demo_3.*
-   :width: 600
-   :align: center
-   :alt: Scheduling of demo 3
-
-   Scheduling of demo 3.
+It is also often a good idea to separate the "final" output to its own attribute.
+This way, you can mark it as an event to trigger simulators in the "main" simulation but because it is not part of the cycle, it will not keep it alive.
+Alternatively, this final output might also be a measurement if this makes sense for your simulation; in this case, it can be updated throughout the cycle.

@@ -167,3 +167,27 @@ Here is an example with a bit more context:
 
     if __name__ == '__main__':
         sys.exit(main())
+
+
+Helper classes
+--------------
+
+There are a bunch of helper classes to allow users to give more precise type annotations for their simulators.
+
+.. autoclass:: Meta
+   :members:
+
+.. autoclass:: mosaik_api_v3.types.ModelDescription
+   :members:
+
+.. autoclass:: CreateResult
+   :members:
+
+.. autoclass:: mosaik_api_v3.types.InputData
+   :members:
+
+.. autoclass:: OutputRequest
+   :members:
+
+.. autoclass:: OutputData
+   :members:
