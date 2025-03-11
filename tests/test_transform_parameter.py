@@ -75,7 +75,7 @@ def test_transform_parameter_input_pulled():
         assert test_dict[key]["value"][
             input_model_const[0].full_id
         ] == multiply_by_thousand(key)
-        # assert test_dict[key]["val_out_2"][input_model_const[0].full_id] == 10
+        assert test_dict[key]["val_out_2"][input_model_const[0].full_id] == 10
     for key in test_dict2:
         assert test_dict2[key]["value"][
             input_model_const[0].full_id

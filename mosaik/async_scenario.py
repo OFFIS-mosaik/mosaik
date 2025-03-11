@@ -1134,6 +1134,7 @@ class AsyncModelFactory:
         progress = self._world.sims[self._sid].progress
         return ProgressProxy(progress)
 
+
 def parse_attrs(
     model_desc: ModelDescription, type: Literal["time-based", "event-based", "hybrid"]
 ) -> Tuple[InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr]]:

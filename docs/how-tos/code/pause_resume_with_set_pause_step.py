@@ -62,6 +62,7 @@ async def start_mosaik(
             world.run(until=END), pause_sim(pause_step, world, progress)
         )
 
+
 # pause_sim_method
 async def pause_sim(pause_step: int, world: AsyncWorld, progress: ProgressProxy):
     await progress.has_reached(pause_step)
@@ -71,7 +72,10 @@ async def pause_sim(pause_step: int, world: AsyncWorld, progress: ProgressProxy)
     )
     world.running.clear()
     return
+
+
 # End: pause_sim_method
+
 
 def on_press(key, event, loop):
     try:
