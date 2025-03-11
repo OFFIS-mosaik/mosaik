@@ -118,13 +118,15 @@ class ProgressProxy:
         self._progress = progress
 
     async def has_reached(
-        self, target: int, shift: TieredDuration | None = None
-    ) -> TieredTime:
+        self, target: int
+    ) -> int:
         tiered_target = TieredTime(target)
-        return await self._progress.has_reached(tiered_target, shift)
+        current_step = await self._progress.has_reached(tiered_target, None)
+        return current_step.time
 
     async def has_passed(
-        self, target: int, shift: TieredDuration | None = None
-    ) -> TieredTime:
+        self, target: int
+    ) -> int:
         tiered_target = TieredTime(target)
-        return await self._progress.has_passed(tiered_target, shift)
+        current_step = await self._progress.has_passed(tiered_target, None)
+        return current_step.time

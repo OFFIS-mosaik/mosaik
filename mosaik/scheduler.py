@@ -81,6 +81,10 @@ async def sim_process(
     rt_strict: bool,
     lazy_stepping: bool,
 ):
+    """
+    Coroutine running the simulator *sim*.
+    """
+
     sim.started = True
     sim.rt_start = perf_counter()
 

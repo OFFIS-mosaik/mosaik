@@ -17,7 +17,6 @@ from mosaik.scenario import SimConfig
 async def start_mosaik(
     pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]],
 ):
-    # Sim config. and other parameters
     SIM_CONFIG: SimConfig = {
         "OutputSim": {
             "python": "mosaik.basic_simulators:OutputSimulator",
@@ -27,7 +26,7 @@ async def start_mosaik(
         },
     }
 
-    END = 1000  # 15 seconds    # Create World
+    END = 1000  # 15 seconds
     pause_step = 15
     loop = asyncio.get_running_loop()
     async with mosaik.AsyncWorld(SIM_CONFIG, cache=False) as world:
@@ -88,6 +87,9 @@ def on_press(key, event, loop):
                 loop.call_soon_threadsafe(lambda: event.set())  # Resume
                 logger.info("mosaik simulation is resumed.")
     except AttributeError:
+        # This handles cases where `key` does not have a `char` attribute,
+        # which happens for special keys like Shift or Ctrl.
+        # Instead of failing, the function just ignores these cases.
         pass
 
 

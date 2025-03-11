@@ -16,7 +16,7 @@ Step 1: Setting up the simulation
 
 To begin, we need to define a function to start our simulation.
 We create a :class:`~AsyncWorld`, which represents our simulation, and define the simulators we want to use.
-We also introduce an :class:`~asyncio.Event` called ``event``, which we will later use to control pausing and resuming.
+We also use an :class:`~asyncio.Event` called ``world.running``, which we will later use to control pausing and resuming.
 
 .. literalinclude:: code/pause_resume_how_to.py
    :start-at: Simulation set up
@@ -52,7 +52,7 @@ Step 4: Running the simulation in a separate thread
 ---------------------------------------------------
 
 Since we want user inputs to arrive on the main thread to be computed by the listener, we need to start mosaik in a separate thread.
-The asyncio event loop and the event itself are aquired from the mosaik thread by using a queue that was previously given to it during startup.
+The asyncio event loop and the event itself are acquired from the mosaik thread by using a queue that was previously given to it during startup.
 
 .. literalinclude:: code/pause_resume_how_to.py
    :start-at: Start keyboard listener and mosaik in different threads
