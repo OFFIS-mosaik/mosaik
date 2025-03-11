@@ -92,7 +92,6 @@ async def sim_process(
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
-            print(sim.current_step)
             if sim.current_step != sim.progress.time:
                 raise SimulationError(
                     f"Simulator {sim.sid} is trying to perform a step at time "

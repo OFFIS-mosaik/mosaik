@@ -66,8 +66,6 @@ def test_transform_parameter_input_pulled():
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
-    print(test_dict)
-    print(test_dict2)
 
     assert test_dict != {}
     assert len(test_dict) == END
