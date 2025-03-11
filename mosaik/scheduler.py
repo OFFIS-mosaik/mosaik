@@ -84,12 +84,15 @@ async def sim_process(
     """
     Coroutine running the simulator *sim*.
     """
+
     sim.started = True
-    sim.rt_start = rt_start = perf_counter()
+    sim.rt_start = perf_counter()
 
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
+            await world.running.wait()  # Wait here until the event is set again
+
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
@@ -107,10 +110,11 @@ async def sim_process(
                     "an infinite loop. If not, you can increase max_loop_iterations to "
                     "get rid of this warning."
                 )
+
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
             await step(world, sim, input_data, max_advance)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
+            rt_check(rt_factor, sim.rt_start, rt_strict, sim)
             await get_outputs(world, sim)
             sim.current_step = None
             trigger_successors(sim)
@@ -120,13 +124,16 @@ async def sim_process(
             # way.)
             for isim in world.sims.values():
                 advance_progress(isim, world)
+
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+
             if world.use_cache:
                 prune_dataflow_cache(world)
+
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
-        raise SimulationError('Simulator "%s" closed its connection.' % sim.sid, e)
+        raise SimulationError(f'Simulator "{sim.sid}" closed its connection.', e)
 
 
 async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
@@ -334,13 +341,13 @@ async def step(
     *max_advance* is the simulation time until the simulator can safely
     advance it's internal time without causing any causality errors.
     """
+
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
     sim.is_in_step = True
     next_step_time = await sim.step(sim.current_step.time, inputs, max_advance)
     sim.last_step = sim.current_step
     sim.is_in_step = False
-
     if next_step_time is not None:
         if not isinstance(next_step_time, int):
             raise SimulationError(

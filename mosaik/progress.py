@@ -111,3 +111,18 @@ class Progress:
 
     def __repr__(self) -> str:
         return f"<Progress at {self.time!r} with {len(self._futures)} waiting>"
+
+
+class ProgressProxy:
+    def __init__(self, progress: Progress):
+        self._progress = progress
+
+    async def has_reached(self, target: int) -> int:
+        tiered_target = TieredTime(target)
+        current_step = await self._progress.has_reached(tiered_target, None)
+        return current_step.time
+
+    async def has_passed(self, target: int) -> int:
+        tiered_target = TieredTime(target)
+        current_step = await self._progress.has_passed(tiered_target, None)
+        return current_step.time

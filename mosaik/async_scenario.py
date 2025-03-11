@@ -62,6 +62,7 @@ from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationE
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
+from mosaik.progress import ProgressProxy
 from mosaik.proxies import Proxy
 from mosaik.simmanager import (
     MosaikConfigTotal,
@@ -318,6 +319,8 @@ class AsyncWorld:
 
     default_transform_callable = Callable[[Any], Any]
 
+    running: asyncio.Event
+
     def __init__(
         self,
         sim_config: SimConfig,
@@ -359,7 +362,8 @@ class AsyncWorld:
         self.entity_graph = networkx.Graph()
 
         self.sim_progress = 0.0
-
+        self.running = asyncio.Event()  # Initially unset (simulation starts paused)
+        self.running.set()  # Start unpaused
         self._debug = False
         if debug:
             logger.warning(
@@ -1125,6 +1129,10 @@ class AsyncModelFactory:
                             "This is likely an error in its get_data method.",
                             UserWarning,
                         )
+
+    def get_progress(self):
+        progress = self._world.sims[self._sid].progress
+        return ProgressProxy(progress)
 
 
 def parse_attrs(
