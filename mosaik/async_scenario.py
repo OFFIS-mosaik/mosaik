@@ -62,6 +62,7 @@ from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationE
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
+from mosaik.progress import ProgressProxy
 from mosaik.proxies import Proxy
 from mosaik.simmanager import (
     MosaikConfigTotal,
@@ -319,7 +320,6 @@ class AsyncWorld:
     default_transform_callable = Callable[[Any], Any]
 
     running: asyncio.Event
-    pause_step: int
 
     def __init__(
         self,
@@ -331,7 +331,6 @@ class AsyncWorld:
         max_loop_iterations: int = 100,
         configure_logging: bool = False,
         skip_greetings: bool = True,
-        pause_step: int = -1,
     ):
         if configure_logging:
             logger.enable("mosaik")
@@ -379,7 +378,6 @@ class AsyncWorld:
         # Contains ID counters for each simulator type.
         self._sim_ids = defaultdict(itertools.count)
         self.use_cache = cache
-        self.pause_step = pause_step
 
     async def __aenter__(self) -> Self:
         return self
@@ -434,7 +432,6 @@ class AsyncWorld:
             proxy,
             check_outputs=model_factory.validate_output_dict,
             depth=self.current_group.depth,
-            pause_step=self.pause_step,
         )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
@@ -1133,6 +1130,9 @@ class AsyncModelFactory:
                             UserWarning,
                         )
 
+    def get_progress(self):
+        progress = self._world.sims[self._sid].progress
+        return ProgressProxy(progress)
 
 def parse_attrs(
     model_desc: ModelDescription, type: Literal["time-based", "event-based", "hybrid"]

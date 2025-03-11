@@ -87,15 +87,26 @@ async def sim_process(
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
-            if not world.running.is_set():
-                await world.running.wait()  # Wait here until the event is set again
+            await world.running.wait()  # Wait here until the event is set again
 
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
-
-            if sim.current_step.tiers[0] == sim.pause_step:
-                world.running.clear()  # Pause the simulation at this step if required
+            print(sim.current_step)
+            if sim.current_step != sim.progress.time:
+                raise SimulationError(
+                    f"Simulator {sim.sid} is trying to perform a step at time "
+                    f"{sim.current_step}, but it has already progressed to time "
+                    f"{sim.progress.time}."
+                )
+            if any(t >= world.max_loop_iterations for t in sim.current_step.tiers[1:]):
+                raise SimulationError(
+                    f"Simulator {sim.sid} has performed a sub-step more than "
+                    f"{world.max_loop_iterations} times. (The complete now is "
+                    f"{sim.current_step}.) This might indicate that you have run into "
+                    "an infinite loop. If not, you can increase max_loop_iterations to "
+                    "get rid of this warning."
+                )
 
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
@@ -104,7 +115,10 @@ async def sim_process(
             await get_outputs(world, sim)
             sim.current_step = None
             trigger_successors(sim)
-
+            # TODO: Reduce the number of sims that need to be advanced
+            # (At least only to those that could potentially be
+            # triggered by this step; maybe there's even a more clever
+            # way.)
             for isim in world.sims.values():
                 advance_progress(isim, world)
 

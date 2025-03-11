@@ -494,7 +494,6 @@ class SimRunner:
     outputs: Optional[Dict[Time, OutputData]]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
     check_outputs: Callable[[OutputData], None]
-    pause_step: int
 
     def __init__(
         self,
@@ -502,7 +501,6 @@ class SimRunner:
         connection: Proxy,
         check_outputs: Callable[[OutputData], None],
         depth: int = 1,
-        pause_step=-1,
     ):
         self.check_outputs = check_outputs
         self.sid = sid
@@ -544,8 +542,6 @@ class SimRunner:
         self.output_request = {}
 
         self.outputs = None
-
-        self.pause_step = pause_step
 
     def schedule_step(self, tiered_time: TieredTime):
         """Schedule a step for this simulator at the given time. This

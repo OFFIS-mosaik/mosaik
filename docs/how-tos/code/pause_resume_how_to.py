@@ -25,13 +25,10 @@ async def start_mosaik(
             "python": "tests.simulators.generic_test_simulator:TestSim",
         },
     }
-    global END
-    END = 300
-    event = asyncio.Event()
+    END = 10000
     loop = asyncio.get_running_loop()
-    world = mosaik.AsyncWorld(SIM_CONFIG, pause_step=15000)
-    world.running = event
-    pause_queue.put((event, loop))
+    world = mosaik.AsyncWorld(SIM_CONFIG)
+    pause_queue.put((world.running, loop))
     # End: Simulation set up
 
     # Simulator set up
@@ -59,15 +56,16 @@ async def start_mosaik(
     # End: Simulator set up
 
 
-# Keyboard input
 def on_press(key, event, loop):
     try:
         if key.char == "p":
-            loop.call_soon_threadsafe(event.clear())  # Pause
-            logger.info("mosaik simulation has been paused.")
+            if event and loop.is_running():
+                loop.call_soon_threadsafe(lambda: event.clear())  # Pause
+                logger.info("mosaik simulation is paused.")
         elif key.char == "r":
-            loop.call_soon_threadsafe(event.set)  # Resume
-            logger.info("mosaik simulation is resuming.")
+            if event and loop.is_running():
+                loop.call_soon_threadsafe(lambda: event.set())  # Resume
+                logger.info("mosaik simulation is resumed.")
     except AttributeError:
         pass
 
@@ -88,15 +86,15 @@ def main():
     )
     mosaik_thread.start()
 
-    (event, loop) = comm_queue.get()
+    (world_running, loop) = comm_queue.get()
 
-    on_press_with_args = partial(on_press, event=event, loop=loop)
+    on_press_with_args = partial(on_press, event=world_running, loop=loop)
 
     listener = keyboard.Listener(on_press=on_press_with_args)
     listener.start()
-
-    listener.join()
     mosaik_thread.join()
+
+    listener.stop()
 
 
 if __name__ == "__main__":

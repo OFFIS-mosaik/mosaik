@@ -107,7 +107,6 @@ class World:
         skip_greetings: bool = False,
         configure_logging: bool = True,
         asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
-        pause_step: int = -1,
     ):
         if asyncio_loop:
             self.loop = asyncio_loop
@@ -124,7 +123,6 @@ class World:
             max_loop_iterations=max_loop_iterations,
             configure_logging=configure_logging,
             skip_greetings=skip_greetings,
-            pause_step=pause_step,
         )
 
     def __enter__(self):

@@ -41,20 +41,19 @@ def test_pause_resume():
     on_press_with_args = partial(on_press, event=event, loop=loop)
 
     # Simulate pressing "r" to resume the simulation.
-    fake_pause_key = FakeKey("r")
-    on_press_with_args(fake_pause_key)
+    resume_key = FakeKey("r")
+    on_press_with_args(resume_key)
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert event.is_set(), "Expected event to be cleared (paused) after pressing 'r'"
 
     # Simulate pressing "p" to pause the simulation.
-    fake_resume_key = FakeKey("p")
-    on_press_with_args(fake_resume_key)
+    pause_key = FakeKey("p")
+    on_press_with_args(pause_key)
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert not event.is_set(), "Expected event to be set (resumed) after pressing 'p'"
 
     # Simulate pressing "r" to resume the simulation instead.
-    fake_pause_key = FakeKey("r")
-    on_press_with_args(fake_pause_key)
+    on_press_with_args(resume_key)
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert event.is_set(), "Expected event to be cleared (paused) after pressing 'r'"
 
