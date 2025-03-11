@@ -87,8 +87,8 @@ def on_press(key, event, loop):
                 loop.call_soon_threadsafe(lambda: event.set())  # Resume
                 logger.info("mosaik simulation is resumed.")
     except AttributeError:
-        # This handles cases where `key` does not have a `char` attribute,
-        # which happens for special keys like Shift or Ctrl.
+        # This handles cases where `key` does not have a `char`
+        # attribute, which happens for special keys like Shift or Ctrl.
         # Instead of failing, the function just ignores these cases.
         pass
 
