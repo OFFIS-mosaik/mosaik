@@ -26,7 +26,7 @@ async def start_mosaik(
         },
     }
 
-    END = 1000 # 1000 seconds
+    END = 1000  # 1000 seconds
     pause_step = 15
     loop = asyncio.get_running_loop()
     async with mosaik.AsyncWorld(SIM_CONFIG, cache=False) as world:
