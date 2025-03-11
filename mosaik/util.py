@@ -708,15 +708,17 @@ def plot_dataflow(
     Reingold force-directed algorithm) to position the nodes.
 
     :param world: mosaik world object
-    :param file_name: a full file name including a folder to store the image
+    :param file_name: a full file name including a folder to 
+        store the image
     :param dpi: DPI for created images
     :param format: format for created image
     :param show_plot: whether open a window to show the plot
     :param return_figure: return figure and axis
     :param seed: needed to fix graph layout
     :param **kwargs: extra parameters will be passed to fig.savefig()
-    :return: ``None`` but image file will be written to ``file name`` if given.
-        It returns tuple with figure and axis instead if return_figure is True
+    :return: ``None`` but image file will be written to ``file name`` 
+        if given. It returns tuple with figure and axis instead if 
+        return_figure is True
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch
