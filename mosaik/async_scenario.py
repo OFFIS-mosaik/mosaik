@@ -152,6 +152,7 @@ simulation.
 @dataclass
 class SimGroup:
     parent: SimGroup | None
+    name: str | None
 
     @property
     def depth(self) -> int:
@@ -353,7 +354,7 @@ class AsyncWorld:
             self.config.update(mosaik_config)
 
         self.sims = {}
-        self.main_group = SimGroup(parent=None)
+        self.main_group = SimGroup(parent=None, name="main")
         self.current_group = self.main_group
 
         self.time_resolution = time_resolution
@@ -391,9 +392,9 @@ class AsyncWorld:
         return False
 
     @contextlib.contextmanager
-    def group(self):
+    def group(self, group_name: str | None = None):
         parent_group = self.current_group
-        new_group = SimGroup(parent=parent_group)
+        new_group = SimGroup(parent=parent_group, name=group_name)
         self.current_group = new_group
         yield
         self.current_group = parent_group
