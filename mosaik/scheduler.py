@@ -59,10 +59,13 @@ async def run(
     await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
+    start_barrier = asyncio.Barrier(len(world.sims))
     processes: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
         process = asyncio.create_task(
-            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping),
+            sim_process(
+                world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+            ),
             name=f"Runner for {sim.sid}",
         )
 
@@ -80,6 +83,7 @@ async def sim_process(
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
+    start_barrier: asyncio.Barrier,
 ):
     """
     Coroutine running the simulator *sim*.
@@ -87,6 +91,7 @@ async def sim_process(
 
     sim.started = True
     sim.rt_start = perf_counter()
+    await start_barrier.wait()
 
     try:
         advance_progress(sim, world)
