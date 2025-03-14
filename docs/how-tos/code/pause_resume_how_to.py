@@ -13,9 +13,12 @@ import mosaik.basic_simulators
 import mosaik.util
 from mosaik.scenario import SimConfig
 
+END = 10000
+
 
 async def start_mosaik(
     pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]],
+    END: int,
 ):
     SIM_CONFIG: SimConfig = {
         "OutputSim": {
@@ -25,7 +28,7 @@ async def start_mosaik(
             "python": "tests.simulators.generic_test_simulator:TestSim",
         },
     }
-    END = 10000
+
     loop = asyncio.get_running_loop()
     async with mosaik.AsyncWorld(SIM_CONFIG) as world:
         pause_queue.put((world.running, loop))
@@ -85,16 +88,15 @@ def main():
 
     mosaik_thread = threading.Thread(
         target=asyncio.run,
-        args=(start_mosaik(comm_queue),),
-        daemon=False,
+        args=(start_mosaik(comm_queue, END),),
+        daemon=True,
     )
     mosaik_thread.start()
 
-    (world_running, loop) = comm_queue.get()
+    world_running, loop = comm_queue.get()
 
     on_press_with_args = partial(on_press, event=world_running, loop=loop)
-
-    listener = keyboard.Listener(on_press=on_press_with_args)
+    listener = keyboard.Listener(on_press=lambda key: on_press_with_args(key))
     listener.start()
     mosaik_thread.join()
 
