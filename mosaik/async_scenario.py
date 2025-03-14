@@ -392,7 +392,7 @@ class AsyncWorld:
         return False
 
     @contextlib.contextmanager
-    def group(self, group_name: str | None=None):
+    def group(self, group_name: str | None = None):
         parent_group = self.current_group
         new_group = SimGroup(parent=parent_group, name=group_name)
         self.current_group = new_group
