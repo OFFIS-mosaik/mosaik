@@ -115,7 +115,9 @@ def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
 
-    async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
+    async def dummy_proc(
+        world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+    ):
         sim.proc_started = True
 
     class proxy:
@@ -167,7 +169,9 @@ async def test_sim_process_error(monkeypatch):
     monkeypatch.setattr(scheduler, "advance_progress", advance_progress)
 
     with pytest.raises(exceptions.SimulationError) as excinfo:
-        await scheduler.sim_process(None, Sim(), None, 1, False, False)
+        await scheduler.sim_process(
+            None, Sim(), None, 1, False, False, scheduler.Barrier(1)
+        )
     assert str(excinfo.value) == (
         '[Errno 1337] noob: Simulator "spam" closed its connection.'
     )

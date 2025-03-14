@@ -59,10 +59,13 @@ async def run(
     await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
+    start_barrier = Barrier(len(world.sims))
     processes: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
         process = asyncio.create_task(
-            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping),
+            sim_process(
+                world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+            ),
             name=f"Runner for {sim.sid}",
         )
 
@@ -80,6 +83,7 @@ async def sim_process(
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
+    start_barrier: Barrier,
 ):
     """
     Coroutine running the simulator *sim*.
@@ -87,6 +91,7 @@ async def sim_process(
 
     sim.started = True
     sim.rt_start = perf_counter()
+    await start_barrier.wait()
 
     try:
         advance_progress(sim, world)
@@ -568,3 +573,26 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
     )
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
+
+
+# Once 3.11 is the minimal version of Python supported by mosaik, it
+# should be possible to replace this by
+#
+#     from asyncio import Barrier
+class Barrier:
+    """Simplified stand-in for asyncio.Barrier, because that only exists
+    from Python 3.11 onwards.
+    """
+
+    def __init__(self, num: int):
+        self.event = asyncio.Event()
+        self.num = num
+
+    async def wait(self):
+        self.num -= 1
+        if self.num == 0:
+            self.event.set()
+            # pass control to the event loop in this case as well
+            await asyncio.sleep(0)
+        else:
+            await self.event.wait()
