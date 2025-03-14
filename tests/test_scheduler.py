@@ -170,7 +170,7 @@ async def test_sim_process_error(monkeypatch):
 
     with pytest.raises(exceptions.SimulationError) as excinfo:
         await scheduler.sim_process(
-            None, Sim(), None, 1, False, False, asyncio.Barrier(1)
+            None, Sim(), None, 1, False, False, scheduler.Barrier(1)
         )
     assert str(excinfo.value) == (
         '[Errno 1337] noob: Simulator "spam" closed its connection.'
