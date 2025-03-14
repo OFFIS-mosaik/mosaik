@@ -136,8 +136,8 @@ class World:
         # this with the handling in `AsyncWorld`'s `__aexit__`.)
         return False
 
-    def group(self):
-        return self._async_world.group()
+    def group(self, group_name: str=""):
+        return self._async_world.group(group_name=group_name)
 
     def start(
         self,
