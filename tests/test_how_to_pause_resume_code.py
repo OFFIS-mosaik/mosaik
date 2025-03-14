@@ -20,6 +20,7 @@ def test_pause_resume():
     pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
     )
+    END = 300
     script_path = "docs/how-tos/code/pause_resume_how_to.py"
     result = runpy.run_path(script_path)
     start_mosaik = result["start_mosaik"]
@@ -28,7 +29,7 @@ def test_pause_resume():
     # Start the mosaik simulation in a separate thread.
     mosaik_thread = threading.Thread(
         target=asyncio.run,
-        args=(start_mosaik(pause_queue),),
+        args=(start_mosaik(pause_queue, END),),
         daemon=True,
     )
     mosaik_thread.start()
@@ -37,7 +38,7 @@ def test_pause_resume():
     except Exception as e:
         assert False, f"Timed out waiting for simulation to start: {e}"
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
-    assert not event.is_set(), "Expected simulation to be paused initially"
+    assert event.is_set(), "Expected simulation to be running initially"
     on_press_with_args = partial(on_press, event=event, loop=loop)
 
     # Simulate pressing "r" to resume the simulation.
@@ -52,10 +53,9 @@ def test_pause_resume():
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert not event.is_set(), "Expected event to be set (resumed) after pressing 'p'"
 
-    # Simulate pressing "r" to resume the simulation instead.
+    # Simulate pressing "r" to resume the simulation.
     on_press_with_args(resume_key)
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert event.is_set(), "Expected event to be cleared (paused) after pressing 'r'"
-
     mosaik_thread.join(timeout=10)
     assert not mosaik_thread.is_alive()

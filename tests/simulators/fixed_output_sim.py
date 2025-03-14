@@ -32,7 +32,7 @@ class FixedOutputSim(mosaik_api_v3.Simulator):
     def create(self, num: int, model: str, outputs: Dict[int, Any]):
         n_entities = len(self.entities)
         new_entities = [f"E{i}" for i in range(n_entities, n_entities + num)]
-        self.entities.update({entity: outputs for entity in new_entities})
+        self.entities.update(dict.fromkeys(new_entities, outputs))
         return [{"eid": eid, "type": model} for eid in new_entities]
 
     def step(self, time: int, inputs: InputData, max_advance: int):
