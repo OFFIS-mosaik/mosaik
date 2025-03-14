@@ -441,7 +441,6 @@ def plot_execution_graph(  # noqa: C901
     from matplotlib.ticker import MaxNLocator
 
     all_nodes = list(world.execution_graph.nodes(data=True))
-    
 
     rcParams.update({"figure.autolayout": True})
 
