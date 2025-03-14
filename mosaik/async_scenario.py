@@ -152,7 +152,7 @@ simulation.
 @dataclass
 class SimGroup:
     parent: SimGroup | None
-    name: str
+    name: str | None
 
     @property
     def depth(self) -> int:
