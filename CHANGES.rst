@@ -1,6 +1,17 @@
 Changelog
 =========
 
+3.5.0 - 2025-03-17
+------------------
+
+- [NEW] Transform functions to allow unit conversions between simulators (`#109 <https://gitlab.com/mosaik/mosaik/-/issues/109>`_, `docs <https://mosaik.readthedocs.io/en/3.5.0/how-tos/transform-functions.html>`_)
+- [NEW] Reworked tutorial and documentation (`#222 <https://gitlab.com/mosaik/mosaik/-/issues/222>`_, `live version <https://mosaik.readthedocs.io/en/3.5.0/>`_)
+- [NEW] Pause and resume simulations (`#220 <https://gitlab.com/mosaik/mosaik/-/issues/220>`_, `docs <https://mosaik.readthedocs.io/en/3.5.0/how-tos/pause-resume.html>`_)
+- [NEW] Simulator groups can be named (`#272 <https://gitlab.com/mosaik/mosaik/-/issues/272>`_)
+- [NEW] Warning on invalid entity IDs in ``get_data`` result (`#253 <https://gitlab.com/mosaik/mosaik/-/issues/253>`_)
+- [FIX] Regression in dataflow graphing due to tiered times (`#258 <https://gitlab.com/mosaik/mosaik/-/issues/258>`_)
+- [FIX] Race condition in real-time simulator start (`#268 <https://gitlab.com/mosaik/mosaik/-/issues/268>`_)
+
 3.4.0 - 2024-12-13
 ------------------
 
