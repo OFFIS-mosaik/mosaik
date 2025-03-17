@@ -6,15 +6,15 @@ This is the reference for mosaik's simulator API, meaning the ways to connect ne
 If you are implementing a scenario using existing simulators, the :doc:`scenario API reference </api_reference/index>` is relevant, instead.
 
 
-The low- and high-level mosaik API
-==================================
+The low- and high-level simulator API
+=====================================
 
 Communication between mosaik and the connected simulators can happen in two different ways:
 
 First, there is a protocol based on TCP connections and JSON datastructures.
-We call this the **low-level mosaik API**.
+We call this the **low-level simulator API**.
 For some programming languages (including Python, Java, and Julia), there are wrappers around this low-level API that abstract away the need to deal with JSON and TCP connections.
-We call these wrappers **high-level mosaik APIs**.
+We call these wrappers **high-level simulator APIs**.
 The figure below depicts the differences between the two API levels.
 
 .. image:: /_static/mosaik-api.*
