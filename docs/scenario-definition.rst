@@ -22,129 +22,160 @@ scenarios.
 The setup
 =========
 
-The central class for creating scenarios is :class:`mosaik.scenario.World` (for
-your convenience, you can also import ``World`` directly from ``mosaik``). This
-class stores all data and state that belongs to your scenario and its
-simulation. It also provides various methods that allow you to start simulators
-and establish the data flows between them.
+The central class for creating scenarios is :class:`mosaik.scenario.World`.
+(For your convenience, :class:`~mosaik.World` and can also be imported from :mod:`mosaik` directly.)
+This class stores all data and state that belongs to your scenario and its simulation.
+It also provides various methods that allow you to start simulators and establish the data flows between them.
 
-In this tutorial, we'll create a very simple scenario using the example
-simulation that is provided with the `Python implementation of the simulator
-API`__.
+.. admonition:: Async mosaik
 
-__ https://gitlab.com/mosaik/mosaik-api-python/
+   mosaik uses asyncio behind the scenes to separate the different simulators and to allow some concurrency in case of simulators running in different processes.
+   In many cases, you as the user will not have to worry about this.
+   There are two exceptions to this:
 
-We start by importing the :mod:`mosaik` package and creating
-a :class:`World` instance:
+   1. If you are using mosaik in a context where an asyncio loop has already been started, creating a :class:`mosaik.World` will lead to conflicts.
+      The most common occurrence of this is when you try to use mosaik in a Jupyter notebook.
+   2. You want to use asynchronicity in your scenario setup yourself, for example, because some simulators have long setup time that you want to parallelize.
 
-.. code-block:: python
+   For these cases, you can use mosaik's async interface, by importing :mod:`mosaik.async_scenario` instead of :mod:`mosaik.scenario` and using :class:`~mosaik.async_scenario.AsyncWorld` instead of :class:`~mosaik.scenario.World`.
+   For your convenience, :class:`~mosaik.AsyncWorld` is also re-exported from the :mod:`mosaik` package.
 
-   >>> import mosaik
-   >>>
-   >>> sim_config: mosaik.SimConfig = {
-   ...     'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
-   ... }
-   >>>
-   >>> world = mosaik.World(sim_config)
+   When using async mosaik, methods that communicate with the connected simulator become coroutines and therefore need to be called with ``await``.
+   This affects the following methods:
 
-(You can leave off the type annotation on ``sim_config`` if you're not using type checking.)
+   - :meth:`world.start <mosaik.async_scenario.AsyncWorld.start>`
+   - a simulator's :meth:`create <mosaik.async_scenario.AsyncModelMock.create>` (and the "constructor" form)
+   - :meth:`world.run <mosaik.async_scenario.AsyncWorld.run>`
+   - extra method calls on the simulator
+   - :meth:`world.shutdown <mosaik.async_scenario.AsyncWorld.shutdown>`
 
-As we start simulator instances by using ``world``, it needs to know what
-simulators are available and how to start them. This is called the *sim config*
-and is a dict that contains every simulator we want to use together with some
-information on how to start it.
+   Also, when using the world in a ``with`` block (as recommended below), you need to use an ``async with`` block, instead.
 
-In our case, the only simulator is the *ExampleSim*. It will be started by importing
-the module ``example_sim.mosaik`` and instantiating the class ``ExampleSim``.
-This is only possible with simulators written in Python 3. You can also let
-mosaik start simulator as external processes or let it connect to already
-running processes. The :doc:`simulator manager docs<simmanager>` explain how
-this all works and give you some hints when to use which method of starting
-a simulator.
+   Establishing connections between entities does not make calls to the connected simulators and therefore does not require ``await``.
 
-In addition to the sim config you can optionally pass the ``mosaik_config`` dictionary to
-:class:`World` in order to overwrite some general parameters for mosaik (e.g.,
-the host and port number for its network socket or timeouts).  Usually, the
-defaults work just well.
+
+Every mosaik scenario starts by importing the :mod:`mosaik` package and creating a ``SIM_CONFIG``.
+The ``SIM_CONFIG`` is a dictionary listing all of the simulators you want to use in your simulation and how to start or connect to them:
 
 .. code-block:: python
 
-   >>> world = mosaik.World(sim_config, mosaik_config={'addr': ('127.0.0.1', 5555), 'start_timeout': 10, 'stop_timeout': 10,})
+   import mosaik
+
+   SIM_CONFIG: mosaik.SimConfig = {
+       "ExampleSim": {"python": "example_sim.mosaik:ExampleSim"},
+   }
+
+(We will use some type annotations throughout as the help catching typos; however, they are completely optional.
+If you don't want to bother with them, writing ``SIM_CONFIG = { ... }`` is fine as well.)
+
+In the code snippet above, we specify that our simulation will use one (type of) simulator which we call *ExampleSim*, and that this simulator is given by the class :class:`example_sim.mosaik.ExampleSim`, to be instantiated in the same Python process as the simulation script.
+(This example simulator is part of the mosaik-api-v3 package.)
+It is also possible to specify that simulators should be started by mosaik in separate processes (by using ``"cmd"`` instead of ``"python"``), or that mosaik should try to connect to a running simulator (by using ``"connect"``).
+For more details on this, we refer to the :doc:`simulator manager docs </simmanager>`.
+
+Next, we create the world.
+We highly recommend that you use a ``with`` block for this, i.e.
+
+.. code-block:: python
+
+   with mosaik.World(SIM_CONFIG) as world:
+       ...
+
+or (see the note on *Async mosaik* above):
+
+.. code-block:: python
+
+   async with mosaik.AsyncWorld(SIM_CONFIG) as world:
+       ...
+
+All the remaining code of your scenario should then be contained within that ``with`` block (or in functions and methods called from within the ``with`` block).
+The advantage of using a ``with`` block is that mosaik can automatically close connections and stop simulators that it started when something goes wrong during setup.
+This avoids leaving around orphaned processes from failed scenarios.
+However, the "traditional" way of simply creating the world with ``world = mosaik.World(SIM_CONFIG)`` (or ``world = mosaik.AsyncWorld(SIM_CONFIG)``) is also still possible.
+(This is often more comfortable in interactive use, like in Jupyter notebooks.)
+
+However, before we go on to the contents of said ``with`` block, we will shortly discuss the additional options when creating a world.
+All of them are optional keyword arguments to the :class:`~mosaik.scenario.World` constructor.
+
+- The ``mosaik_config`` dictionary to allows overwriting some general parameters for mosaik (e.g., the host and port number for its network socket or timeouts).
+  Usually, the defaults work just well.
+
+  .. code-block:: python
+
+     mosaik.World(SIM_CONFIG, mosaik_config={
+         "addr": ("127.0.0.1", 5555),
+         "start_timeout": 10,
+         "stop_timeout": 10,
+     })
 
 .. _time_resolution:
 
-Via the ``time_resolution`` parameter you can set a global time resolution for
-the scenario, which will be passed to each simulator as keyword argument via
-the init function (see :ref:`API init <api.init>`). It tells each simulator how to
-translate mosaik's integer time to simulated time (in seconds from simulation
-start). It has to be a float and it defaults to ``1.``.
+- Via the ``time_resolution`` parameter you can set a global time resolution for the scenario, which will be passed to each simulator as keyword argument via the :ref:`init function <api.init>`.
+  It tells each simulator how to translate mosaik's integer time to simulated time (in seconds from simulation start).
+  It has to be a float and it defaults to ``1.``.
 
-.. code-block:: python
+  .. code-block:: python
 
-   >>> world = mosaik.World(sim_config, time_resolution=1.)
+     mosaik.World(sim_config, time_resolution=1.)
 
-If you set the ``debug`` flag to ``True`` an execution graph will be created
-during the simulation. This may be useful for debugging and testing. Note
-that this increases the memory consumption and simulation time.
+- If you set the ``debug`` flag to ``True`` an execution graph will be created during the simulation.
+  This may be useful for debugging and testing.
+  Note that this increases the memory consumption and simulation time.
 
-.. code-block:: python
+  .. code-block:: python
 
-   >>> world = mosaik.World(sim_config, debug=False)
+     mosaik.World(sim_config, debug=False)
 
-There are two more technical parameters: You can set the ``cache`` flag to ``False``
-if the average step size of the simulators is orders of magnitudes larger than
-the time resolution, i.e. a time resolution of microseconds where the typical
-step size is in the seconds range. This will considerably reduce the
-simulation time.
+- There are two more technical parameters: You can set the ``cache`` flag to ``False`` if the average step size of the simulators is orders of magnitudes larger than the time resolution, i.e. a time resolution of microseconds where the typical step size is in the seconds range.
+  This will considerably reduce the simulation time in these cases.
 
-.. code-block:: python
+  .. code-block:: python
 
-   >>> world = mosaik.World(sim_config, cache=True)
+     mosaik.World(sim_config, cache=True)
 
-Via ``max_loop_iterations`` you can limit the maximum iteration count within one
-time step for :ref:`same-time loops <same-time_loops>`. It's default value is 100.
+- Via ``max_loop_iterations`` you can limit the maximum iteration count within one time step for :ref:`same-time loops <same-time_loops>`.
+  It's default value is 100.
 
-.. code-block:: python
+  .. code-block:: python
 
-   >>> world = mosaik.World(sim_config, max_loop_iterations=100)
+     mosaik.World(sim_config, max_loop_iterations=100)
+
+
 
 Starting simulators
 ===================
 
-Now that the basic set-up is done, we can start our simulators:
+Within the ``with`` block creating the world, we can now start simulators:
 
 .. code-block:: python
 
-   >>> simulator_0 = world.start('ExampleSim', step_size=2)
-   Starting "ExampleSim" as "ExampleSim-0" ...
-   >>> simulator_1 = world.start('ExampleSim')
-   Starting "ExampleSim" as "ExampleSim-1" ...
+       simulator_0 = world.start("ExampleSim", step_size=2)
+       simulator_1 = world.start("ExampleSim")
 
-To start a simulator, we call :meth:`World.start` and pass the name of the
-simulator. Mosaik looks up that name in its sim config, starts the simulator
-for us and returns a :class:`ModelFactory`. This factory allows us to
-instantiate simulation models within that simulator.
+To start a simulator, we call :meth:`World.start` and pass the name of the simulator.
+mosaik looks up that name in its sim config, starts the simulator for us and returns a :class:`ModelFactory`.
+This factory allows us to instantiate simulation models within that simulator.
 
-In addition to the simulator name, you can pass further parameters for the
-simulators. These parameters are passed to the simulator via the :ref:`init
-API call <api.init>`.
+Each simulator is automatically assigned a simulator ID based on the simulator name, by appending a number to that simulator name.
+However, if you want to override this, you can, by specifying the ``sim_id`` keyword argument with your desired ID.
+(IDs have to be unique within the simulation.)
+
+In addition to the simulator name and ID, you can pass further parameters for the simulators.
+These parameters are passed to the simulator via the :ref:`init API call <api.init>`.
 
 
 Instantiating simulation models
 ===============================
 
-Simulators specify a set of public models in their meta data (see :ref:`init
-API call <api.init>`). These models can be accessed with the
-:class:`ModelFactory` that :meth:`World.start` returns as if they were normal
-Python classes. So to create one instance of *ExampleSim*'s model *A* we just
-write:
+Simulators specify a set of public models in their meta data (see :ref:`init API call <api.init>`).
+These models can be accessed with the :class:`ModelFactory` that :meth:`World.start` returns as if they were normal Python classes.
+So to create one instance of *ExampleSim*'s model *A* we just write:
 
 .. code-block:: python
 
-   >>> a = simulator_0.A(init_val=0)
+       a = simulator_0.A(init_val=0)
 
-This will create one instance of the *A* simulation model and pass the model
-parameter ``init_val=0`` to it (see :ref:`create API call <api.create>`).
+This will create one instance of the *A* simulation model and pass the model parameter ``init_val=0`` to it (see :ref:`create API call <api.create>`).
 Lets see what it is that gets returned to us:
 
 .. code-block:: python
@@ -158,83 +189,68 @@ Lets see what it is that gets returned to us:
    >>> a.children
    []
 
-A model instance is represented in your scenario as an :class:`Entity`. The
-entity belongs to the simulator *ExampleSim-0*, has the ID *0.0* and its type
-is *A*. The entity ID is unique within a simulator. To make it globally unique,
-we prepend it with the simulator ID. This is called the entity's *full ID* (see
-:attr:`Entity.full_id`). You can also get a list of its child entities (which
-is empty in this case).
+A model instance is represented in your scenario as an :class:`Entity`.
+The entity belongs to the simulator *ExampleSim-0*, has the ID *0.0* and its type is *A*.
+The entity ID is unique within a simulator.
+To make it globally unique, we prepend it with the simulator ID.
+This is called the entity's *full ID* (see :attr:`Entity.full_id`).
+You can also get a list of its child entities (which is empty in this case).
 
-In order to instantiate multiple instances of a model, you can either use
-a simple list comprehension (or ``for`` loop) or call the static method
-`create` of the model:
+In order to instantiate multiple instances of a model, you can either use a simple list comprehension (or ``for`` loop) or call the static method :meth:`~ModelMock.create` of the model:
 
 .. code-block:: python
 
-   >>> a_set = [simulator_0.A(init_val=i) for i in range(2)]
-   >>> b_set = simulator_1.B.create(3, init_val=1)
+   a_set = [simulator_0.A(init_val=i) for i in range(2)]
+   b_set = simulator_1.B.create(3, init_val=1)
 
-The list comprehension is more verbose but allows you to pass individual
-parameter values to each instance. Using ``create`` is more concise but all
-three instance will have the same value for ``init_val``. In both cases you'll
-get a list of entities (aka :term:`entity sets <entity set>`).
+The list comprehension is more verbose but allows you to pass individual parameter values to each instance.
+Using :meth:`~ModelMock.create` is more concise but all three instance will have the same value for ``init_val``.
+In both cases, you'll get a list of entities.
 
 
 Setting initial events
 ======================
 
-Time-based and hybrid simulators are automatically scheduled for time step 0,
-and will organize their scheduling until the simulation's end themselves
-afterward. For event-based simulators this is not the case, as they might only
-want to be stepped if an event is created by another simulator for example.
-Therefore you might need to set initial events for some event-based ones via
-:meth:`World.set_initial_event`, which sets an event for time 0 by default,
-or at later times if explicitly stated:
+Time-based and hybrid simulators are automatically scheduled for time step 0, and will organize their scheduling until the simulation's end themselves afterward.
+For event-based simulators this is not the case, as they might only want to be stepped if an event is created by another simulator for example.
+Therefore you might need to set initial events for some event-based ones via :meth:`World.set_initial_event`, which sets an event for time 0 by default, or at later times if explicitly stated:
 
 .. code-block:: python
 
-   >>> world.set_initial_event(a.sid)
-   >>> world.set_initial_event(b.sid, time=3)
+       world.set_initial_event(a.sid)
+       world.set_initial_event(b.sid, time=3)
 
 
 Connecting entities
 ===================
 
-If we would now run our simulation, both, *ExampleSim-0* and *Example-Sim-1* would run
-in parallel and never exchange any data. To change that, we need to connect
-the models providing input data to entities requiring this data. In our case,
-we will connect the *val_out* attribute of the *A* instances with the *val_in*
-attribute of the *B* instances:
+If we would now run our simulation, both, *ExampleSim-0* and *Example-Sim-1* would run in parallel and never exchange any data.
+To change that, we need to connect the models providing input data to entities requiring this data.
+In our case, we will connect the *val_out* attribute of the *A* instances with the *val_in* attribute of the *B* instances:
 
 .. code-block:: python
 
-   >>> a_set.insert(0, a)  # Put our first A instance to the others
-   >>> for a, b in zip(a_set, b_set):
-   ...     world.connect(a, b, ('val_out', 'val_in'))
+       a_set.insert(0, a)  # Put our first A instance to the others
+       for a, b in zip(a_set, b_set):
+           world.connect(a, b, ("val_out", "val_in"))
 
-The method :meth:`World.connect` takes the source entity, the destination
-entity and an arbitrary amount of *(source attribute, dest. attribute)* tuples.
-If the name of the source attributes equals that of the destination attribute,
-you can alternatively just pass a single string (e.g., ``connect(a, b,
-'attr')`` is the same as ``connect(a, b, ('attr', 'attr'))``).
+The method :meth:`World.connect` takes the source entity, the destination entity and an arbitrary amount of *(source attribute, dest. attribute)* tuples.
+If the name of the source attributes equals that of the destination attribute, you can alternatively just pass a single string (e.g., ``world.connect(a, b, "attr")`` is the same as ``world.connect(a, b, ("attr", "attr"))``).
 
 mosaik deals with two separate types of data exchange between simulators:
 
 - First, there are measurements that have a value at each point of time.
-  Examples include all kinds of physical measurements like the voltage at a
-  grid node or the power output of a PV system.
-- Second, there are events (those were introduced in mosaik 3) which happen at
-  a particular point in time. A typical example is a message between ICT devices
-  or a set-point message from some controller to the PV system that it controls.
+  Examples include all kinds of physical measurements like the voltage at a grid node or the power output of a PV system.
+- Second, there are events (those were introduced in mosaik 3) which happen at a particular point in time.
+  A typical example is a message between ICT devices or a set-point message from some controller to the PV system that it controls.
 
-Each attribute of a mosaik simulator can deal either with measurements or with
-events. In case of time-based simulators, all attributes work as measurements,
-in case of event-based simulators, all attributes work as events. Hybrid-simulators
-can work with either on an attribute-by-attribute basis (i.e. each attribute is
-either for measurements or for events). For historic reasons, input attributes
-are called trigger attributes when they deal with events, and output attributes
-are called non-persistent when they deal with events. The opposite terms ‘non-trigger’
-and ‘persistent’ are used for measurement attributes (input and output, respectively).
+(For more on this, see :doc:`/explanations/measurements-and-events`.)
+
+Each attribute of a mosaik simulator can deal either with measurements or with events.
+In case of time-based simulators, all attributes work as measurements, in case of event-based simulators, all attributes work as events.
+Hybrid-simulators can work with either on an attribute-by-attribute basis (i.e. each attribute is either for measurements or for events).
+For historic reasons, input attributes are called **trigger** attributes when they deal with events, and output attributes are called **non-persistent** when they deal with events.
+The opposite terms **non-trigger** and **persistent** are used for measurement attributes (input and output, respectively).
 
 mosaik will complain if you connect a non-persistent output to a non-trigger
 input.
@@ -274,9 +290,7 @@ finally run our simulation:
 
 .. code-block:: python
 
-   >>> world.run(until=10)  # doctest: +SKIP
-   Starting simulation.
-   Simulation finished successfully.
+   world.run(until=10)  # doctest: +SKIP
 
 This will execute the simulation from time 0 until we reach the time *until*
 (in simulated time units). The :doc:`scheduler section <scheduler>` explains in
@@ -297,7 +311,7 @@ This might decrease the simulation time but increase the memory consumption.
 
 .. code-block:: python
 
-   >>> world.run(until=END, lazy_stepping=False)
+   world.run(until=END, lazy_stepping=False)
 
 To wrap it all up, this is how our small example scenario finally looks like:
 
@@ -306,26 +320,26 @@ To wrap it all up, this is how our small example scenario finally looks like:
    # Setup
    import mosaik
 
-   sim_config = {
-       'ExampleSim': {'python': 'example_sim.mosaik:ExampleSim'},
+   SIM_CONFIG: mosaik.SimConfig = {
+       "ExampleSim": {"python": "example_sim.mosaik:ExampleSim"},
    }
 
-   world = mosaik.World(sim_config)
+   with mosaik.World(SIM_CONFIG) as world:
 
-   # Start simulators
-   simulator_0 = world.start('ExampleSim', step_size=2)
-   simulator_1 = world.start('ExampleSim')
+       # Start simulators
+       simulator_0 = world.start("ExampleSim", step_size=2)
+       simulator_1 = world.start("ExampleSim")
 
-   # Instantiate models
-   a_set = [simulator_0.A(init_val=i) for i in range(3)]
-   b_set = simulator_1.B.create(3, init_val=1)
+       # Instantiate models
+       a_set = [simulator_0.A(init_val=i) for i in range(3)]
+       b_set = simulator_1.B.create(3, init_val=1)
 
-   # Connect entities
-   for a, b in zip(a_set, b_set):
-       world.connect(a, b, ('val_out', 'val_in'))
+       # Connect entities
+       for a, b in zip(a_set, b_set):
+           world.connect(a, b, ("val_out", "val_in"))
 
-   # Run simulation
-   world.run(until=10)
+       # Run simulation
+       world.run(until=10)
 
 
 .. _cyclic_data-flows:
@@ -346,7 +360,7 @@ This leads to problems when naively setting up bi-directional or cyclic data flo
    world.connect(controller, battery, 'schedule')
 
 The problem is that mosaik cannot step either of the involved simulators as both are waiting for input from the other one.
-mosaik will recognize cycles like this and raise an error when you attempt to :meth:`run` a simulation containing them.
+mosaik will recognize cycles like this and raise an error when you attempt to :meth:`~World.run` a simulation containing them.
 To avoid this error, the standard connections in your scenario must form an acyclic (directed) graph (on the level of simulators).
 
 Of course, cyclic data flow is common in co-simulations and mosaik offers two options for this: time-shifted connections and weak connections.
@@ -435,7 +449,10 @@ Weak connections between two simulators will increase the sub-time component ass
 Asynchronous requests
 ---------------------
 
-*This type of connection is deprecated because it couples the involved simulators too closely.*
+.. warning::
+
+   This type of connection is deprecated because it couples the involved simulators too closely.
+   We recommend that you use time-shifted and/or weak connections, instead.
 
 The final option to resolve the cycle is to use asynchronous requests.
 For this you only connect the battery's *P* to the controller and let the control strategy set the new schedule via the asynchronous request :ref:`rpc.set_data`.
@@ -556,20 +573,21 @@ takes two sets and connects them either evenly or purely randomly:
 
 .. code-block:: python
 
-   world = mosaik.World(sim_config)
+   with mosaik.World(sim_config) as world:
 
-   grid = pypower.Grid(gridfile=GRID_FILE).children
-   pq_buses = [e for e in grid if e.type == 'PQBus']
-   pvs = pvsim.PV.create(20)
+       grid = pypower.Grid(gridfile=GRID_FILE).children
+       pq_buses = [e for e in grid if e.type == 'PQBus']
+       pvs = pvsim.PV.create(20)
 
-   # Assuming that len(pvs) < len(pq_buses), this will
-   # connect 0 or 1 PV module to each bus:
-   mosaik.util.connect_randomly(world, pvs, pq_buses, 'P')
+       # Assuming that len(pvs) < len(pq_buses), this will
+       # connect 0 or 1 PV module to each bus:
+       mosaik.util.connect_randomly(world, pvs, pq_buses, 'P')
 
-   # This will distribute the PV modules purely randomly, but every
-   # bus will have at most 3 modules connected to it.
-   mosaik.util.connect_randomly(world, pvs, pq_buses, 'P',
-                                 evenly=False, max_connects=3)
+       # This will distribute the PV modules purely randomly, but every
+       # bus will have at most 3 modules connected to it.
+       mosaik.util.connect_randomly(
+           world, pvs, pq_buses, 'P', evenly=False, max_connects=3
+       )
 
 Another relatively common use case is connecting a set of entities to one other
 entity, e.g., when you want to connect a number of controllable energy
@@ -667,7 +685,7 @@ The data-flow graph may, for example, look like this:
        }},
    }
 
-:attr:`World.entity_graph` is the undirected *entity graph*. It contains a node
+:meth:`World.entity_graph` is the undirected *entity graph*. It contains a node
 for every entity. The full entity ID (``'sim_id.entity_id'``) is used as node
 label.  Every node also stores the simulator name and entity type. An edge
 between two entities is inserted
@@ -709,16 +727,20 @@ working with graphs and directed graphs.
 How to destroy a world
 ======================
 
-When you are done working with a world, you should shut it down properly:
+At the end of the ``with`` block for the world, it will be shut down automatically in all cases.
+This is why we recommend using a ``with`` block, and if you do this, you can skip the rest of this How to.
+
+If you use a world without a ``with`` block, the world will only be shut down for you when you call :meth:`~World.run` (without also specifying ``shutdown=False``).
+
+If this is not the case, for example, because your scenario raises an exception during setup, or because you are starting simulators just to test the connection with no intention to :meth:`~World.run`, or because you do specify ``shutdown=False`` to be able to still communicate with your simulators after the run as concluded, you should shut down the world manually.
+
+To do this, simply call :meth:`~World.shutdown` on the ``world``:
 
 .. code-block:: python
 
-   >>> world.shutdown()
+   world.shutdown()
 
-This will, for instance, close mosaik's socket and allows new ``World``
-instances to reuse the same port again.
-
-:meth:`World.run()` automatically calls :meth:`World.shutdown()` for you.
+This will close mosaik's socket (which allows new ``World`` instances to reuse the same port again) and it will also terminates all processes started by mosaik.
 
 
 How to do real-time simulations
@@ -755,7 +777,7 @@ How to call extra methods of a simulator
 A simulator may optionally define additional API methods (see :ref:`api.init`)
 that you can call from your scenario. These methods can implement operations,
 like setting some static data to a simulator, which don't really fit into
-``init()`` or ``create()``.
+``init`` or ``create``.
 
 These methods are exposed via the model factory that you get when you start
 a simulator. In the following example, we'll call the ``example_method()``
@@ -763,13 +785,15 @@ that the example simulator shipped with the mosaik Python API:
 
 .. code-block:: python
 
-   >>> world = mosaik.World({'ExampleSim': {
-   ...     'python': 'example_sim.mosaik:ExampleSim'}})
-   >>> es = world.start('ExampleSim')
-   Starting "ExampleSim" as "ExampleSim-0" ...
-   >>>
-   >>> # Now brace yourself ...
-   >>> es.example_method(23)
-   23
-   >>>
-   >>> world.shutdown()
+   with mosaik.World({
+       "ExampleSim": {
+           "python": "example_sim.mosaik:ExampleSim",
+       },
+   }):
+       es = world.start('ExampleSim')
+       es.example_method(23)  # should return 23
+
+Extra methods cannot be called once the world was shut down.
+If you use a world without a ``with`` block, the :meth:`~World.run` method will shut down the world at the end, so you cannot call extra methods afterwards.
+To solve this, either use the world with a ``with`` block (recommended), or call :meth:`~World.run` with ``shutdown=False``.
+In the second case, remember to call :meth:`~World.shutdown` at the end of the scenario.

@@ -12,7 +12,9 @@ License: LGPL
 Example
 -------
 
-A simple demo scenario with mosaik::
+A simple demo scenario with mosaik:
+
+.. code-block:: python
 
     >>> import mosaik
     >>> sim_config = {
@@ -63,7 +65,7 @@ If you want to cite mosaik, e.g. in a work in which you use mosaik, you can use 
     C. Steinbrink, M. Blank-Babazadeh, A. El-Ama, S. Holly, B. Lüers, M. Nebel-Wenner, R.P. Ramirez Acosta, T. Raub, J.S. Schwarz, S. Stark, A. Nieße, and S. Lehnhoff, “CPES Testing with mosaik: Co-Simulation Planning, Execution and Analysis”, Applied Sciences, vol. 9, no. 5, 2019.
 
 Or as bibtex::
-    
+
     @Article{app9050923,
         AUTHOR = {Steinbrink, Cornelius and Blank-Babazadeh, Marita and El-Ama, André and Holly, Stefanie and Lüers, Bengt and Nebel-Wenner, Marvin and Ramírez Acosta, Rebeca P. and Raub, Thomas and Schwarz, Jan Sören and Stark, Sanja and Nieße, Astrid and Lehnhoff, Sebastian},
         TITLE = {CPES Testing with mosaik: Co-Simulation Planning, Execution and Analysis},
@@ -79,6 +81,6 @@ Or as bibtex::
 
 Get in touch, ask questions, discuss 💬
 ---------------------------------------
-You have a question, a feature request or want to generally discuss the amazing 
-possibilities with co-simulation and mosaik? We are curious to hear from you! 
+You have a question, a feature request or want to generally discuss the amazing
+possibilities with co-simulation and mosaik? We are curious to hear from you!
 Join us on `GitHub Discussions <https://github.com/orgs/OFFIS-mosaik/discussions>`_.

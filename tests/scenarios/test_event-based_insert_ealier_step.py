@@ -2,8 +2,8 @@
 Scenario 28:
    A → B → C → D
 
-This scenario tests for the right max_advance value if an earlier step is
-inserted.
+This scenario tests for the right max_advance value if an earlier step
+is inserted.
 """
 
 from mosaik import World

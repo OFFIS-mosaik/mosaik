@@ -10,6 +10,8 @@ import datetime
 import random
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Callable,
     Collection,
     Dict,
     Iterable,
@@ -43,6 +45,7 @@ def connect_many_to_one(
     dest: Entity,
     *attrs: Attr | Tuple[Attr, Attr],
     async_requests: bool = False,
+    transform: Callable[[Any], Any] = lambda x: x,
 ):
     """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
@@ -50,7 +53,9 @@ def connect_many_to_one(
     See the :meth:`~mosaik.scenario.World.connect` for more details.
     """
     for src in src_set:
-        world.connect(src, dest, *attrs, async_requests=async_requests)
+        world.connect(
+            src, dest, *attrs, async_requests=async_requests, transform=transform
+        )
 
 
 def connect_randomly(
@@ -63,35 +68,45 @@ def connect_randomly(
 ):
     """
     Randomly :meth:`~mosaik.scenario.World.connect` the entities from
-    *src_set* to the entities from *dest_set* and return a subset of *dest_set*
-    containing all entities with a connection.
+    ``src_set`` to the entities from ``dest_set`` and return a subset of
+    ``dest_set`` containing all entities with a connection.
 
-    *world* is an instance of the :class:`~mosaik.scenario.World` to which the
-    entities belong.
+    :param world: the instance of the :class:`~mosaik.scenario.World`
+        to which the entities belong.
 
-    *src_set* and *dest_set* are iterables containing
-    :class:`~mosaik.scenario.Entity` instances. *src_set* may be empty,
-    *dest_set* must not be empty. Each entity of *src_set* will be connected to
-    an entity of *dest_set*, but not every entity of *dest_set* will
-    necessarily have a connection (e.g., if you connect a set of three entities
-    to a set of four entities). A set of all entities from *dest_set*, to which
-    at least one entity from *src_set* was connected, will be returned.
+    :param src_set: a :class:`~collections.abc.MutableSequence`
+        (potentially empty) containing :class:`~mosaik.scenario.Entity`
+        instances. Each of these entities will be connected to an entity
+        of ``dest_set``.
 
-    *attrs* is a list of attribute names of pairs as in
-    :meth:`~mosaik.scenario.World.connect()`.
+    :param dest_set: a non-empty
+        :class:`~collections.abc.MutableSequence` of
+        :class:`~mosaik.scenario.Entity` instances. Not every of these
+        entities is necessarily connected (if ``src_set`` contains too
+        few entities)
 
-    If the flag *evenly* is set to ``True``, entities connections will be
-    distributed as evenly as possible. That means if you connect a set of three
-    entities to a set of three entities, there will be three 1:1 connections;
-    if you connect four entities to three entities, there will be one 2:1 and
-    two 1:1 connections. If *evenly* is set to ``False``, connections will be
-    truly random. That means if you connect three entities to three entities,
-    you may either have three 1:1 connections, one 2:1 and two 1:1 connections
-    or just one 3:1 connection.
+    :params attrs: the attribute names to connect as in
+        :meth:`~mosaik.scenario.World.connect()`.
 
-    *max_connects* lets you set the maximum number of connections that an
-    entity of *dest_set* may receive. This argument is only taken into account
-    if *evenly* is set to ``False``.
+    :param evenly: How to distribute the entities:
+
+        If ``True``, entity connections will be distributed
+        as evenly as possible. That means if you connect a set of three
+        entities to a set of three entities, there will be three 1:1
+        connections; if you connect four entities to three entities,
+        there will be one 2:1 and two 1:1 connections.
+
+        If ``False``, connections will be truly random. That means if
+        you connect three entities to three entities, you may either
+        have three 1:1 connections, one 2:1 and two 1:1 connections
+        or just one 3:1 connection.
+
+    :param max_connects: the maximum number of connections that an
+        entity of ``dest_set`` may receive. This argument is only taken
+        into account if ``evenly`` is set to ``False``.
+
+    :return: The :class:`list` of entities from ``dest_set`` to which
+        entities from ``src_set`` were actually connected.
     """
     dest_set = list(dest_set)
     assert dest_set
@@ -104,6 +119,32 @@ def connect_randomly(
         )
 
     return connected
+
+
+def connect_zip(
+    world: World | AsyncWorld,
+    src_set: Collection[Entity],
+    dest_set: Collection[Entity],
+    *attrs: Attr | Tuple[Attr, Attr],
+    **kwargs,
+) -> None:
+    """Connect entities in parallel. This works analogously to the
+    built-in :func:`zip` function: Each entity in ``src_set`` is
+    connected to the entity in ``dest_set`` at the corresponding index.
+
+    :param world: the world for this simulation
+    :param src_set: the collection of source entities
+    :param dest_set: the collection of destination entities
+    :param attrs: the attributes to connect, as in :meth:`world.connect
+        <mosaik.async_scenario.AsyncWorld.connect>`
+    :param kwargs: the connection kwargs as in :meth:`world.connect
+        <mosaik.async_scenario.AsyncWorld.connect>`
+
+    :raise ValueError: if ``src_set`` and ``dest_set`` don't have the
+        same number of elements
+    """
+    for src, dest in zip(src_set, dest_set, strict=True):
+        world.connect(src, dest, *attrs, **kwargs)
 
 
 def _connect_evenly(
@@ -269,8 +310,8 @@ def plot_dataflow_graph(
             df_graph.add_edge(
                 pred.sid,
                 sim.sid,
-                time_shifted=delay.tiers[0] > 0,
-                weak=any(t > 0 for t in delay.tiers[1:]),
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
             )
     positions = nx.spring_layout(df_graph)
 
@@ -321,14 +362,17 @@ def plot_dataflow_graph(
         )
         ax.add_artist(con)
 
-        # Attention: This is not the actual mid-point in the line
-        # I suspect its more like a control point in a bezier interpolation
-        # When the line is more curved, the middle point here is further away from the actual line
-        # One could suspect that the mid-point is actually the middle point in this array,
-        # but the array starts with the stating point, then has the curve-control point in the middle
-        # and then has the points that draw the arrow
-        # Why not calculating the middle point on the straight line? Because then by a 50/50 chance
-        # when you have a curved arrow back and forth between two points, you can have the annotation
+        # Attention: This is not the actual mid-point in the line!
+        # I suspect it's more like a control point in a bezier
+        # interpolation. When the line is more curved, the middle point
+        # here is further away from the actual line. One could suspect
+        # that the mid-point is actually the middle point in this array,
+        # but the array starts with the stating point, then has the
+        # curve-control point in the middle and then has the points that
+        # draw the arrow.
+        # Why not calculating the middle point on the straight line?
+        # Because then by a 50/50 chance when you have a curved arrow
+        # back and forth between two points, you can have the annotation
         # above the wrong arrow.
         midpoint: Tuple[float, float] = con.get_path().vertices[1]  # type: ignore  # close enough
 
@@ -416,7 +460,8 @@ def plot_execution_graph(  # noqa: C901
     number_of_steps = 0
     colormap = ["black" for _ in world.sims]
     for i, sim_name in enumerate(world.sims):
-        # We need the number of steps in the simulation for correct plotting with slices
+        # We need the number of steps in the simulation for correct
+        # plotting with slices
         if number_of_steps < len(steps_st[sim_name]):
             number_of_steps = len(steps_st[sim_name])
 
@@ -428,7 +473,8 @@ def plot_execution_graph(  # noqa: C901
             )
         else:
             dot = ax.plot(steps_st[sim_name], [i] * len(steps_st[sim_name]), "o")
-        # Store the color that is used for the dots in this line (for this simulator)
+        # Store the color that is used for the dots in this line
+        # (for this simulator)
         colormap[i] = dot[0].get_color()
 
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -440,7 +486,8 @@ def plot_execution_graph(  # noqa: C901
     for sim_count, sim_name in enumerate(world.sims.keys()):
         y_pos[sim_name] = sim_count
 
-    # The slice values can be negative, so we want to have the correct time steps
+    # The slice values can be negative, so we want to have the correct
+    # time steps
     labels = None
     if slice is not None:
         labels = range(world.until)[slice[0] : slice[1]]
@@ -566,7 +613,8 @@ def get_execution_time_per_simulator_plot_data(
 ) -> List[float]:
     if slice is not None:
         plot_results = results[key][slice[0] : slice[1]]
-        # The slice values can be negative, so we want to have the correct time steps
+        # The slice values can be negative, so we want to have the
+        # correct time steps
         labels = range(len(results[key]))[slice[0] : slice[1]]
         sub_figure.set_xticks(range(0, len(labels)), map(str, labels))
     else:
@@ -643,3 +691,127 @@ def _tiered_time_pos(time: TieredTime, base: float = 0.1) -> float:
         result += factor * tier
         factor *= base
     return result
+
+
+def plot_dataflow(
+    world: World,
+    file_name: str | None = None,
+    dpi: int = STANDARD_DPI,
+    format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
+    show_plot: bool = True,
+    return_figure: bool = True,
+    seed: int | None = None,
+    **kwargs: Any,
+) -> None | Tuple[Figure, Axes]:
+    """Creates an image visualizing the data flow graph of a mosaik
+    scenario. Using the spring layout from Matplotlib (Fruchterman-
+    Reingold force-directed algorithm) to position the nodes.
+
+    :param world: mosaik world object
+    :param file_name: a full file name including a folder to
+        store the image
+    :param dpi: DPI for created images
+    :param format: format for created image
+    :param show_plot: whether open a window to show the plot
+    :param return_figure: return figure and axis
+    :param seed: needed to fix graph layout
+    :param **kwargs: extra parameters will be passed to fig.savefig()
+    :return: ``None`` but image file will be written to ``file name``
+        if given. It returns tuple with figure and axis instead if
+        return_figure is True
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import ConnectionPatch
+
+    # Recreate the df_graph for plotting. There might be additional
+    # useful information to be extracted from the SimRunners.
+    df_graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, delay in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
+            )
+    positions = nx.spring_layout(df_graph, seed=seed)
+
+    fig, ax = plt.subplots()
+
+    for node in df_graph.nodes:
+        # Draw a dot for the simulator
+        ax.plot(positions[node][0], positions[node][1], "o")
+        # Put the name of the simulator on the dot. If we put an
+        # absolute distance, we depend on the scaling, which can effect
+        # seemingly random distances from the dot
+        text_x = positions[node][0]
+        text_y = positions[node][1]
+        label = ax.annotate(node, positions[node], xytext=(text_x, text_y), size=4)
+        label.set_alpha(0.6)
+
+    for edge in list(df_graph.edges()):
+        edge_infos = df_graph.adj[edge[0]][edge[1]]
+        annotation = ""
+        color = "grey"
+        linestyle = "solid"
+        if edge_infos["time_shifted"]:
+            color = "tab:red"
+            annotation = "time_shifted"
+
+        if edge_infos["weak"]:
+            annotation += " weak"
+            linestyle = "dotted"
+
+        x_pos0 = positions[edge[0]][0]
+        x_pos1 = positions[edge[1]][0]
+        y_pos0 = positions[edge[0]][1]
+        y_pos1 = positions[edge[1]][1]
+
+        con = ConnectionPatch(
+            (x_pos0, y_pos0),
+            (x_pos1, y_pos1),
+            "data",
+            "data",
+            arrowstyle="->",
+            linestyle=linestyle,
+            connectionstyle="arc3,rad=0.1",
+            shrinkA=5,
+            shrinkB=5,
+            mutation_scale=20,
+            fc="w",
+            color=color,
+            alpha=0.6,
+        )
+        ax.add_artist(con)
+
+        midpoint: Tuple[float, float] = con.get_path().vertices[1]
+
+        ax.annotate(
+            annotation,
+            (midpoint[0], midpoint[1]),
+            xytext=(0, 0),
+            textcoords="offset points",
+            color=color,
+            fontsize=5,
+        )
+
+    plt.axis("off")
+
+    if file_name:
+        kwargs.setdefault("facecolor", "white")
+        kwargs.setdefault("edgecolor", "auto")
+        kwargs.setdefault("transparent", True)
+        kwargs.setdefault("bbox_inches", "tight")
+        fig.savefig(
+            file_name,
+            format=format,
+            dpi=dpi,
+            **kwargs,
+        )
+
+    if show_plot:
+        plt.show()
+
+    if return_figure:
+        return fig, ax

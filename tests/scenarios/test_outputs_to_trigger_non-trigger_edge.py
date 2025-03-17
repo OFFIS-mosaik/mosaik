@@ -1,10 +1,12 @@
 """
-In this scenario we have two simulators, the first simulator has two outputs,
-one is connected to the trigger input and one is connected to the
-non-trigger input of the other simulator. Then an output of the first simulator
-triggers on the second attribute of the other simulator, although the input is
-non-trigger.
+In this scenario we have two simulators, the first simulator has two
+outputs, one is connected to the trigger input and one is connected to
+the non-trigger input of the other simulator. Then an output of the
+first simulator triggers on the second attribute of the other simulator,
+although the input is non-trigger.
 """
+
+import pytest
 
 from mosaik import World
 
@@ -21,6 +23,7 @@ def create_scenario(world: World):
     world.connect(ent_0, ent_1, ("never_out", "trigger_in"), ("val_out", "val_in"))
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

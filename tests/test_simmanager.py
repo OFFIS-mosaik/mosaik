@@ -50,7 +50,7 @@ SIM_CONFIG: scenario.SimConfig = {
         "auto_terminate": False,
     },
     "SimulatorMock": {
-        "python": "tests.mocks.simulator_mock:SimulatorMock",
+        "python": "tests.simulators.simulator_mock:SimulatorMock",
     },
     "MetaMock": {
         "python": "tests.simulators.meta_mirror:MetaMirror",
@@ -357,7 +357,8 @@ def test_start_user_error(sim_config, err_msg):
         with pytest.raises(ScenarioError) as exc_info:
             world.loop.run_until_complete(simmanager.start(world, "spam", "", 1.0, {}))
         if sys.platform != "win32":  # pragma: no cover
-            # Windows has strange error messages which do not want to check :(
+            # Windows has strange error messages which we do not want to
+            # check :(
             assert str(exc_info.value) == (
                 f'Simulator "spam" could not be started: {err_msg}'
             )
@@ -431,7 +432,7 @@ def test_sim_proxy_stop_impl(world):
 
         meta = {"type": "time-based", "models": {}}
 
-    sim = simmanager.SimRunner("id", Test())
+    sim = simmanager.SimRunner("id", Test(), None)
     with pytest.raises(NotImplementedError):
         world.loop.run_until_complete(sim.stop())
 
@@ -440,7 +441,7 @@ def test_local_process(world):
     es = ExampleSim()
     proxy = LocalProxy(es, None)
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
-    sim = simmanager.SimRunner("ExampleSim-0", proxy)
+    sim = simmanager.SimRunner("ExampleSim-0", proxy, None)
     assert sim.sid == "ExampleSim-0"
     assert sim._proxy.sim is es
     assert sim.last_step == TieredTime(-1)
@@ -459,8 +460,8 @@ def test_local_process_finalized(world):
 
 async def _rpc_get_progress(channel: Channel, world: World):
     """
-    Helper for :func:`test_mosaik_remote()` that checks the "get_progress()"
-    RPC.
+    Helper for :func:`test_mosaik_remote()` that checks the
+    "get_progress()" RPC.
     """
     progress = await channel.send(["get_progress", [], {}])
     assert progress == 23
@@ -498,7 +499,8 @@ async def _rpc_get_related_entities(channel: Channel, world: World):
         "X.2": {"sim": "ExampleSim", "type": "A"},
     }
 
-    # List of strings yields dicts with related entities grouped by input ids
+    # List of strings yields dicts with related entities grouped by
+    # input ids
     entities = await channel.send(["get_related_entities", [["X.1", "X.2"]], {}])
     assert entities == {
         "X.1": {
@@ -614,7 +616,7 @@ def test_mosaik_remote(
             channel = await channel_future
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
-            sim_x = simmanager.SimRunner("X", proxy_x)
+            sim_x = simmanager.SimRunner("X", proxy_x, None)
             sim_x.successors[sim_x] = TieredDuration(0)
             sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
             sim_x.last_step = TieredTime(1)
@@ -631,9 +633,9 @@ def test_mosaik_remote(
                 async def stop(self):
                     pass
 
-            sim_y = simmanager.SimRunner("Y", DummyProxy())
+            sim_y = simmanager.SimRunner("Y", DummyProxy(), None)
             world.sims["Y"] = sim_y
-            sim_z = simmanager.SimRunner("Z", DummyProxy())
+            sim_z = simmanager.SimRunner("Z", DummyProxy(), None)
             world.sims["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredDuration(0)
@@ -669,8 +671,8 @@ def test_mosaik_remote(
 
 
 def test_timed_input_buffer():
-    """Test TimedInputBuffer, especially if a lower value is added at the same
-    time for the same connection.
+    """Test TimedInputBuffer, especially if a lower value is added at
+    the same time for the same connection.
     """
     buffer = simmanager.TimedInputBuffer()
     buffer.add(1, "src_sid", "src_eid", "dest_eid", "dest_var", 2)

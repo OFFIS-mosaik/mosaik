@@ -1,9 +1,8 @@
 """
-Mosaik interface for the example simulator.
+mosaik interface for the example simulator.
 
-It more complex than it needs to be to be more flexible and show off various
-features of the mosaik API.
-
+It more complex than it needs to be to be more flexible and show off
+various features of the simulator API.
 """
 
 import mosaik_api_v3

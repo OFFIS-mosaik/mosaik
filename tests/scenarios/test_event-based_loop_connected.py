@@ -1,7 +1,8 @@
 """
-This scenario consists of two event-based simulators in a weakly-resolved loop
-with a connected time-based simulator. This used to produce deadlocks in the
-scheduler when events where scheduled close to world.until.
+This scenario consists of two event-based simulators in a
+weakly-resolved loop with a connected time-based simulator. This used to
+produce deadlocks in the scheduler when events where scheduled close to
+world.until.
 
   A ⇄ B → C
 
@@ -28,6 +29,10 @@ def create_scenario(world: World):
     world.connect(model_b, model_c, ("val_out", "val_in"))
 
 
+@pytest.mark.filterwarnings(
+    "ignore:A connection between the non-persistent attribute:UserWarning"
+)
+@pytest.mark.filterwarnings("ignore:Simulator B:UserWarning")
 @pytest.mark.weak
 def test_scenario(world: World):
     create_scenario(world)

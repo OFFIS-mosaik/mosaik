@@ -2,7 +2,7 @@
 This module provides the async interface for users to create simulation
 scenarios for mosaik. For a version that handles the asynchronicity
 itself (but cannot be used within an existing event loop), see
-scenario.py.
+:py:mod:`mosaik.scenario`.
 
 The :class:`AsyncWorld` holds all necessary data for the simulation and
 allows the user to start simulators. It provides a
@@ -41,6 +41,7 @@ from typing import (
 
 import networkx
 from loguru import logger
+from mosaik_api_v3 import OutputData
 from mosaik_api_v3.connection import RemoteException
 from mosaik_api_v3.types import (
     Attr,
@@ -61,8 +62,14 @@ from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationE
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
+from mosaik.progress import ProgressProxy
 from mosaik.proxies import Proxy
-from mosaik.simmanager import MosaikConfigTotal, SimRunner
+from mosaik.simmanager import (
+    MosaikConfigTotal,
+    PullDescription,
+    PushDescription,
+    SimRunner,
+)
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
@@ -93,6 +100,8 @@ base_config: _MosaikConfigTotal = {
 SENTINEL = object()
 """Sentinel for initial data call (we can't  use None as the user might
 want to supply that value.)
+
+:meta private:
 """
 
 
@@ -128,9 +137,10 @@ class ConnectModel(ModelOptionals):
 
 class CmdModel(ModelOptionals):
     cmd: str
-    """The command to start this simulator. String %(python)s will be replaced
-    by the python command used to start this scenario, %(addr)s will be replaced
-    by the `host:port` combination to which the simulator should connect."""
+    """The command to start this simulator. String %(python)s will be
+    replaced by the python command used to start this scenario, %(addr)s
+    will be replaced by the `host:port` combination to which the
+    simulator should connect."""
 
 
 SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
@@ -142,6 +152,7 @@ simulation.
 @dataclass
 class SimGroup:
     parent: SimGroup | None
+    name: str | None
 
     @property
     def depth(self) -> int:
@@ -199,15 +210,15 @@ class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start`) and
-    manages the simulator instances.
+    It provides a method to start a simulator process (:meth:`start`)
+    and manages the simulator instances.
 
-    You have to provide a *sim_config* which tells the world which simulators
-    are available and how to start them. See :func:`mosaik.simmanager.start`
-    for more details.
+    You have to provide a ``sim_config`` which tells the world which
+    simulators are available and how to start them. This will be stored
+    as :attr:`sim_config`; see there for details.
 
-    *mosaik_config* can be a dict or list of key-value pairs to set addional
-    parameters overriding the defaults::
+    *mosaik_config* can be a dict or list of key-value pairs to set
+    additional parameters overriding the defaults::
 
         {
             'addr': ('127.0.0.1', 5555),
@@ -215,16 +226,17 @@ class AsyncWorld:
             'stop_timeout': 2,   # seconds
         }
 
-    Here, *addr* is the network address that mosaik will bind its socket to.
-    *start_timeout* and *stop_timeout* specifiy a timeout (in seconds) for
-    starting/stopping external simulator processes.
+    Here, *addr* is the network address that mosaik will bind its socket
+    to. *start_timeout* and *stop_timeout* specifiy a timeout (in
+    seconds) for starting/stopping external simulator processes.
 
-    If *execution_graph* is set to ``True``, an execution graph will be created
-    during the simulation. This may be useful for debugging and testing. Note,
-    that this increases the memory consumption and simulation time.
+    If *execution_graph* is set to ``True``, an execution graph will be
+    created during the simulation. This may be useful for debugging and
+    testing. Note that this increases the memory consumption and
+    simulation time.
 
     We recommend that you use ``AsyncWorld`` in an ``async with`` block
-    like so:
+    like so::
 
         async with AsyncWorld(SIM_CONFIG) as world:
             # call setup methods on world
@@ -238,13 +250,42 @@ class AsyncWorld:
 
     sim_config: SimConfig
     """The config dictionary that tells mosaik how to start a simulator.
+
+    The sim config is a dictionary with one entry for every simulator.
+    The entry itself tells mosaik how to start the simulator::
+
+        {
+            'ExampleSimA': {
+                'python': 'example_sim.mosaik:ExampleSim',
+            },
+            'ExampleSimB': {
+                'cmd': 'example_sim %(addr)s',
+                'cwd': '.',
+            },
+            'ExampleSimC': {
+                'connect': 'host:port',
+            },
+        }
+
+    *ExampleSimA* is a pure Python simulator. Mosaik will import the
+    module ``example_sim.mosaik`` and instantiate the class
+    ``ExampleSim`` to start the simulator.
+
+    *ExampleSimB* would be started by executing the command
+    *example_sim* and passing the network address of mosaik das command
+    line argument. You can optionally specify a *current working
+    directory*. It defaults to ``.``.
+
+    *ExampleSimC* can not be started by mosaik, so mosaik tries to
+    connect to it.
     """
     config: MosaikConfigTotal
     """The config dictionary for general mosaik settings."""
     until: int  # type: ignore  # set in run
     """The time until which this simulation will run."""
     rt_factor: Optional[float]  # type: ignore  # set in run
-    """The number of real-time seconds corresponding to one mosaik step."""
+    """The number of real-time seconds corresponding to one mosaik step.
+    """
 
     time_resolution: float
     """The number of seconds that correspond to one mosaik time step in
@@ -277,6 +318,10 @@ class AsyncWorld:
     tqdm: tqdm[NoReturn]  # type: ignore  # set in run
     """The tqdm progress bar for the total progress."""
 
+    default_transform_callable = Callable[[Any], Any]
+
+    running: asyncio.Event
+
     def __init__(
         self,
         sim_config: SimConfig,
@@ -285,8 +330,21 @@ class AsyncWorld:
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
+        configure_logging: bool = False,
         skip_greetings: bool = True,
     ):
+        if configure_logging:
+            logger.enable("mosaik")
+
+            # Redirect warnings to the logging system instead of
+            # sys.stderr
+            def user_warning(message, category, filename, lineno, file=None, line=None):
+                logger.warning(f"{filename}:{lineno}: {category.__name__}: {message}")
+
+            warnings.showwarning = user_warning
+
+        self.default_transform_callable: Callable[[Any], Any] = lambda x: x
+
         if not skip_greetings:
             print_greetings()
         self.sim_config = sim_config
@@ -296,7 +354,7 @@ class AsyncWorld:
             self.config.update(mosaik_config)
 
         self.sims = {}
-        self.main_group = SimGroup(parent=None)
+        self.main_group = SimGroup(parent=None, name="main")
         self.current_group = self.main_group
 
         self.time_resolution = time_resolution
@@ -305,7 +363,8 @@ class AsyncWorld:
         self.entity_graph = networkx.Graph()
 
         self.sim_progress = 0.0
-
+        self.running = asyncio.Event()  # Initially unset (simulation starts paused)
+        self.running.set()  # Start unpaused
         self._debug = False
         if debug:
             logger.warning(
@@ -333,9 +392,9 @@ class AsyncWorld:
         return False
 
     @contextlib.contextmanager
-    def group(self):
+    def group(self, group_name: str | None = None):
         parent_group = self.current_group
-        new_group = SimGroup(parent=parent_group)
+        new_group = SimGroup(parent=parent_group, name=group_name)
         self.current_group = new_group
         yield
         self.current_group = parent_group
@@ -369,7 +428,12 @@ class AsyncWorld:
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(sim_id, proxy, depth=self.current_group.depth)
+        self.sims[sim_id] = SimRunner(
+            sim_id,
+            proxy,
+            check_outputs=model_factory.validate_output_dict,
+            depth=self.current_group.depth,
+        )
         if self.use_cache:
             self.sims[sim_id].outputs = {}
         return model_factory
@@ -383,6 +447,7 @@ class AsyncWorld:
         time_shifted: Union[bool, int] = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
+        transform: Callable[[Any], Any] = default_transform_callable,
     ):
         if not dest_attr:
             dest_attr = src_attr
@@ -407,14 +472,14 @@ class AsyncWorld:
                     "requires initial data"
                 )
         elif initial_data is not SENTINEL:
-            logger.warning(
+            warnings.warn(
                 f"Gave initial data for connection from {src.full_id}.{src_attr} to "
                 f"{dest.full_id}.{dest_attr} where it is not needed"
             )
 
         if problems:
             raise ScenarioError(
-                f"The are problems connecting {src.full_id}.{src_attr} to "
+                f"There are problems connecting {src.full_id}.{src_attr} to "
                 f"{dest.full_id}.{dest_attr}:\n- " + "\n- ".join(problems)
             )
 
@@ -422,7 +487,7 @@ class AsyncWorld:
             dest_attr in dest.model_mock.measurement_inputs
             and src_attr in src.model_mock.event_outputs
         ):
-            logger.warning(
+            warnings.warn(
                 f"A connection between the non-persistent attribute {src_attr} of "
                 f"{src.sid} and the non-trigger attribute {dest_attr} of "
                 f"{dest.sid} is not recommended. This might cause problems in the "
@@ -446,12 +511,25 @@ class AsyncWorld:
         src_sim.output_request.setdefault(src.eid, []).append(src_attr)
 
         if is_pulled:
-            dest_sim.pulled_inputs.setdefault((src_sim, delay), set()).add(
-                (src_port, dest_port)
+            output_entry = dest_sim.pulled_inputs.setdefault((src_sim, delay), [])
+            output_entry.append(
+                PullDescription(
+                    src_port=src_port, dest_port=dest_port, transform=transform
+                )
             )
+
         else:
-            src_sim.output_to_push.setdefault(src_port, []).append(
-                (dest_sim, delay, dest_port)
+            output_entry = src_sim.output_to_push.setdefault(
+                src_port,
+                [],
+            )
+            output_entry.append(
+                PushDescription(
+                    dest_sim=dest_sim,
+                    delay=delay,
+                    dest_port=dest_port,
+                    transform=transform,
+                )
             )
 
         src_sim.successors[dest_sim] = connect_interval(src_group, dest_group)
@@ -496,35 +574,41 @@ class AsyncWorld:
         time_shifted: Union[bool, int] = False,
         initial_data: Dict[Attr, Any] = {},
         weak: bool = False,
+        transform: Callable[[Any], Any] = lambda x: x,
     ):
         """
         Connect the *src* entity to *dest* entity.
 
-        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple in
-        *attr_pairs*. If *src_attr* and *dest_attr* have the same name, you
-        you can optionally only pass one of them as a single string.
+        Establish a data-flow for each ``(src_attr, dest_attr)`` tuple
+        in *attr_pairs*. If *src_attr* and *dest_attr* have the same
+        name, you you can optionally only pass one of them as a single
+        string.
 
-        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities share
-        the same simulator instance, if at least one (src. or dest.) attribute
-        in *attr_pairs* does not exist, or if the connection would introduce
-        a cycle in the data-flow (e.g., A → B → C → A).
+        Raise a :exc:`~mosaik.exceptions.ScenarioError` if both entities
+        share the same simulator instance, if at least one (src. or
+        dest.) attribute in *attr_pairs* does not exist, or if the
+        connection would introduce a cycle in the data-flow (e.g.,
+        A → B → C → A).
 
-        If the *dest* simulator may make asynchronous requests to mosaik to
-        query data from *src* (or set data to it), *async_requests* should be
-        set to ``True`` so that the *src* simulator stays in sync with *dest*.
+        If the *dest* simulator may make asynchronous requests to mosaik
+        to query data from *src* (or set data to it), *async_requests*
+        should be set to ``True`` so that the *src* simulator stays in
+        sync with *dest*.
 
-        An alternative to asynchronous requests are time-shifted connections.
-        Their data flow is always resolved after normal connections so that
-        cycles in the data-flow can be realized without introducing deadlocks.
-        For such a connection *time_shifted* should be set to ``True`` and
-        *initial_data* should contain a dict with input data for the first
-        simulation step of the receiving simulator.
+        An alternative to asynchronous requests are time-shifted
+        connections. Their data flow is always resolved after normal
+        connections so that cycles in the data-flow can be realized
+        without introducing deadlocks. For such a connection
+        *time_shifted* should be set to ``True`` and *initial_data*
+        should contain a dict with input data for the first simulation
+        step of the receiving simulator.
 
-        An alternative to using async_requests to realize cyclic data-flow
-        is given by the time_shifted kwarg. If set to ``True`` it marks the
-        connection as cycle-closing (e.g. C → A). It must always be used with
-        initial_data specifying a dict with the data sent to the destination
-        simulator at the first step (e.g. *{'src_attr': value}*).
+        An alternative to using async_requests to realize cyclic
+        data-flow is given by the time_shifted kwarg. If set to ``True``
+        it marks the connection as cycle-closing (e.g. C → A). It must
+        always be used with initial_data specifying a dict with the data
+        sent to the destination simulator at the first step (e.g.
+        *{'src_attr': value}*).
         """
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
@@ -542,6 +626,7 @@ class AsyncWorld:
                     time_shifted=time_shifted,
                     weak=weak,
                     initial_data=initial_data.get(src_attr, SENTINEL),
+                    transform=transform,
                 )
             except ScenarioError as e:
                 errors.append(e)
@@ -567,7 +652,8 @@ class AsyncWorld:
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
-        Set an initial step for simulator *sid* at time *time* (default=0).
+        Set an initial step for simulator *sid* at time *time*
+        (default=0).
         """
         sim = self.sims[sid]
         sim.next_steps = [TieredTime(time) + sim.from_world_time]
@@ -578,11 +664,12 @@ class AsyncWorld:
         *attributes: Attr,
     ) -> Dict[Entity, Dict[Attr, Any]]:
         """
-        Get and return the values of all *attributes* for each entity of an
-        *entity_set*.
+        Get and return the values of all *attributes* for each entity of
+        an *entity_set*.
 
-        The return value is a dict mapping the entities of *entity_set* to
-        dicts containing the values of each attribute in *attributes*::
+        The return value is a dict mapping the entities of *entity_set*
+        to dicts containing the values of each attribute in
+        *attributes*::
 
             {
                 Entity(...): {
@@ -635,12 +722,17 @@ class AsyncWorld:
         print_progress: Union[bool, Literal["individual"]] = False,
         lazy_stepping: bool = True,
     ):
-        """Start the simulation until the simulation time *until* is
-        reached.
+        """Start the simulation and run it until the simulation time
+        ``until`` is reached.
 
-        Before this method returns, it stops all simulators and closes
-        mosaik's server socket. So this method should only be called
-        once.
+        As mosaik has no way of resetting simulators to their initial
+        state, this method can only be called once.
+
+        Unlike its counterpart :meth:`~mosaik.scenario.World.run` in the
+        synchronous :class:`~mosaik.scenario.World`, this method will
+        not automatically close the connection to connected simulators,
+        even outside of a ``with`` block. You need to call
+        :meth:`shutdown` manually afterwards (or use a ``with`` block).
 
         :param until: The end of the simulation in mosaik time steps
             (exclusive).
@@ -910,18 +1002,21 @@ class ExtraMethodsProxy:
 
 class AsyncModelFactory:
     """
-    This is a facade for a simulator *sim* that allows the user to create
-    new model instances (entities) within that simulator.
+    This is a facade for a simulator *sim* that allows the user to
+    create new model instances (entities) within that simulator.
 
-    For every model that a simulator publicly exposes, the ``ModelFactory``
-    provides a :class:`ModelMock` attribute that actually creates the entities.
+    For every model that a simulator publicly exposes, the
+    :class:`AsyncModelFactory` provides a :class:`AsyncModelMock`
+    attribute that actually creates the entities.
 
-    If you access an attribute that is not a model or if the model is not
-    marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError` is raised.
+    If you access an attribute that is not a model or if the model is
+    not marked as *public*, an :exc:`~mosaik.exceptions.ScenarioError`
+    is raised.
     """
 
     type: Literal["event-based", "time-based", "hybrid"]
     models: Dict[ModelName, AsyncModelMock]
+    entities: Dict[str, Entity]
 
     def __init__(  # noqa: C901
         self, world: AsyncWorld, group: SimGroup, sid: SimId, proxy: Proxy
@@ -932,6 +1027,7 @@ class AsyncModelFactory:
         self._proxy = proxy
         self._sid = sid
         self.call = ExtraMethodsProxy(sid)
+        self.entities = {}
 
         if "type" not in proxy.meta:
             raise ScenarioError(
@@ -995,6 +1091,49 @@ class AsyncModelFactory:
                 f'Model factory for "{self._sid}" has no model and no function '
                 f'"{name}".'
             )
+
+    def validate_output_dict(self, eid_dict: OutputData):
+        """
+        Validate the structure and contents of an output dictionary.
+
+        This method checks that the entities and attributes in the
+        output dictionary are valid based on the simulator's internal
+        state. If any entity in the output dictionary was not created
+        during initialization, or if any attribute is not part of the
+        entity's model's output attributes, a warning is issued to
+        notify of potential errors in the simulator's
+        :meth:`~Simulator.get_data` method.
+
+        :param eid_dict: A dictionary of output data, where keys are
+            entity IDs and values are dictionaries of attributes and
+            their corresponding data.
+        :raises UserWarning: If an entity ID in the output dictionary
+            does not correspond to a known entity, or if an attribute is
+            not part of the entity's model's defined output attributes.
+        """
+        for eid in eid_dict:
+            if eid not in self.entities.keys():
+                warnings.warn(
+                    f"Simulator {self._sid} returned data for the entity {eid} which "
+                    "was never created. This is likely an error in its get_data "
+                    "method.",
+                    UserWarning,
+                )
+            else:
+                model_attrs = self.entities[eid].model_mock.output_attrs
+                for attr in eid_dict[eid]:
+                    if attr not in model_attrs:
+                        warnings.warn(
+                            f"Simulator {self._sid} returned data for attribute"
+                            f"{attr} which does not exist in model "
+                            f"{self.entities[eid].model_mock.name}. "
+                            "This is likely an error in its get_data method.",
+                            UserWarning,
+                        )
+
+    def get_progress(self):
+        progress = self._world.sims[self._sid].progress
+        return ProgressProxy(progress)
 
 
 def parse_attrs(
@@ -1088,12 +1227,13 @@ def parse_attrs(
 class AsyncModelMock(object):
     """
     Instances of this class are exposed as attributes of
-    :class:`ModelFactory` and allow the instantiation of simulator models.
+    :class:`ModelFactory` and allow the instantiation of simulator
+    models.
 
-    You can *call* an instance of this class to create exactly one entity:
-    ``sim.ModelName(x=23)``. Alternatively, you can use the :meth:`create()`
-    method to create multiple entities with the same set of parameters at once:
-    ``sim.ModelName.create(3, x=23)``.
+    You can *call* an instance of this class to create exactly one
+    entity: ``sim.ModelName(x=23)``. Alternatively, you can use the
+    :meth:`create` method to create multiple entities with the same set
+    of parameters at once: ``sim.ModelName.create(3, x=23)``.
     """
 
     name: ModelName
@@ -1149,19 +1289,19 @@ class AsyncModelMock(object):
 
     async def create(self, num: int, **model_params: Any):
         """
-        Create *num* entities with the specified *model_params* and return
-        a list with the entity dicts.
+        Create *num* entities with the specified *model_params* and
+        return a list with the entity dicts.
 
         The returned list of entities is the same as returned by
-        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is prepended
-        to every entity ID to make them globally unique.
+        :meth:`mosaik_api_v3.Simulator.create()`, but the simulator is
+        prepended to every entity ID to make them globally unique.
         """
         self._check_params(**model_params)
 
         entities = await self._proxy.send(["create", (num, self.name), model_params])
-        assert (
-            len(entities) == num
-        ), f"{num} entities were requested but {len(entities)} were created."
+        assert len(entities) == num, (
+            f"{num} entities were requested but {len(entities)} were created."
+        )
 
         return self._make_entities(entities, assert_type=self.name)
 
@@ -1175,7 +1315,9 @@ class AsyncModelMock(object):
             )
 
     def _make_entities(
-        self, entity_dicts: List[CreateResult], assert_type: Optional[ModelName] = None
+        self,
+        create_results: List[CreateResult],
+        assert_type: Optional[ModelName] = None,
     ) -> List[Entity]:
         """
         Recursively create lists of :class:`Entity` instance from a list
@@ -1185,7 +1327,7 @@ class AsyncModelMock(object):
         entity_graph = self._world.entity_graph
 
         entity_set: List[Entity] = []
-        for e in entity_dicts:
+        for e in create_results:
             self._assert_model_type(assert_type, e)
 
             children = e.get("children")
@@ -1197,16 +1339,12 @@ class AsyncModelMock(object):
             )
 
             entity_set.append(entity)
-            # Test for the `created` flag. (There might be other nodes
-            # in the graph that arise from edges between related
-            # entities where the second entity has not yet been
-            # processed.)
-            if entity_graph.nodes.get(entity.full_id, {}).get("created", False):
+            if entity.eid in self._factory.entities:
                 raise DuplicateEntityIdError(sid, entity.eid)
-            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"], created=True)
+            self._factory.entities[entity.eid] = entity
+            entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
-
         return entity_set
 
     def _assert_model_type(
@@ -1230,7 +1368,8 @@ class AsyncModelMock(object):
 
 class Entity(object):
     """
-    An entity represents an instance of a simulation model within mosaik.
+    An entity represents an instance of a simulation model within
+    mosaik.
     """
 
     __slots__ = ["sid", "eid", "sim_name", "model_mock", "children", "extra_info"]

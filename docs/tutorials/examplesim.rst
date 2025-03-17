@@ -1,3 +1,5 @@
+:orphan:
+
 .. _examplesim:
 
 .. role::  raw-html(raw)
@@ -7,8 +9,13 @@
 Integrating a simulation model into the mosaik ecosystem
 ========================================================
 
+.. warning::
+   This page is not part of the actively maintained documentation anymore.
+   It is preserved here so that links to it don't break.
+   We recommend that you read the current tutorial :doc:`here <index>`.
+
 In this section we'll first implement a simple example simulator. We'll then
-implement mosaik's Sim-API step-by-step.
+implement mosaik's Simulator API step-by-step.
 
 .. _the_simulator:
 
@@ -47,7 +54,7 @@ Here is a possible implementation of that simulation model in Python:
 Setup for the API implementation
 ================================
 
-So lets start implementing mosaik's Sim-API for this model. We can use the
+So lets start implementing the mosaik simulator API for this model. We can use the
 Python :doc:`high-level API </mosaik-api/high-level>` for this. This package
 eases our workload, because it already implements everything necessary for
 communicating with mosaik. It provides an abstract base class which we can
@@ -57,7 +64,7 @@ If you already :doc:`installed </installation>` mosaik and the demo, you
 already have this package installed in your mosaik virtualenv.
 
 We start by creating a new :file:`simulator_mosaik.py` and import the module
-containing the mosaik API as well as our model:
+containing the simulator API as well as our model:
 
 .. literalinclude:: code/simulator_mosaik.py
    :lines: 1-9
@@ -322,7 +329,7 @@ for an initial message from mosaik).
 Summary
 =======
 
-We have now implemented the mosaik Sim-API for our simulator. The following
+We have now implemented the mosaik simulator API for our simulator. The following
 listing combines all the bits explained above:
 
 .. literalinclude:: code/simulator_mosaik.py

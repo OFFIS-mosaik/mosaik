@@ -123,13 +123,16 @@ class LocalProxy(BaseProxy):
     async def send(self, request: Tuple[str, Tuple[Any, ...], Dict[str, Any]]):
         func_name, args, kwargs = request
         func = getattr(self.sim, func_name)
-        # A simulator that makes requests back to mosaik (like set_data or set_event)
-        # will have generator functions instead of normal functions as its init, create,
-        # step and/or get_data. It will yield coroutines that produce the required
-        # information, which we have to await. (This is due to simpy, which used
-        # generator functions for its asynchronicity; we didn't want to break the API.)
-        # TODO: Maybe check this during __init__ and create the right methods instead of
-        # checking for isgeneratorfunction on each call?
+        # A simulator that makes requests back to mosaik (like set_data
+        # or set_event) will have generator functions instead of normal
+        # functions as its init, create, step and/or get_data. It will
+        # yield coroutines that produce the required information, which
+        # we have to await. (This is due to simpy, which used generator
+        # functions for its asynchronicity; we didn't want to break the
+        # API.)
+        # TODO: Maybe check this during __init__ and create the right
+        # methods instead of checking for isgeneratorfunction on each
+        # call?
         if isgeneratorfunction(func):
             gen = func(*args, **kwargs)
             try:

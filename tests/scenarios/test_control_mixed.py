@@ -2,6 +2,8 @@
 information on only after the same-time loop.
 """
 
+import pytest
+
 from mosaik import World
 
 
@@ -15,6 +17,9 @@ def create_scenario(world: World):
     world.connect(a, c, ("loop_out", "val_in"))
 
 
+@pytest.mark.filterwarnings(
+    "ignore:A connection between the non-persistent attribute:UserWarning"
+)
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=1)

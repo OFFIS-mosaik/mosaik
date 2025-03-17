@@ -1,8 +1,11 @@
+:orphan:
+
+==========
 Quickstart
 ==========
 
 This guide assumes that you are somewhat proficient with Python and know what
-*pip* and *virtualenv* is. Else, you should follow the :doc:`detailed 
+*pip* and *virtualenv* is. Else, you should follow the :doc:`detailed
 instructions <installation>`.
 
 Mosaik runs on Linux, OS X and Windows. It requires `Python 3.8
@@ -19,8 +22,8 @@ You can then install mosaik with pip:
 
    $ pip install mosaik
 
-This provides you with the mosaik framework. There is also a simple demo 
-scenario which may help you to get started. Please refer to our :doc:`detailed 
+This provides you with the mosaik framework. There is also a simple demo
+scenario which may help you to get started. Please refer to our :doc:`detailed
 instructions <installation>` for installation.
 
 For more information about avaiable components and example scenarios visit the

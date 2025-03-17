@@ -1,16 +1,15 @@
 # example_model.py
 """
 This module contains a simple example model.
-
 """
 
 
 class Model:
-    """Simple model that increases its value *val* with some *delta* every
-    step.
+    """Simple model that increases its value *val* with some *delta*
+    every step.
 
-    You can optionally set the initial value *init_val*. It defaults to ``0``.
-
+    You can optionally set the initial value *init_val*. It defaults to
+    ``0``.
     """
 
     def __init__(self, init_val=0):

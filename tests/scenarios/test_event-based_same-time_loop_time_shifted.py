@@ -1,12 +1,14 @@
 """
-This scenario has two event-based simulators in a time-shifted loop. The second
-simulator's output should be delayed due to the time shift, so that the simulators
-do not enter a same-time loop.
+This scenario has two event-based simulators in a time-shifted loop. The
+second simulator's output should be delayed due to the time shift, so
+that the simulators do not enter a same-time loop.
 
   A ⇄ B
 
 where the connection from B to A is time_shifted.
 """
+
+import pytest
 
 from mosaik import World
 
@@ -27,6 +29,7 @@ def create_scenario(world: World):
     )
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

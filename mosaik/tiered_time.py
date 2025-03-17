@@ -178,6 +178,19 @@ class MinimalDurations:
     def contains_zero(self) -> bool:
         return any(all(t == 0 for t in duration.tiers) for duration in self.durations)
 
+    def is_time_shifted(self) -> bool:
+        """Whether this MinimalDurations is time-shifted, i.e. there is
+        a non-zero first component in any (equivalently, all) of its
+        Durations.
+        """
+        return any(duration.tiers[0] > 0 for duration in self.durations)
+
+    def is_weak(self) -> bool:
+        """Whether this MinimalDurations is weak, i.e. not time-shifted
+        but also not zero.
+        """
+        return not (self.contains_zero() or self.is_time_shifted())
+
     def earliest_sum(self, other: TieredTime) -> TieredTime:
         """Add `other` to all durations in this set and return the
         minimal result.

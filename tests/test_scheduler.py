@@ -13,9 +13,9 @@ from mosaik import World, exceptions, scenario, scheduler, simmanager
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
 from mosaik.proxies import LocalProxy
-from mosaik.simmanager import SimRunner
+from mosaik.simmanager import PullDescription, PushDescription, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
-from tests.mocks.simulator_mock import SimulatorMock
+from tests.simulators.simulator_mock import SimulatorMock
 
 
 async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: int = 0):
@@ -73,7 +73,7 @@ def world_fixture(request: pytest.FixtureRequest):
         proxy = world.loop.run_until_complete(
             init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
         )
-        sim = SimRunner(sim_id, proxy)
+        sim = SimRunner(sim_id, proxy, check_outputs=lambda _: None)
         world.sims[sim_id] = sim
         sims.append(sim)
 
@@ -115,7 +115,9 @@ def test_run(monkeypatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
 
-    async def dummy_proc(world, sim, until, rt_factor, rt_strict, lazy_stepping):
+    async def dummy_proc(
+        world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+    ):
         sim.proc_started = True
 
     class proxy:
@@ -129,7 +131,7 @@ def test_run(monkeypatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world._async_world.sims = {i: SimRunner(i, proxy) for i in range(2)}
+    world._async_world.sims = {i: SimRunner(i, proxy, None) for i in range(2)}
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:
@@ -167,9 +169,11 @@ async def test_sim_process_error(monkeypatch):
     monkeypatch.setattr(scheduler, "advance_progress", advance_progress)
 
     with pytest.raises(exceptions.SimulationError) as excinfo:
-        await scheduler.sim_process(None, Sim(), None, 1, False, False)
+        await scheduler.sim_process(
+            None, Sim(), None, 1, False, False, scheduler.Barrier(1)
+        )
     assert str(excinfo.value) == (
-        '[Errno 1337] noob: Simulator "spam" closed ' "its connection."
+        '[Errno 1337] noob: Simulator "spam" closed its connection.'
     )
 
 
@@ -271,8 +275,22 @@ def test_get_input_data(world: World):
     sim_0.outputs = {0: {"1": {"x": 0, "y": 1}}}
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
     sim_2.inputs_from_set_data = {"0": {"in": {"3": 5}, "spam": {"3": "eggs"}}}
-    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = {(("1", "x"), ("0", "in"))}
-    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = {(("2", "z"), ("0", "in"))}
+
+    sim_2.pulled_inputs[(sim_0, TieredDuration(0))] = [
+        PullDescription(
+            src_port=("1", "x"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+    sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = [
+        PullDescription(
+            src_port=("2", "z"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+
     data = scheduler.get_input_data(world, sim_2)
     assert data == {
         "0": {
@@ -291,8 +309,16 @@ def test_get_input_data_shifted(world: World):
     sim_5 = world.sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
-    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = {(("1", "z"), ("0", "in"))}
-    data = scheduler.get_input_data(world, world.sims["Sim-4"])
+
+    sim_4.pulled_inputs[(sim_5, TieredDuration(1))] = [
+        PullDescription(
+            src_port=("1", "z"),
+            dest_port=("0", "in"),
+            transform=lambda x: x,
+        )
+    ]
+
+    data = scheduler.get_input_data(world, sim_4)
     assert data == {"0": {"in": {"Sim-5.1": 7}}}
 
 
@@ -347,7 +373,8 @@ async def test_step(world: World):
     )
 
 
-# TODO: Test also for output_time if 'time' is indicated by event-based sims
+# TODO: Test also for output_time if 'time' is indicated by event-based
+# sims
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "world, cache", [("time-based", True), ("event-based", False)], indirect=["world"]
@@ -398,8 +425,19 @@ async def test_get_outputs_buffered(world: scenario.World):
     sim.tqdm = tqdm(disable=True)
     sim.output_request = {0: ["x", "y", "z"]}
     sim.output_to_push = {
-        ("0", "x"): [(world.sims["Sim-2"], TieredDuration(0), ("0", "in"))],
-        ("0", "z"): [(world.sims["Sim-1"], TieredDuration(0), ("0", "in"))],
+        ("0", "x"): [
+            PushDescription(
+                dest_sim=world.sims["Sim-2"],
+                delay=TieredDuration(0),
+                dest_port=("0", "in"),
+                transform=lambda x: x,
+            )
+        ],
+        ("0", "z"): [
+            PushDescription(
+                world.sims["Sim-1"], TieredDuration(0), ("0", "in"), lambda x: x
+            )
+        ],
     }
 
     await scheduler.get_outputs(world, sim)

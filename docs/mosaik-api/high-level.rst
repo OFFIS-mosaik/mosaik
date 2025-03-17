@@ -10,14 +10,14 @@ Currently, there are high-level APIs for Python, Java, C#, and MatLab.
 Installation
 ============
 
-The Python implementation of the mosaik API is available as a separate package
+The Python implementation of the mosaik simulator API is available as a separate package
 an can easily be installed via `pip <https://pip.pypa.io>`_:
 
 .. code-block:: bash
 
    pip install mosaik-api-v3
 
-It supports Python 2.7, >= 3.3 and PyPy.
+It supports Python 3.8 and higher.
 
 Usage
 =====
@@ -167,3 +167,27 @@ Here is an example with a bit more context:
 
     if __name__ == '__main__':
         sys.exit(main())
+
+
+Helper classes
+--------------
+
+There are a bunch of helper classes to allow users to give more precise type annotations for their simulators.
+
+.. autoclass:: Meta
+   :members:
+
+.. autoclass:: mosaik_api_v3.types.ModelDescription
+   :members:
+
+.. autoclass:: CreateResult
+   :members:
+
+.. autoclass:: mosaik_api_v3.types.InputData
+   :members:
+
+.. autoclass:: OutputRequest
+   :members:
+
+.. autoclass:: OutputData
+   :members:

@@ -5,13 +5,13 @@ This module is responsible for performing the simulation of a scenario.
 from __future__ import annotations
 
 import asyncio
+import warnings
 from heapq import heappop
 from math import ceil
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
-from loguru import logger
-from mosaik_api_v3 import InputData, SimId, Time
+from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
 from mosaik.internal_util import merge_all, merge_existing
@@ -20,7 +20,6 @@ from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import AsyncWorld
-
 
 SENTINEL = object()
 
@@ -38,8 +37,8 @@ async def run(
 
     Return the final simulation time.
 
-    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed description of the
-    *rt_factor* and *rt_strict* arguments.
+    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed
+    description of the *rt_factor* and *rt_strict* arguments.
     """
     world.until = until
 
@@ -60,10 +59,13 @@ async def run(
     await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
+    start_barrier = Barrier(len(world.sims))
     processes: List[asyncio.Task[None]] = []
     for sim in world.sims.values():
         process = asyncio.create_task(
-            sim_process(world, sim, until, rt_factor, rt_strict, lazy_stepping),
+            sim_process(
+                world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+            ),
             name=f"Runner for {sim.sid}",
         )
 
@@ -81,16 +83,21 @@ async def sim_process(
     rt_factor: Optional[float],
     rt_strict: bool,
     lazy_stepping: bool,
+    start_barrier: Barrier,
 ):
     """
     Coroutine running the simulator *sim*.
     """
+
     sim.started = True
-    sim.rt_start = rt_start = perf_counter()
+    sim.rt_start = perf_counter()
+    await start_barrier.wait()
 
     try:
         advance_progress(sim, world)
         while await next_step_settled(sim, world):
+            await world.running.wait()  # Wait here until the event is set again
+
             sim.tqdm.set_postfix_str("await input")
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
@@ -108,10 +115,11 @@ async def sim_process(
                     "an infinite loop. If not, you can increase max_loop_iterations to "
                     "get rid of this warning."
                 )
+
             input_data = get_input_data(world, sim)
             max_advance = get_max_advance(world, sim, until)
             await step(world, sim, input_data, max_advance)
-            rt_check(rt_factor, rt_start, rt_strict, sim)
+            rt_check(rt_factor, sim.rt_start, rt_strict, sim)
             await get_outputs(world, sim)
             sim.current_step = None
             trigger_successors(sim)
@@ -121,13 +129,16 @@ async def sim_process(
             # way.)
             for isim in world.sims.values():
                 advance_progress(isim, world)
+
             world.sim_progress = get_progress(world.sims, until)
             world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+
             if world.use_cache:
                 prune_dataflow_cache(world)
+
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
-        raise SimulationError('Simulator "%s" closed its connection.' % sim.sid, e)
+        raise SimulationError(f'Simulator "{sim.sid}" closed its connection.', e)
 
 
 async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
@@ -181,10 +192,11 @@ async def rt_sleep(sim: SimRunner, world: AsyncWorld) -> None:
 
 async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     """
-    Wait until all simulators that can provide input for this simulator have run for
-    this step.
+    Wait until all simulators that can provide input for this simulator
+    have run for this step.
 
-    Also notify any simulator that is already waiting to perform its next step.
+    Also notify any simulator that is already waiting to perform its
+    next step.
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -214,17 +226,21 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
         {
             'eid': {
-                'attrname': {'src_eid_0': val_0, ... 'src_eid_n': val_n},
+                'attrname': {
+                    'src_eid_0': val_0,
+                    ...,
+                    'src_eid_n': val_n,
+                },
                 ...
             },
             ...
         }
 
-    For every entity, there is an entry in the dict and each entry is itself
-    a dict with attributes and a list of values. This is, because we may have
-    inputs from multiple simulators (e.g., different consumers that provide
-    loads for a node in a power grid) and cannot know how to aggregate that
-    data (sum, max, ...?).
+    For every entity, there is an entry in the dict and each entry is
+    itself a dict with attributes and a list of values. This is, because
+    we may have inputs from multiple simulators (e.g., different
+    consumers that provide loads for a node in a power grid) and cannot
+    know how to aggregate that data (sum, max, ...?).
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
@@ -249,23 +265,34 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     # Merge in pushed inputs from the timed input buffer
     input_data = sim.timed_input_buffer.get_input(input_data, sim.current_step.time)
 
-    for (src_sim, delay), dataflows in sim.pulled_inputs.items():
+    for (src_sim, delay), entry in sim.pulled_inputs.items():
+        # Retrieve the cached output for the current step, accounting
+        # for the delay
         cache = src_sim.get_output_for(sim.current_step.time - delay.tiers[0])
-        for (src_eid, src_attr), (dest_eid, dest_attr) in dataflows:
+
+        # Iterate over the connections in the entry
+        for single_entry in entry:
             try:
-                val = cache[src_eid][src_attr]
+                val = cache[single_entry.src_port[0]][single_entry.src_port[1]]
             except KeyError:
-                logger.warning(
-                    f"Simulator {src_sim.sid}'s entity {src_eid} did not produce "
-                    f"output on its persistent attribute {src_attr} during its last "
-                    "step. However, this value is now required by simulator "
-                    f"{sim.sid}. This usually results from attributes that are marked "
-                    "persistent despite working like events. Supplying `None` for now. "
-                    "This will be an error in future versions of mosaik."
+                warnings.warn(
+                    f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did "
+                    "not produce output on its persistent attribute "
+                    f"{single_entry.src_port[1]} during its last step. However, this "
+                    "value is now required by simulator {sim.sid}. This usually "
+                    "results from attributes that are marked persistent despite "
+                    "working like events. Supplying `None` for now. This will be an "
+                    "error in future versions of mosaik."
                 )
                 val = None
-            input_vals = input_data.setdefault(dest_eid, {}).setdefault(dest_attr, {})
-            input_vals[FULL_ID % (src_sim.sid, src_eid)] = val
+
+            val = single_entry.transform(val)
+
+            # Store the value in the input_data structure
+            input_vals = input_data.setdefault(
+                single_entry.dest_port[0], {}
+            ).setdefault(single_entry.dest_port[1], {})
+            input_vals[FULL_ID % (src_sim.sid, single_entry.src_port[0])] = val
 
     # Merge the data back into the persistent inputs. Here, only keys
     # that already exist should be updated, as those are the persistent
@@ -286,8 +313,8 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
 
 def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     """
-    Checks how far *sim* can safely advance its internal time during next step
-    without causing a causality error.
+    Checks how far *sim* can safely advance its internal time during
+    next step without causing a causality error.
     """
     ancs_next_steps: List[Time] = []
     for anc_sim, distances in sim.triggering_ancestors.items():
@@ -312,19 +339,20 @@ async def step(
     Advance (step) a simulator *sim* with the given *inputs*. Return an
     event that is triggered when the step was performed.
 
-    *inputs* is a dictionary, that maps entity IDs to data dictionaries which
-    map attribute names to lists of values (see :func:`get_input_data()`).
+    *inputs* is a dictionary, that maps entity IDs to data dictionaries
+    which map attribute names to lists of values (see
+    :func:`get_input_data`).
 
-    *max_advance* is the simulation time until the simulator can safely advance
-    it's internal time without causing any causality errors.
+    *max_advance* is the simulation time until the simulator can safely
+    advance it's internal time without causing any causality errors.
     """
+
     assert sim.current_step is not None
     sim.tqdm.set_postfix_str("stepping")
     sim.is_in_step = True
     next_step_time = await sim.step(sim.current_step.time, inputs, max_advance)
     sim.last_step = sim.current_step
     sim.is_in_step = False
-
     if next_step_time is not None:
         if not isinstance(next_step_time, int):
             raise SimulationError(
@@ -362,11 +390,10 @@ def rt_check(
                     f"Simulation too slow for real-time factor {rt_factor}"
                 )
             else:
-                logger.warning(
-                    "Simulation too slow for real-time factor {rt_factor} - {delta}s "
+                warnings.warn(
+                    f"Simulation too slow for real-time factor {rt_factor} - {delta}s "
                     "behind time.",
-                    rt_factor=rt_factor,
-                    delta=delta,
+                    UserWarning,
                 )
 
 
@@ -377,49 +404,107 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
-    sid = sim.sid
     outattr = sim.output_request
-    if outattr:
-        sim.tqdm.set_postfix_str("get_data")
-        data = await sim.get_data(outattr)
 
-        output_time: int
-        output_time = data.get("time", sim.last_step.time)  # type: ignore
-        if output_time == sim.current_step.time:
-            output_tiered_time = sim.current_step
-        else:
-            output_tiered_time = TieredTime(
-                output_time, *([0] * (len(sim.current_step) - 1))
-            )
-        sim.output_time = output_tiered_time
-        if sim.last_step.time > output_time:
-            raise SimulationError(
-                'Output time (%s) is not >= time (%s) for simulator "%s"'
-                % (output_time, sim.last_step, sim.sid)
-            )
+    if not outattr:
+        return
 
-        # Fill output cache. This will repeat some data that is also
-        # pushed forward below, but it is faster to just save everything
-        # than filter out this data here.
-        if sim.outputs is not None:
-            sim.outputs[output_time] = data
+    sim.tqdm.set_postfix_str("get_data")
+    data = await sim.get_data(outattr)
+    output_time = data.get("time", sim.last_step.time)
 
-        # Push forward certain data
-        for (src_eid, src_attr), destinations in sim.output_to_push.items():
+    validate_output_time(sim, output_time)
+    sim.output_time = determine_output_tiered_time(sim, output_time)
+
+    cache_output_data(sim, data, output_time)
+    sim.check_outputs(data)
+    push_output_data(sim, data, output_time)
+
+    sim.data = data
+
+
+def validate_output_time(sim: SimRunner, output_time: int):
+    """
+    Validate the output time against the simulation's current state.
+
+    This function ensures that the output time is greater than or equal
+    to the simulation's last recorded time step. If the output time is
+    earlier, it raises an error, as this would indicate an invalid state
+    for processing output data.
+
+    :param sim: The `SimRunner` instance representing the simulation.
+    :param output_time: The output time to validate.
+    :raises SimulationError: if the output time is less than the
+        simulation's last time step.
+    """
+    if sim.last_step.time > output_time:
+        raise SimulationError(
+            f"Output time ({output_time}) is not >= time ({sim.last_step}) for "
+            f'simulator "{sim.sid}".'
+        )
+
+
+def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime:
+    """
+    Determine the tiered time structure for the given output time.
+
+    If the output time matches the current simulation step's time, the
+    current tiered time is returned. Otherwise, a new
+    :class:`~mosaik.tiered_time.TieredTime` object is created with the
+    specified output time as the first tier and all subsequent tiers set
+    to zero.
+
+    :param sim: The `SimRunner` instance representing the simulator.
+    :param output_time: The desired output time.
+    :return: A `TieredTime` object structured
+        to match the current step's tiered time.
+    """
+    if output_time == sim.current_step.time:
+        return sim.current_step
+    return TieredTime(output_time, *([0] * (len(sim.current_step) - 1)))
+
+
+def cache_output_data(sim: SimRunner, data: dict, output_time: int):
+    if sim.outputs is not None:
+        sim.outputs[output_time] = data
+
+
+def push_output_data(sim: SimRunner, data: OutputData, output_time: int):
+    """
+    Push output data to connected simulators, applying time shifts as
+    needed.
+
+    This function retrieves the output data for each entity and
+    attribute specified in the simulation's output mappings. The data is
+    then forwarded to the connected simulators, with time shifts applied
+    to ensure alignment with their input timelines. If a required key is
+    missing in the data, it is skipped without raising an error.
+
+    :param sim: The :class:`~mosaik.simmanager.SimRunner` instance
+        representing the simulator.
+    :param data: A dictionary of output data, where keys are entity IDs
+        and attributes, and values are the corresponding output values.
+    :param output_time: The time step at which the output data is
+        pushed.
+    """
+    for (src_eid, src_attr), output_entry in sim.output_to_push.items():
+        for single_output in output_entry:
             try:
+                # Retrieve the value for the current entity ID and
+                # attribute
                 val = data[src_eid][src_attr]
-                for dest_sim, time_shift, (dest_eid, dest_attr) in destinations:
-                    dest_sim.timed_input_buffer.add(
-                        output_time + time_shift.tiers[0],
-                        sid,
-                        src_eid,
-                        dest_eid,
-                        dest_attr,
-                        val,
-                    )
+                # Push data to connected simulators
+                single_output.dest_sim.timed_input_buffer.add(
+                    output_time + single_output.delay.tiers[0],
+                    sim.sid,
+                    src_eid,
+                    single_output.dest_port[0],
+                    single_output.dest_port[1],
+                    single_output.transform(val),
+                )
             except KeyError:
+                # Skip if the data key is missing
                 pass
-        sim.data = data
 
 
 def trigger_successors(sim: SimRunner) -> None:
@@ -488,3 +573,26 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
     )
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
+
+
+# Once 3.11 is the minimal version of Python supported by mosaik, it
+# should be possible to replace this by
+#
+#     from asyncio import Barrier
+class Barrier:
+    """Simplified stand-in for asyncio.Barrier, because that only exists
+    from Python 3.11 onwards.
+    """
+
+    def __init__(self, num: int):
+        self.event = asyncio.Event()
+        self.num = num
+
+    async def wait(self):
+        self.num -= 1
+        if self.num == 0:
+            self.event.set()
+            # pass control to the event loop in this case as well
+            await asyncio.sleep(0)
+        else:
+            await self.event.wait()

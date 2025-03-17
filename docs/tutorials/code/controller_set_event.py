@@ -1,5 +1,3 @@
-# controller_set_event.py
-
 import math
 import sys
 import threading
@@ -18,8 +16,10 @@ META = {
         },
     },
 }
+# end META
 
 
+# start threading
 def threaded(fn):
     def wrapper(*args, **kwargs):
         thread = threading.Thread(target=fn, args=args, kwargs=kwargs, daemon=True)
@@ -27,8 +27,10 @@ def threaded(fn):
         return thread
 
     return wrapper
+    # end threading
 
 
+# start class init
 class Controller(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
@@ -58,9 +60,12 @@ class Controller(mosaik_api_v3.Simulator):
     def finalize(self):
         self.thread.join(0)
         sys.exit()
+        # end class init
 
+    # start step
     def step(self, time, inputs, max_advance):
-        # Needed in listener thread to determine the current simulation time in wall clock time.
+        # Needed in listener thread to determine the current simulation
+        # time in wall clock time.
         if self.once:
             self.initial_timestamp = self.mosaik.world.env.now
             self.once = False
@@ -70,8 +75,10 @@ class Controller(mosaik_api_v3.Simulator):
         print(f"max_advance {max_advance}")
 
         return None
+        # end step
 
 
+# start threading 2
 @threaded
 def listen_to_external_events(controller):
     while True:
@@ -96,6 +103,7 @@ def listen_to_external_events(controller):
                 pass
             else:
                 raise
+    # end threading 2
 
 
 def main():
