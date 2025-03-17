@@ -1,50 +1,33 @@
-=================================
-Use mosaik with Jupyter Notebooks
-=================================
+========================================
+How to use mosaik with Jupyter notebooks
+========================================
 
-You can use mosaik with Jupyter notebooks to have an interactive experience and to write or use tutorials or to document your steps. We have pre-created tutorials written in Jupyter notebooks which you can use. This page gives a short explanation on how to use those.
+Getting mosaik and Jupyter to work together requires an extra step.
+This is because both mosaik and Jupyter want to create and control an :class:`asyncio.EventLoop`, but these event loops cannot be nested by default.
 
-.. note:: Starting from version 3.2, mosaik uses asyncio, which does not support nested event loops natively. This leads to an error when using mosaik in a Jupyter notebook. Luckily, the issue can be resolved by installing the library `nest_asyncio <https://pypi.org/project/nest-asyncio/>`_ and calling
+To resolve this, there are two solutions:
 
-.. code-block:: python
-   
-   import nest_asyncio
-   nest_asyncio.apply()
+1. You can use the library `nest-asyncio <https://pypi.org/project/nest-asyncio/>`_. Install it and call
 
-at the beginning of your notebook (before creating the mosaik ``World``).
+   .. code-block:: python
 
-**Step 1 - Use Jupyter in VS Code:** Jupyter notebooks can be used with different UIs. A simple approach is to use Visual Studio Code with its Jupyter extension. You can find detailed information on how to use Jupyter in VS Code in the `VS Code documentation <https://code.visualstudio.com/docs/datascience/jupyter-notebooks>`_.
+      import nest_asyncio
+      nest_asyncio.apply()
 
-**Step 2 - mosaik Jupyter repository:** Checkout our Jupyter notebook examples `repository <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_, e.g. via :code:`git clone https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder.git` and open the folder in VS Code.
+   at the beginning of your scenario notebook (before creating the mosaik ``World``).
 
-**Step 3 - Virtual Environment:** Create a virtual environment with the requirements installed. See the following screenshots for an example on how to create a virtual environment.
+2. Alternatively, you can switch to using an :class:`~mosaik.async_scenario.AsyncWorld`.
+   This version of :class:`~mosaik.scenario.World` does not control the event loop itself.
+   In exchange, you need to call some of the mosaik methods as coroutines (i.e. using ``await``).
+   See :ref:`async-mosaik` for more on this.
 
-.. figure:: /_static/tutorials/jupyter/1-kernel.png
-   :width: 100%
-   :align: center
-   :alt: Choosing the kernel
+There is a second problem that can occur if you also implement your own simulators:
+Namely, a Jupyter notebook cannot be imported using Python's import mechanism by default.
+As mosaik uses the import mechanism to start simulators, writing a *simulator* in a notebook file does not work out of the box.
+To resolve this, either write your simulators in Python files, or import the `import-ipynb <https://pypi.org/project/import-ipynb/>`_ library in your *scenario* (not simulator) notebook.
 
-   Choose the kernel.
+Jupyter example
+===============
 
-.. figure:: /_static/tutorials/jupyter/2-venv.png
-   :width: 100%
-   :align: center
-   :alt: Choosing to create a virtual environment
-
-   Select the environment type. 
-
-.. figure:: /_static/tutorials/jupyter/3-python.png
-   :width: 100%
-   :align: center
-   :alt: Choosing the Python interpreter
-
-   Select a python version to create a virtual environment.
-
-.. figure:: /_static/tutorials/jupyter/4-requirements.png
-   :width: 100%
-   :align: center
-   :alt: Choose to install the requirements
-
-   Choose to install the requirements.
-
-**Step 4 - Run a Jupyter notebook:** Choose one of the available notebooks, e.g., :code:`_02_simulator_mosaik.ipynb` and open it. You can now run the code blocks step by step or all at once with the "Run All" button on the top. Feel free to play with the example code, extend or change it to your needs or to create your own notebooks based on these examples. 
+Despite these challenges, we have an example repository demonstrating the use of mosaik in a Jupyter notebook `here <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_.
+You can either start it on Binder, or you can clone the repository and run the example in a local Jupyter instance.

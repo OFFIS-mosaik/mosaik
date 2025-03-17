@@ -19,6 +19,7 @@ On this page, you will find a selection of how-to guides on how to use mosaik an
    ... upgrade from mosaik 2 </upgrade_to_v3>
    ... pause and resume a mosaik simulation <pause-resume>
    ... convert units of data flowing from one simulator to another <transform-functions>
+   ... connect mosaik to Odysseus </tutorials/odysseus>
 
 ..., as a simulator author, ...
 ===============================
@@ -29,12 +30,3 @@ On this page, you will find a selection of how-to guides on how to use mosaik an
    ... use existing topologies via child entities <existing-topologies>
    ... avoid unnecessary simulator steps using max_advance <max-advance>
    ... work with events that occur in-between steps </tutorials/set-external-events>
-
-
-..., as an Odysseus user, ...
-=============================
-
-.. toctree::
-   :maxdepth: 1
-
-   ... connect mosaik to Odysseus </tutorials/odysseus>

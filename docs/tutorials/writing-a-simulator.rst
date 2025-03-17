@@ -4,6 +4,13 @@ Writing a simulator
 
 .. py:currentmodule:: mosaik_api_v3
 
+.. important::
+
+   If you write your simulator in a **Jupyter notebook**, using it in your scenario script will involve an additional step, as notebooks are not importable by default.
+   This can be fixed by using installing and importing the `import-ipynb library <https://pypi.org/project/import-ipynb/>`_ at the start of your *scenario script* (not the simulator file).
+
+   Alternatively, you can create the simulator as a normal Python file and only keep the scenario in a Notebook.
+
 We will now extend the simulation from the previous tutorial by writing our own simulator.
 In this first version, our simulator will calculate how much money a set of PV systems would generate (given some fictional energy prices) and send this information on to our output simulator as well.
 
@@ -116,13 +123,18 @@ Initialization
 ==============
 
 Our simulator is written as a subclass of :class:`mosaik_api_v3.Simulator`.
+In the simulator class you will store the simulator's state and implement the mosaik methods that allow mosaik to advance your simulator through time.
 
-It has two initialization methods.
+Our simply simulator does not need much state:
+For each *PVProfits* entity that the user creates in the scenario, we just need to store the corresponding profits.
+We therefore create a dict called ``profits`` that will map each entity ID to the profits for that entity.
+
+Each simulator also has two initialization methods.
 
 First, there is the normal Python ``__init__`` method.
 If your simulator needs parameters that do not come from the user's scenario file, you would provide them here.
-The method should also call ``super().__init__`` with your simulator's meta.
-It will store the meta in the :attr:`~Simulator.meta` field.
+In our case, we just create the ``profits`` dict and then call ``super().__init__`` with your simulator's meta.
+``super().__init__`` will store the meta in the :attr:`~Simulator.meta` field.
 
 The second initialization method is mosaik's own :meth:`~Simulator.init`.
 It will be called when the user calls :meth:`~mosaik.scenario.World.start` the simulator in their scenario script.
@@ -193,11 +205,10 @@ Using this list, we then create the entities:
    :end-at: return new_entities
 
 For each entity ID we first make good on our promise above to not repeat ourselves.
-Then we create the new entity.
-Creating an entity can take many forms, depending on the complexity of your simulator.
-As ours is quite simple, we will just add the entity ID as a key to our ``entities`` dict.
+Then we create the new entity, which can take many forms, depending on the complexity of your simulator.
+As ours is quite simple, we just need to add the entity ID as a key to our ``profits`` dict to "create" it.
 (We will use the associated value later to store the profits.)
-In more complex cases, we it is common to create a class representing an individual entity and to create and store and instance for that class to create an entity.
+In more complex cases, it is common to implement a class representing an individual entity and to create and store and instance of that class to create an entity.
 
 Finally, we also need to inform mosaik about the entity.
 To this end, we add a dict of a certain structure (namely the one given by :class:`~mosaik_api_v3.CreateResult`) to the ``new_entities`` list.
