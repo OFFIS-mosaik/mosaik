@@ -19,7 +19,7 @@ A good tutorial can be found in Python's official documentation here: https://do
 The mosaik demo
 ===============
 
-We have a (somewhat out-dated) demo scenario that you can try here: <https://gitlab.com/mosaik/examples/mosaik-demo>.
+We have a (somewhat out-dated) demo scenario that you can try here: https://gitlab.com/mosaik/examples/mosaik-demo.
 Download and unpack it (or better yet, clone it with Git).
 Then, create a virtual environment in the *mosaik-demo* folder and activate it, as explaining in the official documentation we linked above.
 With the virtual environment active, install the demo's requirements by calling ``pip install -r requirements.txt``.
@@ -42,7 +42,7 @@ However, we are genuinely interested in constantly improving mosaik, and every f
 
 .. _issue tracker on GitLab: https://gitlab.com/mosaik/mosaik/-/issues
 
-Finally, if your question is not suited for a public forum, you can also reach us via e-mail at <mosaik@offis.de>.
+Finally, if your question is not suited for a public forum, you can also reach us via e-mail at mosaik@offis.de.
 
 
 Working with the source
