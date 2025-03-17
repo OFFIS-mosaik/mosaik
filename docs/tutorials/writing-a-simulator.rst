@@ -4,6 +4,13 @@ Writing a simulator
 
 .. py:currentmodule:: mosaik_api_v3
 
+.. important::
+
+   If you write your simulator in a **Jupyter notebook**, using it in your scenario script will involve an additional step, as notebooks are not importable by default.
+   This can be fixed by using installing and importing the `import-ipynb library <https://pypi.org/project/import-ipynb/>`_ at the start of your *scenario script* (not the simulator file).
+
+   Alternatively, you can create the simulator as a normal Python file and only keep the scenario in a Notebook.
+
 We will now extend the simulation from the previous tutorial by writing our own simulator.
 In this first version, our simulator will calculate how much money a set of PV systems would generate (given some fictional energy prices) and send this information on to our output simulator as well.
 

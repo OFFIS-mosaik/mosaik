@@ -14,6 +14,15 @@ The scenario we will create will look like this:
 
    The scenario setup
 
+.. important::
+
+   Setting up mosaik to run in a **Jupyter notebook** requires an extra step, namely installing the `nest-asyncio library <https://pypi.org/project/nest-asyncio/>`_ and activating it using::
+
+      import nest_asyncio
+      nest_asyncio.apply()
+
+   Alternatively, you can use mosaik's ``AsyncWorld`` and let mosaik run in Jupyter's existing event loop.
+   See :doc:`/tutorials/jupyter_notebook` for more on this.
 
 Installation of required components
 ===================================
