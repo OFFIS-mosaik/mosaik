@@ -17,7 +17,7 @@ an can easily be installed via `pip <https://pip.pypa.io>`_:
 
    pip install mosaik-api-v3
 
-It supports Python 2.7, >= 3.3 and PyPy.
+It supports Python 3.8 and higher.
 
 Usage
 =====
