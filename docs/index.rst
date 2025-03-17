@@ -16,10 +16,10 @@ Here, we provide the documentation about mosaik.
    overview
    installation
    tutorials/index
-   api_reference/index
-   ecosystem/index
-   mosaik-api/index
    how-tos/index
+   ecosystem/index
+   api_reference/index
+   mosaik-api/index
    explanations/index
    faq
    dev/index
