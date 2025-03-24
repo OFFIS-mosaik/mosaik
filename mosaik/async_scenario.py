@@ -330,6 +330,7 @@ class AsyncWorld:
     default_transform_callable: Callable[[Any], Any] = lambda x: x
 
     running: asyncio.Event
+    _shutdown_performed: bool = False
 
     def __init__(
         self,
@@ -1118,6 +1119,15 @@ class AsyncWorld:
         """
         for sim in self.sims.values():
             await sim.stop()
+        self._shutdown_performed = True
+
+    def __del__(self):
+        if not self._shutdown_performed:
+            warnings.warn(
+                "AsyncWorld was never shut down. (Use an `(async) with` block when "
+                "creating the world or call shutdown manually. Otherwise, your "
+                "simulators' finalize methods will not get called properly.)"
+            )
 
 
 class MinPath(TypedDict):

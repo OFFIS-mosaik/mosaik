@@ -490,6 +490,10 @@ Immediately stop the simulation and terminate.
 
 This call has no parameters and no reply is required.
 
+mosaik will call this method at the end of the world's (``async``) ``with`` block.
+If you no ``with`` block is used, this will be called at the end of :meth:`~mosaik.scenario.World.run` for non-async worlds.
+In case of :class:`~mosaik.async_scenario.AsyncWorld` or if exceptions occur, this will only be called if the user explicitly invokes :class:`~mosaik.scenario.World.shutdown`.
+
 
 Example
 ^^^^^^^
