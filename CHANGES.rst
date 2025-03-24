@@ -1,6 +1,26 @@
 Changelog
 =========
 
+3.5.0 - 2025-03-17
+------------------
+
+- [NEW] Transform functions to allow unit conversions between simulators (`#109 <https://gitlab.com/mosaik/mosaik/-/issues/109>`_, `docs <https://mosaik.readthedocs.io/en/3.5.0/how-tos/transform-functions.html>`__)
+- [NEW] Reworked tutorial and documentation (`#222 <https://gitlab.com/mosaik/mosaik/-/issues/222>`_, `live version <https://mosaik.readthedocs.io/en/3.5.0/>`__)
+- [NEW] Pause and resume simulations (`#220 <https://gitlab.com/mosaik/mosaik/-/issues/220>`_, `docs <https://mosaik.readthedocs.io/en/3.5.0/how-tos/pause-resume.html>`__)
+- [NEW] Simulator groups can be named (`#272 <https://gitlab.com/mosaik/mosaik/-/issues/272>`_)
+- [NEW] Warning on invalid entity IDs in ``get_data`` result (`#253 <https://gitlab.com/mosaik/mosaik/-/issues/253>`_)
+- [FIX] Regression in dataflow graphing due to tiered times (`#258 <https://gitlab.com/mosaik/mosaik/-/issues/258>`_)
+- [FIX] Race condition in real-time simulator start (`#268 <https://gitlab.com/mosaik/mosaik/-/issues/268>`_)
+
+3.4.0 - 2024-12-13
+------------------
+
+- [NEW] Use AsyncWorld for better integration in other programs (`#243 <https://gitlab.com/mosaik/mosaik/-/issues/243>`_)
+- [NEW] Better entity rendering (`#257 <https://gitlab.com/mosaik/mosaik/-/issues/257>`_)
+- [NEW] Save the Popen instance when starting a simulator using cmd (`#256 <https://gitlab.com/mosaik/mosaik/-/issues/256>`_)
+- [FIX] Mosaik does not recognize if entity IDs differ from one another (`#194 <https://gitlab.com/mosaik/mosaik/-/issues/194>`_)
+- [FIX] Incorrect shortest duration calculation (`#246 <https://gitlab.com/mosaik/mosaik/-/issues/246>`_)
+
 3.3.3 - 2024-05-21
 ------------------
 
