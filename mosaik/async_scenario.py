@@ -1117,8 +1117,7 @@ class AsyncWorld:
         """
         Shut-down all simulators and close the server socket.
         """
-        for sim in self.sims.values():
-            await sim.stop()
+        await asyncio.gather(*(sim.stop() for sim in self.sims.values()))
         self._shutdown_performed = True
 
     def __del__(self):
