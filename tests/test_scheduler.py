@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from heapq import heappop, heappush
-from typing import Any, Coroutine, Iterable, List
+from typing import Any, Coroutine, Iterable, List, cast
 
 import pytest
 import pytest_asyncio
@@ -20,7 +20,7 @@ from mosaik import (
 )
 from mosaik.adapters import init_and_get_adapter
 from mosaik.progress import Progress
-from mosaik.proxies import LocalProxy
+from mosaik.proxies import LocalProxy, Proxy
 from mosaik.simmanager import PullDescription, PushDescription, SimRunner
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 from tests.simulators.simulator_mock import SimulatorMock
@@ -49,7 +49,7 @@ async def does_coroutine_stall(coro: Coroutine[Any, Any, Any], max_pass_backs: i
     return task.cancelled()
 
 
-@pytest_asyncio.fixture(name="world")
+@pytest_asyncio.fixture(name="world")  # pyright: ignore  # no types in pytest_asyncio
 async def world_fixture(request: pytest.FixtureRequest):
     """This fixture provides an example scenario for testing the
     scheduler. It looks like this:
@@ -93,7 +93,7 @@ async def world_fixture(request: pytest.FixtureRequest):
             return False
 
     for sim in world.sims.values():
-        sim.task = DummyTask()
+        sim.task = cast(asyncio.Task[None], DummyTask())
 
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
         sims[src].successors[sims[dest]] = TieredDuration(0)
@@ -124,18 +124,24 @@ async def world_fixture(request: pytest.FixtureRequest):
         await world.shutdown()
 
 
-def test_run(monkeypatch):
+def test_run(monkeypatch: pytest.MonkeyPatch):
     """Test if a process is started for every simulation."""
     world = scenario.World({})
 
     async def dummy_proc(
-        world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
+        world: AsyncWorld,
+        sim: SimRunner,
+        until: int,
+        rt_factor: float,
+        rt_strict: bool,
+        lazy_stepping: bool,
+        start_barrier: scheduler.Barrier,
     ):
-        sim.proc_started = True
+        sim.proc_started = True  # pyright: ignore
 
     class proxy:
         @classmethod
-        async def send(cls, *args, **kwargs):
+        async def send(cls, *args: Any, **kwargs: Any):
             return None
 
         @classmethod
@@ -144,13 +150,16 @@ def test_run(monkeypatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world._async_world.sims = {i: SimRunner(i, proxy, None) for i in range(2)}
+    world._async_world.sims = {
+        f"Sim-{i}": SimRunner(f"Sim-{i}", cast(Proxy, proxy), lambda _: None)
+        for i in range(2)
+    }
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:
         world.run(until=1)
         for sim in world.sims.values():
-            assert sim.proc_started
+            assert sim.proc_started  # pyright: ignore
     finally:
         world.shutdown()
 
@@ -161,7 +170,7 @@ async def test_run_illegal_rt_factor():
         until = None
 
     with pytest.raises(ValueError):
-        await scheduler.run(DummyWorld(), 10, -1)
+        await scheduler.run(cast(AsyncWorld, DummyWorld()), 10, -1)
 
 
 def test_sim_process():
@@ -172,18 +181,24 @@ def test_sim_process():
 
 
 @pytest.mark.asyncio
-async def test_sim_process_error(monkeypatch):
+async def test_sim_process_error(monkeypatch: pytest.MonkeyPatch):
     class Sim:
         sid = "spam"
 
-    def advance_progress(sim, world):
+    def advance_progress(sim: SimRunner, world: AsyncWorld):
         raise ConnectionError(1337, "noob")
 
     monkeypatch.setattr(scheduler, "advance_progress", advance_progress)
 
     with pytest.raises(exceptions.SimulationError) as excinfo:
         await scheduler.sim_process(
-            None, Sim(), None, 1, False, False, scheduler.Barrier(1)
+            cast(AsyncWorld, None),
+            cast(SimRunner, Sim()),
+            0,
+            1,
+            False,
+            False,
+            scheduler.Barrier(1),
         )
     assert str(excinfo.value) == (
         '[Errno 1337] noob: Simulator "spam" closed its connection.'
@@ -295,14 +310,12 @@ def test_get_input_data(world: AsyncWorld):
         PullDescription(
             src_port=("1", "x"),
             dest_port=("0", "in"),
-            transform=lambda x: x,
         )
     ]
     sim_2.pulled_inputs[(sim_1, TieredDuration(0))] = [
         PullDescription(
             src_port=("2", "z"),
             dest_port=("0", "in"),
-            transform=lambda x: x,
         )
     ]
 
@@ -329,7 +342,6 @@ def test_get_input_data_shifted(world: AsyncWorld):
         PullDescription(
             src_port=("1", "z"),
             dest_port=("0", "in"),
-            transform=lambda x: x,
         )
     ]
 
@@ -398,7 +410,7 @@ async def test_get_outputs(world: AsyncWorld, cache: bool):
     world.use_cache = cache
     sim = world.sims["Sim-0"]
     sim.outputs = {} if cache else None
-    sim.output_request = {0: ["x", "y"]}
+    sim.output_request = {"0": ["x", "y"]}
     sim.last_step = TieredTime(0)
     sim.output_time = TieredTime(-1)
     sim.tqdm = tqdm(disable=True)
@@ -438,7 +450,7 @@ async def test_get_outputs_buffered(world: AsyncWorld):
     sim.last_step = TieredTime(0)
     sim.current_step = TieredTime(0)
     sim.tqdm = tqdm(disable=True)
-    sim.output_request = {0: ["x", "y", "z"]}
+    sim.output_request = {"0": ["x", "y", "z"]}
     sim.output_to_push = {
         ("0", "x"): [
             PushDescription(
@@ -479,7 +491,7 @@ def test_trigger_successors(
     progress: int,
 ):
     sim = world.sims["Sim-0"]
-    sim.progress = 0
+    sim.progress = Progress(TieredTime(0))
 
     sim.data = {"1": {"x": 1}}
     sim.output_time = output_time
@@ -507,8 +519,8 @@ def test_trigger_successors_trigger(world: AsyncWorld):
 def test_prune_dataflow_cache(world: AsyncWorld):
     world.use_cache = True
     world.sims["Sim-0"].outputs = {
-        0: {"spam": "eggs"},
-        1: {"foo": "bar"},
+        0: {"Entity-0": {"attr-0": "eggs"}},
+        1: {"Entity-1": {"attr-1": "bar"}},
     }
     for s in world.sims.values():
         s.last_step = TieredTime(1)
@@ -516,7 +528,7 @@ def test_prune_dataflow_cache(world: AsyncWorld):
     scheduler.prune_dataflow_cache(world)
 
     assert world.sims["Sim-0"].outputs == {
-        1: {"foo": "bar"},
+        1: {"Entity-1": {"attr-1": "bar"}},
     }
 
 
@@ -525,7 +537,7 @@ def test_prune_dataflow_cache(world: AsyncWorld):
 async def test_get_outputs_shifted(world: AsyncWorld):
     sim = world.sims["Sim-5"]
     sim.outputs = {}
-    sim.output_request = {0: ["x", "y"]}
+    sim.output_request = {"0": ["x", "y"]}
     sim.type = "time-based"
     sim.progress = Progress(TieredTime(1))
     sim.last_step = TieredTime(1)
@@ -543,22 +555,22 @@ async def test_get_outputs_shifted(world: AsyncWorld):
 
 def test_get_progress():
     class Sim:
-        def __init__(self, time):
+        def __init__(self, time: int):
             self.progress = Progress(TieredTime(time))
 
-    sims = {i: Sim(0) for i in range(2)}
+    sims = {f"Sim-{i}": cast(SimRunner, Sim(0)) for i in range(2)}
     assert scheduler.get_progress(sims, 4) == 0
 
-    sims[0].progress.time = TieredTime(1)
+    sims["Sim-0"].progress.time = TieredTime(1)
     assert scheduler.get_progress(sims, 4) == 12.5
 
-    sims[0].progress.time = TieredTime(2)
+    sims["Sim-0"].progress.time = TieredTime(2)
     assert scheduler.get_progress(sims, 4) == 25
 
-    sims[1].progress.time = TieredTime(3)
-    sims[0].progress.time = TieredTime(3)
+    sims["Sim-1"].progress.time = TieredTime(3)
+    sims["Sim-0"].progress.time = TieredTime(3)
     assert scheduler.get_progress(sims, 4) == 75
 
-    sims[0].progress.time = TieredTime(4)
-    sims[1].progress.time = TieredTime(4)
+    sims["Sim-0"].progress.time = TieredTime(4)
+    sims["Sim-1"].progress.time = TieredTime(4)
     assert scheduler.get_progress(sims, 4) == 100
