@@ -65,7 +65,7 @@ from mosaik.internal_util import doc_link
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import Proxy
 from mosaik.simmanager import (
-    MosaikConfigTotal,
+    MosaikRemote,
     PullDescription,
     PushDescription,
     SimRunner,
@@ -82,7 +82,7 @@ class MosaikConfig(TypedDict, total=False):
     stop_timeout: float
 
 
-class _MosaikConfigTotal(TypedDict):
+class MosaikConfigTotal(TypedDict):
     """A total version for :cls:`MosaikConfig` for internal use."""
 
     addr: Tuple[str, int | None]
@@ -90,7 +90,7 @@ class _MosaikConfigTotal(TypedDict):
     stop_timeout: float
 
 
-base_config: _MosaikConfigTotal = {
+base_config: MosaikConfigTotal = {
     "addr": ("127.0.0.1", None),
     "start_timeout": 10,  # seconds
     "stop_timeout": 10,  # seconds
@@ -143,7 +143,10 @@ class CmdModel(ModelOptionals):
     simulator should connect."""
 
 
-SimConfig: TypeAlias = Dict[str, Union[PythonModel, ConnectModel, CmdModel]]
+ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
+"""Description of a how to start a simulator."""
+
+SimConfig: TypeAlias = Dict[str, ModelConfig]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -318,7 +321,7 @@ class AsyncWorld:
     tqdm: tqdm[NoReturn]  # type: ignore  # set in run
     """The tqdm progress bar for the total progress."""
 
-    default_transform_callable = Callable[[Any], Any]
+    default_transform_callable: Callable[[Any], Any] = lambda x: x
 
     running: asyncio.Event
 
@@ -422,8 +425,21 @@ class AsyncWorld:
             sim_name=sim_name,
             sim_id=sim_id,
         )
+        try:
+            model_config = self.sim_config[sim_name]
+        except KeyError:
+            raise ScenarioError(
+                'Simulator "%s" could not be started: Not found in sim_config'
+                % sim_name
+            )
+
         proxy = await simmanager.start(
-            self, sim_name, sim_id, self.time_resolution, sim_params
+            self.config,
+            model_config,
+            sim_id,
+            MosaikRemote(self, sim_id),
+            self.time_resolution,
+            sim_params,
         )
         # Create the ModelFactory before the SimRunner as it performs
         # some checks on the simulator's meta.

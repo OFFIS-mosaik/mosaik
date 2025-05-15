@@ -52,7 +52,7 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing_extensions import Literal, TypeAlias
 
 from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import (
@@ -72,6 +72,8 @@ if TYPE_CHECKING:
         AsyncWorld,
         CmdModel,
         ConnectModel,
+        ModelConfig,
+        MosaikConfigTotal,
         PythonModel,
     )
 
@@ -79,34 +81,27 @@ FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
 
 
-class MosaikConfigTotal(TypedDict):
-    """A total version for :class:`MosaikConfig` for internal use."""
-
-    addr: Tuple[str, int | None]
-    start_timeout: float
-    stop_timeout: float
-
-
 async def start(
-    world: AsyncWorld,
-    sim_name: str,
+    mosaik_config: MosaikConfigTotal,
+    model_config: ModelConfig,
     sim_id: SimId,
+    mosaik_remote: MosaikRemote,
     time_resolution: float,
     sim_params: Dict[str, Any],
 ) -> Proxy:
     """
-    Start the simulator ``sim_name`` based on the configuration in
-    :attr:`world.sim_config
-    <mosaik.async_scenario.AsyncWorld.sim_config>`,
+    Start a simulator based on the configuration in ``model_config``,
     give it the ID ``sim_id`` and pass the ``time_resolution`` and the
     parameter dict ``sim_params`` to it.
 
-    :param world: the :class:`~mosaik.async_scenario.AsyncWorld` for the
+    :param mosaik_config: the
+        :class:`~mosaik.async_scenario.MosaikConfigTotal` of the
         simulation
-    :param sim_name: the name of the simulator in
-        :attr:`world.sim_config
-        <mosaik.async_scenario.AsyncWorld.sim_config>`
+    :param model_config: the :class:`~mosaik.async_scenario.ModelConfig`
+        describing how to start this simulator
     :param sim_id: the ID of this simulator instance
+    :param mosaik_remote: the :class:`MosaikRemote` this simulator
+        should use to talk back to mosaik
     :param time_resolution: the number of seconds corresponding to one
         mosaik time steps
     :param sim_params: the additional keyword arguments given by the
@@ -115,13 +110,6 @@ async def start(
     :return: the :class:`~mosaik.proxies.Proxy` representing the
         connection to this simulator
     """
-    try:
-        sim_config = world.sim_config[sim_name]
-    except KeyError:
-        raise ScenarioError(
-            'Simulator "%s" could not be started: Not found in sim_config' % sim_name
-        )
-
     # Try available starters in that order and raise an error if none of
     # them matches. Default starters are:
     # - python: start_inproc
@@ -130,35 +118,33 @@ async def start(
     starters = StarterCollection()
 
     for sim_type, starter in starters.items():
-        if sim_type in sim_config:
-            proxy = await starter(
-                world.config, sim_name, sim_config, MosaikRemote(world, sim_id)
-            )
+        if sim_type in model_config:
+            proxy = await starter(mosaik_config, sim_id, model_config, mosaik_remote)
             try:
                 proxy = await asyncio.wait_for(
                     init_and_get_adapter(
                         proxy,
                         sim_id,
                         {"time_resolution": time_resolution, **sim_params},
-                        explicit_version_str=sim_config.get("api_version"),
+                        explicit_version_str=model_config.get("api_version"),
                     ),
-                    world.config["start_timeout"],
+                    mosaik_config["start_timeout"],
                 )
                 return proxy
             except asyncio.IncompleteReadError:
                 await proxy.stop()
                 raise SystemExit(
-                    f'Simulator "{sim_name}" closed its connection during the init() '
+                    f'Simulator "{sim_id}" closed its connection during the init() '
                     "call."
                 )
             except asyncio.TimeoutError:
                 await proxy.stop()
                 raise SystemExit(
-                    f'Simulator "{sim_name}" did not reply to the init() call in time.'
+                    f'Simulator "{sim_id}" did not reply to the init() call in time.'
                 )
     else:
         raise ScenarioError(
-            f'Simulator "{sim_name}" could not be started: Invalid configuration'
+            f'Simulator "{sim_id}" could not be started: Invalid configuration'
         )
 
 

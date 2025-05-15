@@ -30,9 +30,10 @@ def test_old_api_version_warning(world: World):
     with pytest.warns(UserWarning, match="outdated API version"):
         world.loop.run_until_complete(
             simmanager.start(
-                world,
-                "MetaMirror",
+                world.config,
+                world.sim_config["MetaMirror"],
                 "MetaMirror-0",
+                simmanager.MosaikRemote(world._async_world, "MetaMirror-0"),
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "2.0"}},
             )
@@ -46,9 +47,10 @@ def test_old_api_version_no_warning(world: World):
         warnings.simplefilter("error")
         world.loop.run_until_complete(
             simmanager.start(
-                world,
-                "MetaMirror2.0",
+                world.config,
+                world.sim_config["MetaMirror2.0"],
                 "MetaMirror-0",
+                simmanager.MosaikRemote(world._async_world, "MetaMirror-0"),
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "2.0"}},
             )
@@ -62,9 +64,10 @@ def test_start_wrong_api_version(world: World):
     with pytest.raises(ScenarioError) as exc_info:
         world.loop.run_until_complete(
             simmanager.start(
-                world,
-                "MetaMirror",
+                world.config,
+                world.sim_config["MetaMirror"],
                 "MetaMirror-0",
+                simmanager.MosaikRemote(world._async_world, "MetaMirror-0"),
                 time_resolution=1.0,
                 sim_params={"meta": {"api_version": "1000.0"}},
             )
