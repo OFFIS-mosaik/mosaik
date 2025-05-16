@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import os
 from types import TracebackType
 from typing import (
     Any,
@@ -26,6 +27,7 @@ from typing import (
     Union,
 )
 
+import mosaik_api_v3
 from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
@@ -98,7 +100,7 @@ class World:
 
     def __init__(
         self,
-        sim_config: SimConfig,
+        sim_config: Optional[SimConfig] = None,
         mosaik_config: Optional[MosaikConfig] = None,
         time_resolution: float = 1.0,
         debug: bool = False,
@@ -153,6 +155,58 @@ class World:
             self._async_world.start(sim_name, sim_id, **sim_params)
         )
         return ModelFactory(async_model_factory, self.loop)
+
+    def start_python(
+        self,
+        sim_id: SimId,
+        simulator: mosaik_api_v3.Simulator,
+        **sim_params: Any,
+    ) -> ModelFactory:
+        amf = self.loop.run_until_complete(
+            self._async_world.start_python(sim_id, simulator, **sim_params)
+        )
+        return ModelFactory(amf, self.loop)
+
+    def start_connect(
+        self,
+        sim_id: SimId,
+        address: Union[str, Tuple[str, int]],
+        api_version: str,
+        **sim_params: Any,
+    ) -> ModelFactory:
+        amf = self.loop.run_until_complete(
+            self._async_world.start_connect(sim_id, address, api_version, **sim_params)
+        )
+        return ModelFactory(amf, self.loop)
+
+        amf = self.loop.run_until_complete(self._async_world.start)
+
+    def start_cmd(
+        self,
+        sim_id: SimId,
+        cmd: str,
+        *,
+        posix: bool = os.name != "nt",
+        cwd: str = ".",
+        env: dict[str, str] | None = None,
+        new_console: bool = False,
+        auto_terminate: bool = True,
+        api_version: str | None = None,
+        **sim_params: Any,
+    ) -> ModelFactory:
+        amf = self.loop.run_until_complete(
+            self._async_world.start_cmd(
+                sim_id,
+                cmd,
+                posix=posix,
+                cwd=cwd,
+                new_console=new_console,
+                auto_terminate=auto_terminate,
+                api_version=api_version,
+                **sim_params,
+            )
+        )
+        return ModelFactory(amf, self.loop)
 
     def connect_one(
         self,

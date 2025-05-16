@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
+import os
 import warnings
 from collections import defaultdict
 from copy import copy
@@ -73,6 +74,7 @@ from mosaik.simmanager import (
     SimRunner,
     start_class,
     start_connect_base,
+    start_proc_base,
 )
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
@@ -255,7 +257,7 @@ class AsyncWorld:
     use the :meth:`shutdown` method manually.
     """
 
-    sim_config: SimConfig
+    sim_config: Optional[SimConfig]
     """The config dictionary that tells mosaik how to start a simulator.
 
     The sim config is a dictionary with one entry for every simulator.
@@ -331,7 +333,7 @@ class AsyncWorld:
 
     def __init__(
         self,
-        sim_config: SimConfig,
+        sim_config: Optional[SimConfig] = None,
         mosaik_config: Optional[MosaikConfig] = None,
         time_resolution: float = 1.0,
         debug: bool = False,
@@ -457,6 +459,10 @@ class AsyncWorld:
             sim_name=sim_name,
             sim_id=sim_id,
         )
+
+        if not self.sim_config:
+            raise ScenarioError("no SimConfig was provided when creating the world")
+
         try:
             model_config = self.sim_config[sim_name]
         except KeyError:
@@ -480,8 +486,8 @@ class AsyncWorld:
 
     async def start_python(
         self,
-        simulator: mosaik_api_v3.Simulator,
         sim_id: SimId,
+        simulator: mosaik_api_v3.Simulator,
         **sim_params: Any,
     ) -> AsyncModelFactory:
         return await self._initialize_base_proxy(
@@ -492,14 +498,44 @@ class AsyncWorld:
 
     async def start_connect(
         self,
-        address: str | tuple[str, int],
         sim_id: SimId,
+        address: str | tuple[str, int],
         api_version: str | None = None,
         **sim_params: Any,
-    ):
+    ) -> AsyncModelFactory:
         return await self._initialize_base_proxy(
             sim_id,
             await start_connect_base(sim_id, address, MosaikRemote(self, sim_id)),
+            sim_params,
+            api_version,
+        )
+
+    async def start_cmd(
+        self,
+        sim_id: SimId,
+        cmd: str,
+        *,
+        posix: bool = os.name != "nt",
+        cwd: str = ".",
+        env: dict[str, str] | None = None,
+        new_console: bool = False,
+        auto_terminate: bool = True,
+        api_version: str | None = None,
+        **sim_params: Any,
+    ) -> AsyncModelFactory:
+        return await self._initialize_base_proxy(
+            sim_id,
+            await start_proc_base(
+                sim_id,
+                cmd,
+                MosaikRemote(self, sim_id),
+                self.config,
+                posix=posix,
+                cwd=cwd,
+                env=env,
+                new_console=new_console,
+                auto_terminate=auto_terminate,
+            ),
             sim_params,
             api_version,
         )
