@@ -71,7 +71,12 @@ def world_fixture(request: pytest.FixtureRequest):
             SimulatorMock(request.param), simmanager.MosaikRemote(world, sim_id)
         )
         proxy = world.loop.run_until_complete(
-            init_and_get_adapter(proxy, sim_id, {"time_resolution": 1.0})
+            init_and_get_adapter(
+                proxy,
+                sim_id,
+                {"time_resolution": 1.0},
+                start_timeout=world.config["start_timeout"],
+            )
         )
         sim = SimRunner(sim_id, proxy, check_outputs=lambda _: None)
         world.sims[sim_id] = sim

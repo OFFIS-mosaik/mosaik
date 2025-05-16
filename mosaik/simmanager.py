@@ -120,32 +120,25 @@ async def start(
     for sim_type, starter in starters.items():
         if sim_type in model_config:
             proxy = await starter(mosaik_config, sim_id, model_config, mosaik_remote)
-            try:
-                proxy = await asyncio.wait_for(
-                    init_and_get_adapter(
-                        proxy,
-                        sim_id,
-                        {"time_resolution": time_resolution, **sim_params},
-                        explicit_version_str=model_config.get("api_version"),
-                    ),
-                    mosaik_config["start_timeout"],
-                )
-                return proxy
-            except asyncio.IncompleteReadError:
-                await proxy.stop()
-                raise SystemExit(
-                    f'Simulator "{sim_id}" closed its connection during the init() '
-                    "call."
-                )
-            except asyncio.TimeoutError:
-                await proxy.stop()
-                raise SystemExit(
-                    f'Simulator "{sim_id}" did not reply to the init() call in time.'
-                )
+            proxy = await init_and_get_adapter(
+                proxy,
+                sim_id,
+                {"time_resolution": time_resolution, **sim_params},
+                start_timeout=mosaik_config["start_timeout"],
+                explicit_version_str=model_config.get("api_version"),
+            )
+            return proxy
     else:
         raise ScenarioError(
             f'Simulator "{sim_id}" could not be started: Invalid configuration'
         )
+
+
+async def start_class(
+    sim_cls: type[mosaik_api_v3.Simulator],
+    mosaik_remote: MosaikRemote,
+) -> BaseProxy:
+    return LocalProxy(sim_cls(), mosaik_remote)
 
 
 async def start_inproc(
@@ -188,12 +181,11 @@ async def start_inproc(
             'Simulator "%s" could not be started: %s --> %s'
             % (sim_name, details, origerr)
         ) from None
-    sim = cls()
 
     if int(mosaik_api_v3.__version__.split(".")[0]) < 3:
         raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
-    return LocalProxy(sim, mosaik_remote)
+    return await start_class(cls, mosaik_remote)
 
 
 async def start_proc(
