@@ -15,7 +15,7 @@ from mosaik_api_v3 import Meta
 from mosaik_api_v3 import __api_version__ as api_version
 from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import World, async_scenario, proxies, scenario, simmanager
+from mosaik import World, adapters, async_scenario, proxies, scenario, simmanager
 from mosaik.async_scenario import AsyncWorld
 from mosaik.exceptions import (
     DuplicateEntityIdError,
@@ -181,7 +181,7 @@ async def test_start_external_process(async_world: AsyncWorld):
         "ExampleSim-0",
         simmanager.MosaikRemote(async_world, "ExampleSim-0"),
     )
-    proxy = await simmanager.init_and_get_adapter(
+    proxy = await adapters.init_and_get_adapter(
         proxy, "ExampleSim-0", {"time_resolution": 1.0}, 10.0
     )
     assert "api_version" in proxy.meta and "models" in proxy.meta
@@ -452,7 +452,7 @@ async def test_start_init_error():
                 "spam-0",
                 simmanager.MosaikRemote(world, "spam-0"),
             )
-            await simmanager.init_and_get_adapter(
+            await adapters.init_and_get_adapter(
                 base_proxy,
                 "spam-0",
                 {"foo": 3},
