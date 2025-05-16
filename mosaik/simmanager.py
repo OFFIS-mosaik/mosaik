@@ -54,7 +54,6 @@ from mosaik_api_v3.types import (
 )
 from typing_extensions import Literal, TypeAlias
 
-from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import (
     NonSerializableOutputsError,
     ScenarioError,
@@ -86,13 +85,9 @@ async def start(
     model_config: ModelConfig,
     sim_id: SimId,
     mosaik_remote: MosaikRemote,
-    time_resolution: float,
-    sim_params: Dict[str, Any],
-) -> Proxy:
+) -> BaseProxy:
     """
-    Start a simulator based on the configuration in ``model_config``,
-    give it the ID ``sim_id`` and pass the ``time_resolution`` and the
-    parameter dict ``sim_params`` to it.
+    Start a simulator based on the configuration in ``model_config``.
 
     :param mosaik_config: the
         :class:`~mosaik.async_scenario.MosaikConfigTotal` of the
@@ -102,12 +97,8 @@ async def start(
     :param sim_id: the ID of this simulator instance
     :param mosaik_remote: the :class:`MosaikRemote` this simulator
         should use to talk back to mosaik
-    :param time_resolution: the number of seconds corresponding to one
-        mosaik time steps
-    :param sim_params: the additional keyword arguments given by the
-        user when starting this simulator
 
-    :return: the :class:`~mosaik.proxies.Proxy` representing the
+    :return: the :class:`~mosaik.proxies.BaseProxy` representing the
         connection to this simulator
     """
     # Try available starters in that order and raise an error if none of
@@ -119,15 +110,7 @@ async def start(
 
     for sim_type, starter in starters.items():
         if sim_type in model_config:
-            proxy = await starter(mosaik_config, sim_id, model_config, mosaik_remote)
-            proxy = await init_and_get_adapter(
-                proxy,
-                sim_id,
-                {"time_resolution": time_resolution, **sim_params},
-                start_timeout=mosaik_config["start_timeout"],
-                explicit_version_str=model_config.get("api_version"),
-            )
-            return proxy
+            return await starter(mosaik_config, sim_id, model_config, mosaik_remote)
     else:
         raise ScenarioError(
             f'Simulator "{sim_id}" could not be started: Invalid configuration'
@@ -135,10 +118,10 @@ async def start(
 
 
 async def start_class(
-    sim_cls: type[mosaik_api_v3.Simulator],
+    simulator: mosaik_api_v3.Simulator,
     mosaik_remote: MosaikRemote,
 ) -> BaseProxy:
-    return LocalProxy(sim_cls(), mosaik_remote)
+    return LocalProxy(simulator, mosaik_remote)
 
 
 async def start_inproc(
@@ -185,7 +168,101 @@ async def start_inproc(
     if int(mosaik_api_v3.__version__.split(".")[0]) < 3:
         raise ScenarioError("Mosaik 3 requires mosaik_api_v3 or newer.")
 
-    return await start_class(cls, mosaik_remote)
+    return await start_class(cls(), mosaik_remote)
+
+
+async def start_proc_base(
+    sim_id: SimId,
+    cmd: str,
+    mosaik_remote: MosaikRemote,
+    mosaik_config: MosaikConfigTotal,
+    *,
+    posix: bool = os.name != "nt",
+    cwd: str = ".",
+    env: dict[str, str] | None = None,
+    new_console: bool = False,
+    auto_terminate: bool = True,
+) -> BaseProxy:
+    """
+    Start a new process for simulator *sim_name* based on its config
+    entry *sim_config*.
+
+    Return a :class:`RemoteProcess` instance.
+
+    Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator
+    cannot be instantiated.
+    """
+    channel_future: asyncio.Future[Channel] = asyncio.Future()
+
+    async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
+        channel_future.set_result(Channel(r, w, name=sim_id))
+
+    server = await asyncio.start_server(on_connect, *mosaik_config["addr"])
+    try:
+        actual_addr = server.sockets[0].getsockname()
+
+        replacements = {
+            "addr": "%s:%s" % actual_addr,
+            "python": sys.executable,
+        }
+        cmd = cmd % replacements
+        cmd_parts = shlex.split(cmd, posix=bool(posix))
+
+        # Make a copy of the current env vars dictionary and update it
+        # with the user provided values (or an empty dict as a default):
+        environ = dict(os.environ)
+        environ.update(env or {})
+
+        # CREATE_NEW_CONSOLE constant for subprocess is only available
+        # on Windows
+        creationflags: int = 0
+        if new_console:
+            if "Windows" in platform.system():
+                creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
+            else:
+                warnings.warn(
+                    f'Simulator "{sim_id}" could not be started in a new console: '
+                    "Only available on Windows"
+                )
+
+        try:
+            proc = subprocess.Popen(
+                cmd_parts,
+                bufsize=1,
+                cwd=cwd,
+                universal_newlines=True,
+                env=env,  # pass the new env dict to the sub process
+                creationflags=creationflags,
+            )
+        except (FileNotFoundError, NotADirectoryError) as e:
+            # This distinction has to be made due to a change in python
+            # 3.8.0. It might become unecessary for future releases
+            # supporting python >= 3.8 only.
+            if str(e).count(":") == 2:
+                eout = e.args[1]
+            else:
+                eout = str(e).split("] ")[1]
+            raise ScenarioError(
+                f'Simulator "{sim_id}" could not be started: {eout}'
+            ) from None
+
+        try:
+            channel = await asyncio.wait_for(
+                channel_future, timeout=mosaik_config["start_timeout"]
+            )
+            return RemoteProxy(
+                channel,
+                mosaik_remote,
+                process=(proc, auto_terminate),
+            )
+        except asyncio.TimeoutError:
+            if auto_terminate:
+                proc.terminate()
+            raise SimulationError(
+                f'Simulator "{sim_id}" did not connect to mosaik in time.'
+            )
+    finally:
+        server.close()
 
 
 async def start_proc(
@@ -203,80 +280,39 @@ async def start_proc(
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator
     cannot be instantiated.
     """
-    channel_future: asyncio.Future[Channel] = asyncio.Future()
+    return await start_proc_base(
+        sim_name,
+        **sim_config,
+        mosaik_remote=mosaik_remote,
+        mosaik_config=mosaik_config,
+    )
 
-    async def on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter):
-        channel_future.set_result(Channel(r, w, name=sim_name))
 
-    server = await asyncio.start_server(on_connect, *mosaik_config["addr"])
-    try:
-        actual_addr = server.sockets[0].getsockname()
-
-        replacements = {
-            "addr": "%s:%s" % actual_addr,
-            "python": sys.executable,
-        }
-        cmd = sim_config["cmd"] % replacements
-        posix = sim_config.pop("posix", os.name != "nt")
-        cmd = shlex.split(cmd, posix=bool(posix))
-        cwd = sim_config.get("cwd", ".")
-
-        # Make a copy of the current env vars dictionary and update it
-        # with the user provided values (or an empty dict as a default):
-        env = dict(os.environ)
-        env.update(sim_config.get("env", {}))
-
-        # CREATE_NEW_CONSOLE constant for subprocess is only available
-        # on Windows
-        creationflags: int = 0
-        new_console = sim_config.get("new_console", False)
-        if new_console:
-            if "Windows" in platform.system():
-                creationflags = cast(int, CREATE_NEW_CONSOLE)  # type: ignore
-            else:
-                warnings.warn(
-                    f'Simulator "{sim_name}" could not be started in a new console: '
-                    "Only available on Windows"
-                )
-
+async def start_connect_base(
+    sim_id: SimId,
+    address: str | tuple[str, int],
+    mosaik_remote: MosaikRemote,
+) -> BaseProxy:
+    if isinstance(address, str):
         try:
-            proc = subprocess.Popen(
-                cmd,
-                bufsize=1,
-                cwd=cwd,
-                universal_newlines=True,
-                env=env,  # pass the new env dict to the sub process
-                creationflags=creationflags,
-            )
-        except (FileNotFoundError, NotADirectoryError) as e:
-            # This distinction has to be made due to a change in python
-            # 3.8.0. It might become unecessary for future releases
-            # supporting python >= 3.8 only.
-            if str(e).count(":") == 2:
-                eout = e.args[1]
-            else:
-                eout = str(e).split("] ")[1]
+            host, port_str = address.strip().split(":")
+            port = int(port_str)
+        except ValueError:
             raise ScenarioError(
-                f'Simulator "{sim_name}" could not be started: {eout}'
+                f'Simulator "{sim_id}" could not be started: Could not parse address '
+                f'"{address}"'
             ) from None
+    else:
+        host, port = address
 
-        try:
-            channel = await asyncio.wait_for(
-                channel_future, timeout=mosaik_config["start_timeout"]
-            )
-            return RemoteProxy(
-                channel,
-                mosaik_remote,
-                process=(proc, sim_config.get("auto_terminate", True)),
-            )
-        except asyncio.TimeoutError:
-            if sim_config.get("auto_terminate", True):
-                proc.terminate()
-            raise SimulationError(
-                f'Simulator "{sim_name}" did not connect to mosaik in time.'
-            )
-    finally:
-        server.close()
+    try:
+        reader, writer = await asyncio.open_connection(host, port)
+    except (ConnectionError, OSError):
+        raise SimulationError(
+            f'Simulator "{sim_id}" could not be started: Could not connect to '
+            f'"{address}"'
+        )
+    return RemoteProxy(Channel(reader, writer, name=sim_id), mosaik_remote)
 
 
 async def start_connect(
@@ -294,24 +330,7 @@ async def start_connect(
     Raise a :exc:`~mosaik.exceptions.ScenarioError` if the simulator
     cannot be instantiated.
     """
-    addr = sim_config["connect"]
-    try:
-        host, port = addr.strip().split(":")
-        addr = (host, int(port))
-    except ValueError:
-        raise ScenarioError(
-            f'Simulator "{sim_name}" could not be started: Could not parse address '
-            f'"{sim_config["connect"]}"'
-        ) from None
-
-    try:
-        reader, writer = await asyncio.open_connection(host, port)
-    except (ConnectionError, OSError):
-        raise SimulationError(
-            f'Simulator "{sim_name}" could not be started: Could not connect to '
-            f'"{sim_config["connect"]}"'
-        )
-    return RemoteProxy(Channel(reader, writer, name=sim_name), mosaik_remote)
+    return await start_connect_base(sim_name, sim_config["connect"], mosaik_remote)
 
 
 Port: TypeAlias = Tuple[EntityId, Attr]

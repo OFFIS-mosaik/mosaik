@@ -9,12 +9,14 @@ from typing import Any, Callable, Coroutine, Type, cast
 
 import mosaik_api_v3.connection
 import pytest
+import pytest_asyncio
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3 import Meta
 from mosaik_api_v3 import __api_version__ as api_version
 from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import World, async_scenario, proxies, scenario, simmanager
+from mosaik.async_scenario import AsyncWorld
 from mosaik.exceptions import (
     DuplicateEntityIdError,
     NonSerializableOutputsError,
@@ -66,9 +68,14 @@ SIM_CONFIG: scenario.SimConfig = {
 
 @pytest.fixture(name="world")
 def world_fixture():
-    world = scenario.World(SIM_CONFIG)
-    yield world
-    world.shutdown()
+    with scenario.World(SIM_CONFIG) as world:
+        yield world
+
+
+@pytest_asyncio.fixture
+async def async_world():
+    async with async_scenario.AsyncWorld(SIM_CONFIG) as world:
+        yield world
 
 
 def test_start(world: World, monkeypatch):
@@ -106,8 +113,6 @@ def test_start(world: World, monkeypatch):
             world.sim_config["ExampleSimA"],
             "0",
             simmanager.MosaikRemote(world._async_world, "0"),
-            1.0,
-            {},
         )
     )
     assert ret == proxy
@@ -120,8 +125,6 @@ def test_start(world: World, monkeypatch):
             world.sim_config["ExampleSimB"],
             "0",
             simmanager.MosaikRemote(world._async_world, "0"),
-            1.0,
-            {},
         )
     )
     assert ret == proxy
@@ -133,8 +136,6 @@ def test_start(world: World, monkeypatch):
             world.sim_config["ExampleSimC"],
             "0",
             simmanager.MosaikRemote(world._async_world, "0"),
-            1.0,
-            {},
         )
     )
     assert ret == proxy
@@ -163,31 +164,28 @@ def test_start_in_process(world: World):
             world.sim_config["ExampleSimA"],
             "ExampleSim-0",
             simmanager.MosaikRemote(world._async_world, "ExampleSim-0"),
-            1.0,
-            {"step_size": 2},
         )
     )
     assert isinstance(connection, LocalProxy)
     assert isinstance(connection.sim, ExampleSim)
-    assert connection.sim.step_size == 2
 
 
 @pytest.mark.cmd_process
-def test_start_external_process(world: World):
+@pytest.mark.asyncio
+async def test_start_external_process(async_world: AsyncWorld):
     """
     Test starting a simulator as external process."""
-    proxy = world.loop.run_until_complete(
-        simmanager.start(
-            world.config,
-            world.sim_config["ExampleSimB"],
-            "ExampleSim-0",
-            simmanager.MosaikRemote(world._async_world, "ExampleSim-0"),
-            0,
-            {},
-        )
+    proxy = await simmanager.start(
+        async_world.config,
+        async_world.sim_config["ExampleSimB"],
+        "ExampleSim-0",
+        simmanager.MosaikRemote(async_world, "ExampleSim-0"),
+    )
+    proxy = await simmanager.init_and_get_adapter(
+        proxy, "ExampleSim-0", {"time_resolution": 1.0}, 10.0
     )
     assert "api_version" in proxy.meta and "models" in proxy.meta
-    world.loop.run_until_complete(proxy.stop())
+    await proxy.stop()
 
 
 def test_start_proc_timeout_accept(world: World, caplog):
@@ -199,8 +197,6 @@ def test_start_proc_timeout_accept(world: World, caplog):
                 world.sim_config["Fail"],
                 "Fail-0",
                 simmanager.MosaikRemote(world._async_world, "Fail-0"),
-                1.0,
-                {},
             )
         )
     assert (
@@ -405,8 +401,6 @@ def test_start_user_error(sim_config: async_scenario.SimConfig, err_msg: str):
                     world.sim_config["spam"],
                     "spam-0",
                     simmanager.MosaikRemote(world._async_world, "spam-0"),
-                    0,
-                    {},
                 )
             )
         if sys.platform != "win32":  # pragma: no cover
@@ -432,8 +426,6 @@ def test_start_sim_error(caplog):
                     world.sim_config["spam"],
                     "spam-0",
                     simmanager.MosaikRemote(world._async_world, "spam-0"),
-                    1.0,
-                    {"foo": "bar"},
                 )
             )
 
@@ -445,29 +437,31 @@ def test_start_sim_error(caplog):
         world.shutdown()
 
 
-def test_start_init_error(caplog):
+@pytest.mark.asyncio
+async def test_start_init_error():
     """
     Test simulator crashing during init().
     """
-    world = scenario.World({"spam": {"cmd": f"{VENV}/pyexamplesim %(addr)s"}})
-    try:
+    async with async_scenario.AsyncWorld(
+        {"spam": {"cmd": f"{VENV}/pyexamplesim %(addr)s"}}
+    ) as world:
         with pytest.raises(SystemExit) as exc_info:
-            world.loop.run_until_complete(
-                simmanager.start(
-                    world.config,
-                    world.sim_config["spam"],
-                    "spam-0",
-                    simmanager.MosaikRemote(world._async_world, "spam-0"),
-                    1.0,
-                    {"foo": 3},
-                )
+            base_proxy = await simmanager.start(
+                world.config,
+                world.sim_config["spam"],
+                "spam-0",
+                simmanager.MosaikRemote(world, "spam-0"),
+            )
+            await simmanager.init_and_get_adapter(
+                base_proxy,
+                "spam-0",
+                {"foo": 3},
+                start_timeout=1.0,
             )
         assert (
             'Simulator "spam-0" closed its connection during the init() call.'
             == exc_info.value.args[0]
         )
-    finally:
-        world.shutdown()
 
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")
@@ -515,13 +509,14 @@ def test_local_process(world):
     assert sim.next_steps == [TieredTime(0)]
 
 
-def test_local_process_finalized(world):
+def test_local_process_finalized(world: World):
     """
     Test that ``finalize()`` is called for local processes (issue #23).
     """
     simulator = world.start("SimulatorMock")
     assert simulator._proxy.sim.finalized is False
     world.run(until=1)
+    world.shutdown()
     assert simulator._proxy.sim.finalized is True
 
 

@@ -39,6 +39,7 @@ from typing import (
     Union,
 )
 
+import mosaik_api_v3
 import networkx
 from loguru import logger
 from mosaik_api_v3 import OutputData
@@ -58,17 +59,20 @@ from tqdm import tqdm
 from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager
+from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.progress import ProgressProxy
-from mosaik.proxies import Proxy
+from mosaik.proxies import BaseProxy, Proxy
 from mosaik.simmanager import (
     MosaikRemote,
     PullDescription,
     PushDescription,
     SimRunner,
+    start_class,
+    start_connect_base,
 )
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
@@ -402,6 +406,34 @@ class AsyncWorld:
         yield
         self.current_group = parent_group
 
+    async def _initialize_base_proxy(
+        self,
+        sim_id: SimId,
+        base_proxy: BaseProxy,
+        sim_params: dict[str, Any],
+        api_version: str | None = None,
+    ) -> AsyncModelFactory:
+        proxy = await init_and_get_adapter(
+            base_proxy,
+            sim_id,
+            {"time_resolution": self.time_resolution, **sim_params},
+            start_timeout=self.config["start_timeout"],
+            explicit_version_str=api_version,
+        )
+        # Create the ModelFactory before the SimRunner as it performs
+        # some checks on the simulator's meta.
+        model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
+        sim_runner = self.sims[sim_id] = SimRunner(
+            sim_id,
+            proxy,
+            check_outputs=model_factory.validate_output_dict,
+            depth=self.current_group.depth,
+        )
+        if self.use_cache:
+            sim_runner.outputs = {}
+
+        return model_factory
+
     async def start(
         self,
         sim_name: str,
@@ -433,26 +465,44 @@ class AsyncWorld:
                 % sim_name
             )
 
-        proxy = await simmanager.start(
+        base_proxy = await simmanager.start(
             self.config,
             model_config,
             sim_id,
             MosaikRemote(self, sim_id),
-            self.time_resolution,
+        )
+        return await self._initialize_base_proxy(
+            sim_id,
+            base_proxy,
+            sim_params,
+            api_version=model_config.get("api_version"),
+        )
+
+    async def start_python(
+        self,
+        simulator: mosaik_api_v3.Simulator,
+        sim_id: SimId,
+        **sim_params: Any,
+    ) -> AsyncModelFactory:
+        return await self._initialize_base_proxy(
+            sim_id,
+            await start_class(simulator, MosaikRemote(self, sim_id)),
             sim_params,
         )
-        # Create the ModelFactory before the SimRunner as it performs
-        # some checks on the simulator's meta.
-        model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
-        self.sims[sim_id] = SimRunner(
+
+    async def start_connect(
+        self,
+        address: str | tuple[str, int],
+        sim_id: SimId,
+        api_version: str | None = None,
+        **sim_params: Any,
+    ):
+        return await self._initialize_base_proxy(
             sim_id,
-            proxy,
-            check_outputs=model_factory.validate_output_dict,
-            depth=self.current_group.depth,
+            await start_connect_base(sim_id, address, MosaikRemote(self, sim_id)),
+            sim_params,
+            api_version,
         )
-        if self.use_cache:
-            self.sims[sim_id].outputs = {}
-        return model_factory
 
     def connect_one(  # noqa: C901
         self,
