@@ -490,6 +490,25 @@ class AsyncWorld:
         simulator: mosaik_api_v3.Simulator,
         **sim_params: Any,
     ) -> AsyncModelFactory:
+        """Start ``simulator`` with the simulator ID ``sim_id`` in this
+        world, using the params given as keyword arguments.
+
+        When using this method, the simulator does not have to be given
+        in this world's :attr:`sim_config`.
+
+        This is similar to using :meth:`start` with a ``"python"`` entry
+        in :attr:`sim_config`, except that the simulator should be given
+        as an instance of the simulator class directly instead of
+        specifying an import string.
+
+        :param sim_id: The simulator ID for this simulator.
+        :param simulator: An instance of a subclass of
+            :class:`mosaik_api_v3.Simulator`.
+        :param sim_params: The parameters to give to the simulator's
+            :meth:`~mosaik_api_v3.Simulator.init` method.
+        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
+            for this simulator.
+        """
         return await self._initialize_base_proxy(
             sim_id,
             await start_class(simulator, MosaikRemote(self, sim_id)),
@@ -503,6 +522,24 @@ class AsyncWorld:
         api_version: str | None = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
+        """Connect to a running simulator under ``address``.
+
+        When using this method, the simulator does not have to be given
+        in this world's :attr:`sim_config`.
+        Other than that, this is similar to using :meth:`start` with a
+        simulator specified as ``"connect"`` in the :attr:`sim_config`.
+
+        :param sim_id: The simulator ID for this simulator.
+        :param address: The address to reach the simulator, given either
+            as a host-part pair or a string in the format
+            ``"host:pair"``.
+        :param api_version: If the simulator uses a non-current
+            version of the simulator API, its API version.
+        :param sim_params: The parameters to give to the simulator's
+            :meth:`~mosaik_api_v3.Simulator.init` method.
+        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
+            for this simulator.
+        """
         return await self._initialize_base_proxy(
             sim_id,
             await start_connect_base(sim_id, address, MosaikRemote(self, sim_id)),
@@ -523,6 +560,37 @@ class AsyncWorld:
         api_version: str | None = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
+        """Start a simulator using ``cmd`` and connect to it.
+
+        When using this method, the simulator does not have to be given
+        in this world's :attr:`sim_config`.
+        Other than that, this is similar to using :meth:`start` with a
+        simulator specified as ``"cmd"`` in the :attr:`sim_config`.
+
+        In particular, you can before calling ``cmd``, the pattern
+        ``%(python)s`` will be replaced with the full path of the
+        scenario's Python interpreter and ``%(addr)s`` will be replaced
+        by the address to which the simulator should connect once
+        started (in the format ``host:port``).
+
+        :param sim_id: The simulator ID for this simulator.
+        :param cmd: The command with which start this simulator after
+            performing the replacements explained above.
+        :param posix: Whether this is a POSIX system. Normally, this
+            should be recognized automatically.
+        :param env: Dictionary of additional environment variables
+            to set for the started process.
+        :param new_console: Whether to start a new console for the
+            newly started process (only available on Windows).
+        :param auto_terminate: Whether to automatically terminate the
+            simulator process when the world shuts down.
+        :param api_version: If the simulator uses a non-current
+            version of the simulator API, its API version.
+        :param sim_params: The parameters to give to the simulator's
+            :meth:`~mosaik_api_v3.Simulator.init` method.
+        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
+            for this simulator.
+        """
         return await self._initialize_base_proxy(
             sim_id,
             await start_proc_base(

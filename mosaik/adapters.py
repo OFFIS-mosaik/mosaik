@@ -44,9 +44,9 @@ async def init_and_get_adapter(
     ``init`` function) and wrap it in a ``Proxy`` object that
     adapts it to the current version of mosaik.
 
-    This method is a be overloaded in its responsibilies (doing both the
-    initialization and wrapping in an adapter) because the details of
-    init call are historically coupled to the API version.
+    This method is a bit overloaded in its responsibilies (doing both
+    the initialization and wrapping in an adapter) because the details
+    of init call are historically coupled to the API version.
 
     :param base_proxy: The ``BaseProxy`` for this simulator.
     :param sim_id: The ``SimId`` that was assigned to this simulator.
