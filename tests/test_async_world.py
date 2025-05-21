@@ -4,6 +4,7 @@ import pytest
 
 from mosaik.async_scenario import AsyncWorld
 from mosaik.scenario import SimConfig
+from tests.simulators.generic_test_simulator import TestSim as GenericSim
 
 
 @pytest.mark.asyncio
@@ -26,3 +27,16 @@ async def test_async_world():
     )
 
     await world.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_direct_starters():
+    async with AsyncWorld() as world:
+        test_sim = await world.start_python("TestSim", GenericSim())
+        assert test_sim._sid == "TestSim"
+        assert type(test_sim._proxy.sim) is GenericSim
+        cmd_sim = await world.start_cmd(
+            "CmdSim",
+            cmd="%(python)s -m tests.simulators.generic_test_simulator %(addr)s",
+        )
+        assert cmd_sim._sid == "CmdSim"

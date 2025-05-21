@@ -22,6 +22,7 @@
 # this new adapter.
 from __future__ import annotations
 
+import asyncio
 import warnings
 from typing import Any, Dict, Optional
 
@@ -34,18 +35,27 @@ from mosaik.proxies import BaseProxy, Proxy
 
 async def init_and_get_adapter(
     base_proxy: BaseProxy,
-    sid: SimId,
+    sim_id: SimId,
     sim_params: Dict[str, Any],
+    start_timeout: float,
     explicit_version_str: Optional[str] = None,
 ) -> Proxy:
     """Initialize the simulator given by ``base_proxy`` (by calling its
     ``init`` function) and wrap it in a ``Proxy`` object that
     adapts it to the current version of mosaik.
 
+    This method is a bit overloaded in its responsibilies (doing both
+    the initialization and wrapping in an adapter) because the details
+    of init call are historically coupled to the API version.
+
     :param base_proxy: The ``BaseProxy`` for this simulator.
-    :param sid: The ``SimId`` that was assigned to this simulator.
-    :param kwargs: The remaining initialization arguments for the
-    simulator.
+    :param sim_id: The ``SimId`` that was assigned to this simulator.
+    :param sim_params: The remaining initialization arguments for the
+        simulator.
+    :param start_timeout: How long the connected simulator is allowed
+        to take for its init call.
+    :param explicit_version_str: The simulator API version explicitly
+        specified by the user for this simulator.
     :return: The base proxy wrapped in adapters based on the API version
     returned by the simulator's ``init`` function and the meta returned
     by the init call.
@@ -57,23 +67,35 @@ async def init_and_get_adapter(
         explicit_version = None
 
     try:
-        version = await base_proxy.init(sid, **sim_params)
+        version = await asyncio.wait_for(
+            base_proxy.init(sim_id, **sim_params), start_timeout
+        )
     except ScenarioError as e:
         raise ScenarioError(
-            f"There was an error during the initialization of {sid}: ", e
+            f"There was an error during the initialization of {sim_id}: ", e
+        )
+    except asyncio.IncompleteReadError:
+        await base_proxy.stop()
+        raise SystemExit(
+            f'Simulator "{sim_id}" closed its connection during the init() call.'
+        )
+    except asyncio.TimeoutError:
+        await base_proxy.stop()
+        raise SystemExit(
+            f'Simulator "{sim_id}" did not reply to the init() call in time.'
         )
 
     # version > 3.0
     if version >= [4]:
         raise ScenarioError(
-            f"There was an error during the initialization of {sid}: "
+            f"There was an error during the initialization of {sim_id}: "
             f"The API version ({'.'.join(map(str, version))}) is too new for this "
             "version of mosaik. Maybe a newer version of the mosaik package is "
             "available to be used in your scenario?"
         )
     if explicit_version and version != explicit_version:
         raise ScenarioError(
-            f"The explicit version that you specified for simulator {sid} in your "
+            f"The explicit version that you specified for simulator {sim_id} in your "
             f"SimConfig (namely {'.'.join(map(str, explicit_version))}) does not match "
             "the version that this simulator reports (namely "
             f"{'.'.join(map(str, version))})."
@@ -96,7 +118,7 @@ async def init_and_get_adapter(
     # mosaik.
     if not isinstance(proxy, BaseProxy) and not explicit_version:
         warnings.warn(
-            f"Simulator {sid} is using an outdated API version, namely "
+            f"Simulator {sim_id} is using an outdated API version, namely "
             f"{'.'.join(map(str, version))}. It should still work. You "
             "can suppress this warning by adding an explicit API "
             "version for this simulator in your SimConfig."
