@@ -22,6 +22,8 @@ the :meth:`~Starter.from_model_config` method; to try parsing into all
 starters automatically, use :func:`get_starter_from_model_config`.
 """
 
+from __future__ import annotations
+
 import asyncio
 import importlib
 import os
@@ -31,16 +33,17 @@ import subprocess
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 
-from mosaik.async_scenario import ModelConfig, MosaikConfigTotal
 from mosaik.exceptions import ScenarioError, SimulationError
-from mosaik.proxies import BaseProxy, RemoteProxy
+from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.simmanager import MosaikRemote
-from tests.test_simmanager import LocalProxy
+
+if TYPE_CHECKING:
+    from mosaik.async_scenario import ModelConfig, MosaikConfigTotal
 
 
 class Starter(ABC):
@@ -58,8 +61,8 @@ class Starter(ABC):
         subclasses) if the simulator cannot be started.
         """
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_model_config(
         cls, model_config: ModelConfig, mosaik_config: MosaikConfigTotal
     ) -> Self | None:
