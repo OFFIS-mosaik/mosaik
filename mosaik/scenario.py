@@ -41,6 +41,7 @@ from mosaik.async_scenario import (
     SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
+from mosaik.starters import Starter
 
 
 class World:
@@ -143,7 +144,8 @@ class World:
 
     def start(
         self,
-        sim_name: str,
+        starter: Starter | str,
+        /,
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
     ) -> ModelFactory:
@@ -152,14 +154,14 @@ class World:
         :class:`ModelFactory` for it.
         """
         async_model_factory = self.loop.run_until_complete(
-            self._async_world.start(sim_name, sim_id, **sim_params)
+            self._async_world.start(starter, sim_id, **sim_params)
         )
         return ModelFactory(async_model_factory, self.loop)
 
     def start_python(
         self,
         sim_id: SimId,
-        simulator: mosaik_api_v3.Simulator,
+        simulator: type[mosaik_api_v3.Simulator],
         **sim_params: Any,
     ) -> ModelFactory:
         """Start ``simulator`` with the simulator ID ``sim_id`` in this
@@ -218,8 +220,6 @@ class World:
             self._async_world.start_connect(sim_id, address, api_version, **sim_params)
         )
         return ModelFactory(amf, self.loop)
-
-        amf = self.loop.run_until_complete(self._async_world.start)
 
     def start_cmd(
         self,

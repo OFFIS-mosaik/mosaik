@@ -59,7 +59,7 @@ from networkx import DiGraph
 from tqdm import tqdm
 from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
-from mosaik import scheduler, simmanager
+from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.greetings_util import print_greetings
@@ -67,15 +67,8 @@ from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import BaseProxy, Proxy
-from mosaik.simmanager import (
-    MosaikRemote,
-    PullDescription,
-    PushDescription,
-    SimRunner,
-    start_class,
-    start_connect_base,
-    start_proc_base,
-)
+from mosaik.simmanager import MosaikRemote, PullDescription, PushDescription, SimRunner
+from mosaik.starters import CmdStarter, ConnectStarter, PythonStarter, Starter
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
@@ -152,7 +145,7 @@ class CmdModel(ModelOptionals):
 ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
 """Description of a how to start a simulator."""
 
-SimConfig: TypeAlias = Dict[str, ModelConfig]
+SimConfig: TypeAlias = Dict[str, ModelConfig | Starter]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -438,7 +431,8 @@ class AsyncWorld:
 
     async def start(
         self,
-        sim_name: str,
+        starter: Starter | str,
+        /,
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
@@ -446,48 +440,57 @@ class AsyncWorld:
         Start the simulator named *sim_name* and return a
         :class:`ModelFactory` for it.
         """
-        if not sim_id:
-            counter = self._sim_ids[sim_name]
-            sim_id = "%s-%s" % (sim_name, next(counter))
+        if isinstance(starter, Starter):
+            starter_name = None
+            if not sim_id:
+                raise ScenarioError(
+                    "when starting a simulator using a Starter, a sim_id must be "
+                    "specified explicitly"
+                )
+        elif isinstance(starter, str):
+            starter_name = starter
+            if not self.sim_config:
+                raise ScenarioError(
+                    "starting simulators by name requires specifying a sim_config when "
+                    "creating the world"
+                )
+            try:
+                model_config = self.sim_config[starter_name]
+                if isinstance(model_config, Starter):
+                    starter = model_config
+                else:
+                    starter = starters.get_starter_from_model_config(
+                        model_config, self.config
+                    )
+            except KeyError:
+                raise ScenarioError(
+                    f"no starter '{starter}' was defined in the sim_config"
+                )
+            if not sim_id:
+                sim_id_counter = self._sim_ids[starter_name]
+                sim_id = f"{starter_name}-{next(sim_id_counter)}"
+
         if sim_id in self.sims:
             raise ScenarioError(
-                f"A simulator with sim_id '{sim_id}' has already been started. "
-                "Choose a different sim_id."
-            )
-        logger.info(
-            'Starting "{sim_name}" as "{sim_id}" ...',
-            sim_name=sim_name,
-            sim_id=sim_id,
-        )
-
-        if not self.sim_config:
-            raise ScenarioError("no SimConfig was provided when creating the world")
-
-        try:
-            model_config = self.sim_config[sim_name]
-        except KeyError:
-            raise ScenarioError(
-                'Simulator "%s" could not be started: Not found in sim_config'
-                % sim_name
+                f"a simulator with sim_id '{sim_id}' has already been started"
             )
 
-        base_proxy = await simmanager.start(
-            self.config,
-            model_config,
-            sim_id,
-            MosaikRemote(self, sim_id),
-        )
+        if starter_name:
+            logger.info(f"Starting '{sim_id}' (based on starter '{starter_name}')")
+        else:
+            logger.info(f"Starting '{sim_id}'")
+        base_proxy = await starter.start(sim_id, MosaikRemote(self, sim_id))
         return await self._initialize_base_proxy(
             sim_id,
             base_proxy,
             sim_params,
-            api_version=model_config.get("api_version"),
+            api_version=starter.api_version,
         )
 
     async def start_python(
         self,
         sim_id: SimId,
-        simulator: mosaik_api_v3.Simulator,
+        simulator: type[mosaik_api_v3.Simulator],
         **sim_params: Any,
     ) -> AsyncModelFactory:
         """Start ``simulator`` with the simulator ID ``sim_id`` in this
@@ -509,11 +512,7 @@ class AsyncWorld:
         :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
             for this simulator.
         """
-        return await self._initialize_base_proxy(
-            sim_id,
-            await start_class(simulator, MosaikRemote(self, sim_id)),
-            sim_params,
-        )
+        return await self.start(PythonStarter(simulator), sim_id, **sim_params)
 
     async def start_connect(
         self,
@@ -540,11 +539,10 @@ class AsyncWorld:
         :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
             for this simulator.
         """
-        return await self._initialize_base_proxy(
+        return await self.start(
+            ConnectStarter.from_addr(address, api_version=api_version),
             sim_id,
-            await start_connect_base(sim_id, address, MosaikRemote(self, sim_id)),
-            sim_params,
-            api_version,
+            **sim_params,
         )
 
     async def start_cmd(
@@ -591,21 +589,20 @@ class AsyncWorld:
         :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
             for this simulator.
         """
-        return await self._initialize_base_proxy(
-            sim_id,
-            await start_proc_base(
-                sim_id,
+        return await self.start(
+            CmdStarter(
                 cmd,
-                MosaikRemote(self, sim_id),
-                self.config,
                 posix=posix,
                 cwd=cwd,
-                env=env,
+                env=env or {},
                 new_console=new_console,
                 auto_terminate=auto_terminate,
+                api_version=api_version,
+                bind_addr=self.config["addr"],
+                connect_timeout=self.config["start_timeout"],
             ),
-            sim_params,
-            api_version,
+            sim_id,
+            **sim_params,
         )
 
     def connect_one(  # noqa: C901

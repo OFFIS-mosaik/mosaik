@@ -44,6 +44,8 @@ from tests.test_simmanager import LocalProxy
 
 
 class Starter(ABC):
+    api_version: str | None
+
     @abstractmethod
     async def start(
         self, sim_id: mosaik_api_v3.SimId, mosaik_remote: MosaikRemote
@@ -76,8 +78,11 @@ class PythonStarter(Starter):
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
 
-    def __init__(self, cls: type[mosaik_api_v3.Simulator]):
+    def __init__(
+        self, cls: type[mosaik_api_v3.Simulator], *, api_version: str | None = None
+    ):
         self.cls = cls
+        self.api_version = api_version
         # TODO: allow setting these
         self.args = ()
         self.kwargs = {}
@@ -133,16 +138,28 @@ class PythonStarter(Starter):
         return None
 
 
-class ProcStarter(Starter):
+class CmdStarter(Starter):
     """Description of how to start a simulator in a new process."""
 
     cmd: str
+    """The command to start the process"""
     posix: bool
+    """Whether we are running on a POSIX machine (for parsing the
+    ``cmd``)
+    """
     cwd: str
+    """The current working directory for the started simulator"""
     env: dict[str, str]
+    """Additional enviroment variables (will be joined with our own)"""
     new_console: bool
+    """Whether to open a new console for this simulator (only works on
+    Windows)
+    """
     auto_terminate: bool
+    """Whether to automatically terminate the process when the world
+    is shut down"""
     api_version: str | None
+    """The expected API version of this simulator"""
 
     bind_addr: tuple[str, int | None]
     connect_timeout: float
@@ -266,9 +283,10 @@ class ConnectStarter(Starter):
     host: str
     port: int
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, *, api_version: str | None = None):
         self.host = host
         self.port = port
+        self.api_version = api_version
 
     async def start(
         self, sim_id: mosaik_api_v3.SimId, mosaik_remote: MosaikRemote
@@ -283,7 +301,7 @@ class ConnectStarter(Starter):
         return RemoteProxy(Channel(reader, writer, name=sim_id), mosaik_remote)
 
     @classmethod
-    def from_addr_string(cls, address: str) -> Self:
+    def from_addr_string(cls, address: str, *, api_version: str | None = None) -> Self:
         try:
             host, port_str = address.strip().split(":")
             port = int(port_str)
@@ -292,18 +310,29 @@ class ConnectStarter(Starter):
                 f'ConnectStarter could be created: Could not parse address "{address}"'
             )
 
-        return cls(host, port)
+        return cls(host, port, api_version=api_version)
+
+    @classmethod
+    def from_addr(
+        cls, addr: str | tuple[str, int], *, api_version: str | None = None
+    ) -> Self:
+        if isinstance(addr, str):
+            return cls.from_addr_string(addr, api_version=api_version)
+        else:
+            return cls(*addr, api_version=api_version)
 
     @classmethod
     def from_model_config(
         cls, model_config: ModelConfig, mosaik_config: MosaikConfigTotal
     ) -> Self | None:
         if addr_string := model_config.get("connect"):
-            return cls.from_addr_string(addr_string)
+            return cls.from_addr_string(
+                addr_string, api_version=model_config.get("api_version")
+            )
         return None
 
 
-STARTERS: list[type[Starter]] = [PythonStarter, ProcStarter, ConnectStarter]
+STARTERS: list[type[Starter]] = [PythonStarter, CmdStarter, ConnectStarter]
 
 
 def get_starter_from_model_config(
@@ -319,28 +348,3 @@ def get_starter_from_model_config(
             "(By default, it must contain one of the keys 'python', 'cmd', or "
             "'connect'.)"
         )
-
-
-async def start(
-    mosaik_config: MosaikConfigTotal,
-    model_config: ModelConfig,
-    sim_id: mosaik_api_v3.SimId,
-    mosaik_remote: MosaikRemote,
-) -> BaseProxy:
-    """
-    Start a simulator based on the configuration in ``model_config``.
-
-    :param mosaik_config: the
-        :class:`~mosaik.async_scenario.MosaikConfigTotal` of the
-        simulation
-    :param model_config: the :class:`~mosaik.async_scenario.ModelConfig`
-        describing how to start this simulator
-    :param sim_id: the ID of this simulator instance
-    :param mosaik_remote: the :class:`MosaikRemote` this simulator
-        should use to talk back to mosaik
-
-    :return: the :class:`~mosaik.proxies.BaseProxy` representing the
-        connection to this simulator
-    """
-    starter = get_starter_from_model_config(model_config, mosaik_config)
-    return await starter.start(sim_id, mosaik_remote)
