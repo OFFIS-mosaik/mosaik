@@ -7,6 +7,31 @@ from typing import Any, List, Tuple
 from mosaik_api_v3 import SimId
 
 
+class MosaikError(Exception):
+    """Base class for exceptions that indicate an error in mosaik
+    itself. If you run into an error of this type or a subtype,
+    please file a bug report to the mosaik repository.
+    """
+
+    context: list[str]
+
+    def __init__(self, initial_context: str):
+        self.context = [initial_context]
+
+    def add_context(self, extra_context: str):
+        self.context.append(extra_context)
+
+    def __str__(self) -> str:
+        bullet = "\n- "
+        return f"context:\n- {bullet.join(self.context)}"
+
+
+class TimingInconsistencyError(MosaikError):
+    """This exception is raised when an inconsistency in the handling
+    of time is detected.
+    """
+
+
 class ScenarioError(Exception):
     """
     This exception is raised if something fails during the creation of

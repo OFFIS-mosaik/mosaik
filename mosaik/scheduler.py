@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
-from mosaik.exceptions import SimulationError
+from mosaik.exceptions import SimulationError, TimingInconsistencyError
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 from mosaik.tiered_time import TieredTime
@@ -562,16 +562,19 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
         rt_progress = [TieredTime(ceil(rt_passed / world.rt_factor))]
     else:
         rt_progress = []
-    new_progress = min(
-        [
-            *pre_sim_induced_progress,
-            *next_step_progress,
-            *current_step_prog,
-            *rt_progress,
-            TieredTime(world.until) + sim.from_world_time,
-        ]
-    )
-    sim.progress.set(new_progress)
+    progress_sources = [
+        *pre_sim_induced_progress,
+        *next_step_progress,
+        *current_step_prog,
+        *rt_progress,
+        TieredTime(world.until) + sim.from_world_time,
+    ]
+    new_progress = min(progress_sources)
+    try:
+        sim.progress.set(new_progress)
+    except TimingInconsistencyError as e:
+        e.add_context(f"progressing {sim}, {progress_sources=}")
+        raise
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
 
 

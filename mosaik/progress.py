@@ -3,8 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import List, Tuple
 
-from loguru import logger  # type: ignore  # noqa: F401
-
+from mosaik.exceptions import TimingInconsistencyError  # type: ignore  # noqa: F401
 from mosaik.tiered_time import TieredDuration, TieredTime
 
 TriggerSpec = Tuple[TieredTime, TieredDuration, bool]
@@ -39,7 +38,10 @@ class Progress:
         """Set the progress to ``value`` and trigger all waiting
         coroutines whose wait times have now been passed or reached.
         """
-        assert time >= self.time, "cannot progress backwards"
+        if not time >= self.time:
+            raise TimingInconsistencyError(
+                f"cannot progress backwards from {self.time} to {time}"
+            )
         self.time = time
         # Use index-based for loop so we can call del in the loop.
         for index in reversed(range(0, len(self._futures))):
