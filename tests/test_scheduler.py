@@ -93,7 +93,7 @@ async def world_fixture(request: pytest.FixtureRequest):
             return False
 
     for sim in world.sims.values():
-        sim.task = cast(asyncio.Task[None], DummyTask())
+        sim.task = cast("asyncio.Task[None]", DummyTask())
 
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
         sims[src].successors[sims[dest]] = TieredDuration(0)
