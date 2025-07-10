@@ -51,6 +51,9 @@ It also provides various methods that allow you to start simulators and establis
 
    Also, when using the world in a ``with`` block (as recommended below), you need to use an ``async with`` block, instead.
 
+   In addition, in an :class:`~mosaik.async_scenario.AsyncWorld`, the :meth:`~mosaik.async_scenario.AsyncWorld.shutdown` method is never called automatically at the end of :meth:`~mosaik.async_scenario.AsyncWorld.run`.
+   You need to either use an ``async with`` block or call :meth:`~mosaik.async_scenario.AsyncWorld.shutdown` manually, otherwise your simulators' :meth:`~mosaik_api_v3.Simulator.finalize` methods will not be called.
+
    Establishing connections between entities does not make calls to the connected simulators and therefore does not require ``await``.
 
 

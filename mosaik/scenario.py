@@ -97,6 +97,9 @@ class World:
     loop: asyncio.AbstractEventLoop
     _async_world: AsyncWorld
     _no_shutdown_in_run: bool = False
+    """This is set when the world should not be shut down at the end
+    of the run method because the world is using a with block, instead.
+    """
 
     def __init__(
         self,
@@ -467,7 +470,11 @@ class World:
         """
         Shut-down all simulators and close the server socket.
         """
-        if not self.loop.is_closed():
+        if not self._async_world._shutdown_performed:
+            if self.loop.is_closed():
+                raise RuntimeError(
+                    "World-controlled loop was closed before shutdown was called."
+                )
             self.loop.run_until_complete(self._async_world.shutdown())
             self.loop.close()
 
