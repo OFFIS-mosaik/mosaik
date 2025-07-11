@@ -2,18 +2,18 @@
 How mosaik communicates with a simulator
 ========================================
 
-This section provides a general overview which API calls exists and when mosaik
+This section provides a general overview which API calls exist and when mosaik
 calls them. The following sections will go into more detail.
 
 When the connection between a simulator and mosaik is established, mosaik will
 first call ``init()``, optionally passing some global parameters to the
-simulator. The simulators returns some meta data describing itself.
+simulator. The simulator returns some metadata describing itself.
 
 Following this, mosaik may call ``create()`` multiple times in order to
 instantiate one of the models that the simulator implements. The return value
 contains information describing the entities created.
 
-The end of *create* phase and the beginning of the *step* (or simulation) phase
+The end of the *create* phase and the beginning of the *step* (or simulation) phase
 is marked by a call to ``setup_done()``.  At this point, all entities are
 created and all relations between them are established.
 
@@ -32,7 +32,7 @@ The following figure depicts the sequence of these messages:
    :alt: Main sequence diagram for the mosaik simulator API.
 
 After ``create()`` or ``step()`` have been called, there may be an
-arbitrary amount of ``get_data()`` calls where mosaik requests the current
+arbitrary number of ``get_data()`` calls where mosaik requests the current
 values of some entities' attributes:
 
 .. image:: /_static/mosaik-api-sequence-get_data.*
