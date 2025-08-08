@@ -1291,7 +1291,7 @@ class AsyncModelFactory:
             not part of the entity's model's defined output attributes.
         """
         for eid in eid_dict:
-            if eid not in self.entities.keys():
+            if eid != "time" and eid not in self.entities.keys():
                 warnings.warn(
                     f"Simulator {self._sid} returned data for the entity {eid} which "
                     "was never created. This is likely an error in its get_data "
@@ -1303,7 +1303,7 @@ class AsyncModelFactory:
                 for attr in eid_dict[eid]:
                     if attr not in model_attrs:
                         warnings.warn(
-                            f"Simulator {self._sid} returned data for attribute"
+                            f"Simulator {self._sid} returned data for attribute "
                             f"{attr} which does not exist in model "
                             f"{self.entities[eid].model_mock.name}. "
                             "This is likely an error in its get_data method.",
