@@ -1291,7 +1291,11 @@ class AsyncModelFactory:
             not part of the entity's model's defined output attributes.
         """
         for eid in eid_dict:
-            if eid != "time" and eid not in self.entities.keys():
+            if eid == "time":
+                # "time" is a special attribute that a simulator may use
+                # to indicate the time for which its output is valid.
+                continue
+            if eid not in self.entities.keys():
                 warnings.warn(
                     f"Simulator {self._sid} returned data for the entity {eid} which "
                     "was never created. This is likely an error in its get_data "
