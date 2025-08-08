@@ -620,6 +620,16 @@ class AsyncWorld:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = default_transform_callable,
     ):
+        if not isinstance(src, Entity):
+            raise TypeError(
+                "the source for a connect call must be an Entity, but a "
+                f"{type(src).__name__} was given"
+            )
+        if not isinstance(dest, Entity):
+            raise TypeError(
+                "the destination for a connect call must be an Entity, but a "
+                f"{type(dest).__name__} was given"
+            )
         if not dest_attr:
             dest_attr = src_attr
 
