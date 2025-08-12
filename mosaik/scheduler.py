@@ -9,7 +9,7 @@ import warnings
 from heapq import heappop
 from math import ceil
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
@@ -411,7 +411,7 @@ async def get_outputs(world: AsyncWorld, sim: SimRunner):
 
     sim.tqdm.set_postfix_str("get_data")
     data = await sim.get_data(outattr)
-    output_time = data.get("time", sim.last_step.time)
+    output_time = cast(int, data.pop("time", sim.last_step.time))
 
     validate_output_time(sim, output_time)
     sim.output_time = determine_output_tiered_time(sim, output_time)
