@@ -29,7 +29,7 @@ from typing import Any, Dict, Optional
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import ConnectionClosedError, ScenarioError
 from mosaik.proxies import BaseProxy, Proxy
 
 
@@ -74,7 +74,7 @@ async def init_and_get_adapter(
         raise ScenarioError(
             f"There was an error during the initialization of {sim_id}: ", e
         )
-    except asyncio.IncompleteReadError:
+    except ConnectionClosedError:
         await base_proxy.stop()
         raise SystemExit(
             f'Simulator "{sim_id}" closed its connection during the init() call.'
