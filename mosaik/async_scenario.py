@@ -1313,7 +1313,7 @@ class AsyncModelFactory:
                 for attr in eid_dict[eid]:
                     if attr not in model_attrs:
                         warnings.warn(
-                            f"Simulator {self._sid} returned data for attribute"
+                            f"Simulator {self._sid} returned data for attribute "
                             f"{attr} which does not exist in model "
                             f"{self.entities[eid].model_mock.name}. "
                             "This is likely an error in its get_data method.",
