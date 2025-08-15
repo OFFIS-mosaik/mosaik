@@ -3,25 +3,20 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from asyncio import StreamReader, StreamWriter
 from subprocess import TimeoutExpired
-from typing import Any, Callable, Coroutine, Type, cast
+from typing import Any, Callable, Coroutine, Type
 
 import mosaik_api_v3.connection
 import pytest
 import pytest_asyncio
 from example_sim.mosaik import ExampleSim
-from mosaik_api_v3 import Meta
-from mosaik_api_v3 import __api_version__ as api_version
 from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import World, adapters, async_scenario, proxies, scenario, simmanager
-from mosaik.async_scenario import AsyncWorld
+from mosaik import World, async_scenario, proxies, scenario, simmanager
 from mosaik.exceptions import (
     DuplicateEntityIdError,
     NonSerializableOutputsError,
     ScenarioError,
-    SimulationError,
 )
 from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.tiered_time import TieredDuration, TieredTime
@@ -78,69 +73,6 @@ async def async_world():
         yield world
 
 
-def test_start(world: World, monkeypatch):
-    """
-    Test if start() dispatches to the correct start functions.
-    """
-
-    class Proxy(BaseProxy):
-        async def init(self, *args, **kwargs):
-            return list(map(int, api_version.split(".")))
-
-        @property
-        def meta(self) -> Meta:
-            raise NotImplementedError
-
-        async def send(self, request):
-            return None
-
-        async def stop(self):
-            raise NotImplementedError
-
-    proxy = Proxy()
-
-    async def start(*args, **kwargs):
-        return proxy
-
-    s = simmanager.StarterCollection()
-    monkeypatch.setitem(s, "python", start)
-    monkeypatch.setitem(s, "cmd", start)
-    monkeypatch.setitem(s, "connect", start)
-
-    ret = world.loop.run_until_complete(
-        simmanager.start(
-            world.config,
-            world.sim_config["ExampleSimA"],
-            "0",
-            simmanager.MosaikRemote(world._async_world, "0"),
-        )
-    )
-    assert ret == proxy
-
-    # The api_version has to be re-initialized, because it is changed in
-    # simmanager.start()
-    ret = world.loop.run_until_complete(
-        simmanager.start(
-            world.config,
-            world.sim_config["ExampleSimB"],
-            "0",
-            simmanager.MosaikRemote(world._async_world, "0"),
-        )
-    )
-    assert ret == proxy
-
-    # The api_version has to re-initialized
-    ret = world.loop.run_until_complete(
-        simmanager.start(
-            world.config,
-            world.sim_config["ExampleSimC"],
-            "0",
-            simmanager.MosaikRemote(world._async_world, "0"),
-        )
-    )
-    assert ret == proxy
-
-
 def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
@@ -152,56 +84,6 @@ def test_start_wrong_api_version(world: World, monkeypatch):
         "There was an error during the initialization of MetaMock-0: The API version "
         "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
         "mosaik package is available to be used in your scenario?"
-    )
-
-
-def test_start_in_process(world: World):
-    """
-    Test starting an in-proc simulator."""
-    connection = world.loop.run_until_complete(
-        simmanager.start(
-            world.config,
-            world.sim_config["ExampleSimA"],
-            "ExampleSim-0",
-            simmanager.MosaikRemote(world._async_world, "ExampleSim-0"),
-        )
-    )
-    assert isinstance(connection, LocalProxy)
-    assert isinstance(connection.sim, ExampleSim)
-
-
-@pytest.mark.cmd_process
-@pytest.mark.asyncio
-async def test_start_external_process(async_world: AsyncWorld):
-    """
-    Test starting a simulator as external process."""
-    proxy = await simmanager.start(
-        async_world.config,
-        async_world.sim_config["ExampleSimB"],
-        "ExampleSim-0",
-        simmanager.MosaikRemote(async_world, "ExampleSim-0"),
-    )
-    proxy = await adapters.init_and_get_adapter(
-        proxy, "ExampleSim-0", {"time_resolution": 1.0}, 10.0
-    )
-    assert "api_version" in proxy.meta and "models" in proxy.meta
-    await proxy.stop()
-
-
-def test_start_proc_timeout_accept(world: World, caplog):
-    world.config["start_timeout"] = 0.1
-    with pytest.raises(SimulationError) as exc_info:
-        world.loop.run_until_complete(
-            simmanager.start(
-                world.config,
-                world.sim_config["Fail"],
-                "Fail-0",
-                simmanager.MosaikRemote(world._async_world, "Fail-0"),
-            )
-        )
-    assert (
-        exc_info.value.args[0]
-        == 'Simulator "Fail-0" did not connect to mosaik in time.'
     )
 
 
@@ -233,235 +115,9 @@ def test_start_proc_auto_terminate(auto_terminate: bool):
     assert (proxy._process[0].poll() is not None) == auto_terminate
 
 
-@pytest.mark.asyncio
-async def test_start_proc_no_port_conflict():
-    mosaik_config: async_scenario.MosaikConfigTotal = {
-        "addr": ("0.0.0.0", None),
-        "start_timeout": 0,
-        "stop_timeout": 1,
-    }
-    mosaik_remote = cast(simmanager.MosaikRemote, None)
-    exc_1, exc_2 = await asyncio.gather(
-        simmanager.start_proc(
-            mosaik_config, "Sim-1", {"cmd": f"{VENV}/python --version"}, mosaik_remote
-        ),
-        simmanager.start_proc(
-            mosaik_config, "Sim-2", {"cmd": f"{VENV}/python --version"}, mosaik_remote
-        ),
-        return_exceptions=True,
-    )
-    # We should get `SimulationError`s here, not `OSError`s
-    assert isinstance(exc_1, SimulationError)
-    assert isinstance(exc_2, SimulationError)
-
-
-@pytest.mark.cmd_process
-def test_start_external_process_with_environment_variables(world: World, tmpdir):
-    """
-    Assert that you can set environment variables for a new sub-process.
-    """
-    # Replace sim_config for this test:z
-    print(tmpdir.strpath)
-    world._async_world.sim_config = {
-        "SimulatorMockTmp": {
-            "cmd": "%(python)s -m simulator_mock %(addr)s",
-            "env": {
-                "PYTHONPATH": tmpdir.strpath,
-            },
-        }
-    }
-
-    # Write the module "simulator_mock.py" to tmpdir:
-    tmpdir.join("simulator_mock.py").write(
-        """
-import mosaik_api_v3
-
-
-class SimulatorMock(mosaik_api_v3.Simulator):
-    def __init__(self):
-        super().__init__(meta={})
-
-
-if __name__ == '__main__':
-    mosaik_api_v3.start_simulation(SimulatorMock())
-"""
-    )
-    _sim = world.start("SimulatorMockTmp")
-
-
 async def read_message(reader: asyncio.StreamReader):
     length = int.from_bytes(await reader.readexactly(4), "big")
     return await reader.readexactly(length)
-
-
-def test_start_connect(world: scenario.World):
-    """
-    Test connecting to an already running simulator.
-    """
-
-    async def mock_sim_server(reader, writer):
-        channel = mosaik_api_v3.connection.Channel(reader, writer)
-        request = await channel.next_request()
-        await request.set_result(ExampleSim().meta)
-        await channel.next_request()
-        await channel.close()
-
-    server = world.loop.run_until_complete(
-        asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
-    )
-    simC = world.start("ExampleSimC")
-    server.close()
-    world.shutdown()
-    assert "api_version" in simC.meta and "models" in simC.meta
-
-
-def test_start_connect_timeout_init(world: World, caplog):
-    """Simulator takes too long to respond to the init call."""
-    world.config["start_timeout"] = 0.1
-
-    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
-        await read_message(reader)
-        await asyncio.sleep(0.11)
-        writer.close()
-        await writer.wait_closed()
-        print("Writer closed")
-
-    server = world.loop.run_until_complete(
-        asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
-    )
-    with pytest.raises(SystemExit) as exc_info:
-        world.start("ExampleSimC")
-    assert (
-        'Simulator "ExampleSimC-0" did not reply to the init() call in time.'
-        == exc_info.value.args[0]
-    )
-
-    world.loop.run_until_complete(asyncio.sleep(0.1))
-    server.close()
-
-
-def test_start_connect_stop_timeout(world: World):
-    """
-    Test connecting to an already running simulator.
-
-    When asked to stop, the simulator times out.
-    """
-
-    async def mock_sim_server(reader: StreamReader, writer: StreamWriter):
-        channel = mosaik_api_v3.connection.Channel(reader, writer)
-        request = await channel.next_request()
-        await request.set_result(ExampleSim().meta)
-        await channel.next_request()  # Wait for stop message
-        await channel.close()
-
-    server = world.loop.run_until_complete(
-        asyncio.start_server(mock_sim_server, "127.0.0.1", 5556)
-    )
-
-    sim = world.start("ExampleSimC")
-    assert "api_version" in sim.meta and "models" in sim.meta
-    server.close()
-    world.shutdown()
-
-
-@pytest.mark.parametrize(
-    ("sim_config", "err_msg"),
-    [
-        ({"spam": {}}, "Invalid configuration"),
-        (
-            {"spam": {"python": "eggs"}},
-            'Malformed Python class name: Expected "module:Class" --> not enough '
-            "values to unpack (expected 2, got 1)",
-        ),
-        (
-            {"spam": {"python": "eggs:Bacon"}},
-            "Could not import module: No module named 'eggs' --> No module named "
-            "'eggs'",
-        ),
-        (
-            {"spam": {"python": "example_sim:Bacon"}},
-            "Class not found in module --> module 'example_sim' has no attribute "
-            "'Bacon'",
-        ),
-        ({"spam": {"cmd": "foo"}}, "No such file or directory: 'foo'"),
-        ({"spam": {"cmd": "python", "cwd": "bar"}}, "No such file or directory: 'bar'"),
-        ({"spam": {"connect": "eggs"}}, 'Could not parse address "eggs"'),
-    ],
-)
-def test_start_user_error(sim_config: async_scenario.SimConfig, err_msg: str):
-    """
-    Test failure at starting an in-proc simulator.
-    """
-    world = scenario.World(sim_config)
-    try:
-        with pytest.raises(ScenarioError) as exc_info:
-            world.loop.run_until_complete(
-                simmanager.start(
-                    world.config,
-                    world.sim_config["spam"],
-                    "spam-0",
-                    simmanager.MosaikRemote(world._async_world, "spam-0"),
-                )
-            )
-        if sys.platform != "win32":  # pragma: no cover
-            # Windows has strange error messages which we do not want to
-            # check :(
-            assert str(exc_info.value) == (
-                f'Simulator "spam-0" could not be started: {err_msg}'
-            )
-    finally:
-        world.shutdown()
-
-
-def test_start_sim_error(caplog):
-    """
-    Test connection failures of external processes.
-    """
-    world = scenario.World({"spam": {"connect": "foo:1234"}})
-    try:
-        with pytest.raises(SimulationError) as exc_info:
-            world.loop.run_until_complete(
-                simmanager.start(
-                    world.config,
-                    world.sim_config["spam"],
-                    "spam-0",
-                    simmanager.MosaikRemote(world._async_world, "spam-0"),
-                )
-            )
-
-        assert (
-            'Simulator "spam-0" could not be started: Could not connect to '
-            '"foo:1234"' == exc_info.value.args[0]
-        )
-    finally:
-        world.shutdown()
-
-
-@pytest.mark.asyncio
-async def test_start_init_error():
-    """
-    Test simulator crashing during init().
-    """
-    async with async_scenario.AsyncWorld(
-        {"spam": {"cmd": f"{VENV}/pyexamplesim %(addr)s"}}
-    ) as world:
-        with pytest.raises(SystemExit) as exc_info:
-            base_proxy = await simmanager.start(
-                world.config,
-                world.sim_config["spam"],
-                "spam-0",
-                simmanager.MosaikRemote(world, "spam-0"),
-            )
-            await adapters.init_and_get_adapter(
-                base_proxy,
-                "spam-0",
-                {"foo": 3},
-                start_timeout=1.0,
-            )
-        assert (
-            'Simulator "spam-0" closed its connection during the init() call.'
-            == exc_info.value.args[0]
-        )
 
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")

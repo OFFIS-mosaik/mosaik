@@ -4,6 +4,7 @@ import queue
 import runpy
 import threading
 from functools import partial
+from typing import Tuple
 
 import pytest
 
@@ -17,7 +18,7 @@ class FakeKey:
 
 
 def test_pause_resume():
-    pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
+    pause_queue: queue.Queue[Tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
     )
     END = 300

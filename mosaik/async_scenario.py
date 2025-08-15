@@ -38,6 +38,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    overload,
 )
 
 import mosaik_api_v3
@@ -143,9 +144,12 @@ class CmdModel(ModelOptionals):
 
 
 ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
-"""Description of a how to start a simulator."""
+"""Description of a how to start a simulator as a dict.
 
-SimConfig: TypeAlias = Dict[str, ModelConfig | Starter]
+As a more modern alternative, consider using the starters from
+:mod:`mosaik.starters` directly."""
+
+SimConfig: TypeAlias = Dict[str, Union[ModelConfig, Starter]]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -429,6 +433,28 @@ class AsyncWorld:
 
         return model_factory
 
+    @overload
+    async def start(
+        self, starter: str, /, sim_id: Optional[SimId] = None, **sim_params: Any
+    ) -> AsyncModelFactory:
+        """Start a simulator based on the specification at the key
+        ``starter`` in this world's :class:`SimConfig`. You can
+        optionally specify the simulator's ID; by default, it will be
+        assigned the ID ``f"{starter}-{i}``, where ``i`` are ascending
+        numbers starting at 0. The ``sim_params`` will be passed
+        through to the simulator's *init* call.
+        """
+
+    @overload
+    async def start(
+        self, starter: Starter, /, sim_id: SimId, **sim_params: Any
+    ) -> AsyncModelFactory:
+        """Start a simulator based on the given
+        :class:`~mosaik.starters.Starter`. You must specify the
+        simulator's ID. The ``sim_params`` will be passed through to the
+        simulator's *init* call.
+        """
+
     async def start(
         self,
         starter: Starter | str,
@@ -436,10 +462,6 @@ class AsyncWorld:
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
-        """
-        Start the simulator named *sim_name* and return a
-        :class:`ModelFactory` for it.
-        """
         if isinstance(starter, Starter):
             starter_name = None
             if not sim_id:
@@ -459,9 +481,7 @@ class AsyncWorld:
                 if isinstance(model_config, Starter):
                     starter = model_config
                 else:
-                    starter = starters.get_starter_from_model_config(
-                        model_config, self.config
-                    )
+                    starter = starters.get_starter_from_model_config(model_config)
             except KeyError:
                 raise ScenarioError(
                     f"no starter '{starter}' was defined in the sim_config"
@@ -479,7 +499,9 @@ class AsyncWorld:
             logger.info(f"Starting '{sim_id}' (based on starter '{starter_name}')")
         else:
             logger.info(f"Starting '{sim_id}'")
-        base_proxy = await starter.start(sim_id, MosaikRemote(self, sim_id))
+        base_proxy = await starter.start(
+            sim_id, MosaikRemote(self, sim_id), self.config
+        )
         return await self._initialize_base_proxy(
             sim_id,
             base_proxy,

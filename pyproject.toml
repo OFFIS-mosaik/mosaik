@@ -99,6 +99,7 @@ filterwarnings = [
     "ignore:invalid escape sequence:DeprecationWarning",
 ]
 addopts = ["--doctest-glob='*.rst'"]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.pyright]
 typeCheckingMode = "strict"

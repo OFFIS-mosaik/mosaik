@@ -1,5 +1,6 @@
-# Simulation set up
+from __future__ import annotations
 
+# Simulation set up
 import asyncio
 import queue
 import threading
