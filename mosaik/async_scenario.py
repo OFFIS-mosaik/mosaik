@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
-import os
 import warnings
 from collections import defaultdict
 from copy import copy
@@ -38,9 +37,9 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    overload,
 )
 
-import mosaik_api_v3
 import networkx
 from loguru import logger
 from mosaik_api_v3 import OutputData
@@ -59,7 +58,7 @@ from networkx import DiGraph
 from tqdm import tqdm
 from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
-from mosaik import scheduler, simmanager
+from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
 from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
 from mosaik.greetings_util import print_greetings
@@ -67,15 +66,8 @@ from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import BaseProxy, Proxy
-from mosaik.simmanager import (
-    MosaikRemote,
-    PullDescription,
-    PushDescription,
-    SimRunner,
-    start_class,
-    start_connect_base,
-    start_proc_base,
-)
+from mosaik.simmanager import MosaikRemote, PullDescription, PushDescription, SimRunner
+from mosaik.starters import Starter
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
@@ -149,10 +141,13 @@ class CmdModel(ModelOptionals):
     simulator should connect."""
 
 
-ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
-"""Description of a how to start a simulator."""
+StarterConfig = Union[PythonModel, ConnectModel, CmdModel]
+"""Description of a how to start a simulator as a dict.
 
-SimConfig: TypeAlias = Dict[str, ModelConfig]
+As a more modern alternative, consider using the starters from
+:mod:`mosaik.starters` directly."""
+
+SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -437,176 +432,80 @@ class AsyncWorld:
 
         return model_factory
 
+    @overload
+    async def start(
+        self, starter: str, /, sim_id: Optional[SimId] = None, **sim_params: Any
+    ) -> AsyncModelFactory:
+        """Start a simulator based on the specification at the key
+        ``starter`` in this world's :class:`SimConfig`. You can
+        optionally specify the simulator's ID; by default, it will be
+        assigned the ID ``f"{starter}-{i}``, where ``i`` are ascending
+        numbers starting at 0. The ``sim_params`` will be passed
+        through to the simulator's *init* call.
+        """
+
+    @overload
+    async def start(
+        self, starter: Starter, /, sim_id: SimId, **sim_params: Any
+    ) -> AsyncModelFactory:
+        """Start a simulator based on the given
+        :class:`~mosaik.starters.Starter`. You must specify the
+        simulator's ID. The ``sim_params`` will be passed through to the
+        simulator's *init* call.
+        """
+
     async def start(
         self,
-        sim_name: str,
+        starter: Starter | str,
+        /,
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
-        """
-        Start the simulator named *sim_name* and return a
-        :class:`ModelFactory` for it.
-        """
-        if not sim_id:
-            counter = self._sim_ids[sim_name]
-            sim_id = "%s-%s" % (sim_name, next(counter))
+        if isinstance(starter, Starter):
+            starter_name = None
+            if not sim_id:
+                raise ScenarioError(
+                    "when starting a simulator using a Starter, a sim_id must be "
+                    "specified explicitly"
+                )
+        elif isinstance(starter, str):
+            starter_name = starter
+            if not self.sim_config:
+                raise ScenarioError(
+                    "starting simulators by name requires specifying a sim_config when "
+                    "creating the world"
+                )
+            try:
+                starter_config = self.sim_config[starter_name]
+                if isinstance(starter_config, Starter):
+                    starter = starter_config
+                else:
+                    starter = starters.get_starter_from_starter_config(starter_config)
+            except KeyError:
+                raise ScenarioError(
+                    f"no starter '{starter}' was defined in the sim_config"
+                )
+            if not sim_id:
+                sim_id_counter = self._sim_ids[starter_name]
+                sim_id = f"{starter_name}-{next(sim_id_counter)}"
+
         if sim_id in self.sims:
             raise ScenarioError(
-                f"A simulator with sim_id '{sim_id}' has already been started. "
-                "Choose a different sim_id."
-            )
-        logger.info(
-            'Starting "{sim_name}" as "{sim_id}" ...',
-            sim_name=sim_name,
-            sim_id=sim_id,
-        )
-
-        if not self.sim_config:
-            raise ScenarioError("no SimConfig was provided when creating the world")
-
-        try:
-            model_config = self.sim_config[sim_name]
-        except KeyError:
-            raise ScenarioError(
-                'Simulator "%s" could not be started: Not found in sim_config'
-                % sim_name
+                f"a simulator with sim_id '{sim_id}' has already been started"
             )
 
-        base_proxy = await simmanager.start(
-            self.config,
-            model_config,
-            sim_id,
-            MosaikRemote(self, sim_id),
+        if starter_name:
+            logger.info(f"Starting '{sim_id}' (based on starter '{starter_name}')")
+        else:
+            logger.info(f"Starting '{sim_id}'")
+        base_proxy = await starter.start(
+            sim_id, MosaikRemote(self, sim_id), self.config
         )
         return await self._initialize_base_proxy(
             sim_id,
             base_proxy,
             sim_params,
-            api_version=model_config.get("api_version"),
-        )
-
-    async def start_python(
-        self,
-        sim_id: SimId,
-        simulator: mosaik_api_v3.Simulator,
-        **sim_params: Any,
-    ) -> AsyncModelFactory:
-        """Start ``simulator`` with the simulator ID ``sim_id`` in this
-        world, using the params given as keyword arguments.
-
-        When using this method, the simulator does not have to be given
-        in this world's :attr:`sim_config`.
-
-        This is similar to using :meth:`start` with a ``"python"`` entry
-        in :attr:`sim_config`, except that the simulator should be given
-        as an instance of the simulator class directly instead of
-        specifying an import string.
-
-        :param sim_id: The simulator ID for this simulator.
-        :param simulator: An instance of a subclass of
-            :class:`mosaik_api_v3.Simulator`.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
-            for this simulator.
-        """
-        return await self._initialize_base_proxy(
-            sim_id,
-            await start_class(simulator, MosaikRemote(self, sim_id)),
-            sim_params,
-        )
-
-    async def start_connect(
-        self,
-        sim_id: SimId,
-        address: str | tuple[str, int],
-        api_version: str | None = None,
-        **sim_params: Any,
-    ) -> AsyncModelFactory:
-        """Connect to a running simulator under ``address``.
-
-        When using this method, the simulator does not have to be given
-        in this world's :attr:`sim_config`.
-        Other than that, this is similar to using :meth:`start` with a
-        simulator specified as ``"connect"`` in the :attr:`sim_config`.
-
-        :param sim_id: The simulator ID for this simulator.
-        :param address: The address to reach the simulator, given either
-            as a host-part pair or a string in the format
-            ``"host:pair"``.
-        :param api_version: If the simulator uses a non-current
-            version of the simulator API, its API version.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
-            for this simulator.
-        """
-        return await self._initialize_base_proxy(
-            sim_id,
-            await start_connect_base(sim_id, address, MosaikRemote(self, sim_id)),
-            sim_params,
-            api_version,
-        )
-
-    async def start_cmd(
-        self,
-        sim_id: SimId,
-        cmd: str,
-        *,
-        posix: bool = os.name != "nt",
-        cwd: str = ".",
-        env: dict[str, str] | None = None,
-        new_console: bool = False,
-        auto_terminate: bool = True,
-        api_version: str | None = None,
-        **sim_params: Any,
-    ) -> AsyncModelFactory:
-        """Start a simulator using ``cmd`` and connect to it.
-
-        When using this method, the simulator does not have to be given
-        in this world's :attr:`sim_config`.
-        Other than that, this is similar to using :meth:`start` with a
-        simulator specified as ``"cmd"`` in the :attr:`sim_config`.
-
-        In particular, you can before calling ``cmd``, the pattern
-        ``%(python)s`` will be replaced with the full path of the
-        scenario's Python interpreter and ``%(addr)s`` will be replaced
-        by the address to which the simulator should connect once
-        started (in the format ``host:port``).
-
-        :param sim_id: The simulator ID for this simulator.
-        :param cmd: The command with which start this simulator after
-            performing the replacements explained above.
-        :param posix: Whether this is a POSIX system. Normally, this
-            should be recognized automatically.
-        :param env: Dictionary of additional environment variables
-            to set for the started process.
-        :param new_console: Whether to start a new console for the
-            newly started process (only available on Windows).
-        :param auto_terminate: Whether to automatically terminate the
-            simulator process when the world shuts down.
-        :param api_version: If the simulator uses a non-current
-            version of the simulator API, its API version.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`mosaik.async_scenario.AsyncModelFactory`
-            for this simulator.
-        """
-        return await self._initialize_base_proxy(
-            sim_id,
-            await start_proc_base(
-                sim_id,
-                cmd,
-                MosaikRemote(self, sim_id),
-                self.config,
-                posix=posix,
-                cwd=cwd,
-                env=env,
-                new_console=new_console,
-                auto_terminate=auto_terminate,
-            ),
-            sim_params,
-            api_version,
+            api_version=starter.api_version,
         )
 
     def connect_one(  # noqa: C901

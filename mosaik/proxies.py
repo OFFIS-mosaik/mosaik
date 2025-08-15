@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from subprocess import Popen
-from typing import Any, Dict, Iterator, List, Tuple
+from subprocess import Popen, TimeoutExpired
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Tuple
 
 from loguru import logger
 from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
@@ -13,6 +14,9 @@ from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
 
 from mosaik.exceptions import ConnectionClosedError, ScenarioError
+
+if TYPE_CHECKING:
+    from mosaik.simmanager import MosaikRemote
 
 
 class Proxy(ABC):
@@ -152,7 +156,7 @@ class RemoteProxy(BaseProxy):
     _channel: Channel
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
-    _mosaik_remote: MosaikProxy
+    _mosaik_remote: MosaikRemote
     _process: Tuple[Popen[str], bool] | None
     """The process for this RemoteProxy (or None, if the connection
     was established using connect). The second component of the tuple is
@@ -163,7 +167,7 @@ class RemoteProxy(BaseProxy):
     def __init__(
         self,
         channel: Channel,
-        mosaik_remote: MosaikProxy,
+        mosaik_remote: MosaikRemote,
         *,
         process: Tuple[Popen[str], bool] | None = None,
     ):
@@ -171,7 +175,8 @@ class RemoteProxy(BaseProxy):
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
-            self._handle_remote_requests(), name="handle remote requests for ???"
+            self._handle_remote_requests(),
+            name=f"handle remote requests for {mosaik_remote.sid}",
         )
         self._process = process
 
@@ -229,6 +234,16 @@ class RemoteProxy(BaseProxy):
         await self._reader_task
         if self._process and self._process[1]:
             self._process[0].terminate()
+            try:
+                # TODO: Potentially make this timeout configurable
+                self._process[0].wait(1.0)
+            except TimeoutExpired:
+                warnings.warn(
+                    UserWarning(
+                        "mosaik could not terminate subprocess for cmd simulator "
+                        "(set `auto_terminate=False` to stop it from trying)"
+                    )
+                )
 
 
 def extract_version(meta: Meta) -> List[int]:

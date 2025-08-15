@@ -1,3 +1,4 @@
+import gc
 import logging
 
 import pytest
@@ -40,3 +41,14 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "benchmark" in item.keywords:
             item.add_marker(skip_benchmarks)
+
+
+# This fixture ensures that the garbage collector is run after a test.
+# It should not be used by default in general but setting `autouse=True`
+# can be quite useful when trying to debug "unraisable exception"
+# warnings in tests.
+@pytest.fixture(autouse=True)
+def ensure_gc():
+    # warnings.simplefilter("error")
+    yield
+    gc.collect()
