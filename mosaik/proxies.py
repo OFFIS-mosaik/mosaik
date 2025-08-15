@@ -12,7 +12,7 @@ from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ScenarioError, SimulatorError
+from mosaik.exceptions import ConnectionClosedError, ScenarioError, SimulatorError
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
@@ -215,7 +215,14 @@ class RemoteProxy(BaseProxy):
         return self._meta
 
     async def send(self, request: Any) -> Any:
-        return await self._channel.send(request)
+        try:
+            return await self._channel.send(request)
+        except asyncio.IncompleteReadError:
+            # TODO: find a better source for the simulator name
+            raise ConnectionClosedError(
+                simulator=self._channel._name or "unknown simulator",
+                method_called=request[0],
+            )
 
     async def stop(self) -> None:
         try:

@@ -13,7 +13,6 @@ On this page, you will find a selection of how-to guides on how to use mosaik an
 
    ... write a scenario </scenario-definition>
    ... simulate at different time scales </tutorials/sametimeloops>
-   ... debug a mosaik simulation <debugging>
    ... use mosaik in a Jupyter notebook </tutorials/jupyter_notebook>
    ... visualize your results with Apache Superset </tutorials/apache-superset>
    ... upgrade from mosaik 2 </upgrade_to_v3>

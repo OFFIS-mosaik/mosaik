@@ -311,7 +311,7 @@ When your simulation setups become more involved, you will need to deal more exp
 :doc:`/tutorials/sametimeloops` tries to explain how to create more involved setups in practice.
 
 If you find simulators you want to use, but they are not quite compatible with each other, you might be able to fix this using :doc:`transform functions </how-tos/transform-functions>`.
-Maybe you also run into other problems, and our :doc:`tips on debugging </how-tos/debugging>` can help you.
+Maybe you also run into other problems, in which case our :doc:`troubleshooting section </troubleshooting/index>` might help you.
 
 Last, you might be interested in implementing your own simulators, or in adapting simulators that you already have to use them with mosaik.
 If so, the :doc:`next tutorial <writing-a-simulator>` is for you.

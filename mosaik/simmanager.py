@@ -84,7 +84,7 @@ class PushDescription:
     dest_sim: SimRunner
     delay: TieredDuration
     dest_port: Port
-    transform: Callable[..., Any]
+    transform: Callable[[Any], Any] = lambda x: x
 
 
 @dataclass
@@ -102,7 +102,7 @@ class PullDescription:
 
     src_port: Port
     dest_port: Port
-    transform: Callable[..., Any]
+    transform: Callable[[Any], Any] = lambda x: x
 
 
 class SimRunner:

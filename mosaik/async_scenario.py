@@ -325,6 +325,7 @@ class AsyncWorld:
     default_transform_callable: Callable[[Any], Any] = lambda x: x
 
     running: asyncio.Event
+    _shutdown_performed: bool = False
 
     def __init__(
         self,
@@ -518,6 +519,16 @@ class AsyncWorld:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = default_transform_callable,
     ):
+        if not isinstance(src, Entity):
+            raise TypeError(
+                "the source for a connect call must be an Entity, but a "
+                f"{type(src).__name__} was given"
+            )
+        if not isinstance(dest, Entity):
+            raise TypeError(
+                "the destination for a connect call must be an Entity, but a "
+                f"{type(dest).__name__} was given"
+            )
         if not dest_attr:
             dest_attr = src_attr
 
@@ -1015,8 +1026,16 @@ class AsyncWorld:
         """
         Shut-down all simulators and close the server socket.
         """
-        for sim in self.sims.values():
-            await sim.stop()
+        await asyncio.gather(*(sim.stop() for sim in self.sims.values()))
+        self._shutdown_performed = True
+
+    def __del__(self):
+        if not self._shutdown_performed:
+            warnings.warn(
+                "AsyncWorld was never shut down. (Use an `(async) with` block when "
+                "creating the world or call shutdown manually. Otherwise, your "
+                "simulators' finalize methods will not get called properly.)"
+            )
 
 
 class MinPath(TypedDict):
@@ -1193,7 +1212,7 @@ class AsyncModelFactory:
                 for attr in eid_dict[eid]:
                     if attr not in model_attrs:
                         warnings.warn(
-                            f"Simulator {self._sid} returned data for attribute"
+                            f"Simulator {self._sid} returned data for attribute "
                             f"{attr} which does not exist in model "
                             f"{self.entities[eid].model_mock.name}. "
                             "This is likely an error in its get_data method.",

@@ -102,3 +102,22 @@ class DuplicateEntityIdError(SimulatorError):
             f"Simulator {self.simulator} returned multiple entities "
             f"with entity ID '{self.entity_id}'."
         )
+
+
+class ConnectionClosedError(SimulatorError):
+    """This exception is raised if a simulator closes the socket
+    connection (or if it breaks for other reasons) when mosaik is not
+    expecting it to be broken.
+    """
+
+    method_called: str
+
+    def __init__(self, simulator: str, method_called: str) -> None:
+        super().__init__(simulator)
+        self.method_called = method_called
+
+    def __str__(self) -> str:
+        return (
+            f"the connection to simulator '{self.simulator}' was broken before or "
+            f"during a '{self.method_called}' call"
+        )
