@@ -39,8 +39,6 @@ async def test_direct_starters():
         cmd_sim = await world.start(
             CmdStarter(
                 cmd="%(python)s -m tests.simulators.generic_test_simulator %(addr)s",
-                bind_addr=("", 0),
-                connect_timeout=0,
             ),
             "CmdSim",
         )

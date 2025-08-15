@@ -104,20 +104,38 @@ class Starter(ABC):
 class PythonStarter(Starter):
     """Description of how to start a simulator based on its
     mosaik_api_v3.Simulator class.
+
+    In traditional mosaik, this starter corresponds to a ``"python"``
+    entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
+    can be constructed from such an entry using
+    :meth:`from_model_config`.
     """
 
     cls: type[mosaik_api_v3.Simulator]
+    """The :class:`~mosaik_api_v3.Simulator` subclass started by this
+    starter. When started, the class's constructor will be called with
+    :attr:`args` and :attr:`kwargs`."""
     args: tuple[Any, ...]
+    """The args to give to the constructor of the simulator."""
     kwargs: dict[str, Any]
+    """The kwargs to give to the constructor of the simulator."""
+    api_version: str | None
+    """The API version of this simulator. This should be set if the
+    simulator is using an outdated version of the API."""
 
     def __init__(
-        self, cls: type[mosaik_api_v3.Simulator], *, api_version: str | None = None
+        self,
+        cls: type[mosaik_api_v3.Simulator],
+        *,
+        api_version: str | None = None,
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] = {},
     ):
         self.cls = cls
         self.api_version = api_version
         # TODO: allow setting these
-        self.args = ()
-        self.kwargs = {}
+        self.args = args
+        self.kwargs = kwargs
 
     async def start(
         self,
@@ -180,7 +198,13 @@ class PythonStarter(Starter):
 
 
 class CmdStarter(Starter):
-    """Description of how to start a simulator in a new process."""
+    """Description of how to start a simulator in a new process.
+
+    In traditional mosaik, this starter corresponds to a ``"cmd"``
+    entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
+    can be constructed from such an entry using
+    :meth:`from_model_config`.
+    """
 
     cmd: str
     """The command to start the process"""
@@ -321,6 +345,11 @@ class CmdStarter(Starter):
 class ConnectStarter(Starter):
     """Description of how to "start" a simulator already running at some
     address by connecting to it.
+
+    In traditional mosaik, this starter corresponds to a ``"connect"``
+    entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
+    can be constructed from such an entry using
+    :meth:`from_model_config`.
     """
 
     host: str
@@ -350,6 +379,9 @@ class ConnectStarter(Starter):
     def from_addr_string(
         cls, address: str, *, api_version: str | None = None
     ) -> ConnectStarter:
+        """Construct a :class:`ConnectStarter` from an address string in
+        the format "host:port".
+        """
         try:
             host, port_str = address.strip().split(":")
             port = int(port_str)
@@ -364,6 +396,7 @@ class ConnectStarter(Starter):
     def from_addr(
         cls, addr: str | tuple[str, int], *, api_version: str | None = None
     ) -> ConnectStarter:
+        """Construct a :class:`ConnectStarter` from a host-port pair."""
         if isinstance(addr, str):
             return cls.from_addr_string(addr, api_version=api_version)
         else:
@@ -379,9 +412,24 @@ class ConnectStarter(Starter):
 
 
 STARTERS: list[type[Starter]] = [PythonStarter, CmdStarter, ConnectStarter]
+"""The default starters used by mosaik.
+
+You can add additional :class:`Starter` subclasses to this list to make
+parsing their model configs availabe in your
+:class:`~mosaik.async_scenario.SimConfig`. Alternatively, your own
+starters can also be used as entries in the ``SimConfig`` directly, or
+be passed to
+:meth:`world.start <mosaik.async_scenario.AsyncWorld.start>`
+directly.
+"""
 
 
 def get_starter_from_model_config(model_config: ModelConfig) -> Starter:
+    """Construct a :class:`Starter` from the given
+    :class:`~mosaik.async_scenario.ModelConfig` by trying the
+    ``Starter`` subclasses in :data:`STARTERS` one by one (using the
+    :meth:`Starter.from_model_config` method from each).
+    """
     for starter_cls in STARTERS:
         starter = starter_cls.from_model_config(model_config)
         if starter:
@@ -389,6 +437,6 @@ def get_starter_from_model_config(model_config: ModelConfig) -> Starter:
     else:
         raise ScenarioError(
             f"Model config {model_config} does not match any known starter. "
-            "(By default, it must contain one of the keys 'python', 'cmd', or "
-            "'connect'.)"
+            '(By default, it must contain one of the keys "python", "cmd", or '
+            '"connect".)'
         )

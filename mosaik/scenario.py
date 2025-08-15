@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import os
 from types import TracebackType
 from typing import (
     Any,
@@ -27,7 +26,6 @@ from typing import (
     Union,
 )
 
-import mosaik_api_v3
 from mosaik_api_v3.types import Attr, ModelName, SimId
 from typing_extensions import Literal
 
@@ -157,129 +155,6 @@ class World:
             self._async_world.start(starter, sim_id, **sim_params)
         )
         return ModelFactory(async_model_factory, self.loop)
-
-    def start_python(
-        self,
-        sim_id: SimId,
-        simulator: type[mosaik_api_v3.Simulator],
-        **sim_params: Any,
-    ) -> ModelFactory:
-        """Start ``simulator`` with the simulator ID ``sim_id`` in this
-        world, using the params given as keyword arguments.
-
-        When using this method, the simulator does not have to be given
-        in this world's
-        :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`.
-
-        This is similar to using :meth:`start` with a ``"python"`` entry
-        in :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`, except
-        that the simulator should be given as an instance of the
-        simulator class directly instead of specifying an import string.
-
-        :param sim_id: The simulator ID for this simulator.
-        :param simulator: An instance of a subclass of
-            :class:`mosaik_api_v3.Simulator`.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`~mosaik.scenario.ModelFactory` for this
-            simulator.
-        """
-        amf = self.loop.run_until_complete(
-            self._async_world.start_python(sim_id, simulator, **sim_params)
-        )
-        return ModelFactory(amf, self.loop)
-
-    def start_connect(
-        self,
-        sim_id: SimId,
-        address: Union[str, Tuple[str, int]],
-        api_version: str,
-        **sim_params: Any,
-    ) -> ModelFactory:
-        """Connect to a running simulator under ``address``.
-
-        When using this method, the simulator does not have to be given
-        in this world's
-        :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`.
-        Other than that, this is similar to using :meth:`start` with a
-        simulator specified as ``"connect"`` in the
-        :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`.
-
-        :param sim_id: The simulator ID for this simulator.
-        :param address: The address to reach the simulator, given either
-            as a host-part pair or a string in the format
-            ``"host:pair"``.
-        :param api_version: If the simulator uses a non-current
-            version of the simulator API, its API version.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`~mosaik.scenario.ModelFactory` for this
-            simulator.
-        """
-        amf = self.loop.run_until_complete(
-            self._async_world.start_connect(sim_id, address, api_version, **sim_params)
-        )
-        return ModelFactory(amf, self.loop)
-
-    def start_cmd(
-        self,
-        sim_id: SimId,
-        cmd: str,
-        *,
-        posix: bool = os.name != "nt",
-        cwd: str = ".",
-        env: dict[str, str] | None = None,
-        new_console: bool = False,
-        auto_terminate: bool = True,
-        api_version: str | None = None,
-        **sim_params: Any,
-    ) -> ModelFactory:
-        """Start a simulator using ``cmd`` and connect to it.
-
-        When using this method, the simulator does not have to be given
-        in this world's
-        :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`.
-        Other than that, this is similar to using :meth:`start` with a
-        simulator specified as ``"cmd"`` in the
-        :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`.
-
-        In particular, you can before calling ``cmd``, the pattern
-        ``%(python)s`` will be replaced with the full path of the
-        scenario's Python interpreter and ``%(addr)s`` will be replaced
-        by the address to which the simulator should connect once
-        started (in the format ``host:port``).
-
-        :param sim_id: The simulator ID for this simulator.
-        :param cmd: The command with which start this simulator after
-            performing the replacements explained above.
-        :param posix: Whether this is a POSIX system. Normally, this
-            should be recognized automatically.
-        :param env: Dictionary of additional environment variables
-            to set for the started process.
-        :param new_console: Whether to start a new console for the
-            newly started process (only available on Windows).
-        :param auto_terminate: Whether to automatically terminate the
-            simulator process when the world shuts down.
-        :param api_version: If the simulator uses a non-current
-            version of the simulator API, its API version.
-        :param sim_params: The parameters to give to the simulator's
-            :meth:`~mosaik_api_v3.Simulator.init` method.
-        :return: The :class:`~mosaik.scenario.ModelFactory` for this
-            simulator.
-        """
-        amf = self.loop.run_until_complete(
-            self._async_world.start_cmd(
-                sim_id,
-                cmd,
-                posix=posix,
-                cwd=cwd,
-                new_console=new_console,
-                auto_terminate=auto_terminate,
-                api_version=api_version,
-                **sim_params,
-            )
-        )
-        return ModelFactory(amf, self.loop)
 
     def connect_one(
         self,
