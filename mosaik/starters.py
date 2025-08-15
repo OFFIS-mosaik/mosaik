@@ -18,8 +18,8 @@ directly.
 Finally, traditionally, ``SIM_CONFIG`` would be a dict of dicts, where
 the inner dicts correspond to our :class:`Starter` objects. To keep
 supporting this, :class:`Starter`s can be parsed from such a dict using
-the :meth:`~Starter.from_model_config` method; to try parsing into all
-starters automatically, use :func:`get_starter_from_model_config`.
+the :meth:`~Starter.from_starter_config` method; to try parsing into all
+starters automatically, use :func:`get_starter_from_starter_config`.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.simmanager import MosaikRemote
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import ModelConfig, MosaikConfigTotal
+    from mosaik.async_scenario import MosaikConfigTotal, StarterConfig
 
 
 class Starter(ABC):
@@ -68,24 +68,25 @@ class Starter(ABC):
 
     @classmethod
     @abstractmethod
-    def from_model_config(cls, model_config: ModelConfig) -> Starter | None:
-        """Attempt to create a starter from the given ModelConfig.
-        If the ModelConfig does not match this type of Starter, return
+    def from_starter_config(cls, starter_config: StarterConfig) -> Starter | None:
+        """Attempt to create a starter from the given StarterConfig.
+        If the StarterConfig does not match this type of Starter, return
         ``None`` to indicate that a different Starter should be tried.
         """
 
     @classmethod
-    def from_sim_config_entry(cls, entry: Union[ModelConfig, Starter]) -> Starter:
+    def from_sim_config_entry(cls, entry: Union[StarterConfig, Starter]) -> Starter:
         """Create a :class:`Starter` from an entry in a
         :class:`~mosaik.async_scenario.SimConfig`. This is intended to
         be called on a subclass of :class:`Starter` and will check that
         the given ``entry`` is either already an instance of that
         subclass or that it can be parsed into one by that subclass's
-        :meth:`from_model_config` method.
+        :meth:`from_starter_config` method.
 
         This is a convenience method if you already have a
         ``SimConfig``. In most cases, you will either construct starters
-        directly or use :func:`get_starter_from_model_config`, instead.
+        directly or use :func:`get_starter_from_starter_config`,
+        instead.
         """
         if isinstance(entry, Starter):
             if not isinstance(entry, cls):
@@ -94,7 +95,7 @@ class Starter(ABC):
                     "Starter subclass specified"
                 )
             return entry
-        starter = cls.from_model_config(entry)
+        starter = cls.from_starter_config(entry)
         if not starter:
             raise ValueError(
                 "the given entry does not specify a Starter of the specified "
@@ -110,7 +111,7 @@ class PythonStarter(Starter):
     In traditional mosaik, this starter corresponds to a ``"python"``
     entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
     can be constructed from such an entry using
-    :meth:`from_model_config`.
+    :meth:`from_starter_config`.
     """
 
     cls: type[mosaik_api_v3.Simulator]
@@ -188,10 +189,10 @@ class PythonStarter(Starter):
         return cls.from_module_class_name(mod_name, cls_name, api_version=api_version)
 
     @classmethod
-    def from_model_config(cls, model_config: ModelConfig) -> Starter | None:
-        if import_string := model_config.get("python"):
+    def from_starter_config(cls, starter_config: StarterConfig) -> Starter | None:
+        if import_string := starter_config.get("python"):
             return cls.from_string(
-                import_string, api_version=model_config.get("api_version")
+                import_string, api_version=starter_config.get("api_version")
             )
         return None
 
@@ -202,7 +203,7 @@ class CmdStarter(Starter):
     In traditional mosaik, this starter corresponds to a ``"cmd"``
     entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
     can be constructed from such an entry using
-    :meth:`from_model_config`.
+    :meth:`from_starter_config`.
     """
 
     cmd: str
@@ -332,11 +333,11 @@ class CmdStarter(Starter):
             server.close()
 
     @classmethod
-    def from_model_config(cls, model_config: ModelConfig) -> Starter | None:
-        if "cmd" not in model_config:
+    def from_starter_config(cls, starter_config: StarterConfig) -> Starter | None:
+        if "cmd" not in starter_config:
             return None
 
-        return cls(**model_config)
+        return cls(**starter_config)
 
 
 class ConnectStarter(Starter):
@@ -346,7 +347,7 @@ class ConnectStarter(Starter):
     In traditional mosaik, this starter corresponds to a ``"connect"``
     entry in the :class:`~mosaik.async_scenario.SimConfig`, and it
     can be constructed from such an entry using
-    :meth:`from_model_config`.
+    :meth:`from_starter_config`.
     """
 
     host: str
@@ -400,10 +401,10 @@ class ConnectStarter(Starter):
             return cls(*addr, api_version=api_version)
 
     @classmethod
-    def from_model_config(cls, model_config: ModelConfig) -> Starter | None:
-        if addr_string := model_config.get("connect"):
+    def from_starter_config(cls, starter_config: StarterConfig) -> Starter | None:
+        if addr_string := starter_config.get("connect"):
             return cls.from_addr_string(
-                addr_string, api_version=model_config.get("api_version")
+                addr_string, api_version=starter_config.get("api_version")
             )
         return None
 
@@ -412,7 +413,7 @@ STARTERS: list[type[Starter]] = [PythonStarter, CmdStarter, ConnectStarter]
 """The default starters used by mosaik.
 
 You can add additional :class:`Starter` subclasses to this list to make
-parsing their model configs availabe in your
+parsing their starter configs availabe in your
 :class:`~mosaik.async_scenario.SimConfig`. Alternatively, your own
 starters can also be used as entries in the ``SimConfig`` directly, or
 be passed to
@@ -421,19 +422,19 @@ directly.
 """
 
 
-def get_starter_from_model_config(model_config: ModelConfig) -> Starter:
+def get_starter_from_starter_config(starter_config: StarterConfig) -> Starter:
     """Construct a :class:`Starter` from the given
-    :class:`~mosaik.async_scenario.ModelConfig` by trying the
+    :class:`~mosaik.async_scenario.StarterConfig` by trying the
     ``Starter`` subclasses in :data:`STARTERS` one by one (using the
-    :meth:`Starter.from_model_config` method from each).
+    :meth:`Starter.from_starter_config` method from each).
     """
     for starter_cls in STARTERS:
-        starter = starter_cls.from_model_config(model_config)
+        starter = starter_cls.from_starter_config(starter_config)
         if starter:
             return starter
     else:
         raise ScenarioError(
-            f"Model config {model_config} does not match any known starter. "
+            f"Starter config {starter_config} does not match any known starter. "
             '(By default, it must contain one of the keys "python", "cmd", or '
             '"connect".)'
         )

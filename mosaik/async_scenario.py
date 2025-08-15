@@ -141,13 +141,13 @@ class CmdModel(ModelOptionals):
     simulator should connect."""
 
 
-ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
+StarterConfig = Union[PythonModel, ConnectModel, CmdModel]
 """Description of a how to start a simulator as a dict.
 
 As a more modern alternative, consider using the starters from
 :mod:`mosaik.starters` directly."""
 
-SimConfig: TypeAlias = Dict[str, Union[ModelConfig, Starter]]
+SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -476,11 +476,11 @@ class AsyncWorld:
                     "creating the world"
                 )
             try:
-                model_config = self.sim_config[starter_name]
-                if isinstance(model_config, Starter):
-                    starter = model_config
+                starter_config = self.sim_config[starter_name]
+                if isinstance(starter_config, Starter):
+                    starter = starter_config
                 else:
-                    starter = starters.get_starter_from_model_config(model_config)
+                    starter = starters.get_starter_from_starter_config(starter_config)
             except KeyError:
                 raise ScenarioError(
                     f"no starter '{starter}' was defined in the sim_config"

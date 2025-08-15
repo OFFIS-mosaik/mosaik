@@ -10,9 +10,9 @@ from example_sim.mosaik import ExampleSim
 
 from mosaik import adapters
 from mosaik.async_scenario import (
-    ModelConfig,
     MosaikConfig,
     MosaikConfigTotal,
+    StarterConfig,
     base_config,
 )
 from mosaik.exceptions import ScenarioError, SimulationError
@@ -23,7 +23,7 @@ from mosaik.starters import (
     ConnectStarter,
     PythonStarter,
     Starter,
-    get_starter_from_model_config,
+    get_starter_from_starter_config,
 )
 from tests.test_simmanager import SIM_CONFIG, VENV
 
@@ -45,17 +45,17 @@ async def start_starter(starter: Starter, config: MosaikConfig = {}) -> BaseProx
 
 
 def test_get_starter():
-    """Test that `get_starter_from_model_config` creates the right type
-    of starter.
+    """Test that `get_starter_from_starter_config` creates the right
+    type of starter.
     """
 
-    starter = get_starter_from_model_config(SIM_CONFIG["ExampleSimA"])
+    starter = get_starter_from_starter_config(SIM_CONFIG["ExampleSimA"])
     assert isinstance(starter, PythonStarter)
 
-    starter = get_starter_from_model_config(SIM_CONFIG["ExampleSimB"])
+    starter = get_starter_from_starter_config(SIM_CONFIG["ExampleSimB"])
     assert isinstance(starter, CmdStarter)
 
-    starter = get_starter_from_model_config(SIM_CONFIG["ExampleSimC"])
+    starter = get_starter_from_starter_config(SIM_CONFIG["ExampleSimC"])
     assert isinstance(starter, ConnectStarter)
 
 
@@ -242,7 +242,7 @@ async def test_start_connect_stop_timeout():
 
 
 @pytest.mark.parametrize(
-    ("model_config", "err_msg"),
+    ("starter_config", "err_msg"),
     [
         ({}, "does not match any known starter"),
         (
@@ -260,12 +260,12 @@ async def test_start_connect_stop_timeout():
     ],
 )
 @pytest.mark.asyncio
-async def test_start_user_error(model_config: ModelConfig, err_msg: str):
+async def test_start_user_error(starter_config: StarterConfig, err_msg: str):
     """
     Test failure at starting an in-proc simulator.
     """
     with pytest.raises(ScenarioError) as exc_info:
-        starter = get_starter_from_model_config(model_config)
+        starter = get_starter_from_starter_config(starter_config)
         proxy = await start_starter(starter)
         await proxy.stop()
     if sys.platform != "win32":  # pragma: no cover
