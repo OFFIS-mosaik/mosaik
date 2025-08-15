@@ -3,7 +3,7 @@
 This module provides the abstract base class :class:`Starter`, and the
 three concrete subclasses :class:`PythonStarter` for starting a
 simulator by instantiating a :class:`~mosaik_api_v3.Simulator` subclass
-in the running process, :class:`ProcStarter` for starting a simulator
+in the running process, :class:`CmdStarter` for starting a simulator
 by spawning a separate process, and :class:`ConnectStarter` for
 connecting to a simulator running at some TCP/IP address.
 
