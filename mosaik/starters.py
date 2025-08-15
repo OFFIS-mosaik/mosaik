@@ -48,6 +48,8 @@ if TYPE_CHECKING:
 
 class Starter(ABC):
     api_version: str | None
+    """The API version of this simulator. This should be set if the
+    simulator is using an outdated version of the API."""
 
     @abstractmethod
     async def start(
@@ -119,9 +121,6 @@ class PythonStarter(Starter):
     """The args to give to the constructor of the simulator."""
     kwargs: dict[str, Any]
     """The kwargs to give to the constructor of the simulator."""
-    api_version: str | None
-    """The API version of this simulator. This should be set if the
-    simulator is using an outdated version of the API."""
 
     def __init__(
         self,
@@ -223,8 +222,6 @@ class CmdStarter(Starter):
     auto_terminate: bool
     """Whether to automatically terminate the process when the world
     is shut down"""
-    api_version: str | None
-    """The expected API version of this simulator"""
 
     bind_addr: tuple[str, int | None] | None
     connect_timeout: float | None

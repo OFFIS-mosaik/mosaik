@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from inspect import isgeneratorfunction
@@ -12,7 +13,7 @@ from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ConnectionClosedError, ScenarioError, SimulatorError
+from mosaik.exceptions import ConnectionClosedError, ScenarioError
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
@@ -237,9 +238,11 @@ class RemoteProxy(BaseProxy):
                 # TODO: Potentially make this timeout configurable
                 self._process[0].wait(1.0)
             except TimeoutExpired:
-                raise SimulatorError(
-                    "mosaik could not terminate subprocess for cmd simulator "
-                    "(set `auto_terminate=False` to stop it from trying)"
+                warnings.warn(
+                    UserWarning(
+                        "mosaik could not terminate subprocess for cmd simulator "
+                        "(set `auto_terminate=False` to stop it from trying)"
+                    )
                 )
 
 
