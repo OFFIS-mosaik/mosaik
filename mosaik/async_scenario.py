@@ -434,7 +434,6 @@ class AsyncWorld:
             start_timeout=self.config["start_timeout"],
             explicit_version_str=api_version,
         )
-        # Create ModelFactory now; SimRunner will be created in run().
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories_by_sid[sim_id] = model_factory
@@ -458,7 +457,7 @@ class AsyncWorld:
 
     @overload
     async def start(
-        self, starter: starters.Starter, /, sim_id: SimId, **sim_params: Any
+        self, starter: Starter, /, sim_id: SimId, **sim_params: Any
     ) -> AsyncModelFactory:
         """Start a simulator based on the given
         :class:`~mosaik.starters.Starter`. You must specify the
@@ -468,12 +467,12 @@ class AsyncWorld:
 
     async def start(
         self,
-        starter: starters.Starter | str,
+        starter: Starter | str,
         /,
         sim_id: Optional[SimId] = None,
         **sim_params: Any,
     ) -> AsyncModelFactory:
-        if isinstance(starter, starters.Starter):
+        if isinstance(starter, Starter):
             starter_name = None
             if not sim_id:
                 raise ScenarioError(
@@ -489,7 +488,7 @@ class AsyncWorld:
                 )
             try:
                 starter_config = self.sim_config[starter_name]
-                if isinstance(starter_config, starters.Starter):
+                if isinstance(starter_config, Starter):
                     starter = starter_config
                 else:
                     starter = starters.get_starter_from_starter_config(starter_config)
@@ -517,15 +516,13 @@ class AsyncWorld:
         base_proxy = await starter.start(
             sim_id, MosaikRemote(self, sim_id), self.config
         )
-        # When starting by Starter object, we don't have an explicit api_version here.
+
         return await self._initialize_base_proxy(
             sim_id,
             base_proxy,
             sim_params,
             api_version=getattr(starter, "api_version", None),
         )
-
-    # No start_* helpers maintained here; use world.start(...) with a Starter.
 
     def connect_one(  # noqa: C901
         self,
@@ -596,7 +593,6 @@ class AsyncWorld:
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
         # output requests per source entity
         src_sim.output_request.setdefault(src.eid, []).append(src_attr)
-        # push/pull wiring
         if is_pulled:
             dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
                 PullDescription(
@@ -673,7 +669,7 @@ class AsyncWorld:
         src_sim.successors_to_wait_for[dest_sim] = delay
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
 
-        # Defer wiring; record src->dest relation for async requests
+        # Record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
     def connect(
@@ -1177,7 +1173,7 @@ class _PendingConnection:
 
 class _SetupSimRunner:
     """Lightweight setup-time stand-in exposing the connection fields
-    that tests inspect before ``run()``. Replaced by real ``SimRunner``
+    that can be used before ``run()``. Replaced by real ``SimRunner``
     instances when ``run()`` is called.
     """
 
