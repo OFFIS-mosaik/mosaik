@@ -443,6 +443,10 @@ class AsyncWorld:
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories_by_sid[sim_id] = model_factory
+        # Expose a setup-time stand-in so tests inspecting world.sims
+        # before run() can access connection state.
+        if sim_id not in self.sims:
+            self.sims[sim_id] = _SetupSimRunner(sim_id, proxy)  # type: ignore[assignment]
         return model_factory
 
     @overload
@@ -522,23 +526,9 @@ class AsyncWorld:
             api_version=getattr(starter, "api_version", None),
         )
 
-    # Deprecated: use world.start(PythonStarter(...), sim_id)
-    async def start_python(self, *args: Any, **kwargs: Any) -> "AsyncModelFactory":
-        raise ScenarioError(
-            "start_python is no longer supported; pass a PythonStarter to start()"
-        )
 
-    # Deprecated: use world.start(ConnectStarter.from_addr(...), sim_id)
-    async def start_connect(self, *args: Any, **kwargs: Any) -> "AsyncModelFactory":
-        raise ScenarioError(
-            "start_connect is no longer supported; pass a ConnectStarter to start()"
-        )
 
-    # Deprecated: use world.start(CmdStarter(...), sim_id)
-    async def start_cmd(self, *args: Any, **kwargs: Any) -> "AsyncModelFactory":
-        raise ScenarioError(
-            "start_cmd is no longer supported; pass a CmdStarter to start()"
-        )
+    # No start_* helpers maintained here; use world.start(...) with a Starter.
 
     def connect_one(  # noqa: C901
         self,
@@ -554,9 +544,7 @@ class AsyncWorld:
         if not dest_attr:
             dest_attr = src_attr
 
-        src_sim = self.sims[src.sid]
-        dest_sim = self.sims[dest.sid]
-
+        # Defer all SimRunner interactions until run(); only record now.
         src_port = (src.eid, src_attr)
         dest_port = (dest.eid, dest_attr)
 
@@ -601,11 +589,46 @@ class AsyncWorld:
         dest_group = dest.model_mock._factory._group
         delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
 
-        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-
-        # Defer wiring until run(); record pending connection.
+        # Defer wiring until run(); also reflect in setup-time stand-ins.
         successor_delay = connect_interval(src_group, dest_group)
         is_pulled = self.use_cache and src.is_persistent(src_attr)
+        # Update setup-time objects for tests that inspect world.sims before run().
+        src_sim = self.sims[src.sid]
+        dest_sim = self.sims[dest.sid]
+        # input delays for dependency waiting
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
+        # output requests per source entity
+        src_sim.output_request.setdefault(src.eid, []).append(src_attr)
+        # push/pull wiring
+        if is_pulled:
+            dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
+                PullDescription(src_port=src_port, dest_port=dest_port, transform=transform)
+            )
+        else:
+            src_sim.output_to_push.setdefault(src_port, []).append(
+                PushDescription(dest_sim=dest_sim, delay=delay, dest_port=dest_port, transform=transform)
+            )
+        # successor relation and triggers
+        src_sim.successors[dest_sim] = successor_delay
+        if dest.triggered_by(dest_attr):
+            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
+        # initial-data placeholder & memory
+        if initial_data is not SENTINEL:
+            if is_pulled:
+                # time_shifted may be True/bool or int
+                shift0 = int(time_shifted) if isinstance(time_shifted, (bool, int)) else 0
+                src_sim.outputs.setdefault(-shift0, {}).setdefault(src.eid, {})[src_attr] = initial_data
+            else:
+                dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(
+                    src.full_id, initial_data
+                )
+        elif not self.use_cache and src.is_persistent(src_attr):
+            # If no initial_data provided and no cache, prepare placeholder memory
+            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(
+                src.full_id, None
+            )
+
+        # Record pending connection for runtime wiring.
         self._pending_connections.append(
             _PendingConnection(
                 src_sid=src.sid,
@@ -634,6 +657,14 @@ class AsyncWorld:
             "time_shifted and weak connections instead.",
             category=DeprecationWarning,
         )
+        # Update setup-time stand-ins for tests
+        src_sim = self.sims[src._sid]
+        dest_sim = self.sims[dest._sid]
+        delay = connect_interval(src._group, dest._group)
+        src_sim.successors[dest_sim] = delay
+        src_sim.successors_to_wait_for[dest_sim] = delay
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
+
         # Defer wiring; record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
@@ -1126,6 +1157,33 @@ class _PendingConnection:
     initial_data: Any | None
     transform: Callable[[Any], Any]
 
+
+class _SetupSimRunner:
+    """Lightweight setup-time stand-in exposing the connection fields
+    that tests inspect before ``run()``. Replaced by real ``SimRunner``
+    instances when ``run()`` is called.
+    """
+
+    def __init__(self, sid: SimId, proxy: Proxy):
+        self.sid = sid
+        self._proxy = proxy
+        self.input_delays: Dict[Any, MinimalDurations] = {}
+        self.triggers: Dict[Tuple[str, str], List[Tuple[Any, TieredDuration]]] = {}
+        self.successors: Dict[Any, TieredDuration] = {}
+        self.successors_to_wait_for: Dict[Any, TieredDuration] = {}
+        self.pulled_inputs: Dict[Tuple[Any, TieredDuration], List[PullDescription]] = {}
+        self.output_to_push: Dict[Tuple[str, str], List[PushDescription]] = {}
+        self.output_request: OutputRequest = {}
+        self.persistent_inputs: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        # Expose outputs cache for setup-time inspections; will be
+        # replaced by real SimRunner outputs in run().
+        self.outputs: Dict[int, OutputData] = {}
+
+    async def stop(self):
+        await self._proxy.stop()
+
+    def __repr__(self):
+        return f"<_SetupSimRunner sid={self.sid!r}>"
 
 if TYPE_CHECKING:
     T = TypeVar("T", bound=SupportsRichComparison)

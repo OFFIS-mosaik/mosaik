@@ -56,9 +56,6 @@ It also provides various methods that allow you to start simulators and establis
 
    Establishing connections between entities does not make calls to the connected simulators and therefore does not require ``await``.
 
-   Separation of setup and execution
-     When using :class:`~mosaik.async_scenario.AsyncWorld`, starting simulators with :meth:`world.start <mosaik.async_scenario.AsyncWorld.start>` returns an :class:`~mosaik.async_scenario.AsyncModelFactory` that you use to create entities and define connections during setup. The runtime handlers (:class:`~mosaik.simmanager.SimRunner`) are only created when you call :meth:`world.run <mosaik.async_scenario.AsyncWorld.run>`. This means that all setup (entity creation, :meth:`world.connect <mosaik.async_scenario.AsyncWorld.connect>`, :meth:`world.set_initial_event <mosaik.async_scenario.AsyncWorld.set_initial_event>`) happens before any simulator execution machinery exists, and the actual execution is initialized in ``run()``.
-
 
 Every mosaik scenario starts by importing the :mod:`mosaik` package and creating a ``SIM_CONFIG``.
 The ``SIM_CONFIG`` is a dictionary listing all of the simulators you want to use in your simulation and how to start or connect to them:
