@@ -72,6 +72,7 @@ from mosaik.simmanager import (
     PushDescription,
     SimRunner,
 )
+from mosaik.starters import Starter
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
@@ -145,17 +146,11 @@ class CmdModel(ModelOptionals):
     simulator should connect."""
 
 
-ModelConfig = Union[PythonModel, ConnectModel, CmdModel]
-"""Description of how to start a single simulator.
-
-Backwards compatibility: ``StarterConfig`` used to be the public name
-for this union; it remains available as an alias.
+StarterConfig = Union[PythonModel, ConnectModel, CmdModel]
+"""Description of a how to start a simulator as a dict.
 """
 
-# Backwards-compat alias required by tests and external users
-StarterConfig: TypeAlias = ModelConfig
-
-SimConfig: TypeAlias = Dict[str, ModelConfig]
+SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -506,7 +501,11 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if sim_id in self.sims or sim_id in self._proxies or sim_id in self._factories_by_sid:
+        if (
+            sim_id in self.sims
+            or sim_id in self._proxies
+            or sim_id in self._factories_by_sid
+        ):
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
@@ -525,8 +524,6 @@ class AsyncWorld:
             sim_params,
             api_version=getattr(starter, "api_version", None),
         )
-
-
 
     # No start_* helpers maintained here; use world.start(...) with a Starter.
 
@@ -602,11 +599,18 @@ class AsyncWorld:
         # push/pull wiring
         if is_pulled:
             dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
-                PullDescription(src_port=src_port, dest_port=dest_port, transform=transform)
+                PullDescription(
+                    src_port=src_port, dest_port=dest_port, transform=transform
+                )
             )
         else:
             src_sim.output_to_push.setdefault(src_port, []).append(
-                PushDescription(dest_sim=dest_sim, delay=delay, dest_port=dest_port, transform=transform)
+                PushDescription(
+                    dest_sim=dest_sim,
+                    delay=delay,
+                    dest_port=dest_port,
+                    transform=transform,
+                )
             )
         # successor relation and triggers
         src_sim.successors[dest_sim] = successor_delay
@@ -616,17 +620,21 @@ class AsyncWorld:
         if initial_data is not SENTINEL:
             if is_pulled:
                 # time_shifted may be True/bool or int
-                shift0 = int(time_shifted) if isinstance(time_shifted, (bool, int)) else 0
-                src_sim.outputs.setdefault(-shift0, {}).setdefault(src.eid, {})[src_attr] = initial_data
-            else:
-                dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(
-                    src.full_id, initial_data
+                shift0 = (
+                    int(time_shifted) if isinstance(time_shifted, (bool, int)) else 0
                 )
+                src_sim.outputs.setdefault(-shift0, {}).setdefault(src.eid, {})[
+                    src_attr
+                ] = initial_data
+            else:
+                dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
+                    dest_attr, {}
+                ).setdefault(src.full_id, initial_data)
         elif not self.use_cache and src.is_persistent(src_attr):
             # If no initial_data provided and no cache, prepare placeholder memory
-            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(dest_attr, {}).setdefault(
-                src.full_id, None
-            )
+            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
+                dest_attr, {}
+            ).setdefault(src.full_id, None)
 
         # Record pending connection for runtime wiring.
         self._pending_connections.append(
@@ -907,7 +915,9 @@ class AsyncWorld:
             src_sim = self.sims[pc.src_sid]
             dest_sim = self.sims[pc.dest_sid]
             # input delays
-            dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(pc.delay)
+            dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(
+                pc.delay
+            )
             # prepare persistent input memory if cache disabled and source persistent
             if not self.use_cache:
                 src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
@@ -922,11 +932,18 @@ class AsyncWorld:
             dest_port = (pc.dest_eid, pc.dest_attr)
             if pc.is_pulled:
                 dest_sim.pulled_inputs.setdefault((src_sim, pc.delay), []).append(
-                    PullDescription(src_port=src_port, dest_port=dest_port, transform=pc.transform)
+                    PullDescription(
+                        src_port=src_port, dest_port=dest_port, transform=pc.transform
+                    )
                 )
             else:
                 src_sim.output_to_push.setdefault(src_port, []).append(
-                    PushDescription(dest_sim=dest_sim, delay=pc.delay, dest_port=dest_port, transform=pc.transform)
+                    PushDescription(
+                        dest_sim=dest_sim,
+                        delay=pc.delay,
+                        dest_port=dest_port,
+                        transform=pc.transform,
+                    )
                 )
             # successors
             src_sim.successors[dest_sim] = pc.successor_delay
@@ -939,9 +956,9 @@ class AsyncWorld:
                     assert src_sim.outputs is not None
                     # use highest tier time shift for cache key, default 0
                     shift0 = pc.delay.tiers[0] if pc.delay.tiers else 0
-                    src_sim.outputs.setdefault(-int(shift0), {}).setdefault(pc.src_eid, {})[
-                        pc.src_attr
-                    ] = pc.initial_data
+                    src_sim.outputs.setdefault(-int(shift0), {}).setdefault(
+                        pc.src_eid, {}
+                    )[pc.src_attr] = pc.initial_data
                 else:
                     dest_sim.persistent_inputs.setdefault(pc.dest_eid, {}).setdefault(
                         pc.dest_attr, {}
@@ -1185,6 +1202,7 @@ class _SetupSimRunner:
     def __repr__(self):
         return f"<_SetupSimRunner sid={self.sid!r}>"
 
+
 if TYPE_CHECKING:
     T = TypeVar("T", bound=SupportsRichComparison)
 
@@ -1354,7 +1372,7 @@ class AsyncModelFactory:
                 for attr in eid_dict[eid]:
                     if attr not in model_attrs:
                         warnings.warn(
-                            f"Simulator {self._sid} returned data for attribute"
+                            f"Simulator {self._sid} returned data for attribute "
                             f"{attr} which does not exist in model "
                             f"{self.entities[eid].model_mock.name}. "
                             "This is likely an error in its get_data method.",
