@@ -313,7 +313,8 @@ class AsyncWorld:
     """A dictionary of already started simulators instances."""
     _sim_ids: Dict[ModelName, Iterator[int]]
 
-    # Setup-time storage (populated during start()/connect(), used at run())
+    # Setup-time storage (populated during start()/connect(),
+    # used at run()).
     _proxies: Dict[SimId, Proxy]
     _factories_by_sid: Dict[SimId, "AsyncModelFactory"]
     _pending_connections: List["_PendingConnection"]
@@ -583,10 +584,12 @@ class AsyncWorld:
         dest_group = dest.model_mock._factory._group
         delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
 
-        # Defer wiring until run(); also reflect in setup-time stand-ins.
+        # Defer wiring until run();
+        # also reflect in setup-time stand-ins.
         successor_delay = connect_interval(src_group, dest_group)
         is_pulled = self.use_cache and src.is_persistent(src_attr)
-        # Update setup-time objects for tests that inspect world.sims before run().
+        # Update setup-time objects for tests
+        # that inspect world.sims before run().
         src_sim = self.sims[src.sid]
         dest_sim = self.sims[dest.sid]
         # input delays for dependency waiting
@@ -627,7 +630,8 @@ class AsyncWorld:
                     dest_attr, {}
                 ).setdefault(src.full_id, initial_data)
         elif not self.use_cache and src.is_persistent(src_attr):
-            # If no initial_data provided and no cache, prepare placeholder memory
+            # If no initial_data provided and no cache,
+            # prepare placeholder memory
             dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
                 dest_attr, {}
             ).setdefault(src.full_id, None)
@@ -824,7 +828,7 @@ class AsyncWorld:
 
         return results
 
-    async def run(
+    async def run(  # noqa: C901
         self,
         until: int,
         rt_factor: Optional[float] = None,
@@ -914,7 +918,8 @@ class AsyncWorld:
             dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(
                 pc.delay
             )
-            # prepare persistent input memory if cache disabled and source persistent
+            # prepare persistent input memory if cache disabled
+            # and source persistent
             if not self.use_cache:
                 src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
                 if src_entity.is_persistent(pc.src_attr):
@@ -950,7 +955,8 @@ class AsyncWorld:
             if pc.initial_data is not None:
                 if pc.is_pulled:
                     assert src_sim.outputs is not None
-                    # use highest tier time shift for cache key, default 0
+                    # use highest tier time shift
+                    # for cache key, default 0
                     shift0 = pc.delay.tiers[0] if pc.delay.tiers else 0
                     src_sim.outputs.setdefault(-int(shift0), {}).setdefault(
                         pc.src_eid, {}
