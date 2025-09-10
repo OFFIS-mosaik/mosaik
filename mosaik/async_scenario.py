@@ -540,8 +540,6 @@ class AsyncWorld:
             dest_attr = src_attr
 
         # Defer all SimRunner interactions until run(); only record now.
-        src_port = (src.eid, src_attr)
-        dest_port = (dest.eid, dest_attr)
 
         problems: List[str] = []
 
@@ -584,57 +582,23 @@ class AsyncWorld:
         dest_group = dest.model_mock._factory._group
         delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
 
-        # Defer wiring until run();
-        # also reflect in setup-time stand-ins.
         successor_delay = connect_interval(src_group, dest_group)
         is_pulled = self.use_cache and src.is_persistent(src_attr)
-        # Update setup-time objects for tests
-        # that inspect world.sims before run().
-        src_sim = self.sims[src.sid]
-        dest_sim = self.sims[dest.sid]
-        # input delays for dependency waiting
-        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-        # output requests per source entity
-        src_sim.output_request.setdefault(src.eid, []).append(src_attr)
-        if is_pulled:
-            dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
-                PullDescription(
-                    src_port=src_port, dest_port=dest_port, transform=transform
-                )
-            )
-        else:
-            src_sim.output_to_push.setdefault(src_port, []).append(
-                PushDescription(
-                    dest_sim=dest_sim,
-                    delay=delay,
-                    dest_port=dest_port,
-                    transform=transform,
-                )
-            )
-        # successor relation and triggers
-        src_sim.successors[dest_sim] = successor_delay
-        if dest.triggered_by(dest_attr):
-            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
-        # initial-data placeholder & memory
-        if initial_data is not SENTINEL:
-            if is_pulled:
-                # time_shifted may be True/bool or int
-                shift0 = (
-                    int(time_shifted) if isinstance(time_shifted, (bool, int)) else 0
-                )
-                src_sim.outputs.setdefault(-shift0, {}).setdefault(src.eid, {})[
-                    src_attr
-                ] = initial_data
-            else:
-                dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
-                    dest_attr, {}
-                ).setdefault(src.full_id, initial_data)
-        elif not self.use_cache and src.is_persistent(src_attr):
-            # If no initial_data provided and no cache,
-            # prepare placeholder memory
-            dest_sim.persistent_inputs.setdefault(dest.eid, {}).setdefault(
-                dest_attr, {}
-            ).setdefault(src.full_id, None)
+        self._compile_connections(
+            self.sims[src.sid],
+            self.sims[dest.sid],
+            src_eid=src.eid,
+            dest_eid=dest.eid,
+            src_attr=src_attr,
+            dest_attr=dest_attr,
+            delay=delay,
+            successor_delay=successor_delay,
+            is_pulled=is_pulled,
+            will_trigger=dest.triggered_by(dest_attr),
+            initial_data=None if initial_data is SENTINEL else initial_data,
+            prepare_placeholder=(not self.use_cache and src.is_persistent(src_attr)),
+            transform=transform,
+        )
 
         # Record pending connection for runtime wiring.
         self._pending_connections.append(
@@ -665,14 +629,8 @@ class AsyncWorld:
             "time_shifted and weak connections instead.",
             category=DeprecationWarning,
         )
-        # Update setup-time stand-ins for tests
-        src_sim = self.sims[src._sid]
-        dest_sim = self.sims[dest._sid]
         delay = connect_interval(src._group, dest._group)
-        src_sim.successors[dest_sim] = delay
-        src_sim.successors_to_wait_for[dest_sim] = delay
-        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-
+        self._create_async_conn_dependency(self.sims[src._sid], self.sims[dest._sid], delay)
         # Record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
@@ -760,6 +718,82 @@ class AsyncWorld:
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
+
+    def _compile_connections(
+        self,
+        src_sim: Any,
+        dest_sim: Any,
+        *,
+        src_eid: EntityId,
+        dest_eid: EntityId,
+        src_attr: Attr,
+        dest_attr: Attr,
+        delay: TieredDuration,
+        successor_delay: TieredDuration,
+        is_pulled: bool,
+        will_trigger: bool,
+        initial_data: Any | None,
+        prepare_placeholder: bool,
+        transform: Callable[[Any], Any],
+    ) -> None:
+        """Wire a single connection into the given sim-like objects.
+
+        Works for both setup-time stand-ins and real SimRunner objects.
+        """
+
+        # Dependency waiting info
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
+        # Output requests per source entity
+        src_sim.output_request.setdefault(src_eid, []).append(src_attr)
+        # Push/pull wiring
+        src_port = (src_eid, src_attr)
+        dest_port = (dest_eid, dest_attr)
+        if is_pulled:
+            dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
+                PullDescription(
+                    src_port=src_port,
+                    dest_port=dest_port,
+                    transform=transform,
+                )
+            )
+        else:
+            src_sim.output_to_push.setdefault(src_port, []).append(
+                PushDescription(
+                    dest_sim=dest_sim,
+                    delay=delay,
+                    dest_port=dest_port,
+                    transform=transform,
+                )
+            )
+        # Successors and triggers
+        src_sim.successors[dest_sim] = successor_delay
+        if will_trigger:
+            src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
+        # Initial data or placeholder
+        if initial_data is not None:
+            if is_pulled:
+                # For pulled connections, seed cache at t = -shift
+                shift0 = delay.tiers[0] if delay.tiers else 0
+                src_sim.outputs.setdefault(-int(shift0), {}).setdefault(src_eid, {})[
+                    src_attr
+                ] = initial_data
+            else:
+                src_full = f"{src_sim.sid}.{src_eid}"
+                dest_sim.persistent_inputs.setdefault(dest_eid, {}).setdefault(
+                    dest_attr, {}
+                )[src_full] = initial_data
+        elif prepare_placeholder:
+            src_full = f"{src_sim.sid}.{src_eid}"
+            dest_sim.persistent_inputs.setdefault(dest_eid, {}).setdefault(
+                dest_attr, {}
+            ).setdefault(src_full, None)
+
+    def _create_async_conn_dependency(
+        self, src_sim: Any, dest_sim: Any, delay: TieredDuration
+    ) -> None:
+        src_sim.successors[dest_sim] = delay
+        src_sim.successors_to_wait_for[dest_sim] = delay
+        dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
@@ -910,72 +944,34 @@ class AsyncWorld:
             sim = self.sims[sid]
             sim.next_steps = [TieredTime(t) + sim.from_world_time]
 
-        # Wire connections
+        # Wire connections using the shared helper
         for pc in self._pending_connections:
-            src_sim = self.sims[pc.src_sid]
-            dest_sim = self.sims[pc.dest_sid]
-            # input delays
-            dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(
-                pc.delay
+            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
+            placeholder = (
+                not self.use_cache and src_entity.is_persistent(pc.src_attr)
             )
-            # prepare persistent input memory if cache disabled
-            # and source persistent
-            if not self.use_cache:
-                src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
-                if src_entity.is_persistent(pc.src_attr):
-                    dest_sim.persistent_inputs.setdefault(pc.dest_eid, {}).setdefault(
-                        pc.dest_attr, {}
-                    ).setdefault(f"{pc.src_sid}.{pc.src_eid}", None)
-            # output requests
-            src_sim.output_request.setdefault(pc.src_eid, []).append(pc.src_attr)
-            # push/pull wiring
-            src_port = (pc.src_eid, pc.src_attr)
-            dest_port = (pc.dest_eid, pc.dest_attr)
-            if pc.is_pulled:
-                dest_sim.pulled_inputs.setdefault((src_sim, pc.delay), []).append(
-                    PullDescription(
-                        src_port=src_port, dest_port=dest_port, transform=pc.transform
-                    )
-                )
-            else:
-                src_sim.output_to_push.setdefault(src_port, []).append(
-                    PushDescription(
-                        dest_sim=dest_sim,
-                        delay=pc.delay,
-                        dest_port=dest_port,
-                        transform=pc.transform,
-                    )
-                )
-            # successors
-            src_sim.successors[dest_sim] = pc.successor_delay
-            # triggers
-            if pc.will_trigger:
-                src_sim.triggers.setdefault(src_port, []).append((dest_sim, pc.delay))
-            # initial data
-            if pc.initial_data is not None:
-                if pc.is_pulled:
-                    assert src_sim.outputs is not None
-                    # use highest tier time shift
-                    # for cache key, default 0
-                    shift0 = pc.delay.tiers[0] if pc.delay.tiers else 0
-                    src_sim.outputs.setdefault(-int(shift0), {}).setdefault(
-                        pc.src_eid, {}
-                    )[pc.src_attr] = pc.initial_data
-                else:
-                    dest_sim.persistent_inputs.setdefault(pc.dest_eid, {}).setdefault(
-                        pc.dest_attr, {}
-                    )[f"{pc.src_sid}.{pc.src_eid}"] = pc.initial_data
+            self._compile_connections(
+                self.sims[pc.src_sid],
+                self.sims[pc.dest_sid],
+                src_eid=pc.src_eid,
+                dest_eid=pc.dest_eid,
+                src_attr=pc.src_attr,
+                dest_attr=pc.dest_attr,
+                delay=pc.delay,
+                successor_delay=pc.successor_delay,
+                is_pulled=pc.is_pulled,
+                will_trigger=pc.will_trigger,
+                initial_data=pc.initial_data,
+                prepare_placeholder=placeholder,
+                transform=pc.transform,
+            )
 
-        # Wire async request dependencies
+        # Wire async request dependencies using the helper
         for src_sid, dest_sid in self._pending_async_requests:
             src_factory = self._factories_by_sid[src_sid]
             dest_factory = self._factories_by_sid[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            src_sim = self.sims[src_sid]
-            dest_sim = self.sims[dest_sid]
-            src_sim.successors[dest_sim] = delay
-            src_sim.successors_to_wait_for[dest_sim] = delay
-            dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
+            self._create_async_conn_dependency(self.sims[src_sid], self.sims[dest_sid], delay)
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1203,6 +1199,11 @@ class _SetupSimRunner:
 
     def __repr__(self):
         return f"<_SetupSimRunner sid={self.sid!r}>"
+
+
+
+
+
 
 
 if TYPE_CHECKING:
