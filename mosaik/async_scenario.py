@@ -630,7 +630,9 @@ class AsyncWorld:
             category=DeprecationWarning,
         )
         delay = connect_interval(src._group, dest._group)
-        self._create_async_conn_dependency(self.sims[src._sid], self.sims[dest._sid], delay)
+        self._create_async_conn_dependency(
+            self.sims[src._sid], self.sims[dest._sid], delay
+        )
         # Record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
@@ -947,9 +949,7 @@ class AsyncWorld:
         # Wire connections using the shared helper
         for pc in self._pending_connections:
             src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
-            placeholder = (
-                not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            )
+            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._compile_connections(
                 self.sims[pc.src_sid],
                 self.sims[pc.dest_sid],
@@ -971,7 +971,9 @@ class AsyncWorld:
             src_factory = self._factories_by_sid[src_sid]
             dest_factory = self._factories_by_sid[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            self._create_async_conn_dependency(self.sims[src_sid], self.sims[dest_sid], delay)
+            self._create_async_conn_dependency(
+                self.sims[src_sid], self.sims[dest_sid], delay
+            )
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1199,11 +1201,6 @@ class _SetupSimRunner:
 
     def __repr__(self):
         return f"<_SetupSimRunner sid={self.sid!r}>"
-
-
-
-
-
 
 
 if TYPE_CHECKING:
