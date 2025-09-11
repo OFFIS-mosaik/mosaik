@@ -379,6 +379,14 @@ class World:
     def config(self):
         return self._async_world.config
 
+    def compile_connections(self):
+        """Return a compiled pre-run view of simulator connections.
+
+        This does not mutate ``world.sims`` and can be used for
+        assertions before calling :meth:`run`.
+        """
+        return self._async_world.compile_connections()
+
 
 class ModelFactory:
     """

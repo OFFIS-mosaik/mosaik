@@ -20,7 +20,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
-from types import TracebackType
+from types import SimpleNamespace, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -438,10 +438,6 @@ class AsyncWorld:
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories_by_sid[sim_id] = model_factory
-        # Expose a setup-time stand-in so tests inspecting world.sims
-        # before run() can access connection state.
-        if sim_id not in self.sims:
-            self.sims[sim_id] = _SetupSimRunner(sim_id, proxy)  # type: ignore[assignment]
         return model_factory
 
     @overload
@@ -584,21 +580,6 @@ class AsyncWorld:
 
         successor_delay = connect_interval(src_group, dest_group)
         is_pulled = self.use_cache and src.is_persistent(src_attr)
-        self._compile_connections(
-            self.sims[src.sid],
-            self.sims[dest.sid],
-            src_eid=src.eid,
-            dest_eid=dest.eid,
-            src_attr=src_attr,
-            dest_attr=dest_attr,
-            delay=delay,
-            successor_delay=successor_delay,
-            is_pulled=is_pulled,
-            will_trigger=dest.triggered_by(dest_attr),
-            initial_data=None if initial_data is SENTINEL else initial_data,
-            prepare_placeholder=(not self.use_cache and src.is_persistent(src_attr)),
-            transform=transform,
-        )
 
         # Record pending connection for runtime wiring.
         self._pending_connections.append(
@@ -630,9 +611,6 @@ class AsyncWorld:
             category=DeprecationWarning,
         )
         delay = connect_interval(src._group, dest._group)
-        self._create_async_conn_dependency(
-            self.sims[src._sid], self.sims[dest._sid], delay
-        )
         # Record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
@@ -721,7 +699,7 @@ class AsyncWorld:
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
-    def _compile_connections(
+    def _wire_connection(
         self,
         src_sim: Any,
         dest_sim: Any,
@@ -790,12 +768,54 @@ class AsyncWorld:
                 dest_attr, {}
             ).setdefault(src_full, None)
 
-    def _create_async_conn_dependency(
-        self, src_sim: Any, dest_sim: Any, delay: TieredDuration
-    ) -> None:
+    def _wire_async_edge(self, src_sim: Any, dest_sim: Any, delay: TieredDuration) -> None:
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
+
+    def compile_connections(self) -> Dict[SimId, Any]:
+        """Build a compiled view of the connection graph for pre-run
+        inspection without mutating ``world.sims``.
+
+        Returns a mapping from ``SimId`` to setup-time stand-ins
+        containing the same connection fields that are present on
+        ``SimRunner``.
+        """
+        # Create stand-ins for all started simulators.
+        compiled: Dict[SimId, Any] = {
+            sid: _CompiledSim(sid, proxy) for sid, proxy in self._proxies.items()
+        }
+
+        # Wire connections
+        for pc in self._pending_connections:
+            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
+            placeholder = (
+                not self.use_cache and src_entity.is_persistent(pc.src_attr)
+            )
+            self._wire_connection(
+                compiled[pc.src_sid],
+                compiled[pc.dest_sid],
+                src_eid=pc.src_eid,
+                dest_eid=pc.dest_eid,
+                src_attr=pc.src_attr,
+                dest_attr=pc.dest_attr,
+                delay=pc.delay,
+                successor_delay=pc.successor_delay,
+                is_pulled=pc.is_pulled,
+                will_trigger=pc.will_trigger,
+                initial_data=pc.initial_data,
+                prepare_placeholder=placeholder,
+                transform=pc.transform,
+            )
+
+        # Wire async request dependencies
+        for src_sid, dest_sid in self._pending_async_requests:
+            src_factory = self._factories_by_sid[src_sid]
+            dest_factory = self._factories_by_sid[dest_sid]
+            delay = connect_interval(src_factory._group, dest_factory._group)
+            self._wire_async_edge(compiled[src_sid], compiled[dest_sid], delay)
+
+        return compiled
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
@@ -950,7 +970,7 @@ class AsyncWorld:
         for pc in self._pending_connections:
             src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._compile_connections(
+            self._wire_connection(
                 self.sims[pc.src_sid],
                 self.sims[pc.dest_sid],
                 src_eid=pc.src_eid,
@@ -971,9 +991,7 @@ class AsyncWorld:
             src_factory = self._factories_by_sid[src_sid]
             dest_factory = self._factories_by_sid[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            self._create_async_conn_dependency(
-                self.sims[src_sid], self.sims[dest_sid], delay
-            )
+            self._wire_async_edge(self.sims[src_sid], self.sims[dest_sid], delay)
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1142,7 +1160,14 @@ class AsyncWorld:
         """
         Shut-down all simulators and close the server socket.
         """
+        # Stop running simulators
         await asyncio.gather(*(sim.stop() for sim in self.sims.values()))
+        # Also stop started proxies that don't have a SimRunner (pre-run)
+        extra_proxies = [
+            proxy for sid, proxy in self._proxies.items() if sid not in self.sims
+        ]
+        if extra_proxies:
+            await asyncio.gather(*(proxy.stop() for proxy in extra_proxies))
         self._shutdown_performed = True
 
     def __del__(self):
@@ -1175,10 +1200,10 @@ class _PendingConnection:
     transform: Callable[[Any], Any]
 
 
-class _SetupSimRunner:
-    """Lightweight setup-time stand-in exposing the connection fields
-    that can be used before ``run()``. Replaced by real ``SimRunner``
-    instances when ``run()`` is called.
+class _CompiledSim:
+    """Lightweight, hashable stand-in for pre-run connection graph.
+
+    Used by compile_connections().
     """
 
     def __init__(self, sid: SimId, proxy: Proxy):
@@ -1192,16 +1217,10 @@ class _SetupSimRunner:
         self.output_to_push: Dict[Tuple[str, str], List[PushDescription]] = {}
         self.output_request: OutputRequest = {}
         self.persistent_inputs: Dict[str, Dict[str, Dict[str, Any]]] = {}
-        # Expose outputs cache for setup-time inspections; will be
-        # replaced by real SimRunner outputs in run().
         self.outputs: Dict[int, OutputData] = {}
 
-    async def stop(self):
-        await self._proxy.stop()
-
     def __repr__(self):
-        return f"<_SetupSimRunner sid={self.sid!r}>"
-
+        return f"<_CompiledSim sid={self.sid!r}>"
 
 if TYPE_CHECKING:
     T = TypeVar("T", bound=SupportsRichComparison)

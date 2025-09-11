@@ -91,17 +91,19 @@ def test_world_start(world: World):
     """
     fac = world.start("ExampleSim", step_size=2)
     assert isinstance(fac, ModelFactory)
-    assert len(world.sims) == 1
+    compiled = world.compile_connections()
+    assert len(compiled) == 1
     proxy = fac._async_model_factory._proxy
     assert isinstance(proxy, LocalProxy)
-    assert world.sims["ExampleSim-0"]._proxy == proxy
+    assert compiled["ExampleSim-0"]._proxy == proxy
     assert proxy.sim.step_size == 2  # type: ignore
     assert world.time_resolution == 1.0
-    assert "ExampleSim-0" in world.sims
+    assert "ExampleSim-0" in compiled
 
     world.start("ExampleSim")
-    assert sorted(world.sims) == ["ExampleSim-0", "ExampleSim-1"]
-    assert "ExampleSim-1" in world.sims
+    compiled = world.compile_connections()
+    assert sorted(compiled) == ["ExampleSim-0", "ExampleSim-1"]
+    assert "ExampleSim-1" in compiled
 
 
 def test_global_time_resolution():
@@ -129,8 +131,9 @@ def test_world_connect(world: World):
     for i, j in zip(a, b):
         world.connect(i, j, ("val_out", "val_in"), ("dummy_out", "dummy_in"))
 
-    sim_0 = world.sims[sim_0._sid]
-    sim_1 = world.sims[sim_1._sid]
+    compiled = world.compile_connections()
+    sim_0 = compiled[sim_0._sid]
+    sim_1 = compiled[sim_1._sid]
 
     # TODO: check for connections in new place
     assert sim_0.successors == {sim_1: TieredDuration(0)}
@@ -230,8 +233,9 @@ def test_world_connect_no_attrs(world: World):
     b = world.start("ExampleSim").B(init_val=0)
     world.connect(a, b)
 
-    sim_0 = world.sims["ExampleSim-0"]
-    sim_1 = world.sims["ExampleSim-1"]
+    compiled = world.compile_connections()
+    sim_0 = compiled["ExampleSim-0"]
+    sim_1 = compiled["ExampleSim-1"]
 
     sim_0.successors = {sim_1: TieredDuration(0)}
     sim_1.successors = {}
@@ -259,9 +263,10 @@ def test_world_connect_any_inputs(world: World):
             },
         ).B(),
     )
-    sim_a = world.sims[a.sid]
-    sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out")
+    compiled = world.compile_connections()
+    sim_a = compiled[a.sid]
+    sim_b = compiled[b.sid]
 
     connections = {
         ((pull.src_port[0], pull.src_port[1]), (pull.dest_port[0], pull.dest_port[1]))
@@ -287,17 +292,19 @@ def test_world_connect_async_requests(world: World):
     a = world.start("ExampleSim").A(init_val=0)
     b = world.start("ExampleSim").B(init_val=0)
     world.connect(a, b, async_requests=True)
-    sim_a = world.sims[a.sid]
-    sim_b = world.sims[b.sid]
+    compiled = world.compile_connections()
+    sim_a = compiled[a.sid]
+    sim_b = compiled[b.sid]
     sim_a.successors_to_wait_for = {sim_b: TieredDuration(0)}
 
 
 def test_world_connect_time_shifted(world: World):
     a = cast(Entity, world.start("ExampleSim").A(init_val=0))
     b = cast(Entity, world.start("ExampleSim").B(init_val=0))
-    sim_a = world.sims[a.sid]
-    sim_b = world.sims[b.sid]
     world.connect(a, b, "val_out", time_shifted=True, initial_data={"val_out": 1.0})
+    compiled = world.compile_connections()
+    sim_a = compiled[a.sid]
+    sim_b = compiled[b.sid]
 
     connections = {}
     for single_output in sim_b.pulled_inputs[(sim_a, TieredDuration(1))]:
@@ -316,7 +323,8 @@ def test_world_connect_time_shifted(world: World):
     assert sim_b.input_delays[sim_a] == MinimalDurations.from_duration(
         TieredDuration(1)
     )
-    assert world.sims["ExampleSim-0"].outputs[-1] == {
+    compiled = world.compile_connections()
+    assert compiled["ExampleSim-0"].outputs[-1] == {
         a.eid: {"val_out": 1.0},
     }
 
