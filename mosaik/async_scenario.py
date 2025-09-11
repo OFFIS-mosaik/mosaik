@@ -20,7 +20,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
-from types import SimpleNamespace, TracebackType
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -599,7 +599,6 @@ class AsyncWorld:
             )
         )
 
-        # Update entity graph immediately for user introspection
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
     def connect_async_requests(self, src: AsyncModelFactory, dest: AsyncModelFactory):
@@ -610,8 +609,6 @@ class AsyncWorld:
             "time_shifted and weak connections instead.",
             category=DeprecationWarning,
         )
-        delay = connect_interval(src._group, dest._group)
-        # Record src->dest relation for async requests
         self._pending_async_requests.append((src._sid, dest._sid))
 
     def connect(
@@ -768,7 +765,9 @@ class AsyncWorld:
                 dest_attr, {}
             ).setdefault(src_full, None)
 
-    def _wire_async_edge(self, src_sim: Any, dest_sim: Any, delay: TieredDuration) -> None:
+    def _wire_async_edge(
+        self, src_sim: Any, dest_sim: Any, delay: TieredDuration
+    ) -> None:
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
@@ -789,9 +788,7 @@ class AsyncWorld:
         # Wire connections
         for pc in self._pending_connections:
             src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
-            placeholder = (
-                not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            )
+            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._wire_connection(
                 compiled[pc.src_sid],
                 compiled[pc.dest_sid],
@@ -884,7 +881,84 @@ class AsyncWorld:
 
         return results
 
-    async def run(  # noqa: C901
+    # --- Internal helpers to keep run() readable ---
+    def _create_sim_runners(self) -> None:
+        for sid, proxy in self._proxies.items():
+            factory = self._factories_by_sid[sid]
+            sim_runner = self.sims[sid] = SimRunner(
+                sid,
+                proxy,
+                check_outputs=factory.validate_output_dict,
+                depth=factory._group.depth,
+            )
+            if self.use_cache:
+                sim_runner.outputs = {}
+
+    def _apply_initial_events(self) -> None:
+        for sid, t in self._pending_initial_events.items():
+            sim = self.sims[sid]
+            sim.next_steps = [TieredTime(t) + sim.from_world_time]
+
+    def _wire_pending_connections(self) -> None:
+        for pc in self._pending_connections:
+            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
+            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
+            self._wire_connection(
+                self.sims[pc.src_sid],
+                self.sims[pc.dest_sid],
+                src_eid=pc.src_eid,
+                dest_eid=pc.dest_eid,
+                src_attr=pc.src_attr,
+                dest_attr=pc.dest_attr,
+                delay=pc.delay,
+                successor_delay=pc.successor_delay,
+                is_pulled=pc.is_pulled,
+                will_trigger=pc.will_trigger,
+                initial_data=pc.initial_data,
+                prepare_placeholder=placeholder,
+                transform=pc.transform,
+            )
+
+    def _wire_pending_async_requests(self) -> None:
+        for src_sid, dest_sid in self._pending_async_requests:
+            src_factory = self._factories_by_sid[src_sid]
+            dest_factory = self._factories_by_sid[dest_sid]
+            delay = connect_interval(src_factory._group, dest_factory._group)
+            self._wire_async_edge(self.sims[src_sid], self.sims[dest_sid], delay)
+
+    def _init_progress_bars(
+        self, until: int, print_progress: Union[bool, Literal["individual"]]
+    ) -> None:
+        logger.info("Starting simulation.")
+        max_sim_id_len = max(max(len(str(sid)) for sid in self.sims), 11)
+        until_len = len(str(until))
+        self.tqdm = tqdm(
+            total=until,
+            disable=not print_progress,
+            colour="green",
+            bar_format=(
+                None
+                if print_progress != "individual"
+                else (
+                    "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}"
+                    % (" " * (max_sim_id_len - 11), "  " * until_len)
+                )
+            ),
+            unit="steps",
+        )
+        for sid, sim in self.sims.items():
+            sim.tqdm = tqdm(
+                total=until,
+                desc=sid,
+                bar_format=(
+                    "{desc:>%i} |{bar}| {n_fmt:>%i}/{total_fmt}{postfix:10}"
+                    % (max_sim_id_len, until_len)
+                ),
+                leave=False,
+                disable=print_progress != "individual",
+            )
+
+    async def run(
         self,
         until: int,
         rt_factor: Optional[float] = None,
@@ -950,48 +1024,10 @@ class AsyncWorld:
         # connectedness instead).
 
         # Before running, create SimRunners and wire all pending setup.
-        for sid, proxy in self._proxies.items():
-            factory = self._factories_by_sid[sid]
-            sim_runner = self.sims[sid] = SimRunner(
-                sid,
-                proxy,
-                check_outputs=factory.validate_output_dict,
-                depth=factory._group.depth,
-            )
-            if self.use_cache:
-                sim_runner.outputs = {}
-
-        # Apply initial events
-        for sid, t in self._pending_initial_events.items():
-            sim = self.sims[sid]
-            sim.next_steps = [TieredTime(t) + sim.from_world_time]
-
-        # Wire connections using the shared helper
-        for pc in self._pending_connections:
-            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
-            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._wire_connection(
-                self.sims[pc.src_sid],
-                self.sims[pc.dest_sid],
-                src_eid=pc.src_eid,
-                dest_eid=pc.dest_eid,
-                src_attr=pc.src_attr,
-                dest_attr=pc.dest_attr,
-                delay=pc.delay,
-                successor_delay=pc.successor_delay,
-                is_pulled=pc.is_pulled,
-                will_trigger=pc.will_trigger,
-                initial_data=pc.initial_data,
-                prepare_placeholder=placeholder,
-                transform=pc.transform,
-            )
-
-        # Wire async request dependencies using the helper
-        for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories_by_sid[src_sid]
-            dest_factory = self._factories_by_sid[dest_sid]
-            delay = connect_interval(src_factory._group, dest_factory._group)
-            self._wire_async_edge(self.sims[src_sid], self.sims[dest_sid], delay)
+        self._create_sim_runners()
+        self._apply_initial_events()
+        self._wire_pending_connections()
+        self._wire_pending_async_requests()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1000,35 +1036,7 @@ class AsyncWorld:
 
         self.cache_triggering_ancestors()
 
-        logger.info("Starting simulation.")
-        # 11 is the length of "Total: 100%"
-        max_sim_id_len = max(max(len(str(sid)) for sid in self.sims), 11)
-        until_len = len(str(until))
-        self.tqdm = tqdm(
-            total=until,
-            disable=not print_progress,
-            colour="green",
-            bar_format=(
-                None
-                if print_progress != "individual"
-                else (
-                    "Total:%s {percentage:3.0f}%% |{bar}| %s{elapsed}<{remaining}"
-                    % (" " * (max_sim_id_len - 11), "  " * until_len)
-                )
-            ),
-            unit="steps",
-        )
-        for sid, sim in self.sims.items():
-            sim.tqdm = tqdm(
-                total=until,
-                desc=sid,
-                bar_format=(
-                    "{desc:>%i} |{bar}| {n_fmt:>%i}/{total_fmt}{postfix:10}"
-                    % (max_sim_id_len, until_len)
-                ),
-                leave=False,
-                disable=print_progress != "individual",
-            )
+        self._init_progress_bars(until, print_progress)
         import mosaik._debug as dbg  # always import, enable when requested
 
         if self._debug:
@@ -1162,7 +1170,7 @@ class AsyncWorld:
         """
         # Stop running simulators
         await asyncio.gather(*(sim.stop() for sim in self.sims.values()))
-        # Also stop started proxies that don't have a SimRunner (pre-run)
+
         extra_proxies = [
             proxy for sid, proxy in self._proxies.items() if sid not in self.sims
         ]
@@ -1221,6 +1229,7 @@ class _CompiledSim:
 
     def __repr__(self):
         return f"<_CompiledSim sid={self.sid!r}>"
+
 
 if TYPE_CHECKING:
     T = TypeVar("T", bound=SupportsRichComparison)
