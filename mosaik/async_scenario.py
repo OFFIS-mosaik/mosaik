@@ -316,7 +316,7 @@ class AsyncWorld:
     # Setup-time storage (populated during start()/connect(),
     # used at run()).
     _proxies: Dict[SimId, Proxy]
-    _factories_by_sid: Dict[SimId, "AsyncModelFactory"]
+    _factories: Dict[SimId, "AsyncModelFactory"]
     _pending_connections: List["_PendingConnection"]
     _pending_async_requests: List[Tuple[SimId, SimId]]
     _pending_initial_events: Dict[SimId, int]
@@ -397,7 +397,7 @@ class AsyncWorld:
         self.use_cache = cache
         # setup-time storage
         self._proxies = {}
-        self._factories_by_sid = {}
+        self._factories = {}
         self._pending_connections = []
         self._pending_async_requests = []
         self._pending_initial_events = {}
@@ -437,7 +437,7 @@ class AsyncWorld:
         )
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
-        self._factories_by_sid[sim_id] = model_factory
+        self._factories[sim_id] = model_factory
         return model_factory
 
     @overload
@@ -500,7 +500,7 @@ class AsyncWorld:
         if (
             sim_id in self.sims
             or sim_id in self._proxies
-            or sim_id in self._factories_by_sid
+            or sim_id in self._factories
         ):
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
@@ -787,7 +787,7 @@ class AsyncWorld:
 
         # Wire connections
         for pc in self._pending_connections:
-            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
+            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._wire_connection(
                 compiled[pc.src_sid],
@@ -807,8 +807,8 @@ class AsyncWorld:
 
         # Wire async request dependencies
         for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories_by_sid[src_sid]
-            dest_factory = self._factories_by_sid[dest_sid]
+            src_factory = self._factories[src_sid]
+            dest_factory = self._factories[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
             self._wire_async_edge(compiled[src_sid], compiled[dest_sid], delay)
 
@@ -884,7 +884,7 @@ class AsyncWorld:
     # --- Internal helpers to keep run() readable ---
     def _create_sim_runners(self) -> None:
         for sid, proxy in self._proxies.items():
-            factory = self._factories_by_sid[sid]
+            factory = self._factories[sid]
             sim_runner = self.sims[sid] = SimRunner(
                 sid,
                 proxy,
@@ -901,7 +901,7 @@ class AsyncWorld:
 
     def _wire_pending_connections(self) -> None:
         for pc in self._pending_connections:
-            src_entity = self._factories_by_sid[pc.src_sid].entities[pc.src_eid]
+            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._wire_connection(
                 self.sims[pc.src_sid],
@@ -921,8 +921,8 @@ class AsyncWorld:
 
     def _wire_pending_async_requests(self) -> None:
         for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories_by_sid[src_sid]
-            dest_factory = self._factories_by_sid[dest_sid]
+            src_factory = self._factories[src_sid]
+            dest_factory = self._factories[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
             self._wire_async_edge(self.sims[src_sid], self.sims[dest_sid], delay)
 
