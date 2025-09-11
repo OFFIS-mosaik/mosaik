@@ -497,11 +497,7 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if (
-            sim_id in self.sims
-            or sim_id in self._proxies
-            or sim_id in self._factories
-        ):
+        if sim_id in self.sims or sim_id in self._proxies or sim_id in self._factories:
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
