@@ -699,7 +699,7 @@ class AsyncWorld:
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
     async def compile_connections(self) -> Dict[SimId, SimRunner]:
-        """Return stand-in ``SimRunner`` objects reflecting pending 
+        """Return stand-in ``SimRunner`` objects reflecting pending
         wiring."""
         if self.sims:
             return dict(self.sims)
