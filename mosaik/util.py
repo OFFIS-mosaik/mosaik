@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import random
+from itertools import count, cycle
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -23,6 +24,9 @@ from typing import (
 )
 
 import networkx as nx
+import numpy as np
+import plotly.graph_objects as go
+from plotly.colors import hex_to_rgb, qualitative
 from mosaik_api_v3 import Attr, SimId
 from typing_extensions import Literal
 
@@ -403,6 +407,231 @@ def plot_dataflow_graph(
         transparent=True,
         bbox_inches="tight",
     )
+
+
+def quadratic_bezier(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, num: int = 20):
+    """Return X/Y coordinates for a quadratic Bézier curve defined by *p0*, *p1*, *p2*."""
+    t = np.linspace(0, 1, num)
+    curve = (
+        (1 - t)[:, None] ** 2 * p0
+        + 2 * (1 - t)[:, None] * t[:, None] * p1
+        + t[:, None] ** 2 * p2
+    )
+    return curve[:, 0], curve[:, 1]
+
+
+def plot_dataflow_graph_plotly(world, show_plot: bool = False):
+    """Creates an interactive Plotly visualization of the data flow graph with support for simulator groups."""
+    df_graph = nx.DiGraph()
+    for sim in world.sims.values():
+        df_graph.add_node(sim.sid)
+        for pred, delay in sim.input_delays.items():
+            df_graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
+            )
+
+    if not df_graph.nodes:
+        fig = go.Figure()
+        if show_plot:
+            fig.show()
+        return fig
+
+    pos = nx.spring_layout(df_graph)
+
+    edge_traces = []
+    edge_annotations: List[dict[str, Any]] = []
+
+    for src, dst, data in df_graph.edges(data=True):
+        x0, y0 = pos[src]
+        x1, y1 = pos[dst]
+
+        mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
+        control_x = mid_x + 0.1 * (y1 - y0)
+        control_y = mid_y - 0.1 * (x1 - x0)
+
+        curve_x, curve_y = quadratic_bezier(
+            np.array([x0, y0]),
+            np.array([control_x, control_y]),
+            np.array([x1, y1]),
+        )
+
+        edge_color = "gray"
+        line_style = "solid"
+        annotation_text: List[str] = []
+
+        if data.get("time_shifted"):
+            edge_color = "red"
+            annotation_text.append("Time-Shifted")
+
+        if data.get("weak"):
+            line_style = "dot"
+            annotation_text.append("Weak")
+
+        edge_traces.append(
+            go.Scatter(
+                x=curve_x,
+                y=curve_y,
+                line=dict(width=1.5, color=edge_color, dash=line_style),
+                mode="lines",
+                hoverinfo="text",
+                text=(
+                    f"Source: {src}<br>Target: {dst}<br>"
+                    + (" | ".join(annotation_text) if annotation_text else "Standard Connection")
+                ),
+            )
+        )
+
+        edge_annotations.append(
+            dict(
+                x=curve_x[-1],
+                y=curve_y[-1],
+                ax=curve_x[-2],
+                ay=curve_y[-2],
+                xref="x",
+                yref="y",
+                axref="x",
+                ayref="y",
+                showarrow=True,
+                arrowhead=3,
+                arrowsize=1.5,
+                arrowwidth=1.5,
+                arrowcolor=edge_color,
+            )
+        )
+
+    node_x: List[float] = []
+    node_y: List[float] = []
+    node_labels: List[str] = []
+    for node, (x, y) in pos.items():
+        node_x.append(x)
+        node_y.append(y)
+        node_labels.append(node)
+
+    node_trace = go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode="markers+text",
+        text=node_labels,
+        textposition="top center",
+        marker=dict(size=10, color="blue", line=dict(width=2, color="black")),
+    )
+
+    group_infos: Dict[int, Dict[str, Any]] = {}
+    order_counter = count()
+    for sim in world.sims.values():
+        group = getattr(sim, "group", None)
+        current = group
+        while current is not None:
+            group_id = id(current)
+            if group_id not in group_infos:
+                parent_id = id(current.parent) if current.parent else None
+                group_infos[group_id] = {
+                    "group": current,
+                    "nodes": set(),
+                    "parent": parent_id,
+                    "order": next(order_counter),
+                }
+            group_infos[group_id]["nodes"].add(sim.sid)
+            current = current.parent
+
+    color_cycle = cycle(qualitative.Plotly)
+    group_shapes: List[dict[str, Any]] = []
+    group_label_annotations: List[dict[str, Any]] = []
+
+    def _rgb_components(color: str) -> Tuple[int, int, int]:
+        if color.startswith("#"):
+            r, g, b = hex_to_rgb(color)
+            return int(r), int(g), int(b)
+        if color.startswith("rgb"):
+            comps = color[color.find("(") + 1 : color.find(")")]
+            r, g, b = (int(component.strip()) for component in comps.split(","))
+            return r, g, b
+        fallback = hex_to_rgb("#1f77b4")
+        return int(fallback[0]), int(fallback[1]), int(fallback[2])
+
+    def _group_label(group_info: Dict[str, Any]) -> str:
+        names: List[str] = []
+        group_cursor = group_info["group"]
+        while group_cursor:
+            if group_cursor.name and group_cursor.name != "main":
+                names.append(group_cursor.name)
+            group_cursor = group_cursor.parent
+        if names:
+            return " / ".join(reversed(names))
+        return f"Group {group_info['order'] + 1}"
+
+    for info in sorted(
+        group_infos.values(), key=lambda item: (item["group"].depth, item["order"])
+    ):
+        if info["parent"] is None:
+            continue
+        coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
+        if not coords:
+            continue
+        xs, ys = zip(*coords)
+        margin = 0.2
+        min_x = min(xs) - margin
+        max_x = max(xs) + margin
+        min_y = min(ys) - margin
+        max_y = max(ys) + margin
+        if min_x == max_x:
+            min_x -= margin
+            max_x += margin
+        if min_y == max_y:
+            min_y -= margin
+            max_y += margin
+
+        color = next(color_cycle)
+        r, g, b = _rgb_components(color)
+        fill_color = f"rgba({r}, {g}, {b}, 0.08)"
+        line_color = f"rgba({r}, {g}, {b}, 0.6)"
+
+        group_shapes.append(
+            dict(
+                type="rect",
+                xref="x",
+                yref="y",
+                x0=min_x,
+                x1=max_x,
+                y0=min_y,
+                y1=max_y,
+                line=dict(color=line_color, width=2),
+                fillcolor=fill_color,
+                layer="below",
+            )
+        )
+
+        group_label_annotations.append(
+            dict(
+                x=min_x,
+                y=max_y,
+                xref="x",
+                yref="y",
+                text=_group_label(info),
+                showarrow=False,
+                xanchor="left",
+                yanchor="bottom",
+                font=dict(size=12, color=line_color),
+                bgcolor="rgba(255, 255, 255, 0.6)",
+            )
+        )
+
+    fig = go.Figure(data=edge_traces + [node_trace])
+    fig.update_layout(
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(b=0, l=0, r=0, t=0),
+        annotations=group_label_annotations + edge_annotations,
+        xaxis=dict(showgrid=False, zeroline=False),
+        yaxis=dict(showgrid=False, zeroline=False),
+        shapes=group_shapes,
+    )
+    if show_plot:
+        fig.show()
+    return fig
 
 
 def plot_execution_graph(  # noqa: C901

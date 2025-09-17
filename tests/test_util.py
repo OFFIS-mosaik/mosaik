@@ -1,9 +1,13 @@
 import collections
 import random
+from collections import OrderedDict
+
+from types import SimpleNamespace
 
 import pytest
 
 from mosaik import util
+from mosaik.async_scenario import SimGroup
 
 
 class World(object):
@@ -101,3 +105,56 @@ def test_connect_randomly_errors():
     # dest_set is empty
     # dest_set too small for src_set and max_connects
     pass
+
+
+class DelayStub:
+    def __init__(self, *, time_shifted: bool = False, weak: bool = False) -> None:
+        self._time_shifted = time_shifted
+        self._weak = weak
+
+    def is_time_shifted(self) -> bool:
+        return self._time_shifted
+
+    def is_weak(self) -> bool:
+        return self._weak
+
+
+class SimStub:
+    def __init__(self, sid: str, group: SimGroup) -> None:
+        self.sid = sid
+        self.group = group
+        self.input_delays: OrderedDict["SimStub", DelayStub] = OrderedDict()
+
+
+def test_plot_dataflow_graph_plotly_groups():
+    main_group = SimGroup(parent=None, name="main")
+    group_a = SimGroup(parent=main_group, name="GroupA")
+    group_b = SimGroup(parent=group_a, name="GroupB")
+
+    root_sim = SimStub("Root", main_group)
+    sim_a = SimStub("A", group_a)
+    sim_b = SimStub("B", group_b)
+
+    sim_a.input_delays[root_sim] = DelayStub()
+    sim_b.input_delays[sim_a] = DelayStub(time_shifted=True)
+
+    world = SimpleNamespace(
+        sims=OrderedDict(
+            (
+                (root_sim.sid, root_sim),
+                (sim_a.sid, sim_a),
+                (sim_b.sid, sim_b),
+            )
+        )
+    )
+
+    fig = util.plot_dataflow_graph_plotly(world)
+
+    shapes = fig.layout.shapes
+    assert shapes is not None and len(shapes) == 2
+
+    label_texts = {
+        annotation.text for annotation in fig.layout.annotations if not annotation.showarrow
+    }
+    assert "GroupA" in label_texts
+    assert "GroupA / GroupB" in label_texts
