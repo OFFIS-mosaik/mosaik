@@ -20,6 +20,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,6 +34,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Type,
     TypeVar,
     Union,
     overload,
