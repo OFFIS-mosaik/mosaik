@@ -20,7 +20,6 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
-from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -34,7 +33,6 @@ from typing import (
     Optional,
     Set,
     Tuple,
-    Type,
     TypeVar,
     Union,
     overload,
@@ -56,7 +54,7 @@ from mosaik_api_v3.types import (
 )
 from networkx import DiGraph
 from tqdm import tqdm
-from typing_extensions import Literal, Self, TypeAlias, TypedDict
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
@@ -147,7 +145,10 @@ class CmdModel(ModelOptionals):
 
 
 StarterConfig = Union[PythonModel, ConnectModel, CmdModel]
-"""Description of a how to start a simulator as a dict.
+"""Description of how to start a simulator as a dict.
+
+As a more modern alternative, consider using the starters from
+:mod:`mosaik.starters` directly.
 """
 
 SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
@@ -402,17 +403,6 @@ class AsyncWorld:
         self._pending_async_requests = []
         self._pending_initial_events = {}
 
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(
-        self, exc_type: Type[Exception], exc: Exception, tb: TracebackType
-    ):
-        await self.shutdown()
-        # Don't suppress exceptions. Later on, we might want to add
-        # handling of mosaik exceptions here.
-        return False
-
     @contextlib.contextmanager
     def group(self, group_name: str | None = None):
         parent_group = self.current_group
@@ -420,6 +410,16 @@ class AsyncWorld:
         self.current_group = new_group
         yield
         self.current_group = parent_group
+
+    async def __aenter__(self) -> "AsyncWorld":
+        return self
+
+    async def __aexit__(
+        self, exc_type: Type[Exception], exc: Exception, tb: TracebackType
+    ) -> bool:
+        await self.shutdown()
+        # Do not suppress exceptions
+        return False
 
     async def _initialize_base_proxy(
         self,
@@ -528,6 +528,17 @@ class AsyncWorld:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = default_transform_callable,
     ):
+        if not isinstance(src, Entity):
+            raise TypeError(
+                "the source for a connect call must be an Entity, but a "
+                f"{type(src).__name__} was given"
+            )
+        if not isinstance(dest, Entity):
+            raise TypeError(
+                "the destination for a connect call must be an Entity, but a "
+                f"{type(dest).__name__} was given"
+            )
+
         if not dest_attr:
             dest_attr = src_attr
 
@@ -684,13 +695,61 @@ class AsyncWorld:
                 + "\n - ".join(str(e) for e in errors)
             )
 
-        trigger: Set[Tuple[EntityId, Attr]] = set()
-        for src_attr, dest_attr in attr_pairs:
-            if dest.triggered_by(dest_attr):
-                trigger.add((src.eid, src_attr))
-
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
+
+    async def compile_connections(self) -> Dict[SimId, SimRunner]:
+        """Return stand-in ``SimRunner`` objects reflecting pending 
+        wiring."""
+        if self.sims:
+            return dict(self.sims)
+
+        compiled: Dict[SimId, SimRunner] = {}
+        for sid, proxy in self._proxies.items():
+            factory = self._factories[sid]
+            sim_runner = SimRunner(
+                sid,
+                proxy,
+                check_outputs=factory.validate_output_dict,
+                depth=factory._group.depth,
+            )
+            if self.use_cache:
+                sim_runner.outputs = {}
+            compiled[sid] = sim_runner
+
+        for sid, time in self._pending_initial_events.items():
+            sim = compiled.get(sid)
+            if sim is not None:
+                sim.next_steps = [TieredTime(time) + sim.from_world_time]
+
+        for pc in self._pending_connections:
+            src_sim = compiled[pc.src_sid]
+            dest_sim = compiled[pc.dest_sid]
+            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
+            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
+            self._wire_connection(
+                src_sim,
+                dest_sim,
+                src_eid=pc.src_eid,
+                dest_eid=pc.dest_eid,
+                src_attr=pc.src_attr,
+                dest_attr=pc.dest_attr,
+                delay=pc.delay,
+                successor_delay=pc.successor_delay,
+                is_pulled=pc.is_pulled,
+                will_trigger=pc.will_trigger,
+                initial_data=pc.initial_data,
+                prepare_placeholder=placeholder,
+                transform=pc.transform,
+            )
+
+        for src_sid, dest_sid in self._pending_async_requests:
+            src_factory = self._factories[src_sid]
+            dest_factory = self._factories[dest_sid]
+            delay = connect_interval(src_factory._group, dest_factory._group)
+            self._wire_async_edge(compiled[src_sid], compiled[dest_sid], delay)
+
+        return compiled
 
     def _wire_connection(
         self,
@@ -767,48 +826,6 @@ class AsyncWorld:
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-
-    def compile_connections(self) -> Dict[SimId, Any]:
-        """Build a compiled view of the connection graph for pre-run
-        inspection without mutating ``world.sims``.
-
-        Returns a mapping from ``SimId`` to setup-time stand-ins
-        containing the same connection fields that are present on
-        ``SimRunner``.
-        """
-        # Create stand-ins for all started simulators.
-        compiled: Dict[SimId, Any] = {
-            sid: _CompiledSim(sid, proxy) for sid, proxy in self._proxies.items()
-        }
-
-        # Wire connections
-        for pc in self._pending_connections:
-            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
-            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._wire_connection(
-                compiled[pc.src_sid],
-                compiled[pc.dest_sid],
-                src_eid=pc.src_eid,
-                dest_eid=pc.dest_eid,
-                src_attr=pc.src_attr,
-                dest_attr=pc.dest_attr,
-                delay=pc.delay,
-                successor_delay=pc.successor_delay,
-                is_pulled=pc.is_pulled,
-                will_trigger=pc.will_trigger,
-                initial_data=pc.initial_data,
-                prepare_placeholder=placeholder,
-                transform=pc.transform,
-            )
-
-        # Wire async request dependencies
-        for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories[src_sid]
-            dest_factory = self._factories[dest_sid]
-            delay = connect_interval(src_factory._group, dest_factory._group)
-            self._wire_async_edge(compiled[src_sid], compiled[dest_sid], delay)
-
-        return compiled
 
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
@@ -1204,39 +1221,8 @@ class _PendingConnection:
     transform: Callable[[Any], Any]
 
 
-class _CompiledSim:
-    """Lightweight, hashable stand-in for pre-run connection graph.
-
-    Used by compile_connections().
-    """
-
-    def __init__(self, sid: SimId, proxy: Proxy):
-        self.sid = sid
-        self._proxy = proxy
-        self.input_delays: Dict[Any, MinimalDurations] = {}
-        self.triggers: Dict[Tuple[str, str], List[Tuple[Any, TieredDuration]]] = {}
-        self.successors: Dict[Any, TieredDuration] = {}
-        self.successors_to_wait_for: Dict[Any, TieredDuration] = {}
-        self.pulled_inputs: Dict[Tuple[Any, TieredDuration], List[PullDescription]] = {}
-        self.output_to_push: Dict[Tuple[str, str], List[PushDescription]] = {}
-        self.output_request: OutputRequest = {}
-        self.persistent_inputs: Dict[str, Dict[str, Dict[str, Any]]] = {}
-        self.outputs: Dict[int, OutputData] = {}
-
-    def __repr__(self):
-        return f"<_CompiledSim sid={self.sid!r}>"
-
-
 if TYPE_CHECKING:
     T = TypeVar("T", bound=SupportsRichComparison)
-
-
-def update_min(a: T | None, b: T) -> T | None:
-    if a is None:
-        return b
-    if a <= b:  # type: ignore
-        return None
-    return b
 
 
 MOSAIK_METHODS = {

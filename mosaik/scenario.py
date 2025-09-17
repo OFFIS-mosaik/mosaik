@@ -39,6 +39,7 @@ from mosaik.async_scenario import (
     SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
+from mosaik.simmanager import SimRunner
 from mosaik.starters import Starter
 
 
@@ -240,6 +241,14 @@ class World:
             transform=transform,
         )
 
+    def compile_connections(self) -> Dict[SimId, SimRunner]:
+        """Return stand-in ``SimRunner`` objects with all pending wiring
+
+        This enables inspecting the connection graph without starting
+        the simulation loop.
+        """
+        return self.loop.run_until_complete(self._async_world.compile_connections())
+
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
         Set an initial step for simulator *sid* at time *time*
@@ -379,13 +388,13 @@ class World:
     def config(self):
         return self._async_world.config
 
-    def compile_connections(self):
-        """Return a compiled pre-run view of simulator connections.
+    def prepare(self) -> None:
+        """Create SimRunners and wire connections without starting.
 
-        This does not mutate ``world.sims`` and can be used for
-        assertions before calling :meth:`run`.
+        Use this to inspect ``world.sims`` prior to running, or to do
+        quick wiring checks without stepping the simulation.
         """
-        return self._async_world.compile_connections()
+        self.loop.run_until_complete(self._async_world.prepare())
 
 
 class ModelFactory:
