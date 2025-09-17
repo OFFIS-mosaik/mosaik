@@ -1,7 +1,6 @@
 import collections
 import random
 from collections import OrderedDict
-
 from types import SimpleNamespace
 
 import pytest
@@ -154,7 +153,9 @@ def test_plot_dataflow_graph_plotly_groups():
     assert shapes is not None and len(shapes) == 2
 
     label_texts = {
-        annotation.text for annotation in fig.layout.annotations if not annotation.showarrow
+        annotation.text
+        for annotation in fig.layout.annotations
+        if not annotation.showarrow
     }
     assert "GroupA" in label_texts
     assert "GroupA / GroupB" in label_texts

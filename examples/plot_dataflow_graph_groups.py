@@ -9,7 +9,6 @@ from pathlib import Path
 import mosaik
 from mosaik.util import plot_dataflow_graph_plotly
 
-
 SIM_CONFIG: mosaik.SimConfig = {
     "InputSim": {
         "python": "mosaik.basic_simulators:InputSimulator",

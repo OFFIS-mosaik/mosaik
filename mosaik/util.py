@@ -26,8 +26,8 @@ from typing import (
 import networkx as nx
 import numpy as np
 import plotly.graph_objects as go
-from plotly.colors import hex_to_rgb, qualitative
 from mosaik_api_v3 import Attr, SimId
+from plotly.colors import hex_to_rgb, qualitative
 from typing_extensions import Literal
 
 from mosaik.async_scenario import AsyncWorld
@@ -410,7 +410,7 @@ def plot_dataflow_graph(
 
 
 def quadratic_bezier(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, num: int = 20):
-    """Return X/Y coordinates for a quadratic Bézier curve defined by *p0*, *p1*, *p2*."""
+    """Return the curve points for a quadratic Bézier segment."""
     t = np.linspace(0, 1, num)
     curve = (
         (1 - t)[:, None] ** 2 * p0
@@ -420,88 +420,76 @@ def quadratic_bezier(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, num: int = 
     return curve[:, 0], curve[:, 1]
 
 
-def plot_dataflow_graph_plotly(world, show_plot: bool = False):
-    """Creates an interactive Plotly visualization of the data flow graph with support for simulator groups."""
-    df_graph = nx.DiGraph()
+def _build_dataflow_graph(world) -> nx.DiGraph:
+    graph = nx.DiGraph()
     for sim in world.sims.values():
-        df_graph.add_node(sim.sid)
+        graph.add_node(sim.sid)
         for pred, delay in sim.input_delays.items():
-            df_graph.add_edge(
+            graph.add_edge(
                 pred.sid,
                 sim.sid,
                 time_shifted=delay.is_time_shifted(),
                 weak=delay.is_weak(),
             )
+    return graph
 
-    if not df_graph.nodes:
-        fig = go.Figure()
-        if show_plot:
-            fig.show()
-        return fig
 
-    pos = nx.spring_layout(df_graph)
-
-    edge_traces = []
-    edge_annotations: List[dict[str, Any]] = []
-
-    for src, dst, data in df_graph.edges(data=True):
+def _edge_traces(graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]):
+    traces = []
+    annotations: List[dict[str, Any]] = []
+    for src, dst, data in graph.edges(data=True):
         x0, y0 = pos[src]
         x1, y1 = pos[dst]
-
-        mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
-        control_x = mid_x + 0.1 * (y1 - y0)
-        control_y = mid_y - 0.1 * (x1 - x0)
-
+        control_x = (x0 + x1) / 2 + 0.1 * (y1 - y0)
+        control_y = (y0 + y1) / 2 - 0.1 * (x1 - x0)
         curve_x, curve_y = quadratic_bezier(
             np.array([x0, y0]),
             np.array([control_x, control_y]),
             np.array([x1, y1]),
         )
 
-        edge_color = "gray"
-        line_style = "solid"
-        annotation_text: List[str] = []
-
+        edge_color = "red" if data.get("time_shifted") else "gray"
+        line_style = "dot" if data.get("weak") else "solid"
+        labels = []
         if data.get("time_shifted"):
-            edge_color = "red"
-            annotation_text.append("Time-Shifted")
-
+            labels.append("Time-Shifted")
         if data.get("weak"):
-            line_style = "dot"
-            annotation_text.append("Weak")
+            labels.append("Weak")
+        details = " | ".join(labels) if labels else "Standard Connection"
+        hover_text = f"Source: {src}<br>Target: {dst}<br>{details}"
 
-        edge_traces.append(
+        traces.append(
             go.Scatter(
                 x=curve_x,
                 y=curve_y,
-                line=dict(width=1.5, color=edge_color, dash=line_style),
+                line={"width": 1.5, "color": edge_color, "dash": line_style},
                 mode="lines",
                 hoverinfo="text",
-                text=(
-                    f"Source: {src}<br>Target: {dst}<br>"
-                    + (" | ".join(annotation_text) if annotation_text else "Standard Connection")
-                ),
+                text=hover_text,
             )
         )
 
-        edge_annotations.append(
-            dict(
-                x=curve_x[-1],
-                y=curve_y[-1],
-                ax=curve_x[-2],
-                ay=curve_y[-2],
-                xref="x",
-                yref="y",
-                axref="x",
-                ayref="y",
-                showarrow=True,
-                arrowhead=3,
-                arrowsize=1.5,
-                arrowwidth=1.5,
-                arrowcolor=edge_color,
-            )
+        annotations.append(
+            {
+                "x": curve_x[-1],
+                "y": curve_y[-1],
+                "ax": curve_x[-2],
+                "ay": curve_y[-2],
+                "xref": "x",
+                "yref": "y",
+                "axref": "x",
+                "ayref": "y",
+                "showarrow": True,
+                "arrowhead": 3,
+                "arrowsize": 1.5,
+                "arrowwidth": 1.5,
+                "arrowcolor": edge_color,
+            }
         )
+    return traces, annotations
 
+
+def _node_trace(pos: Dict[str, Tuple[float, float]]):
     node_x: List[float] = []
     node_y: List[float] = []
     node_labels: List[str] = []
@@ -510,123 +498,160 @@ def plot_dataflow_graph_plotly(world, show_plot: bool = False):
         node_y.append(y)
         node_labels.append(node)
 
-    node_trace = go.Scatter(
+    return go.Scatter(
         x=node_x,
         y=node_y,
         mode="markers+text",
         text=node_labels,
         textposition="top center",
-        marker=dict(size=10, color="blue", line=dict(width=2, color="black")),
+        marker={
+            "size": 10,
+            "color": "blue",
+            "line": {"width": 2, "color": "black"},
+        },
     )
 
-    group_infos: Dict[int, Dict[str, Any]] = {}
+
+def _collect_group_infos(world) -> Dict[int, Dict[str, Any]]:
+    infos: Dict[int, Dict[str, Any]] = {}
     order_counter = count()
     for sim in world.sims.values():
         group = getattr(sim, "group", None)
         current = group
         while current is not None:
             group_id = id(current)
-            if group_id not in group_infos:
+            if group_id not in infos:
                 parent_id = id(current.parent) if current.parent else None
-                group_infos[group_id] = {
+                infos[group_id] = {
                     "group": current,
                     "nodes": set(),
                     "parent": parent_id,
                     "order": next(order_counter),
                 }
-            group_infos[group_id]["nodes"].add(sim.sid)
+            infos[group_id]["nodes"].add(sim.sid)
             current = current.parent
+    return infos
 
+
+def _rgb_components(color: str) -> Tuple[int, int, int]:
+    if color.startswith("#"):
+        r, g, b = hex_to_rgb(color)
+        return int(r), int(g), int(b)
+    if color.startswith("rgb"):
+        comps = color[color.find("(") + 1 : color.find(")")]
+        r, g, b = (int(part.strip()) for part in comps.split(","))
+        return r, g, b
+    fallback = hex_to_rgb("#1f77b4")
+    return int(fallback[0]), int(fallback[1]), int(fallback[2])
+
+
+def _group_label(group_info: Dict[str, Any]) -> str:
+    names: List[str] = []
+    group_cursor = group_info["group"]
+    while group_cursor:
+        if group_cursor.name and group_cursor.name != "main":
+            names.append(group_cursor.name)
+        group_cursor = group_cursor.parent
+    if names:
+        return " / ".join(reversed(names))
+    return f"Group {group_info['order'] + 1}"
+
+
+def _group_bounds(
+    info: Dict[str, Any], pos: Dict[str, Tuple[float, float]], *, margin: float = 0.2
+):
+    coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
+    if not coords:
+        return None
+    xs, ys = zip(*coords)
+    min_x = min(xs) - margin
+    max_x = max(xs) + margin
+    min_y = min(ys) - margin
+    max_y = max(ys) + margin
+    if min_x == max_x:
+        min_x -= margin
+        max_x += margin
+    if min_y == max_y:
+        min_y -= margin
+        max_y += margin
+    return min_x, max_x, min_y, max_y
+
+
+def _group_shapes(world, pos: Dict[str, Tuple[float, float]]):
+    group_infos = _collect_group_infos(world)
     color_cycle = cycle(qualitative.Plotly)
-    group_shapes: List[dict[str, Any]] = []
-    group_label_annotations: List[dict[str, Any]] = []
-
-    def _rgb_components(color: str) -> Tuple[int, int, int]:
-        if color.startswith("#"):
-            r, g, b = hex_to_rgb(color)
-            return int(r), int(g), int(b)
-        if color.startswith("rgb"):
-            comps = color[color.find("(") + 1 : color.find(")")]
-            r, g, b = (int(component.strip()) for component in comps.split(","))
-            return r, g, b
-        fallback = hex_to_rgb("#1f77b4")
-        return int(fallback[0]), int(fallback[1]), int(fallback[2])
-
-    def _group_label(group_info: Dict[str, Any]) -> str:
-        names: List[str] = []
-        group_cursor = group_info["group"]
-        while group_cursor:
-            if group_cursor.name and group_cursor.name != "main":
-                names.append(group_cursor.name)
-            group_cursor = group_cursor.parent
-        if names:
-            return " / ".join(reversed(names))
-        return f"Group {group_info['order'] + 1}"
-
+    shapes: List[dict[str, Any]] = []
+    labels: List[dict[str, Any]] = []
     for info in sorted(
         group_infos.values(), key=lambda item: (item["group"].depth, item["order"])
     ):
         if info["parent"] is None:
             continue
-        coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
-        if not coords:
+        bounds = _group_bounds(info, pos)
+        if bounds is None:
             continue
-        xs, ys = zip(*coords)
-        margin = 0.2
-        min_x = min(xs) - margin
-        max_x = max(xs) + margin
-        min_y = min(ys) - margin
-        max_y = max(ys) + margin
-        if min_x == max_x:
-            min_x -= margin
-            max_x += margin
-        if min_y == max_y:
-            min_y -= margin
-            max_y += margin
-
+        min_x, max_x, min_y, max_y = bounds
         color = next(color_cycle)
         r, g, b = _rgb_components(color)
         fill_color = f"rgba({r}, {g}, {b}, 0.08)"
         line_color = f"rgba({r}, {g}, {b}, 0.6)"
 
-        group_shapes.append(
-            dict(
-                type="rect",
-                xref="x",
-                yref="y",
-                x0=min_x,
-                x1=max_x,
-                y0=min_y,
-                y1=max_y,
-                line=dict(color=line_color, width=2),
-                fillcolor=fill_color,
-                layer="below",
-            )
+        shapes.append(
+            {
+                "type": "rect",
+                "xref": "x",
+                "yref": "y",
+                "x0": min_x,
+                "x1": max_x,
+                "y0": min_y,
+                "y1": max_y,
+                "line": {"color": line_color, "width": 2},
+                "fillcolor": fill_color,
+                "layer": "below",
+            }
         )
 
-        group_label_annotations.append(
-            dict(
-                x=min_x,
-                y=max_y,
-                xref="x",
-                yref="y",
-                text=_group_label(info),
-                showarrow=False,
-                xanchor="left",
-                yanchor="bottom",
-                font=dict(size=12, color=line_color),
-                bgcolor="rgba(255, 255, 255, 0.6)",
-            )
+        labels.append(
+            {
+                "x": min_x,
+                "y": max_y,
+                "xref": "x",
+                "yref": "y",
+                "text": _group_label(info),
+                "showarrow": False,
+                "xanchor": "left",
+                "yanchor": "bottom",
+                "font": {"size": 12, "color": line_color},
+                "bgcolor": "rgba(255, 255, 255, 0.6)",
+            }
         )
+
+    return shapes, labels
+
+
+def plot_dataflow_graph_plotly(world, show_plot: bool = False):
+    """Return a Plotly figure of the dataflow graph with group
+    overlays"""
+    graph = _build_dataflow_graph(world)
+    if not graph.nodes:
+        fig = go.Figure()
+        if show_plot:
+            fig.show()
+        return fig
+
+    pos = nx.spring_layout(graph)
+    edge_traces, edge_annotations = _edge_traces(graph, pos)
+    node_trace = _node_trace(pos)
+    group_shapes, group_labels = _group_shapes(world, pos)
 
     fig = go.Figure(data=edge_traces + [node_trace])
     fig.update_layout(
         showlegend=False,
         hovermode="closest",
-        margin=dict(b=0, l=0, r=0, t=0),
-        annotations=group_label_annotations + edge_annotations,
-        xaxis=dict(showgrid=False, zeroline=False),
-        yaxis=dict(showgrid=False, zeroline=False),
+        margin={"b": 0, "l": 0, "r": 0, "t": 0},
+        annotations=group_labels + edge_annotations,
+        xaxis={"showgrid": False, "zeroline": False},
+        yaxis={"showgrid": False, "zeroline": False},
         shapes=group_shapes,
     )
     if show_plot:
