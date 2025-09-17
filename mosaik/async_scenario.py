@@ -516,7 +516,7 @@ class AsyncWorld:
             sim_id,
             base_proxy,
             sim_params,
-            api_version=getattr(starter, "api_version", None),
+            api_version=starter.api_version,
         )
 
     def connect_one(  # noqa: C901
