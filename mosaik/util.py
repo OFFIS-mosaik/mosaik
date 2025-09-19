@@ -24,7 +24,6 @@ from typing import (
 )
 
 import networkx as nx
-import numpy as np
 import plotly.graph_objects as go
 from mosaik_api_v3 import Attr, SimId
 from plotly.colors import hex_to_rgb, qualitative
@@ -409,15 +408,35 @@ def plot_dataflow_graph(
     )
 
 
-def quadratic_bezier(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, num: int = 20):
+def quadratic_bezier(
+    p0: Tuple[float, float],
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    num: int = 20,
+):
     """Return the curve points for a quadratic Bézier segment."""
-    t = np.linspace(0, 1, num)
-    curve = (
-        (1 - t)[:, None] ** 2 * p0
-        + 2 * (1 - t)[:, None] * t[:, None] * p1
-        + t[:, None] ** 2 * p2
-    )
-    return curve[:, 0], curve[:, 1]
+    if num <= 1:
+        return [p0[0]], [p0[1]]
+
+    step = 1.0 / (num - 1)
+    ts = [i * step for i in range(num)]
+    curve_x: List[float] = []
+    curve_y: List[float] = []
+    for t in ts:
+        one_minus_t = 1 - t
+        x = (
+            one_minus_t * one_minus_t * p0[0]
+            + 2 * one_minus_t * t * p1[0]
+            + t * t * p2[0]
+        )
+        y = (
+            one_minus_t * one_minus_t * p0[1]
+            + 2 * one_minus_t * t * p1[1]
+            + t * t * p2[1]
+        )
+        curve_x.append(x)
+        curve_y.append(y)
+    return curve_x, curve_y
 
 
 def _build_dataflow_graph(world) -> nx.DiGraph:
@@ -443,9 +462,9 @@ def _edge_traces(graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]):
         control_x = (x0 + x1) / 2 + 0.1 * (y1 - y0)
         control_y = (y0 + y1) / 2 - 0.1 * (x1 - x0)
         curve_x, curve_y = quadratic_bezier(
-            np.array([x0, y0]),
-            np.array([control_x, control_y]),
-            np.array([x1, y1]),
+            (x0, y0),
+            (control_x, control_y),
+            (x1, y1),
         )
 
         edge_color = "red" if data.get("time_shifted") else "gray"
