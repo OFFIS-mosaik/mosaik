@@ -372,7 +372,7 @@ class AsyncWorld:
         if mosaik_config:
             self.config.update(mosaik_config)
 
-        self.sims = {}
+        self._sims: Dict[SimId, SimRunner] = {}
         self.main_group = SimGroup(parent=None, name="main")
         self.current_group = self.main_group
 
@@ -499,7 +499,7 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if sim_id in self.sims or sim_id in self._proxies or sim_id in self._factories:
+        if sim_id in self._sims or sim_id in self._proxies or sim_id in self._factories:
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
@@ -705,6 +705,17 @@ class AsyncWorld:
         objects reflecting pending wiring."""
         return self._build_sim_runners()
 
+    @property
+    def sims(self) -> Dict[SimId, SimRunner]:
+        """Legacy access to runtime simulators (deprecated)."""
+        if not self._sims:
+            self._sims = self._build_sim_runners()
+        return self._sims
+
+    @sims.setter
+    def sims(self, value: Dict[SimId, SimRunner]) -> None:
+        self._sims = value
+
     def _link_connection(
         self,
         src_sim: Any,
@@ -850,8 +861,8 @@ class AsyncWorld:
 
     # --- Internal helpers to keep run() readable ---
     def _build_sim_runners(self) -> Dict[SimId, SimRunner]:
-        if self.sims and not self._proxies:
-            return dict(self.sims)
+        if self._sims and not self._proxies:
+            return dict(self._sims)
 
         sims: Dict[SimId, SimRunner] = {}
         for sid, proxy in self._proxies.items():
@@ -902,7 +913,7 @@ class AsyncWorld:
         self, until: int, print_progress: Union[bool, Literal["individual"]]
     ) -> None:
         logger.info("Starting simulation.")
-        max_sim_id_len = max(max(len(str(sid)) for sid in self.sims), 11)
+        max_sim_id_len = max(max(len(str(sid)) for sid in self._sims), 11)
         until_len = len(str(until))
         self.tqdm = tqdm(
             total=until,
@@ -918,7 +929,7 @@ class AsyncWorld:
             ),
             unit="steps",
         )
-        for sid, sim in self.sims.items():
+        for sid, sim in self._sims.items():
             sim.tqdm = tqdm(
                 total=until,
                 desc=sid,
@@ -996,7 +1007,7 @@ class AsyncWorld:
         # connectedness instead).
 
         # Build SimRunner instances and apply all pending setup.
-        self.sims = self._build_sim_runners()
+        self._sims = self._build_sim_runners()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1027,7 +1038,7 @@ class AsyncWorld:
                 )
             )
         finally:
-            for sid, sim in self.sims.items():
+            for sid, sim in self._sims.items():
                 sim.tqdm.close()
             self.tqdm.close()
             if self._debug:
@@ -1042,7 +1053,7 @@ class AsyncWorld:
         # See ``ensure_no_dataflow_cycles`` for an explanation of this
         # algorithm
         dirty: Set[SimRunner] = set()
-        for sim in self.sims.values():
+        for sim in self._sims.values():
             for port_triggers in sim.triggers.values():
                 for dest_sim, delay in port_triggers:
                     dest_sim.triggering_ancestors.setdefault(
@@ -1071,12 +1082,12 @@ class AsyncWorld:
         # number of steps removed; predecessors and successors are one
         # step removed (i.e. they're *direct* ancestors/descendants)
 
-        dirty: Set[SimRunner] = set(self.sims.values())
+        dirty: Set[SimRunner] = set(self._sims.values())
         """Sims that have changed descendants and thus require
         recalculation
         """
         sim_descs: Dict[SimRunner, Dict[SimRunner, MinPath]] = {
-            sim: {} for sim in self.sims.values()
+            sim: {} for sim in self._sims.values()
         }
         """For each SimRunner, all its descendants that have been found
         so far with the shortest delay to them and the path that
@@ -1085,7 +1096,7 @@ class AsyncWorld:
 
         # At the start, enter each sim as a descendant of all its
         # (direct) predecessors
-        for sim in self.sims.values():
+        for sim in self._sims.values():
             for pred, delay in sim.input_delays.items():
                 min_durations = MinimalDurations()
                 min_durations.insert_all(delay)
@@ -1138,10 +1149,10 @@ class AsyncWorld:
         Shut-down all simulators and close the server socket.
         """
         # Stop running simulators
-        await asyncio.gather(*(sim.stop() for sim in self.sims.values()))
+        await asyncio.gather(*(sim.stop() for sim in self._sims.values()))
 
         extra_proxies = [
-            proxy for sid, proxy in self._proxies.items() if sid not in self.sims
+            proxy for sid, proxy in self._proxies.items() if sid not in self._sims
         ]
         if extra_proxies:
             await asyncio.gather(*(proxy.stop() for proxy in extra_proxies))
