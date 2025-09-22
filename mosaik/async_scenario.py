@@ -701,57 +701,9 @@ class AsyncWorld:
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
     async def compile_connections(self) -> Dict[SimId, SimRunner]:
-        """Return stand-in ``SimRunner`` objects reflecting pending
-        wiring."""
-        if self.sims:
-            return dict(self.sims)
-
-        compiled: Dict[SimId, SimRunner] = {}
-        for sid, proxy in self._proxies.items():
-            factory = self._factories[sid]
-            sim_runner = SimRunner(
-                sid,
-                proxy,
-                check_outputs=factory.validate_output_dict,
-                depth=factory._group.depth,
-            )
-            if self.use_cache:
-                sim_runner.outputs = {}
-            compiled[sid] = sim_runner
-
-        for sid, time in self._pending_initial_events.items():
-            sim = compiled.get(sid)
-            if sim is not None:
-                sim.next_steps = [TieredTime(time) + sim.from_world_time]
-
-        for pc in self._pending_connections:
-            src_sim = compiled[pc.src_sid]
-            dest_sim = compiled[pc.dest_sid]
-            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
-            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._link_connection(
-                src_sim,
-                dest_sim,
-                src_eid=pc.src_eid,
-                dest_eid=pc.dest_eid,
-                src_attr=pc.src_attr,
-                dest_attr=pc.dest_attr,
-                delay=pc.delay,
-                successor_delay=pc.successor_delay,
-                is_pulled=pc.is_pulled,
-                will_trigger=pc.will_trigger,
-                initial_data=pc.initial_data,
-                prepare_placeholder=placeholder,
-                transform=pc.transform,
-            )
-
-        for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories[src_sid]
-            dest_factory = self._factories[dest_sid]
-            delay = connect_interval(src_factory._group, dest_factory._group)
-            self._add_async_connection(compiled[src_sid], compiled[dest_sid], delay)
-
-        return compiled
+        """Public hook to return stand-in ``SimRunner``
+        objects reflecting pending wiring."""
+        return self._build_sim_runners()
 
     def _link_connection(
         self,
@@ -770,7 +722,7 @@ class AsyncWorld:
         prepare_placeholder: bool,
         transform: Callable[[Any], Any],
     ) -> None:
-        """Wire a single connection into the given sim-like objects.
+        """Link a single connection into the given sim-like objects.
 
         Works for both setup-time stand-ins and real SimRunner objects.
         """
@@ -897,10 +849,14 @@ class AsyncWorld:
         return results
 
     # --- Internal helpers to keep run() readable ---
-    def _create_sim_runners(self) -> None:
+    def _build_sim_runners(self) -> Dict[SimId, SimRunner]:
+        if self.sims and not self._proxies:
+            return dict(self.sims)
+
+        sims: Dict[SimId, SimRunner] = {}
         for sid, proxy in self._proxies.items():
             factory = self._factories[sid]
-            sim_runner = self.sims[sid] = SimRunner(
+            sim_runner = SimRunner(
                 sid,
                 proxy,
                 check_outputs=factory.validate_output_dict,
@@ -908,19 +864,19 @@ class AsyncWorld:
             )
             if self.use_cache:
                 sim_runner.outputs = {}
+            sims[sid] = sim_runner
 
-    def _apply_initial_events(self) -> None:
-        for sid, t in self._pending_initial_events.items():
-            sim = self.sims[sid]
-            sim.next_steps = [TieredTime(t) + sim.from_world_time]
+        for sid, time in self._pending_initial_events.items():
+            sim = sims.get(sid)
+            if sim is not None:
+                sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
-    def _apply_pending_connections(self) -> None:
         for pc in self._pending_connections:
             src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._link_connection(
-                self.sims[pc.src_sid],
-                self.sims[pc.dest_sid],
+                sims[pc.src_sid],
+                sims[pc.dest_sid],
                 src_eid=pc.src_eid,
                 dest_eid=pc.dest_eid,
                 src_attr=pc.src_attr,
@@ -934,12 +890,13 @@ class AsyncWorld:
                 transform=pc.transform,
             )
 
-    def _apply_pending_async_requests(self) -> None:
         for src_sid, dest_sid in self._pending_async_requests:
             src_factory = self._factories[src_sid]
             dest_factory = self._factories[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            self._add_async_connection(self.sims[src_sid], self.sims[dest_sid], delay)
+            self._add_async_connection(sims[src_sid], sims[dest_sid], delay)
+
+        return sims
 
     def _init_progress_bars(
         self, until: int, print_progress: Union[bool, Literal["individual"]]
@@ -1038,11 +995,8 @@ class AsyncWorld:
         # TODO: Rebuild this test without df_graph (or maybe check for
         # connectedness instead).
 
-        # Before running, create SimRunners and wire all pending setup.
-        self._create_sim_runners()
-        self._apply_initial_events()
-        self._apply_pending_connections()
-        self._apply_pending_async_requests()
+        # Build SimRunner instances and apply all pending setup.
+        self.sims = self._build_sim_runners()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
