@@ -729,7 +729,7 @@ class AsyncWorld:
             dest_sim = compiled[pc.dest_sid]
             src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._wire_connection(
+            self._link_connection(
                 src_sim,
                 dest_sim,
                 src_eid=pc.src_eid,
@@ -749,11 +749,11 @@ class AsyncWorld:
             src_factory = self._factories[src_sid]
             dest_factory = self._factories[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            self._wire_async_edge(compiled[src_sid], compiled[dest_sid], delay)
+            self._add_async_connection(compiled[src_sid], compiled[dest_sid], delay)
 
         return compiled
 
-    def _wire_connection(
+    def _link_connection(
         self,
         src_sim: Any,
         dest_sim: Any,
@@ -822,7 +822,7 @@ class AsyncWorld:
                 dest_attr, {}
             ).setdefault(src_full, None)
 
-    def _wire_async_edge(
+    def _add_async_connection(
         self, src_sim: Any, dest_sim: Any, delay: TieredDuration
     ) -> None:
         src_sim.successors[dest_sim] = delay
@@ -914,11 +914,11 @@ class AsyncWorld:
             sim = self.sims[sid]
             sim.next_steps = [TieredTime(t) + sim.from_world_time]
 
-    def _wire_pending_connections(self) -> None:
+    def _apply_pending_connections(self) -> None:
         for pc in self._pending_connections:
             src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
             placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
-            self._wire_connection(
+            self._link_connection(
                 self.sims[pc.src_sid],
                 self.sims[pc.dest_sid],
                 src_eid=pc.src_eid,
@@ -934,12 +934,12 @@ class AsyncWorld:
                 transform=pc.transform,
             )
 
-    def _wire_pending_async_requests(self) -> None:
+    def _apply_pending_async_requests(self) -> None:
         for src_sid, dest_sid in self._pending_async_requests:
             src_factory = self._factories[src_sid]
             dest_factory = self._factories[dest_sid]
             delay = connect_interval(src_factory._group, dest_factory._group)
-            self._wire_async_edge(self.sims[src_sid], self.sims[dest_sid], delay)
+            self._add_async_connection(self.sims[src_sid], self.sims[dest_sid], delay)
 
     def _init_progress_bars(
         self, until: int, print_progress: Union[bool, Literal["individual"]]
@@ -1041,8 +1041,8 @@ class AsyncWorld:
         # Before running, create SimRunners and wire all pending setup.
         self._create_sim_runners()
         self._apply_initial_events()
-        self._wire_pending_connections()
-        self._wire_pending_async_requests()
+        self._apply_pending_connections()
+        self._apply_pending_async_requests()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
