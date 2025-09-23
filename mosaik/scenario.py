@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import warnings
 from types import TracebackType
 from typing import (
     Any,
@@ -374,6 +375,17 @@ class World:
 
     @property
     def sims(self):
+        if not getattr(self, "_sims_deprecation_warned", False):
+            try:
+                warnings.warn(
+                    "'World.sims' is deprecated; call 'prepare()' or "
+                    "'AsyncWorld.compile_connections()' instead.",
+                    category=DeprecationWarning,
+                    stacklevel=2,
+                )
+            except DeprecationWarning:
+                pass
+            self._sims_deprecation_warned = True
         return self._async_world.sims
 
     @property
