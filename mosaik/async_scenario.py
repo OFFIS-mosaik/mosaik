@@ -708,13 +708,22 @@ class AsyncWorld:
     @property
     def sims(self) -> Dict[SimId, SimRunner]:
         """Legacy access to runtime simulators (deprecated)."""
-        if not self._sims:
-            self._sims = self._build_sim_runners()
-        return self._sims
+        warnings.warn(
+            "'AsyncWorld.sims' is deprecated; call 'AsyncWorld.compile_connections()' "
+            "instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._get_sim_runners()
 
     @sims.setter
     def sims(self, value: Dict[SimId, SimRunner]) -> None:
         self._sims = value
+
+    def _get_sim_runners(self) -> Dict[SimId, SimRunner]:
+        if not self._sims:
+            self._sims = self._build_sim_runners()
+        return self._sims
 
     def _link_connection(
         self,
@@ -861,7 +870,7 @@ class AsyncWorld:
 
     # --- Internal helpers to keep run() readable ---
     def _build_sim_runners(self) -> Dict[SimId, SimRunner]:
-        if self._sims and not self._proxies:
+        if self._sims:
             return dict(self._sims)
 
         sims: Dict[SimId, SimRunner] = {}
@@ -1357,7 +1366,7 @@ class AsyncModelFactory:
                         )
 
     def get_progress(self):
-        progress = self._world.sims[self._sid].progress
+        progress = self._world._get_sim_runners()[self._sid].progress
         return ProgressProxy(progress)
 
 

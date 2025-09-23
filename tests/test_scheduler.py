@@ -85,14 +85,17 @@ async def world_fixture(request: pytest.FixtureRequest):
             start_timeout=world.config["start_timeout"],
         )
         sim = SimRunner(sim_id, proxy, check_outputs=lambda _: None)
-        world.sims[sim_id] = sim
+        world._sims[sim_id] = sim
         sims.append(sim)
+
+    compiled_sims = await world.compile_connections()
+    world._compiled_sims = compiled_sims
 
     class DummyTask:
         def done(self):
             return False
 
-    for sim in world.sims.values():
+    for sim in compiled_sims.values():
         sim.task = cast("asyncio.Task[None]", DummyTask())
 
     for src, dest in [(0, 2), (1, 2), (2, 3)]:
@@ -150,15 +153,16 @@ def test_run(monkeypatch: pytest.MonkeyPatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world._async_world.sims = {
+    world._async_world._sims = {
         f"Sim-{i}": SimRunner(f"Sim-{i}", cast(Proxy, proxy), lambda _: None)
         for i in range(2)
     }
+    compiled_sims = world.compile_connections()
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:
         world.run(until=1)
-        for sim in world.sims.values():
+        for sim in compiled_sims.values():
             assert sim.proc_started  # pyright: ignore
     finally:
         world.shutdown()
@@ -227,8 +231,8 @@ async def test_wait_for_dependencies(
     """
     Test waiting for dependencies and triggering them.
     """
-    test_sim: SimRunner = world.sims["Sim-2"]
-    pred_sim: SimRunner = world.sims["Sim-1"]
+    test_sim: SimRunner = world._compiled_sims["Sim-2"]
+    pred_sim: SimRunner = world._compiled_sims["Sim-1"]
     heappush(test_sim.next_steps, TieredTime(0))
     test_sim.input_delays[pred_sim] = MinimalDurations(TieredDuration(0, 1))
     stalled = await does_coroutine_stall(
@@ -243,11 +247,11 @@ async def test_wait_for_dependencies_all_done(world: AsyncWorld):
     """
     All dependencies already stepped far enough. No waiting required.
     """
-    heappush(world.sims["Sim-2"].next_steps, TieredTime(0))
+    heappush(world._compiled_sims["Sim-2"].next_steps, TieredTime(0))
     for dep_sid in ["Sim-0", "Sim-1"]:
-        world.sims[dep_sid].progress.time = TieredTime(1)
+        world._compiled_sims[dep_sid].progress.time = TieredTime(1)
     stalled = await does_coroutine_stall(
-        scheduler.wait_for_dependencies(world.sims["Sim-2"], True),
+        scheduler.wait_for_dependencies(world._compiled_sims["Sim-2"], True),
         max_pass_backs=3,
     )
     assert not stalled
@@ -263,9 +267,9 @@ async def test_wait_for_dependencies_shifted(
     Shifted dependency has not/has stepped far enough. Waiting is/is not
     required.
     """
-    world.sims["Sim-5"].progress = Progress(TieredTime(progress))
+    world._compiled_sims["Sim-5"].progress = Progress(TieredTime(progress))
     # Move this simulators first step to 1
-    sim_under_test = world.sims["Sim-4"]
+    sim_under_test = world._compiled_sims["Sim-4"]
     sim_under_test.next_steps = [TieredTime(1)]
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(sim_under_test, lazy_stepping=False),
@@ -281,7 +285,7 @@ async def test_wait_for_dependencies_lazy(world: AsyncWorld, lazy_stepping: bool
     """
     Test waiting for dependencies and triggering them.
     """
-    sim_under_test = world.sims["Sim-1"]
+    sim_under_test = world._compiled_sims["Sim-1"]
     sim_under_test.next_steps = [TieredTime(1)]
     stalled = await does_coroutine_stall(
         scheduler.wait_for_dependencies(sim_under_test, lazy_stepping)
@@ -298,9 +302,9 @@ def test_get_input_data(world: AsyncWorld):
     """
     Simple test for get_input_data().
     """
-    sim_0 = world.sims["Sim-0"]
-    sim_1 = world.sims["Sim-1"]
-    sim_2 = world.sims["Sim-2"]
+    sim_0 = world._compiled_sims["Sim-0"]
+    sim_1 = world._compiled_sims["Sim-1"]
+    sim_2 = world._compiled_sims["Sim-2"]
     sim_2.current_step = TieredTime(0)
     sim_0.outputs = {0: {"1": {"x": 0, "y": 1}}}
     sim_1.outputs = {0: {"2": {"x": 2, "z": 4}}}
@@ -333,8 +337,8 @@ def test_get_input_data_shifted(world: AsyncWorld):
     """
     Getting input data transmitted via a shifted connection.
     """
-    sim_4 = world.sims["Sim-4"]
-    sim_5 = world.sims["Sim-5"]
+    sim_4 = world._compiled_sims["Sim-4"]
+    sim_5 = world._compiled_sims["Sim-5"]
     sim_4.current_step = TieredTime(0)
     sim_5.outputs = {-1: {"1": {"z": 7}}}
 
@@ -365,7 +369,7 @@ def test_get_max_advance(
     next_step_s1: TieredTime | None,
     expected: int,
 ):
-    sim = world.sims["Sim-2"]
+    sim = world._compiled_sims["Sim-2"]
     sim.next_steps = next_steps
     sim.tqdm = tqdm(disable=True)
     heappush(sim.next_steps, TieredTime(1))
@@ -373,9 +377,9 @@ def test_get_max_advance(
 
     # In the event-based world, Sim-0 and Sim-1 are triggering ancestors
     # of Sim-2:
-    world.sims["Sim-0"].next_steps = [TieredTime(3)]
+    world._compiled_sims["Sim-0"].next_steps = [TieredTime(3)]
     if next_step_s1 is not None:
-        heappush(world.sims["Sim-1"].next_steps, next_step_s1)
+        heappush(world._compiled_sims["Sim-1"].next_steps, next_step_s1)
 
     max_advance = scheduler.get_max_advance(world, sim, until=5)
     assert max_advance == expected
@@ -386,7 +390,7 @@ def test_get_max_advance(
 @pytest.mark.parametrize("world", ["time-based", "event-based"], indirect=True)
 async def test_step(world: AsyncWorld):
     inputs: InputData = {}
-    sim = world.sims["Sim-0"]
+    sim = world._compiled_sims["Sim-0"]
     sim.tqdm = tqdm(disable=True)
     if sim.type == "event-based":
         heappush(sim.next_steps, TieredTime(0))
@@ -408,7 +412,7 @@ async def test_step(world: AsyncWorld):
 )
 async def test_get_outputs(world: AsyncWorld, cache: bool):
     world.use_cache = cache
-    sim = world.sims["Sim-0"]
+    sim = world._compiled_sims["Sim-0"]
     sim.outputs = {} if cache else None
     sim.output_request = {"0": ["x", "y"]}
     sim.last_step = TieredTime(0)
@@ -445,7 +449,7 @@ async def test_get_outputs(world: AsyncWorld, cache: bool):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
 async def test_get_outputs_buffered(world: AsyncWorld):
-    sim = world.sims["Sim-0"]
+    sim = world._compiled_sims["Sim-0"]
     sim.outputs = {}
     sim.last_step = TieredTime(0)
     sim.current_step = TieredTime(0)
@@ -454,7 +458,7 @@ async def test_get_outputs_buffered(world: AsyncWorld):
     sim.output_to_push = {
         ("0", "x"): [
             PushDescription(
-                dest_sim=world.sims["Sim-2"],
+                dest_sim=world._compiled_sims["Sim-2"],
                 delay=TieredDuration(0),
                 dest_port=("0", "in"),
                 transform=lambda x: x,
@@ -462,16 +466,16 @@ async def test_get_outputs_buffered(world: AsyncWorld):
         ],
         ("0", "z"): [
             PushDescription(
-                world.sims["Sim-1"], TieredDuration(0), ("0", "in"), lambda x: x
+                world._compiled_sims["Sim-1"], TieredDuration(0), ("0", "in"), lambda x: x
             )
         ],
     }
 
     await scheduler.get_outputs(world, sim)
-    assert world.sims["Sim-2"].timed_input_buffer.input_queue == [
+    assert world._compiled_sims["Sim-2"].timed_input_buffer.input_queue == [
         (0, 0, "Sim-0.0", "0", "in", 0)
     ]
-    assert world.sims["Sim-1"].timed_input_buffer.input_queue == []
+    assert world._compiled_sims["Sim-1"].timed_input_buffer.input_queue == []
 
 
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
@@ -490,44 +494,44 @@ def test_trigger_successors(
     next_steps: List[TieredTime],
     progress: int,
 ):
-    sim = world.sims["Sim-0"]
+    sim = world._compiled_sims["Sim-0"]
     sim.progress = Progress(TieredTime(0))
 
     sim.data = {"1": {"x": 1}}
     sim.output_time = output_time
 
-    heappush(world.sims["Sim-2"].next_steps, TieredTime(2))
+    heappush(world._compiled_sims["Sim-2"].next_steps, TieredTime(2))
 
     scheduler.trigger_successors(sim)
 
-    assert world.sims["Sim-2"].next_steps == next_steps
+    assert world._compiled_sims["Sim-2"].next_steps == next_steps
 
 
 @pytest.mark.parametrize("world", ["event-based"], indirect=True)
 def test_trigger_successors_trigger(world: AsyncWorld):
-    sim = world.sims["Sim-0"]
+    sim = world._compiled_sims["Sim-0"]
     sim.progress = Progress(TieredTime(0))
 
     sim.data = {"1": {"x": 1}}
     sim.output_time = TieredTime(1)
     scheduler.trigger_successors(sim)
 
-    assert world.sims["Sim-2"].next_steps == [TieredTime(1)]
+    assert world._compiled_sims["Sim-2"].next_steps == [TieredTime(1)]
 
 
 @pytest.mark.parametrize("world", ["time-based"], indirect=True)
 def test_prune_dataflow_cache(world: AsyncWorld):
     world.use_cache = True
-    world.sims["Sim-0"].outputs = {
+    world._compiled_sims["Sim-0"].outputs = {
         0: {"Entity-0": {"attr-0": "eggs"}},
         1: {"Entity-1": {"attr-1": "bar"}},
     }
-    for s in world.sims.values():
+    for s in world._compiled_sims.values():
         s.last_step = TieredTime(1)
         s.tqdm = tqdm(disable=True)
     scheduler.prune_dataflow_cache(world)
 
-    assert world.sims["Sim-0"].outputs == {
+    assert world._compiled_sims["Sim-0"].outputs == {
         1: {"Entity-1": {"attr-1": "bar"}},
     }
 
@@ -535,14 +539,14 @@ def test_prune_dataflow_cache(world: AsyncWorld):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("world", ["time-based"], indirect=True)
 async def test_get_outputs_shifted(world: AsyncWorld):
-    sim = world.sims["Sim-5"]
+    sim = world._compiled_sims["Sim-5"]
     sim.outputs = {}
     sim.output_request = {"0": ["x", "y"]}
     sim.type = "time-based"
     sim.progress = Progress(TieredTime(1))
     sim.last_step = TieredTime(1)
     sim.tqdm = tqdm(disable=True)
-    heappush(world.sims["Sim-4"].next_steps, TieredTime(2))
+    heappush(world._compiled_sims["Sim-4"].next_steps, TieredTime(2))
 
     sim.current_step = heappop(sim.next_steps)
     await scheduler.get_outputs(world, sim)

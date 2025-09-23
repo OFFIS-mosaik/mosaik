@@ -76,7 +76,7 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
     Also perform some checks and annotate the graph with the dataflows.
     """
     eg = world.execution_graph
-    sims = world.sims
+    sims = world._get_sim_runners()
 
     sid = sim.sid
     assert sim.current_step is not None

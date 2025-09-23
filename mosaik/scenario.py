@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import warnings
 from types import TracebackType
 from typing import (
     Any,
@@ -379,15 +378,10 @@ class World:
         Deprecated: Use `prepare()` or `AsyncWorld.compile_connections()` instead.
         This property will be removed in a future release.
         """
-        if not getattr(self, "_sims_deprecation_warned", False):
-                warnings.warn(
-                    "'World.sims' is deprecated; call 'prepare()' or "
-                    "'AsyncWorld.compile_connections()' instead.",
-                    category=DeprecationWarning,
-                    stacklevel=2,
-                )
-        self._sims_deprecation_warned = True
         return self._async_world.sims
+
+    def _get_sim_runners(self):
+        return self._async_world._get_sim_runners()
 
     @property
     def time_resolution(self):

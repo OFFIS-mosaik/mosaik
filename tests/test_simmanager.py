@@ -248,12 +248,13 @@ async def _rpc_set_data(channel: Channel, world: World):
     RPC.
     """
     await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
-    assert world.sims["X"].inputs_from_set_data == {
+    compiled = await world._async_world.compile_connections()
+    assert compiled["X"].inputs_from_set_data == {
         "2": {"val": {"src": 23}},
     }
 
     await channel.send(["set_data", [{"src": {"X.2": {"val": 42}}}], {}])
-    assert world.sims["X"].inputs_from_set_data == {
+    assert compiled["X"].inputs_from_set_data == {
         "2": {"val": {"src": 42}},
     }
 
@@ -341,7 +342,7 @@ def test_mosaik_remote(
             sim_x.current_step = TieredTime(0)
             sim_x.is_in_step = True
             sim_x.outputs = {1: {"2": {"attr": "val"}}}
-            world.sims["X"] = sim_x
+            world._async_world._sims["X"] = sim_x
 
             class DummyProxy:
                 @property
@@ -352,9 +353,9 @@ def test_mosaik_remote(
                     pass
 
             sim_y = simmanager.SimRunner("Y", DummyProxy(), None)
-            world.sims["Y"] = sim_y
+            world._async_world._sims["Y"] = sim_y
             sim_z = simmanager.SimRunner("Z", DummyProxy(), None)
-            world.sims["Z"] = sim_z
+            world._async_world._sims["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredDuration(0)
 

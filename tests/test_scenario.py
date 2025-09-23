@@ -62,7 +62,7 @@ def test_world():
         assert world.sim_config is sim_config
         assert world.time_resolution == 1.0
         assert world.config["start_timeout"] == 23
-        assert world.sims == {}
+        assert world.compile_connections() == {}
         assert world.loop
         assert not hasattr(world, "execution_graph")
     finally:
