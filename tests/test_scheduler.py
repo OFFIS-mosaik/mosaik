@@ -466,7 +466,10 @@ async def test_get_outputs_buffered(world: AsyncWorld):
         ],
         ("0", "z"): [
             PushDescription(
-                world._compiled_sims["Sim-1"], TieredDuration(0), ("0", "in"), lambda x: x
+                world._compiled_sims["Sim-1"],
+                TieredDuration(0),
+                ("0", "in"),
+                lambda x: x,
             )
         ],
     }

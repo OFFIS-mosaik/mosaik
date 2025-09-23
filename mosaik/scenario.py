@@ -375,7 +375,8 @@ class World:
     @property
     def sims(self):
         """
-        Deprecated: Use `prepare()` or `AsyncWorld.compile_connections()` instead.
+        Deprecated: Use `prepare()` or
+        `AsyncWorld.compile_connections()` instead.
         This property will be removed in a future release.
         """
         return self._async_world.sims
