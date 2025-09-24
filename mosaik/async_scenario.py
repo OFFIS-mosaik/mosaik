@@ -440,6 +440,7 @@ class AsyncWorld:
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories[sim_id] = model_factory
+        self._invalidate_runtime_sims()
         return model_factory
 
     @overload
@@ -619,6 +620,7 @@ class AsyncWorld:
             category=DeprecationWarning,
         )
         self._pending_async_requests.append((src._sid, dest._sid))
+        self._invalidate_runtime_sims()
 
     def connect(
         self,
@@ -699,22 +701,18 @@ class AsyncWorld:
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-
-    async def compile_connections(self) -> Dict[SimId, SimRunner]:
-        """Public hook to return stand-in ``SimRunner``
-        objects reflecting pending wiring."""
-        return self._build_sim_runners()
+        self._invalidate_runtime_sims()
 
     @property
     def sims(self) -> Dict[SimId, SimRunner]:
         """Legacy access to runtime simulators (deprecated)."""
         warnings.warn(
-            "'AsyncWorld.sims' is deprecated; call 'AsyncWorld.compile_connections()' "
-            "instead.",
+            "'AsyncWorld.sims' is deprecated; call 'AsyncWorld.compile()' instead to "
+            "inspect pending wiring.",
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return self._get_sim_runners()
+        return self.compile()
 
     @sims.setter
     def sims(self, value: Dict[SimId, SimRunner]) -> None:
@@ -722,8 +720,16 @@ class AsyncWorld:
 
     def _get_sim_runners(self) -> Dict[SimId, SimRunner]:
         if not self._sims:
-            self._sims = self._build_sim_runners()
+            raise RuntimeError(
+                "Runtime simulators are only available after 'AsyncWorld.run()' has "
+                "been executed. " \
+                "Call 'AsyncWorld.compile()' before running to inspect them."
+            )
         return self._sims
+
+    def _invalidate_runtime_sims(self) -> None:
+        if self._sims:
+            self._sims = {}
 
     def _link_connection(
         self,
@@ -808,6 +814,7 @@ class AsyncWorld:
         """
         # Defer scheduling until run()
         self._pending_initial_events[sid] = time
+        self._invalidate_runtime_sims()
 
     async def get_data(
         self,
@@ -869,7 +876,7 @@ class AsyncWorld:
         return results
 
     # --- Internal helpers to keep run() readable ---
-    def _build_sim_runners(self) -> Dict[SimId, SimRunner]:
+    def compile(self) -> Dict[SimId, SimRunner]:
         if self._sims:
             return dict(self._sims)
 
@@ -1016,7 +1023,7 @@ class AsyncWorld:
         # connectedness instead).
 
         # Build SimRunner instances and apply all pending setup.
-        self._sims = self._build_sim_runners()
+        self._sims = self.compile()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1579,6 +1586,7 @@ class AsyncModelMock(object):
             entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
+        self._world._invalidate_runtime_sims()
         return entity_set
 
     def _assert_model_type(

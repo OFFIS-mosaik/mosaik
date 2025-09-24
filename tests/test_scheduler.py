@@ -85,10 +85,10 @@ async def world_fixture(request: pytest.FixtureRequest):
             start_timeout=world.config["start_timeout"],
         )
         sim = SimRunner(sim_id, proxy, check_outputs=lambda _: None)
-        world._sims[sim_id] = sim
         sims.append(sim)
 
-    compiled_sims = await world.compile_connections()
+    compiled_sims = {sim.sid: sim for sim in sims}
+    world._sims = compiled_sims
     world._compiled_sims = compiled_sims
 
     class DummyTask:
@@ -157,12 +157,11 @@ def test_run(monkeypatch: pytest.MonkeyPatch):
         f"Sim-{i}": SimRunner(f"Sim-{i}", cast(Proxy, proxy), lambda _: None)
         for i in range(2)
     }
-    compiled_sims = world.compile_connections()
 
     monkeypatch.setattr(scheduler, "sim_process", dummy_proc)
     try:
         world.run(until=1)
-        for sim in compiled_sims.values():
+        for sim in world._async_world._get_sim_runners().values():
             assert sim.proc_started  # pyright: ignore
     finally:
         world.shutdown()

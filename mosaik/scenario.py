@@ -39,7 +39,6 @@ from mosaik.async_scenario import (
     SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
-from mosaik.simmanager import SimRunner
 from mosaik.starters import Starter
 
 
@@ -241,14 +240,6 @@ class World:
             transform=transform,
         )
 
-    def compile_connections(self) -> Dict[SimId, SimRunner]:
-        """Return stand-in ``SimRunner`` objects with all pending wiring
-
-        This enables inspecting the connection graph without starting
-        the simulation loop.
-        """
-        return self.loop.run_until_complete(self._async_world.compile_connections())
-
     def set_initial_event(self, sid: SimId, time: int = 0):
         """
         Set an initial step for simulator *sid* at time *time*
@@ -376,7 +367,7 @@ class World:
     def sims(self):
         """
         Deprecated: Use `prepare()` or
-        `AsyncWorld.compile_connections()` instead.
+        `AsyncWorld.compile()` instead.
         This property will be removed in a future release.
         """
         return self._async_world.sims
