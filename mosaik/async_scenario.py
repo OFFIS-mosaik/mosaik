@@ -705,24 +705,25 @@ class AsyncWorld:
 
     @property
     def sims(self) -> Dict[SimId, SimRunner]:
-        """Legacy access to runtime simulators (deprecated)."""
+        """
+        Legacy access to runtime simulators.
+
+        .. deprecated:: 3.6
+           Call :meth:`compile` to inspect sims instead.
+        """
         warnings.warn(
-            "'AsyncWorld.sims' is deprecated; call 'AsyncWorld.compile()' instead to "
-            "inspect pending wiring.",
+            "'AsyncWorld.sims' is deprecated; call 'AsyncWorld.compile()' to "
+            "inspect sims instead.",
             category=DeprecationWarning,
             stacklevel=2,
         )
         return self.compile()
 
-    @sims.setter
-    def sims(self, value: Dict[SimId, SimRunner]) -> None:
-        self._sims = value
-
     def _get_sim_runners(self) -> Dict[SimId, SimRunner]:
         if not self._sims:
             raise RuntimeError(
                 "Runtime simulators are only available after 'AsyncWorld.run()' has "
-                "been executed. " \
+                "been executed. "
                 "Call 'AsyncWorld.compile()' before running to inspect them."
             )
         return self._sims
@@ -748,10 +749,7 @@ class AsyncWorld:
         prepare_placeholder: bool,
         transform: Callable[[Any], Any],
     ) -> None:
-        """Link a single connection into the given sim-like objects.
-
-        Works for both setup-time stand-ins and real SimRunner objects.
-        """
+        """Link a single connection into the given sim-like objects."""
 
         # Dependency waiting info
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
