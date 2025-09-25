@@ -736,29 +736,25 @@ class AsyncWorld:
         self,
         src_sim: Any,
         dest_sim: Any,
+        connection: _PendingConnection,
         *,
-        src_eid: EntityId,
-        dest_eid: EntityId,
-        src_attr: Attr,
-        dest_attr: Attr,
-        delay: TieredDuration,
-        successor_delay: TieredDuration,
-        is_pulled: bool,
-        will_trigger: bool,
-        initial_data: Any | None,
         prepare_placeholder: bool,
-        transform: Callable[[Any], Any],
     ) -> None:
         """Link a single connection into the given sim-like objects."""
+
+        delay = connection.delay
+        transform = connection.transform
 
         # Dependency waiting info
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
         # Output requests per source entity
-        src_sim.output_request.setdefault(src_eid, []).append(src_attr)
+        src_sim.output_request.setdefault(connection.src_eid, []).append(
+            connection.src_attr
+        )
         # Push/pull wiring
-        src_port = (src_eid, src_attr)
-        dest_port = (dest_eid, dest_attr)
-        if is_pulled:
+        src_port = (connection.src_eid, connection.src_attr)
+        dest_port = (connection.dest_eid, connection.dest_attr)
+        if connection.is_pulled:
             dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
                 PullDescription(
                     src_port=src_port,
@@ -776,26 +772,26 @@ class AsyncWorld:
                 )
             )
         # Successors and triggers
-        src_sim.successors[dest_sim] = successor_delay
-        if will_trigger:
+        src_sim.successors[dest_sim] = connection.successor_delay
+        if connection.will_trigger:
             src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
         # Initial data or placeholder
-        if initial_data is not None:
-            if is_pulled:
+        if connection.initial_data is not None:
+            if connection.is_pulled:
                 # For pulled connections, seed cache at t = -shift
-                shift0 = delay.tiers[0] if delay.tiers else 0
-                src_sim.outputs.setdefault(-int(shift0), {}).setdefault(src_eid, {})[
-                    src_attr
-                ] = initial_data
+                shift0 = connection.delay.tiers[0] if connection.delay.tiers else 0
+                src_sim.outputs.setdefault(-int(shift0), {}).setdefault(
+                    connection.src_eid, {}
+                )[connection.src_attr] = connection.initial_data
             else:
-                src_full = f"{src_sim.sid}.{src_eid}"
-                dest_sim.persistent_inputs.setdefault(dest_eid, {}).setdefault(
-                    dest_attr, {}
-                )[src_full] = initial_data
+                src_full = f"{src_sim.sid}.{connection.src_eid}"
+                dest_sim.persistent_inputs.setdefault(
+                    connection.dest_eid, {}
+                ).setdefault(connection.dest_attr, {})[src_full] = connection.initial_data
         elif prepare_placeholder:
-            src_full = f"{src_sim.sid}.{src_eid}"
-            dest_sim.persistent_inputs.setdefault(dest_eid, {}).setdefault(
-                dest_attr, {}
+            src_full = f"{src_sim.sid}.{connection.src_eid}"
+            dest_sim.persistent_inputs.setdefault(connection.dest_eid, {}).setdefault(
+                connection.dest_attr, {}
             ).setdefault(src_full, None)
 
     def _add_async_connection(
@@ -902,17 +898,8 @@ class AsyncWorld:
             self._link_connection(
                 sims[pc.src_sid],
                 sims[pc.dest_sid],
-                src_eid=pc.src_eid,
-                dest_eid=pc.dest_eid,
-                src_attr=pc.src_attr,
-                dest_attr=pc.dest_attr,
-                delay=pc.delay,
-                successor_delay=pc.successor_delay,
-                is_pulled=pc.is_pulled,
-                will_trigger=pc.will_trigger,
-                initial_data=pc.initial_data,
+                pc,
                 prepare_placeholder=placeholder,
-                transform=pc.transform,
             )
 
         for src_sid, dest_sid in self._pending_async_requests:
