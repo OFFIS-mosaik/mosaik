@@ -151,7 +151,7 @@ def test_sim_proxy_stop_impl(world):
 
     sim = simmanager.SimRunner("id", Test(), None)
     with pytest.raises(NotImplementedError):
-        world.loop.run_until_complete(sim.stop())
+        world.loop.run_until_complete(sim._proxy.stop())
 
 
 def test_local_process(world):
@@ -336,6 +336,7 @@ def test_mosaik_remote(
             channel = await channel_future
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
+            world._async_world._proxies["X"] = proxy_x
             sim_x = simmanager.SimRunner("X", proxy_x, None)
             sim_x.successors[sim_x] = TieredDuration(0)
             sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
@@ -353,9 +354,14 @@ def test_mosaik_remote(
                 async def stop(self):
                     pass
 
-            sim_y = simmanager.SimRunner("Y", DummyProxy(), None)
+            proxy_y = DummyProxy()
+            world._async_world._proxies["Y"] = proxy_y
+            sim_y = simmanager.SimRunner("Y", proxy_y, None)
             world._async_world._sims["Y"] = sim_y
-            sim_z = simmanager.SimRunner("Z", DummyProxy(), None)
+
+            proxy_z = DummyProxy()
+            world._async_world._proxies["Z"] = proxy_z
+            sim_z = simmanager.SimRunner("Z", proxy_z, None)
             world._async_world._sims["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredDuration(0)

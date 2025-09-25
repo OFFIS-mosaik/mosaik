@@ -317,12 +317,6 @@ class SimRunner:
 
         return {}
 
-    async def stop(self):
-        """
-        Stop the simulator behind the proxy.
-        """
-        await self._proxy.stop()
-
     def __repr__(self):
         return f"<{self.__class__.__name__} sid={self.sid!r}>"
 

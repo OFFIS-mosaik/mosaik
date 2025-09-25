@@ -1162,14 +1162,8 @@ class AsyncWorld:
         """
         Shut-down all simulators and close the server socket.
         """
-        # Stop running simulators
-        await asyncio.gather(*(sim.stop() for sim in self._sims.values()))
 
-        extra_proxies = [
-            proxy for sid, proxy in self._proxies.items() if sid not in self._sims
-        ]
-        if extra_proxies:
-            await asyncio.gather(*(proxy.stop() for proxy in extra_proxies))
+        await asyncio.gather(*(proxy.stop() for proxy in self._proxies.values()))
         self._shutdown_performed = True
 
     def __del__(self):
