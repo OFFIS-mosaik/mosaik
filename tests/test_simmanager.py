@@ -309,7 +309,7 @@ async def _rpc_set_data_err2(channel: Channel, world: World):
         (_rpc_set_data_err2, RemoteException),
     ],
 )
-def test_mosaik_remote( #noqa
+def test_mosaik_remote(  # noqa
     rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
     err: Type[Exception],
 ):

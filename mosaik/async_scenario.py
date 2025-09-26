@@ -430,6 +430,7 @@ class AsyncWorld:
         sim_params: dict[str, Any],
         api_version: str | None = None,
     ) -> AsyncModelFactory:
+        self._sims_cache = None
         proxy = await init_and_get_adapter(
             base_proxy,
             sim_id,
@@ -440,7 +441,6 @@ class AsyncWorld:
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories[sim_id] = model_factory
-        self._sims_cache = None
         return model_factory
 
     @overload
@@ -616,6 +616,7 @@ class AsyncWorld:
         self.entity_graph.add_edge(src.full_id, dest.full_id)
 
     def connect_async_requests(self, src: AsyncModelFactory, dest: AsyncModelFactory):
+        self._sims_cache = None
         warnings.warn(
             "Connections using async_requests and the "
             "set_data function are deprecated and will be "
@@ -624,7 +625,6 @@ class AsyncWorld:
             category=DeprecationWarning,
         )
         self._pending_async_requests.append((src._sid, dest._sid))
-        self._sims_cache = None
 
     def connect(
         self,
@@ -671,6 +671,7 @@ class AsyncWorld:
         sent to the destination simulator at the first step (e.g.
         *{'src_attr': value}*).
         """
+        self._sims_cache = None
 
         # Expand single attributes "attr" to ("attr", "attr") tuples:
         attr_pairs: Set[Tuple[Attr, Attr]] = {
@@ -705,7 +706,6 @@ class AsyncWorld:
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-        self._sims_cache = None
 
     @property
     def sims(self) -> Dict[SimId, SimRunner]:
@@ -808,9 +808,9 @@ class AsyncWorld:
         Set an initial step for simulator *sid* at time *time*
         (default=0).
         """
+        self._sims_cache = None
         # Defer scheduling until run()
         self._pending_initial_events[sid] = time
-        self._sims_cache = None
 
     async def get_data(
         self,
