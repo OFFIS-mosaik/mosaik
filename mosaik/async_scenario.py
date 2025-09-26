@@ -917,7 +917,6 @@ class AsyncWorld:
     def _init_progress_bars(
         self, until: int, print_progress: Union[bool, Literal["individual"]]
     ) -> None:
-        logger.info("Starting simulation.")
         sims = self._get_sim_runners()
         max_sim_id_len = max(max(len(str(sid)) for sid in sims), 11)
         until_len = len(str(until))
@@ -1007,7 +1006,7 @@ class AsyncWorld:
                 "Simulation has already been run and can only be run once for a World "
                 "instance."
             )
-
+        logger.info("Starting simulation.")
         # Check if a simulator is not connected to anything:
         # TODO: Rebuild this test without df_graph (or maybe check for
         # connectedness instead).
