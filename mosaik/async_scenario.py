@@ -1190,10 +1190,6 @@ class _PendingConnection:
     transform: Callable[[Any], Any]
 
 
-if TYPE_CHECKING:
-    T = TypeVar("T", bound=SupportsRichComparison)
-
-
 MOSAIK_METHODS = {
     "init",
     "create",
