@@ -910,6 +910,8 @@ class AsyncWorld:
             self._add_async_connection(sims[src_sid], sims[dest_sid], delay)
 
         self._sims_cache = sims
+        self.ensure_no_dataflow_cycles()
+        self.cache_triggering_ancestors()
         return sims
 
     def _init_progress_bars(
@@ -1012,13 +1014,6 @@ class AsyncWorld:
 
         # Build SimRunner instances and apply all pending setup.
         self._sims_cache = self.compile()
-
-        # Creating the topological ranking will ensure that there are no
-        # cycles in the dataflow graph that are not resolved using
-        # time-shifted or weak connections.
-        self.ensure_no_dataflow_cycles()
-
-        self.cache_triggering_ancestors()
 
         self._init_progress_bars(until, print_progress)
         import mosaik._debug as dbg  # always import, enable when requested
