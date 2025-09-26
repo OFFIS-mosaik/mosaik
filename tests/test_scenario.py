@@ -400,7 +400,7 @@ def test_model_factory_hierarchical_entities(world: World, mf: ModelFactory):
             ],
         }
     ]
-    mf.A._async_model_mock._proxy.send = async_mock(return_value=ret)
+    mf.A._async_model_mock._factory._proxy.send = async_mock(return_value=ret)
 
     a = mf.A(init_val=1)
     assert len(a.children) == 1
@@ -416,7 +416,7 @@ def test_model_factory_hierarchical_entities(world: World, mf: ModelFactory):
 
 def test_model_factory_wrong_entity_count(world: World, mf: ModelFactory):
     ret = [None, None, None]
-    mf.A._async_model_mock._proxy.send = async_mock(return_value=ret)
+    mf.A._async_model_mock._factory._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
         mf.A.create(2, init_val=0)
     assert str(err.value) == "2 entities were requested but 3 were created."
@@ -424,7 +424,7 @@ def test_model_factory_wrong_entity_count(world: World, mf: ModelFactory):
 
 def test_model_factory_wrong_model(world: World, mf: ModelFactory):
     ret = [{"eid": "spam_0", "type": "Spam"}]
-    mf.A._async_model_mock._proxy.send = async_mock(return_value=ret)
+    mf.A._async_model_mock._factory._proxy.send = async_mock(return_value=ret)
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)
     assert str(err.value) == (
@@ -456,7 +456,7 @@ def test_model_factory_hierarchical_entities_illegal_type(
             ],
         }
     ]
-    mf.A._async_model_mock._proxy.send = async_mock(return_value=ret)
+    mf.A._async_model_mock._factory._proxy.send = async_mock(return_value=ret)
 
     with pytest.raises(AssertionError) as err:
         mf.A.create(1, init_val=0)

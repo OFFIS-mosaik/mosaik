@@ -35,7 +35,6 @@ from typing import (
     Set,
     Tuple,
     Type,
-    TypeVar,
     Union,
     overload,
 )
@@ -76,7 +75,7 @@ from mosaik.starters import Starter
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
-    from _typeshed import SupportsRichComparison
+    pass
 
 
 class MosaikConfig(TypedDict, total=False):
@@ -1273,7 +1272,7 @@ class AsyncModelFactory:
                     f"Simulator {sid} uses an illegal model name: {model}. This name "
                     "is already the name of a mosaik API method."
                 )
-            self.models[model] = AsyncModelMock(self._world, self, model, self._proxy)
+            self.models[model] = AsyncModelMock(self._world, self, model)
             # Make public models accessible
             if props.get("public", True):
                 setattr(self, model, self.models[model])
@@ -1302,7 +1301,7 @@ class AsyncModelFactory:
                 wrapper.__name__ = meth_name
                 return wrapper
 
-            self.call._add_extra_method(meth_name, get_wrapper(proxy, meth_name))
+            self.call._add_extra_method(meth_name, get_wrapper(self._proxy, meth_name))
 
     def __getattr__(self, name: str) -> AsyncModelMock:
         # Implemented in order to improve error messages.
@@ -1462,7 +1461,6 @@ class AsyncModelMock(object):
     name: ModelName
     _world: AsyncWorld
     _factory: AsyncModelFactory
-    _proxy: Proxy
     params: FrozenSet[str]
     event_inputs: InOrOutSet[Attr]
     measurement_inputs: InOrOutSet[Attr]
@@ -1474,13 +1472,11 @@ class AsyncModelMock(object):
         world: AsyncWorld,
         factory: AsyncModelFactory,
         model: ModelName,
-        proxy: Proxy,
     ):
         self._world = world
         self._factory = factory
         self.name = model
-        self._proxy = proxy
-        model_desc = proxy.meta["models"][model]
+        model_desc = factory._proxy.meta["models"][model]
         self.params = frozenset(model_desc.get("params", []))
 
         try:
@@ -1521,7 +1517,9 @@ class AsyncModelMock(object):
         """
         self._check_params(**model_params)
 
-        entities = await self._proxy.send(["create", (num, self.name), model_params])
+        entities = await self._factory._proxy.send(
+            ["create", (num, self.name), model_params]
+        )
         assert len(entities) == num, (
             f"{num} entities were requested but {len(entities)} were created."
         )
@@ -1584,7 +1582,7 @@ class AsyncModelMock(object):
                 f'"{assert_type}" required.'
             )
         else:
-            assert e["type"] in self._proxy.meta["models"], (
+            assert e["type"] in self._factory._proxy.meta["models"], (
                 f'Type "{e["type"]}" of entity "{e["eid"]}" not found in sim\'s meta '
                 "data."
             )
