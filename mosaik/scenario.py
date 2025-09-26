@@ -366,8 +366,7 @@ class World:
     @property
     def sims(self):
         """
-        Deprecated: Use `prepare()` or
-        `AsyncWorld.compile()` instead.
+        Deprecated: Use `AsyncWorld.compile()` instead.
         This property will be removed in a future release.
         """
         return self._async_world.sims
@@ -386,14 +385,6 @@ class World:
     @property
     def config(self):
         return self._async_world.config
-
-    def prepare(self) -> None:
-        """Create SimRunners and wire connections without starting.
-
-        Use this to inspect ``world.sims`` prior to running, or to do
-        quick wiring checks without stepping the simulation.
-        """
-        self.loop.run_until_complete(self._async_world.prepare())
 
 
 class ModelFactory:
