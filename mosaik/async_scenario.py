@@ -372,7 +372,7 @@ class AsyncWorld:
         if mosaik_config:
             self.config.update(mosaik_config)
 
-        self._sims: Dict[SimId, SimRunner] = {}
+        self._sims_cache: Optional[Dict[SimId, SimRunner]] = None
         self.main_group = SimGroup(parent=None, name="main")
         self.current_group = self.main_group
 
@@ -440,7 +440,7 @@ class AsyncWorld:
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories[sim_id] = model_factory
-        self._invalidate_runtime_sims()
+        self._sims_cache = None
         return model_factory
 
     @overload
@@ -500,7 +500,11 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if sim_id in self._sims or sim_id in self._proxies or sim_id in self._factories:
+        if (
+            (self._sims_cache and sim_id in self._sims_cache)
+            or sim_id in self._proxies
+            or sim_id in self._factories
+        ):
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
@@ -620,7 +624,7 @@ class AsyncWorld:
             category=DeprecationWarning,
         )
         self._pending_async_requests.append((src._sid, dest._sid))
-        self._invalidate_runtime_sims()
+        self._sims_cache = None
 
     def connect(
         self,
@@ -701,7 +705,7 @@ class AsyncWorld:
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
-        self._invalidate_runtime_sims()
+        self._sims_cache = None
 
     @property
     def sims(self) -> Dict[SimId, SimRunner]:
@@ -720,17 +724,13 @@ class AsyncWorld:
         return self.compile()
 
     def _get_sim_runners(self) -> Dict[SimId, SimRunner]:
-        if not self._sims:
+        if self._sims_cache is None:
             raise RuntimeError(
                 "Runtime simulators are only available after 'AsyncWorld.run()' has "
                 "been executed. "
                 "Call 'AsyncWorld.compile()' before running to inspect them."
             )
-        return self._sims
-
-    def _invalidate_runtime_sims(self) -> None:
-        if self._sims:
-            self._sims = {}
+        return self._sims_cache
 
     def _link_connection(
         self,
@@ -810,7 +810,7 @@ class AsyncWorld:
         """
         # Defer scheduling until run()
         self._pending_initial_events[sid] = time
-        self._invalidate_runtime_sims()
+        self._sims_cache = None
 
     async def get_data(
         self,
@@ -873,8 +873,8 @@ class AsyncWorld:
 
     # --- Internal helpers to keep run() readable ---
     def compile(self) -> Dict[SimId, SimRunner]:
-        if self._sims:
-            return dict(self._sims)
+        if self._sims_cache is not None:
+            return self._sims_cache
 
         sims: Dict[SimId, SimRunner] = {}
         for sid, proxy in self._proxies.items():
@@ -910,13 +910,15 @@ class AsyncWorld:
             delay = connect_interval(src_factory._group, dest_factory._group)
             self._add_async_connection(sims[src_sid], sims[dest_sid], delay)
 
+        self._sims_cache = sims
         return sims
 
     def _init_progress_bars(
         self, until: int, print_progress: Union[bool, Literal["individual"]]
     ) -> None:
         logger.info("Starting simulation.")
-        max_sim_id_len = max(max(len(str(sid)) for sid in self._sims), 11)
+        sims = self._get_sim_runners()
+        max_sim_id_len = max(max(len(str(sid)) for sid in sims), 11)
         until_len = len(str(until))
         self.tqdm = tqdm(
             total=until,
@@ -932,7 +934,7 @@ class AsyncWorld:
             ),
             unit="steps",
         )
-        for sid, sim in self._sims.items():
+        for sid, sim in sims.items():
             sim.tqdm = tqdm(
                 total=until,
                 desc=sid,
@@ -1010,7 +1012,7 @@ class AsyncWorld:
         # connectedness instead).
 
         # Build SimRunner instances and apply all pending setup.
-        self._sims = self.compile()
+        self._sims_cache = self.compile()
 
         # Creating the topological ranking will ensure that there are no
         # cycles in the dataflow graph that are not resolved using
@@ -1041,7 +1043,8 @@ class AsyncWorld:
                 )
             )
         finally:
-            for sid, sim in self._sims.items():
+            sims = self._get_sim_runners()
+            for sid, sim in sims.items():
                 sim.tqdm.close()
             self.tqdm.close()
             if self._debug:
@@ -1055,8 +1058,9 @@ class AsyncWorld:
         """
         # See ``ensure_no_dataflow_cycles`` for an explanation of this
         # algorithm
+        sims = self._get_sim_runners()
         dirty: Set[SimRunner] = set()
-        for sim in self._sims.values():
+        for sim in sims.values():
             for port_triggers in sim.triggers.values():
                 for dest_sim, delay in port_triggers:
                     dest_sim.triggering_ancestors.setdefault(
@@ -1085,12 +1089,13 @@ class AsyncWorld:
         # number of steps removed; predecessors and successors are one
         # step removed (i.e. they're *direct* ancestors/descendants)
 
-        dirty: Set[SimRunner] = set(self._sims.values())
+        sims = self._get_sim_runners()
+        dirty: Set[SimRunner] = set(sims.values())
         """Sims that have changed descendants and thus require
         recalculation
         """
         sim_descs: Dict[SimRunner, Dict[SimRunner, MinPath]] = {
-            sim: {} for sim in self._sims.values()
+            sim: {} for sim in sims.values()
         }
         """For each SimRunner, all its descendants that have been found
         so far with the shortest delay to them and the path that
@@ -1099,7 +1104,7 @@ class AsyncWorld:
 
         # At the start, enter each sim as a descendant of all its
         # (direct) predecessors
-        for sim in self._sims.values():
+        for sim in sims.values():
             for pred, delay in sim.input_delays.items():
                 min_durations = MinimalDurations()
                 min_durations.insert_all(delay)
@@ -1567,7 +1572,7 @@ class AsyncModelMock(object):
             entity_graph.add_node(entity.full_id, sid=sid, type=e["type"])
             for rel in e.get("rel", []):
                 entity_graph.add_edge(entity.full_id, FULL_ID % (sid, rel))
-        self._world._invalidate_runtime_sims()
+        self._world._sims_cache = None
         return entity_set
 
     def _assert_model_type(

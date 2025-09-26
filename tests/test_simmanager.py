@@ -249,7 +249,7 @@ async def _rpc_set_data(channel: Channel, world: World):
     """
     await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
     compiled = world._async_world.compile()
-    world._async_world._sims = compiled
+    world._async_world._sims_cache = compiled
     assert compiled["X"].inputs_from_set_data == {
         "2": {"val": {"src": 23}},
     }
@@ -309,7 +309,7 @@ async def _rpc_set_data_err2(channel: Channel, world: World):
         (_rpc_set_data_err2, RemoteException),
     ],
 )
-def test_mosaik_remote(
+def test_mosaik_remote( #noqa
     rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
     err: Type[Exception],
 ):
@@ -337,6 +337,8 @@ def test_mosaik_remote(
             proxy_x = proxies.RemoteProxy(channel, simmanager.MosaikRemote(world, "X"))
             proxy_x._meta = {"type": "time-based", "models": {}}
             world._async_world._proxies["X"] = proxy_x
+            if world._async_world._sims_cache is None:
+                world._async_world._sims_cache = {}
             sim_x = simmanager.SimRunner("X", proxy_x, None)
             sim_x.successors[sim_x] = TieredDuration(0)
             sim_x.successors_to_wait_for[sim_x] = TieredDuration(0)
@@ -344,7 +346,7 @@ def test_mosaik_remote(
             sim_x.current_step = TieredTime(0)
             sim_x.is_in_step = True
             sim_x.outputs = {1: {"2": {"attr": "val"}}}
-            world._async_world._sims["X"] = sim_x
+            world._async_world._sims_cache["X"] = sim_x
 
             class DummyProxy:
                 @property
@@ -357,12 +359,12 @@ def test_mosaik_remote(
             proxy_y = DummyProxy()
             world._async_world._proxies["Y"] = proxy_y
             sim_y = simmanager.SimRunner("Y", proxy_y, None)
-            world._async_world._sims["Y"] = sim_y
+            world._async_world._sims_cache["Y"] = sim_y
 
             proxy_z = DummyProxy()
             world._async_world._proxies["Z"] = proxy_z
             sim_z = simmanager.SimRunner("Z", proxy_z, None)
-            world._async_world._sims["Z"] = sim_z
+            world._async_world._sims_cache["Z"] = sim_z
 
             sim_x.successors[sim_y] = TieredDuration(0)
 

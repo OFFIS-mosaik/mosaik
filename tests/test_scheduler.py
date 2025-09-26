@@ -88,7 +88,7 @@ async def world_fixture(request: pytest.FixtureRequest):
         sims.append(sim)
 
     compiled_sims = {sim.sid: sim for sim in sims}
-    world._sims = compiled_sims
+    world._sims_cache = compiled_sims
     world._compiled_sims = compiled_sims
 
     class DummyTask:
@@ -153,7 +153,7 @@ def test_run(monkeypatch: pytest.MonkeyPatch):
 
         meta = {"api_version": "2.2", "type": "time-based"}
 
-    world._async_world._sims = {
+    world._async_world._sims_cache = {
         f"Sim-{i}": SimRunner(f"Sim-{i}", cast(Proxy, proxy), lambda _: None)
         for i in range(2)
     }
