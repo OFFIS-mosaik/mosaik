@@ -743,7 +743,9 @@ class AsyncWorld:
         transform = connection.transform
         prepare_placeholder = False
         if not self.use_cache:
-            src_entity = self._factories[connection.src_sid].entities[connection.src_eid]
+            src_entity = self._factories[connection.src_sid].entities[
+                connection.src_eid
+            ]
             prepare_placeholder = src_entity.is_persistent(connection.src_attr)
 
         # Dependency waiting info
@@ -798,8 +800,13 @@ class AsyncWorld:
             ).setdefault(src_full, None)
 
     def _add_async_connection(
-        self, src_sim: Any, dest_sim: Any, delay: TieredDuration
+        self, sims: Dict[SimId, SimRunner], src_sid: SimId, dest_sid: SimId
     ) -> None:
+        src_factory = self._factories[src_sid]
+        dest_factory = self._factories[dest_sid]
+        delay = connect_interval(src_factory._group, dest_factory._group)
+        src_sim = sims[src_sid]
+        dest_sim = sims[dest_sid]
         src_sim.successors[dest_sim] = delay
         src_sim.successors_to_wait_for[dest_sim] = delay
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
@@ -902,10 +909,7 @@ class AsyncWorld:
             )
 
         for src_sid, dest_sid in self._pending_async_requests:
-            src_factory = self._factories[src_sid]
-            dest_factory = self._factories[dest_sid]
-            delay = connect_interval(src_factory._group, dest_factory._group)
-            self._add_async_connection(sims[src_sid], sims[dest_sid], delay)
+            self._add_async_connection(sims, src_sid, dest_sid)
 
         self._sims_cache = sims
         self.ensure_no_dataflow_cycles()
