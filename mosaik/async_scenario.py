@@ -736,13 +736,15 @@ class AsyncWorld:
         src_sim: Any,
         dest_sim: Any,
         connection: _PendingConnection,
-        *,
-        prepare_placeholder: bool,
     ) -> None:
         """Link a single connection into the given sim-like objects."""
 
         delay = connection.delay
         transform = connection.transform
+        prepare_placeholder = False
+        if not self.use_cache:
+            src_entity = self._factories[connection.src_sid].entities[connection.src_eid]
+            prepare_placeholder = src_entity.is_persistent(connection.src_attr)
 
         # Dependency waiting info
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
@@ -893,13 +895,10 @@ class AsyncWorld:
             sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
         for pc in self._pending_connections:
-            src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
-            placeholder = not self.use_cache and src_entity.is_persistent(pc.src_attr)
             self._link_connection(
                 sims[pc.src_sid],
                 sims[pc.dest_sid],
                 pc,
-                prepare_placeholder=placeholder,
             )
 
         for src_sid, dest_sid in self._pending_async_requests:
