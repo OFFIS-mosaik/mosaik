@@ -889,9 +889,8 @@ class AsyncWorld:
             sims[sid] = sim_runner
 
         for sid, time in self._pending_initial_events.items():
-            sim = sims.get(sid)
-            if sim is not None:
-                sim.next_steps = [TieredTime(time) + sim.from_world_time]
+            sim = sims[sid]
+            sim.next_steps = [TieredTime(time) + sim.from_world_time]
 
         for pc in self._pending_connections:
             src_entity = self._factories[pc.src_sid].entities[pc.src_eid]
