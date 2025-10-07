@@ -534,6 +534,7 @@ class AsyncWorld:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = default_transform_callable,
     ):
+        self._sims_cache = None
         if not isinstance(src, Entity):
             raise TypeError(
                 "the source for a connect call must be an Entity, but a "
