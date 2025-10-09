@@ -727,8 +727,8 @@ class AsyncWorld:
 
     def _link_connection(
         self,
-        src_sim: Any,
-        dest_sim: Any,
+        src_sim: SimRunner,
+        dest_sim: SimRunner,
         connection: _PendingConnection,
     ) -> None:
         delay = connection.delay
