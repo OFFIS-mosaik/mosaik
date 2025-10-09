@@ -499,7 +499,7 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if sim_id in self.sims:
+        if sim_id in self._factories:
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
@@ -585,8 +585,6 @@ class AsyncWorld:
         src_group = src.model_mock._factory._group
         dest_group = dest.model_mock._factory._group
         delay = connect_interval(src_group, dest_group, int(time_shifted), int(weak))
-
-        successor_delay = connect_interval(src_group, dest_group)
         is_pulled = self.use_cache and src.is_persistent(src_attr)
 
         # Record pending connection for runtime wiring.
@@ -599,7 +597,8 @@ class AsyncWorld:
                 src_attr=src_attr,
                 dest_attr=dest_attr,
                 delay=delay,
-                successor_delay=successor_delay,
+                src_group=src_group,
+                dest_group=dest_group,
                 is_pulled=is_pulled,
                 will_trigger=dest.triggered_by(dest_attr),
                 initial_data=None if initial_data is SENTINEL else initial_data,
@@ -765,7 +764,8 @@ class AsyncWorld:
                 )
             )
         # Successors and triggers
-        src_sim.successors[dest_sim] = connection.successor_delay
+        successor_delay = connect_interval(connection.src_group, connection.dest_group)
+        src_sim.successors[dest_sim] = successor_delay
         if connection.will_trigger:
             src_sim.triggers.setdefault(src_port, []).append((dest_sim, delay))
         # Initial data or placeholder
@@ -1167,7 +1167,8 @@ class _PendingConnection:
     src_attr: Attr
     dest_attr: Attr
     delay: TieredDuration
-    successor_delay: TieredDuration
+    src_group: SimGroup
+    dest_group: SimGroup
     is_pulled: bool
     will_trigger: bool
     initial_data: Any | None
