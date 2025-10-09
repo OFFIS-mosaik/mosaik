@@ -369,7 +369,7 @@ class World:
         Deprecated: Use `AsyncWorld.compile()` instead.
         This property will be removed in a future release.
         """
-        return self._async_world.compile()
+        return self._async_world.sims
 
     def _get_sim_runners(self):
         return self._async_world._get_sim_runners()

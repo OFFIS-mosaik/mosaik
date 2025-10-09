@@ -318,8 +318,8 @@ class AsyncWorld:
     # Setup-time storage (populated during start()/connect(),
     # used at run()).
     _proxies: Dict[SimId, Proxy]
-    _factories: Dict[SimId, "AsyncModelFactory"]
-    _pending_connections: List["_PendingConnection"]
+    _factories: Dict[SimId, AsyncModelFactory]
+    _pending_connections: List[_PendingConnection]
     _pending_async_requests: List[Tuple[SimId, SimId]]
     _pending_initial_events: Dict[SimId, int]
 
@@ -499,11 +499,7 @@ class AsyncWorld:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
-        if (
-            (self._sims_cache and sim_id in self._sims_cache)
-            or sim_id in self._proxies
-            or sim_id in self._factories
-        ):
+        if sim_id in self.sims:
             raise ScenarioError(
                 f"a simulator with sim_id '{sim_id}' has already been started"
             )
@@ -548,8 +544,6 @@ class AsyncWorld:
 
         if not dest_attr:
             dest_attr = src_attr
-
-        # Defer all SimRunner interactions until run(); only record now.
 
         problems: List[str] = []
 
@@ -738,8 +732,6 @@ class AsyncWorld:
         dest_sim: Any,
         connection: _PendingConnection,
     ) -> None:
-        """Link a single connection into the given sim-like objects."""
-
         delay = connection.delay
         transform = connection.transform
         prepare_placeholder = False
@@ -749,13 +741,10 @@ class AsyncWorld:
             ]
             prepare_placeholder = src_entity.is_persistent(connection.src_attr)
 
-        # Dependency waiting info
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-        # Output requests per source entity
         src_sim.output_request.setdefault(connection.src_eid, []).append(
             connection.src_attr
         )
-        # Push/pull wiring
         src_port = (connection.src_eid, connection.src_attr)
         dest_port = (connection.dest_eid, connection.dest_attr)
         if connection.is_pulled:
@@ -880,7 +869,6 @@ class AsyncWorld:
 
         return results
 
-    # --- Internal helpers to keep run() readable ---
     def compile(self) -> Dict[SimId, SimRunner]:
         if self._sims_cache is not None:
             return self._sims_cache
@@ -1015,7 +1003,7 @@ class AsyncWorld:
         # connectedness instead).
 
         # Build SimRunner instances and apply all pending setup.
-        self._sims_cache = self.compile()
+        self.compile()
 
         self._init_progress_bars(until, print_progress)
         import mosaik._debug as dbg  # always import, enable when requested
