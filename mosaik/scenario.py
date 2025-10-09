@@ -366,8 +366,13 @@ class World:
     @property
     def sims(self):
         """
-        Deprecated: Use `AsyncWorld.compile()` instead.
-        This property will be removed in a future release.
+        Returns the runtime simulators as a Dict with
+        :class:`~mosaik_api_v3.types.SimId` as keys to
+        :class:`~mosaik.simmanager.SimRunner` as values.
+
+        .. deprecated:: 3.6
+           Use :meth:`~mosaik.async_scenario.AsyncWorld.compile` to
+           retrieve the simulators without triggering this accessor.
         """
         return self._async_world.sims
 
