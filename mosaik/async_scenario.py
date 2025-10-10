@@ -711,6 +711,7 @@ class AsyncWorld:
             except ScenarioError as e:
                 errors.append(e)
 
+
         if async_requests:
             self.connect_async_requests(
                 src.model_mock._factory, dest.model_mock._factory
