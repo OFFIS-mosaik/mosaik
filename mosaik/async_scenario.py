@@ -778,11 +778,9 @@ class AsyncWorld:
                 )[connection.src_attr] = connection.initial_data
             else:
                 src_full = f"{src_sim.sid}.{src_entity.eid}"
-                dest_sim.persistent_inputs.setdefault(
-                    dest_entity.eid, {}
-                ).setdefault(connection.dest_attr, {})[
-                    src_full
-                ] = connection.initial_data
+                dest_sim.persistent_inputs.setdefault(dest_entity.eid, {}).setdefault(
+                    connection.dest_attr, {}
+                )[src_full] = connection.initial_data
         elif prepare_placeholder:
             src_full = f"{src_sim.sid}.{src_entity.eid}"
             dest_sim.persistent_inputs.setdefault(dest_entity.eid, {}).setdefault(
