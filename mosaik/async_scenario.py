@@ -590,10 +590,8 @@ class AsyncWorld:
         # Record pending connection for runtime wiring.
         self._pending_connections.append(
             _PendingConnection(
-                src_sid=src.sid,
-                dest_sid=dest.sid,
-                src_eid=src.eid,
-                dest_eid=dest.eid,
+                src_entity=src,
+                dest_entity=dest,
                 src_attr=src_attr,
                 dest_attr=dest_attr,
                 delay=delay,
@@ -737,18 +735,17 @@ class AsyncWorld:
         delay = connection.delay
         transform = connection.transform
         prepare_placeholder = False
+        src_entity = connection.src_entity
+        dest_entity = connection.dest_entity
         if not self.use_cache:
-            src_entity = self._factories[connection.src_sid].entities[
-                connection.src_eid
-            ]
             prepare_placeholder = src_entity.is_persistent(connection.src_attr)
 
         dest_sim.input_delays.setdefault(src_sim, MinimalDurations()).insert(delay)
-        src_sim.output_request.setdefault(connection.src_eid, []).append(
+        src_sim.output_request.setdefault(src_entity.eid, []).append(
             connection.src_attr
         )
-        src_port = (connection.src_eid, connection.src_attr)
-        dest_port = (connection.dest_eid, connection.dest_attr)
+        src_port = (src_entity.eid, connection.src_attr)
+        dest_port = (dest_entity.eid, connection.dest_attr)
         if connection.is_pulled:
             dest_sim.pulled_inputs.setdefault((src_sim, delay), []).append(
                 PullDescription(
@@ -777,18 +774,18 @@ class AsyncWorld:
                 # For pulled connections, seed cache at t = -shift
                 shift0 = connection.delay.tiers[0] if connection.delay.tiers else 0
                 src_sim.outputs.setdefault(-int(shift0), {}).setdefault(
-                    connection.src_eid, {}
+                    src_entity.eid, {}
                 )[connection.src_attr] = connection.initial_data
             else:
-                src_full = f"{src_sim.sid}.{connection.src_eid}"
+                src_full = f"{src_sim.sid}.{src_entity.eid}"
                 dest_sim.persistent_inputs.setdefault(
-                    connection.dest_eid, {}
+                    dest_entity.eid, {}
                 ).setdefault(connection.dest_attr, {})[
                     src_full
                 ] = connection.initial_data
         elif prepare_placeholder:
-            src_full = f"{src_sim.sid}.{connection.src_eid}"
-            dest_sim.persistent_inputs.setdefault(connection.dest_eid, {}).setdefault(
+            src_full = f"{src_sim.sid}.{src_entity.eid}"
+            dest_sim.persistent_inputs.setdefault(dest_entity.eid, {}).setdefault(
                 connection.dest_attr, {}
             ).setdefault(src_full, None)
 
@@ -898,8 +895,8 @@ class AsyncWorld:
 
         for pc in self._pending_connections:
             self._link_connection(
-                sims[pc.src_sid],
-                sims[pc.dest_sid],
+                sims[pc.src_entity.sid],
+                sims[pc.dest_entity.sid],
                 pc,
             )
 
@@ -1166,10 +1163,8 @@ class MinPath(TypedDict):
 
 @dataclass
 class _PendingConnection:
-    src_sid: SimId
-    dest_sid: SimId
-    src_eid: EntityId
-    dest_eid: EntityId
+    src_entity: "Entity"
+    dest_entity: "Entity"
     src_attr: Attr
     dest_attr: Attr
     delay: TieredDuration
