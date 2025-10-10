@@ -248,7 +248,7 @@ async def _rpc_set_data(channel: Channel, world: World):
     RPC.
     """
     await channel.send(["set_data", [{"src": {"X.2": {"val": 23}}}], {}])
-    compiled = world._async_world.compile()
+    compiled = world._async_world.compile(use_cache=True)
     world._async_world._sims_cache = compiled
     assert compiled["X"].inputs_from_set_data == {
         "2": {"val": {"src": 23}},

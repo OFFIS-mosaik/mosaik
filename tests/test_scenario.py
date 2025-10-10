@@ -106,6 +106,18 @@ def test_world_start(world: World):
     assert "ExampleSim-1" in compiled
 
 
+def test_compile_use_cache_kwarg(world: World):
+    world.start("ExampleSim")
+    compiled_first = world._async_world.compile()
+    compiled_second = world._async_world.compile()
+
+    assert compiled_first is not compiled_second
+    assert compiled_first["ExampleSim-0"] is not compiled_second["ExampleSim-0"]
+
+    cached = world._async_world.compile(use_cache=True)
+    assert cached is compiled_second
+
+
 def test_global_time_resolution():
     """
     Test if the simulator process has the correct time_resolution

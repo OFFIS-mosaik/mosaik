@@ -717,7 +717,7 @@ class AsyncWorld:
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return self.compile()
+        return self.compile(use_cache=True)
 
     def _get_sim_runners(self) -> Dict[SimId, SimRunner]:
         if self._sims_cache is None:
@@ -872,8 +872,11 @@ class AsyncWorld:
 
         return results
 
-    def compile(self) -> Dict[SimId, SimRunner]:
-        if self._sims_cache is not None:
+    def compile(self, *, use_cache: Optional[bool] = None) -> Dict[SimId, SimRunner]:
+        if use_cache is None:
+            use_cache = False
+
+        if use_cache and self._sims_cache is not None:
             return self._sims_cache
 
         sims: Dict[SimId, SimRunner] = {}
@@ -1006,7 +1009,7 @@ class AsyncWorld:
         # connectedness instead).
 
         # Build SimRunner instances and apply all pending setup.
-        self.compile()
+        self.compile(use_cache=True)
 
         self._init_progress_bars(until, print_progress)
         import mosaik._debug as dbg  # always import, enable when requested
