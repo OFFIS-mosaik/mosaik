@@ -867,10 +867,7 @@ class AsyncWorld:
 
         return results
 
-    def compile(self, *, use_cache: Optional[bool] = None) -> Dict[SimId, SimRunner]:
-        if use_cache is None:
-            use_cache = False
-
+    def compile(self, *, use_cache: bool = False) -> Dict[SimId, SimRunner]:
         if use_cache and self._sims_cache is not None:
             return self._sims_cache
 

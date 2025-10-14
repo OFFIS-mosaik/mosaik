@@ -39,6 +39,7 @@ from mosaik.async_scenario import (
     SimConfig,
 )
 from mosaik.in_or_out_set import InOrOutSet
+from mosaik.simmanager import SimRunner
 from mosaik.starters import Starter
 
 
@@ -371,13 +372,24 @@ class World:
         :class:`~mosaik.simmanager.SimRunner` as values.
 
         .. deprecated:: 3.6
-           Use :meth:`~mosaik.async_scenario.AsyncWorld.compile` to
-           retrieve the simulators without triggering this accessor.
+           Use :meth:`~mosaik.scenario.World.compile` to retrieve the
+           simulators without triggering this accessor.
         """
         return self._async_world.sims
 
     def _get_sim_runners(self):
         return self._async_world._get_sim_runners()
+
+    def compile(self, *, use_cache: bool = False) -> Dict[SimId, SimRunner]:
+        """
+        Return the mapping of simulator IDs to their
+        :class:`~mosaik.simmanager.SimRunner` instances.
+
+        This mirrors :meth:`mosaik.async_scenario.AsyncWorld.compile`
+        and allows synchronous scenarios to inspect the simulators
+        without relying on the deprecated :attr:`sims` accessor.
+        """
+        return self._async_world.compile(use_cache=use_cache)
 
     @property
     def time_resolution(self):
