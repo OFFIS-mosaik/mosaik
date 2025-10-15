@@ -241,7 +241,8 @@ def plot_execution_time(
     t_min = min([node[1]["t"] for node in all_nodes])
     t_max = max([node[1]["t_end"] for node in all_nodes])
 
-    for isid in world.sims.keys():
+    sims = world._get_sim_runners()
+    for isid in sims.keys():
         steps[isid] = []
         for node in all_nodes:
             if node[0][0] == isid:
@@ -250,12 +251,12 @@ def plot_execution_time(
                 )
 
     fig, ax = plt.subplots()
-    for i, isid in enumerate(world.sims.keys()):
+    for i, isid in enumerate(sims.keys()):
         ax.broken_barh(steps[isid], ((i + 1) * 10, 9), facecolors="tab:blue")
     ax.set_xlim(0, t_max - t_min)
-    ax.set_ylim(5, len(world.sims.keys()) * 10 + 15)
-    ax.set_yticks(list(range(15, len(world.sims.keys()) * 10 + 10, 10)))
-    ax.set_yticklabels(list(world.sims.keys()))
+    ax.set_ylim(5, len(sims.keys()) * 10 + 15)
+    ax.set_yticks(list(range(15, len(sims.keys()) * 10 + 10, 10)))
+    ax.set_yticklabels(list(sims.keys()))
     ax.set_xlabel("Simulation time [s]")
     ax.grid(True)
     if hdf5path:
@@ -304,7 +305,7 @@ def plot_dataflow_graph(
     # Recreate the df_graph for plotting. There might be additional
     # useful information to be extracted from the SimRunners.
     df_graph: nx.DiGraph[str] = nx.DiGraph()
-    for sim in world.sims.values():
+    for sim in world._get_sim_runners().values():
         df_graph.add_node(sim.sid)
         for pred, delay in sim.input_delays.items():
             df_graph.add_edge(
@@ -444,8 +445,9 @@ def plot_execution_graph(  # noqa: C901
 
     rcParams.update({"figure.autolayout": True})
 
+    sims = world._get_sim_runners()
     steps_st: Dict[SimId, List[float]] = {}
-    for sim_name in world.sims.keys():
+    for sim_name in sims.keys():
         steps_st[sim_name] = []
 
     for node in all_nodes:
@@ -458,8 +460,8 @@ def plot_execution_graph(  # noqa: C901
 
     # Draw the time steps from the simulators
     number_of_steps = 0
-    colormap = ["black" for _ in world.sims]
-    for i, sim_name in enumerate(world.sims):
+    colormap = ["black" for _ in sims]
+    for i, sim_name in enumerate(sims):
         # We need the number of steps in the simulation for correct
         # plotting with slices
         if number_of_steps < len(steps_st[sim_name]):
@@ -478,12 +480,12 @@ def plot_execution_graph(  # noqa: C901
         colormap[i] = dot[0].get_color()
 
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_yticks(list(range(len(world.sims.keys()))))
-    ax.set_yticklabels(list(world.sims.keys()))
+    ax.set_yticks(list(range(len(sims.keys()))))
+    ax.set_yticklabels(list(sims.keys()))
 
     all_edges = list(world.execution_graph.edges())
     y_pos: Dict[SimId, int] = {}
-    for sim_count, sim_name in enumerate(world.sims.keys()):
+    for sim_count, sim_name in enumerate(sims.keys()):
         y_pos[sim_name] = sim_count
 
     # The slice values can be negative, so we want to have the correct
@@ -726,7 +728,7 @@ def plot_dataflow(
     # Recreate the df_graph for plotting. There might be additional
     # useful information to be extracted from the SimRunners.
     df_graph: nx.DiGraph[str] = nx.DiGraph()
-    for sim in world.sims.values():
+    for sim in world._get_sim_runners().values():
         df_graph.add_node(sim.sid)
         for pred, delay in sim.input_delays.items():
             df_graph.add_edge(

@@ -317,12 +317,6 @@ class SimRunner:
 
         return {}
 
-    async def stop(self):
-        """
-        Stop the simulator behind the proxy.
-        """
-        await self._proxy.stop()
-
     def __repr__(self):
         return f"<{self.__class__.__name__} sid={self.sid!r}>"
 
@@ -337,7 +331,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
     @property
     def sim(self):
-        return self.world.sims[self.sid]
+        return self.world._get_sim_runners()[self.sid]
 
     async def get_progress(self) -> float:
         """
@@ -431,7 +425,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         # Try to get data from cache
         for full_id, attr_names in attrs.items():
             sid, eid = full_id.split(FULL_ID_SEP, 1)
-            src_sim = self.world.sims[sid]
+            src_sim = self.world._get_sim_runners()[sid]
             # Check if async_requests are enabled.
             self._assert_async_requests(src_sim, self.sim)
             if self.world.use_cache:
@@ -448,7 +442,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
         # Query simulator for data not in the cache
         for sid, attrs in missing.items():
-            dep = self.world.sims[sid]
+            dep = self.world._get_sim_runners()[sid]
             dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
@@ -474,7 +468,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         for src_full_id, dest in data.items():
             for full_id, attributes in dest.items():
                 sid, eid = full_id.split(FULL_ID_SEP, 1)
-                src_sim = self.world.sims[sid]
+                src_sim = self.world._get_sim_runners()[sid]
                 self._assert_async_requests(src_sim, self.sim)
                 inputs = src_sim.inputs_from_set_data.setdefault(eid, {})
                 for attr, val in attributes.items():
@@ -484,7 +478,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         """
         Schedules an event/step at simulation time *event_time*.
         """
-        sim = self.world.sims[self.sid]
+        sim = self.world._get_sim_runners()[self.sid]
         if not self.world.rt_factor:
             raise SimulationError(
                 f"Simulator '{self.sid}' tried to set an event in non-real-time mode."

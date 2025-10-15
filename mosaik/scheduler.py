@@ -50,7 +50,7 @@ async def run(
     world.rt_factor = rt_factor
 
     setup_done_events: List[asyncio.Task[None]] = []
-    for sim in world.sims.values():
+    for sim in world._get_sim_runners().values():
         sim.tqdm.set_postfix_str("setup")
         # Send a setup_done event to all simulators
         setup_done_events.append(asyncio.create_task(sim.setup_done()))
@@ -59,9 +59,9 @@ async def run(
     await asyncio.gather(*setup_done_events)
 
     # Start simulator processes
-    start_barrier = Barrier(len(world.sims))
+    start_barrier = Barrier(len(world._get_sim_runners()))
     processes: List[asyncio.Task[None]] = []
-    for sim in world.sims.values():
+    for sim in world._get_sim_runners().values():
         process = asyncio.create_task(
             sim_process(
                 world, sim, until, rt_factor, rt_strict, lazy_stepping, start_barrier
@@ -127,11 +127,12 @@ async def sim_process(
             # (At least only to those that could potentially be
             # triggered by this step; maybe there's even a more clever
             # way.)
-            for isim in world.sims.values():
+            for isim in world._get_sim_runners().values():
                 advance_progress(isim, world)
 
-            world.sim_progress = get_progress(world.sims, until)
-            world.tqdm.update(get_avg_progress(world.sims, until) - world.tqdm.n)
+            sims = world._get_sim_runners()
+            world.sim_progress = get_progress(sims, until)
+            world.tqdm.update(get_avg_progress(sims, until) - world.tqdm.n)
 
             if world.use_cache:
                 prune_dataflow_cache(world)
@@ -523,8 +524,8 @@ def prune_dataflow_cache(world: AsyncWorld):
     """
     if not world.use_cache:
         return
-    min_cache_time = min(s.last_step.time for s in world.sims.values())
-    for sim in world.sims.values():
+    min_cache_time = min(s.last_step.time for s in world._get_sim_runners().values())
+    for sim in world._get_sim_runners().values():
         if sim.outputs:
             sim.outputs = {
                 time: cache
