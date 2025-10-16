@@ -9,7 +9,6 @@ dependencies = [
     "tqdm>=4.66.4",
     "typing-extensions>=4.11.0",
     "plotly>=5.19.0",     
-    "numpy>=1.23.0",
 ]
 license = { file = "LICENSE.txt" }
 requires-python = ">= 3.8"
