@@ -63,6 +63,7 @@ from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationE
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
 from mosaik.internal_util import doc_link
+from mosaik.meta_validation import validate_meta
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import BaseProxy, Proxy
 from mosaik.simmanager import (
@@ -437,6 +438,7 @@ class AsyncWorld:
             start_timeout=self.config["start_timeout"],
             explicit_version_str=api_version,
         )
+        validate_meta(proxy.meta, sim_id)
         model_factory = AsyncModelFactory(self, self.current_group, sim_id, proxy)
         self._proxies[sim_id] = proxy
         self._factories[sim_id] = model_factory
