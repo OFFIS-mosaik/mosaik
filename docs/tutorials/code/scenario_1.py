@@ -42,7 +42,7 @@ with mosaik.World(SIM_CONFIG) as world:
         if entity.type == "Bus" and entity.extra_info["nominal voltage [kV]"] == 0.4
     ]
     # end
-    ext_grid = [entity for entity in grid.children if entity.type == "ExternalGrid"][0]
+    ext_grid = grid.children_dict["ExternalGrid-0"]
     # end
 
     output = outputsim.Dict()

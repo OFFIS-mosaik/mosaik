@@ -208,7 +208,9 @@ We can filter for the buses we want by looking for buses with a nominal voltage 
    :end-before: # end
 
 We also want to read off the real and reactive power values that result at the connection to the higher grid levels.
-This connection is represented by the *ExternalGrid* entity which we get like this:
+This connection is represented by the *ExternalGrid* entity.
+We could filter the list of children for entities of this type and then choose the first (and in this case, only) one.
+However, I happen to know that that entity's ID is *ExternalGrid-0*, so we can use the ``children_dict`` field to access it directly:
 
 .. literalinclude:: code/scenario_1.py
    :start-at: ext_grid =

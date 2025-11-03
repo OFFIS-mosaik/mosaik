@@ -345,7 +345,7 @@ When you are implementing an actual simulator, there are a couple of additional 
 
 - To learn more about the distinction between measurements and events in mosaik, see :doc:`/explanations/measurements-and-events`.
 - For efficient simulators with trigger inputs (i.e., events as inputs), you often need to know how far you can advance without potentially getting interrupted. See :doc:`/how-tos/max-advance` for more on this.
-- If your simulator communicates with other simulators at a high frequency (either to perform a joint convergence algorithm, or because it is implementing a control algorith that needs to communicate with other units), you might want to learn about same-time loops and :doc:`/explanations/tiered-time`.
+- If your simulator communicates with other simulators at a high frequency (either to perform a joint convergence algorithm, or because it is implementing a control algorithm that needs to communicate with other units), you might want to learn about same-time loops and :doc:`/explanations/tiered-time`.
 - This tutorial uses mosaik's simulator API for Python.
   To learn more about which other simulator APIs exist, and for the necessary information to implement the simulator API for new programming languages, see :doc:`/mosaik-api/index`.
 
