@@ -1576,7 +1576,15 @@ class Entity(object):
     mosaik.
     """
 
-    __slots__ = ["sid", "eid", "sim_name", "model_mock", "children", "extra_info"]
+    __slots__ = [
+        "sid",
+        "eid",
+        "sim_name",
+        "model_mock",
+        "children",
+        "children_dict",
+        "extra_info",
+    ]
     sid: SimId
     """The ID of the simulator this entity belongs to."""
     eid: EntityId
@@ -1587,6 +1595,10 @@ class Entity(object):
     """The entity's type (or class)."""
     children: List[Entity]
     """An entity set containing subordinate entities."""
+    children_dict: Dict[EntityId, Entity]
+    """A different view on this entity's `children`, mapping each
+    child's entity ID to that child.
+    """
     extra_info: Any
 
     def __init__(
@@ -1603,6 +1615,7 @@ class Entity(object):
         self.sim_name = sim_name
         self.model_mock = model_mock
         self.children = list(children) if children is not None else []
+        self.children_dict = {child.eid: child for child in self.children}
         self.extra_info = extra_info
 
     @property
