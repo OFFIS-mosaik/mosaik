@@ -564,6 +564,15 @@ class AsyncWorld:
                 f"{dest.full_id}.{dest_attr} where it is not needed"
             )
 
+        if dest.triggered_by(dest_attr) and time_shifted is True:
+            warnings.warn(
+                f"When connecting {src.full_id}.{src_attr} to the triggered attribute "
+                f"{dest.full_id}.{dest_attr}, setting time_shifted=True "
+                "will result in an implicit 1-step shift which might result in steps "
+                "at unexpected times. Set time_shifted=1 (or to your simulation's "
+                "usual step size) explicitly if this is what you want."
+            )
+
         if problems:
             raise ScenarioError(
                 f"There are problems connecting {src.full_id}.{src_attr} to "
