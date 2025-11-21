@@ -882,8 +882,8 @@ class AsyncWorld:
             )
             if self.use_cache:
                 sim_runner.outputs = {}
-            # Remember the SimGroup so visualization helpers can draw the
-            # corresponding overlays (e.g. Plotly dataflow graph).
+            # Remember the SimGroup so visualization helpers can draw
+            # the corresponding overlays (e.g. Plotly dataflow graph).
             sim_runner.group = factory._group
             sims[sid] = sim_runner
 
