@@ -23,10 +23,7 @@ from typing import (
     Tuple,
 )
 
-import networkx as nx
-import plotly.graph_objects as go
 from mosaik_api_v3 import Attr, SimId
-from plotly.colors import hex_to_rgb, qualitative
 from typing_extensions import Literal
 
 from mosaik.async_scenario import AsyncWorld
@@ -36,6 +33,8 @@ from mosaik.tiered_time import TieredTime
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+    import networkx as nx
+    import plotly.graph_objects as go
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"
@@ -441,6 +440,8 @@ def quadratic_bezier(
 
 
 def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph:
+    import networkx as nx
+
     graph = nx.DiGraph()
     for sim in world.sims.values():
         graph.add_node(sim.sid)
@@ -457,6 +458,8 @@ def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph:
 def _edge_traces(
     graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]
 ) -> Tuple[List[go.Scatter], List[dict[str, Any]]]:
+    import plotly.graph_objects as go
+
     traces: List[go.Scatter] = []
     annotations: List[dict[str, Any]] = []
     for src, dst, data in graph.edges(data=True):
@@ -512,6 +515,8 @@ def _edge_traces(
 
 
 def _node_trace(pos: Dict[str, Tuple[float, float]]) -> go.Scatter:
+    import plotly.graph_objects as go
+
     node_x: List[float] = []
     node_y: List[float] = []
     node_labels: List[str] = []
@@ -556,6 +561,8 @@ def _collect_group_infos(world: World | AsyncWorld) -> Dict[int, Dict[str, Any]]
 
 
 def _rgb_components(color: str) -> Tuple[int, int, int]:
+    from plotly.colors import hex_to_rgb
+
     if color.startswith("#"):
         r, g, b = hex_to_rgb(color)
         return r, g, b
@@ -602,6 +609,8 @@ def _group_bounds(
 def _group_shapes(
     world: World | AsyncWorld, pos: Dict[str, Tuple[float, float]]
 ) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
+    from plotly.colors import qualitative
+
     group_infos = _collect_group_infos(world)
     color_cycle = cycle(qualitative.Plotly)
     shapes: List[dict[str, Any]] = []
@@ -682,6 +691,9 @@ def plot_dataflow_graph_plotly(
     max_layout_tries: int = 25,
     accept_incorrectly_placed_simulators: bool = False,
 ) -> go.Figure:
+    import networkx as nx
+    import plotly.graph_objects as go
+
     """Return a Plotly figure of the dataflow graph with group overlays.
 
     The layout is retried until no simulator is placed inside an

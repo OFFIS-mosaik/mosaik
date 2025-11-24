@@ -879,12 +879,10 @@ class AsyncWorld:
                 proxy,
                 check_outputs=factory.validate_output_dict,
                 depth=factory._group.depth,
+                group=factory._group,
             )
             if self.use_cache:
                 sim_runner.outputs = {}
-            # Remember the SimGroup so visualization helpers can draw
-            # the corresponding overlays (e.g. Plotly dataflow graph).
-            sim_runner.group = factory._group
             sims[sid] = sim_runner
 
         for sid, time in self._pending_initial_events.items():
