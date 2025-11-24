@@ -91,34 +91,50 @@ Plotly dataflow graph with groups
 If you want to highlight simulator groups directly inside the dataflow
 graph, use :func:`mosaik.util.plot_dataflow_graph_plotly`. The helper
 uses `Plotly <https://plotly.com/python/>`_, so install it via ``pip
-install plotly`` before running the example below. The script
-``docs/tutorials/code/dataflow_groups.py`` starts a world with nested
-groups and saves the interactive graph::
+install plotly`` before running the example below. This self-contained
+scenario only uses the built-in basic simulators and can be copied into
+your own project::
 
-    cd docs/tutorials/code
-    python dataflow_groups.py
+    import mosaik
+    import mosaik.util
 
-Inside the script the simulators are grouped via context managers::
+    SIM_CONFIG = {
+        "Input": {"python": "mosaik.basic_simulators.input_simulator:InputSimulator"},
+        "Output": {"python": "mosaik.basic_simulators.output_simulator:OutputSimulator"},
+    }
 
-    with world.group("North Campus"):
-        with world.group("Solar Farm"):
-            north_solar = north_solar_sim.ExampleModel(init_val=2)
-        north_gen = north_gen_sim.ExampleModel(init_val=3)
+    with mosaik.World(SIM_CONFIG, debug=False) as world:
+        with world.group("North Campus"):
+            with world.group("Solar Farm"):
+                north_solar = world.start("Input", sim_id="NorthSolar").Constant(
+                    constant=2
+                )
+            north_gen = world.start("Input", sim_id="NorthGen").Constant(constant=3)
+            north_grid = world.start("Output", sim_id="NorthGrid").Dict()
 
-and the connections use explicit ``(src_attr, dest_attr)`` tuples::
+        with world.group("South Campus"):
+            south_gen = world.start("Input", sim_id="SouthGen").Constant(constant=5)
 
-    world.connect(
-        north_gen,
-        north_grid,
-        ("val", "delta"),
-        weak=True,
-        initial_data={"val": 0},  # weak links need an initial value
-    )
+        monitor = world.start("Output", sim_id="Monitor").Dict()
 
-and the Plotly figure is created afterwards::
+        world.connect(north_solar, north_gen, ("value", "value"))
+        world.connect(
+            north_gen,
+            north_grid,
+            ("value", "value"),
+            weak=True,
+            initial_data={"value": 0},  # weak links need an initial value
+        )
+        world.connect(north_grid, monitor, ("value", "value"))
+        world.connect(south_gen, monitor, ("value", "value"))
 
-    fig = mosaik.util.plot_dataflow_graph_plotly(world, show_plot=False)
-    fig.write_html("dataflow_groups.html", include_plotlyjs="cdn")
+        world.run(until=5)
+
+        fig = mosaik.util.plot_dataflow_graph_plotly(world, show_plot=False)
+        fig.write_html("dataflow_groups.html", include_plotlyjs="cdn")
+
+You can also browse the same example in the repository:
+https://gitlab.com/mosaik/mosaik/-/blob/main/docs/tutorials/code/dataflow_groups.py
 
 When you open the generated ``dataflow_groups.html`` you will see the
 group overlays in the background (for example ``North Campus`` and
