@@ -36,7 +36,7 @@ dev = [
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
     "pynput==1.7.6",
-    {include-group = "plotting"}
+    {include-group = "plotting"},
 ]
 docs = [
     "sphinx>=8.0.0; python_version>='3.10'",
@@ -48,8 +48,7 @@ docs = [
 plotting = [
     "matplotlib>=3.8.2;python_version>='3.10'", 
     "numpy>=1.24,<2",  
-    "plotly>=5.19.0",     
-
+    "plotly>=5.19.0",
 ]
 tutorial = [
     "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",

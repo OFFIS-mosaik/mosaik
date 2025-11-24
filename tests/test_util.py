@@ -4,6 +4,7 @@ from collections import OrderedDict
 from types import SimpleNamespace
 
 import pytest
+import networkx as nx
 
 from mosaik import util
 from mosaik.async_scenario import SimGroup
@@ -202,7 +203,7 @@ def test_plot_dataflow_graph_plotly_retries_on_overlap(monkeypatch):
         call_count += 1
         return layouts[min(call_count - 1, len(layouts) - 1)]
 
-    monkeypatch.setattr(util.nx, "spring_layout", fake_layout)
+    monkeypatch.setattr("networkx.spring_layout", fake_layout)
 
     fig = util.plot_dataflow_graph_plotly(world, show_plot=False, max_layout_tries=3)
 
