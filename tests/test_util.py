@@ -204,9 +204,7 @@ def test_plot_dataflow_graph_plotly_retries_on_overlap(monkeypatch):
 
     monkeypatch.setattr(util.nx, "spring_layout", fake_layout)
 
-    fig = util.plot_dataflow_graph_plotly(
-        world, show_plot=False, max_layout_tries=3
-    )
+    fig = util.plot_dataflow_graph_plotly(world, show_plot=False, max_layout_tries=3)
 
     assert call_count == 2  # one retry after overlap detection
     node_trace = fig.data[-1]
