@@ -31,10 +31,10 @@ from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
-    from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
     import networkx as nx
     import plotly.graph_objects as go
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 STANDARD_DPI = 600
 STANDARD_FORMAT = "png"

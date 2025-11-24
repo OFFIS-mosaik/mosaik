@@ -54,8 +54,7 @@ from mosaik.proxies import Proxy
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import AsyncWorld
-    from mosaik.async_scenario import SimGroup
+    from mosaik.async_scenario import AsyncWorld, SimGroup
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
