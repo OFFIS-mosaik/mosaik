@@ -4,7 +4,6 @@ from collections import OrderedDict
 from types import SimpleNamespace
 
 import pytest
-import networkx as nx
 
 from mosaik import util
 from mosaik.async_scenario import SimGroup
