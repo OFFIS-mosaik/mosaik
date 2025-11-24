@@ -2,11 +2,11 @@
 Plotting graphs
 ===============
 
-Sometimes it is useful to visualize your scenario to understand the behavior of mosaik. You can use the plotting functions in `utils` for different graphs. The parameters are always the same: the world object and the name of the folder where the figures shall be stored in.
+Sometimes it is useful to visualize your scenario to understand the behavior of mosaik. The Matplotlib-based plotting helpers in ``mosaik.util`` take the world object and a ``folder`` argument that controls where image files are written.
 
 Optional parameters are `slice` (see below) and `show_plot` (default: True). With `show_plot` you can control if a window is opened to show the plot in an interactive window. If set to false, the plot is stored directly. If set to true, you can interact with the plot and the chosen view in stored after you close the window.
 
-There are four different plots available:
+There are four different plots available (all Matplotlib-based):
 
 .. code-block:: Python
 
@@ -17,7 +17,7 @@ There are four different plots available:
     mosaik.util.plot_execution_time(world, folder='util_figures')
     mosaik.util.plot_execution_time_per_simulator(world, folder='util_figures')
 
-You need to install `matplotlib` in your environment before using these functions.
+You need to install `matplotlib` in your environment before using these functions. The Plotly-based helper described below returns a figure instead of writing image files directly; save it yourself via ``fig.write_html(...)``.
 
 Examples
 ========

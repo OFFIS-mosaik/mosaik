@@ -440,7 +440,7 @@ def quadratic_bezier(
     return curve_x, curve_y
 
 
-def _build_dataflow_graph(world) -> nx.DiGraph:
+def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph:
     graph = nx.DiGraph()
     for sim in world.sims.values():
         graph.add_node(sim.sid)
@@ -454,8 +454,10 @@ def _build_dataflow_graph(world) -> nx.DiGraph:
     return graph
 
 
-def _edge_traces(graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]):
-    traces = []
+def _edge_traces(
+    graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]
+) -> Tuple[List[go.Scatter], List[dict[str, Any]]]:
+    traces: List[go.Scatter] = []
     annotations: List[dict[str, Any]] = []
     for src, dst, data in graph.edges(data=True):
         x0, y0 = pos[src]
@@ -509,7 +511,7 @@ def _edge_traces(graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]):
     return traces, annotations
 
 
-def _node_trace(pos: Dict[str, Tuple[float, float]]):
+def _node_trace(pos: Dict[str, Tuple[float, float]]) -> go.Scatter:
     node_x: List[float] = []
     node_y: List[float] = []
     node_labels: List[str] = []
@@ -532,7 +534,7 @@ def _node_trace(pos: Dict[str, Tuple[float, float]]):
     )
 
 
-def _collect_group_infos(world) -> Dict[int, Dict[str, Any]]:
+def _collect_group_infos(world: World | AsyncWorld) -> Dict[int, Dict[str, Any]]:
     infos: Dict[int, Dict[str, Any]] = {}
     order_counter = count()
     for sim in world.sims.values():
@@ -556,7 +558,7 @@ def _collect_group_infos(world) -> Dict[int, Dict[str, Any]]:
 def _rgb_components(color: str) -> Tuple[int, int, int]:
     if color.startswith("#"):
         r, g, b = hex_to_rgb(color)
-        return int(r), int(g), int(b)
+        return r, g, b
     if color.startswith("rgb"):
         comps = color[color.find("(") + 1 : color.find(")")]
         r, g, b = (int(part.strip()) for part in comps.split(","))
@@ -579,7 +581,7 @@ def _group_label(group_info: Dict[str, Any]) -> str:
 
 def _group_bounds(
     info: Dict[str, Any], pos: Dict[str, Tuple[float, float]], *, margin: float = 0.2
-):
+) -> Tuple[float, float, float, float] | None:
     coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
     if not coords:
         return None
@@ -597,7 +599,9 @@ def _group_bounds(
     return min_x, max_x, min_y, max_y
 
 
-def _group_shapes(world, pos: Dict[str, Tuple[float, float]]):
+def _group_shapes(
+    world: World | AsyncWorld, pos: Dict[str, Tuple[float, float]]
+) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
     group_infos = _collect_group_infos(world)
     color_cycle = cycle(qualitative.Plotly)
     shapes: List[dict[str, Any]] = []
@@ -649,9 +653,43 @@ def _group_shapes(world, pos: Dict[str, Tuple[float, float]]):
     return shapes, labels
 
 
-def plot_dataflow_graph_plotly(world, show_plot: bool = False):
-    """Return a Plotly figure of the dataflow graph with group
-    overlays"""
+def _find_incorrect_group_overlaps(
+    pos: Dict[str, Tuple[float, float]],
+    group_infos: Dict[int, Dict[str, Any]],
+) -> Set[Tuple[str, str]]:
+    """Return nodes that would appear inside unrelated groups."""
+
+    incorrect: Set[Tuple[str, str]] = set()
+    for info in group_infos.values():
+        if info["parent"] is None:
+            continue
+        bounds = _group_bounds(info, pos)
+        if bounds is None:
+            continue
+        min_x, max_x, min_y, max_y = bounds
+        for node_id, (x, y) in pos.items():
+            if node_id in info["nodes"]:
+                continue
+            if min_x <= x <= max_x and min_y <= y <= max_y:
+                incorrect.add((node_id, _group_label(info)))
+    return incorrect
+
+
+def plot_dataflow_graph_plotly(
+    world: World | AsyncWorld,
+    show_plot: bool = False,
+    *,
+    max_layout_tries: int = 25,
+    accept_incorrectly_placed_simulators: bool = False,
+) -> go.Figure:
+    """Return a Plotly figure of the dataflow graph with group overlays.
+
+    The layout is retried until no simulator is placed inside an
+    unrelated group. Set ``accept_incorrectly_placed_simulators``
+    to ``True`` to keep the last attempt even if misplacements
+    remain after ``max_layout_tries``.
+    """
+
     graph = _build_dataflow_graph(world)
     if not graph.nodes:
         fig = go.Figure()
@@ -659,7 +697,28 @@ def plot_dataflow_graph_plotly(world, show_plot: bool = False):
             fig.show()
         return fig
 
-    pos = nx.spring_layout(graph)
+    max_tries = max(1, max_layout_tries)
+    group_infos = _collect_group_infos(world)
+    rng = random.Random()
+    pos: Dict[str, Tuple[float, float]] = {}
+    incorrect_overlaps: Set[Tuple[str, str]] = set()
+
+    for attempt in range(max_tries):
+        pos = nx.spring_layout(graph, seed=rng.randint(0, 1_000_000))
+        incorrect_overlaps = _find_incorrect_group_overlaps(pos, group_infos)
+        if not incorrect_overlaps:
+            break
+
+    if incorrect_overlaps and not accept_incorrectly_placed_simulators:
+        misplaced = ", ".join(
+            sorted(f"{node} in {group}" for node, group in incorrect_overlaps)
+        )
+        raise RuntimeError(
+            "Could not place simulators outside unrelated groups after "
+            f"{max_tries} attempts. Misplaced nodes: {misplaced}. "
+            "Pass accept_incorrectly_placed_simulators=True to keep the last layout."
+        )
+
     edge_traces, edge_annotations = _edge_traces(graph, pos)
     node_trace = _node_trace(pos)
     group_shapes, group_labels = _group_shapes(world, pos)

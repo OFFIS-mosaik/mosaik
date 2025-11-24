@@ -159,3 +159,56 @@ def test_plot_dataflow_graph_plotly_groups():
     }
     assert "GroupA" in label_texts
     assert "GroupA / GroupB" in label_texts
+
+
+def test_plot_dataflow_graph_plotly_retries_on_overlap(monkeypatch):
+    main_group = SimGroup(parent=None, name="main")
+    group_a = SimGroup(parent=main_group, name="GroupA")
+
+    sim_a1 = SimStub("A1", group_a)
+    sim_a2 = SimStub("A2", group_a)
+    intruder = SimStub("Intruder", main_group)
+
+    sim_a2.input_delays[sim_a1] = DelayStub()
+    intruder.input_delays[sim_a2] = DelayStub()
+
+    world = SimpleNamespace(
+        sims=OrderedDict(
+            (
+                (sim_a1.sid, sim_a1),
+                (sim_a2.sid, sim_a2),
+                (intruder.sid, intruder),
+            )
+        )
+    )
+
+    layouts = [
+        {
+            sim_a1.sid: (0.0, 0.0),
+            sim_a2.sid: (1.0, 0.0),
+            # Inside GroupA's rectangle -> should force retry
+            intruder.sid: (0.5, 0.05),
+        },
+        {
+            sim_a1.sid: (-1.0, 0.0),
+            sim_a2.sid: (-1.0, 1.0),
+            intruder.sid: (1.5, 0.0),
+        },
+    ]
+    call_count = 0
+
+    def fake_layout(graph, *, seed=None):
+        nonlocal call_count
+        call_count += 1
+        return layouts[min(call_count - 1, len(layouts) - 1)]
+
+    monkeypatch.setattr(util.nx, "spring_layout", fake_layout)
+
+    fig = util.plot_dataflow_graph_plotly(
+        world, show_plot=False, max_layout_tries=3
+    )
+
+    assert call_count == 2  # one retry after overlap detection
+    node_trace = fig.data[-1]
+    assert list(node_trace.x) == [-1.0, -1.0, 1.5]
+    assert list(node_trace.y) == [0.0, 1.0, 0.0]
