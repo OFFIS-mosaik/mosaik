@@ -1,4 +1,5 @@
-"""Scenario that highlights group overlays in the Plotly dataflow graph."""
+"""Scenario that highlights group overlays
+in the Plotly dataflow graph."""
 
 import mosaik
 import mosaik.util
