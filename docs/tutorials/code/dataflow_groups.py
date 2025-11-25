@@ -1,53 +1,40 @@
-"""Simple scenario that highlights group overlays in the Plotly
-dataflow graph."""
+"""Scenario that highlights group overlays in the Plotly dataflow graph."""
 
 import mosaik
 import mosaik.util
 
 SIM_CONFIG = {
-    "ExampleSim": {
-        "python": "simulator_mosaik:ExampleSim",
-    },
-    "ExampleSim2": {
-        "python": "simulator_mosaik:ExampleSim",
-    },
-    "Collector": {
-        "cmd": "%(python)s collector.py %(addr)s",
-    },
+    "Input": {"python": "mosaik.basic_simulators.input_simulator:InputSimulator"},
+    "Output": {"python": "mosaik.basic_simulators.output_simulator:OutputSimulator"},
 }
 
 END = 5
 
 
-def main():
+def main() -> None:
     with mosaik.World(SIM_CONFIG, debug=False) as world:
         with world.group("North Campus"):
-            north_gen_sim = world.start("ExampleSim", sim_id="NorthGen")
-            north_grid_sim = world.start("ExampleSim2", sim_id="NorthGrid")
             with world.group("Solar Farm"):
-                north_solar_sim = world.start("ExampleSim", sim_id="NorthSolar")
-
-            north_gen = north_gen_sim.ExampleModel(init_val=3)
-            north_grid = north_grid_sim.ExampleModel(init_val=1)
-            north_solar = north_solar_sim.ExampleModel(init_val=2)
+                north_solar = world.start("Input", sim_id="NorthSolar").Constant(
+                    constant=2
+                )
+            north_gen = world.start("Input", sim_id="NorthGen").Constant(constant=3)
+            north_grid = world.start("Output", sim_id="NorthGrid").Dict()
 
         with world.group("South Campus"):
-            south_gen_sim = world.start("ExampleSim", sim_id="SouthGen")
-            south_gen = south_gen_sim.ExampleModel(init_val=5)
+            south_gen = world.start("Input", sim_id="SouthGen").Constant(constant=5)
 
-        collector = world.start("Collector")
-        monitor = collector.Monitor()
+        monitor = world.start("Output", sim_id="Monitor").Dict()
 
-        world.connect(north_solar, north_gen, ("val", "delta"))
+        world.connect(north_solar, north_grid, ("value", "value"))
         world.connect(
             north_gen,
             north_grid,
-            ("val", "delta"),
+            ("value", "value"),
             weak=True,
-            initial_data={"val": 0},
         )
-        world.connect(north_grid, monitor, ("val", "delta"))
-        world.connect(south_gen, monitor, ("val", "delta"))
+        world.connect(north_gen, monitor, ("value", "value"))
+        world.connect(south_gen, monitor, ("value", "value"))
 
         world.run(until=END)
 

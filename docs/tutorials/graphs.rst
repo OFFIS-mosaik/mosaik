@@ -91,56 +91,23 @@ Plotly dataflow graph with groups
 If you want to highlight simulator groups directly inside the dataflow
 graph, use :func:`mosaik.util.plot_dataflow_graph_plotly`. The helper
 uses `Plotly <https://plotly.com/python/>`_, so install it via ``pip
-install plotly`` before running the example below. This self-contained
-scenario only uses the built-in basic simulators and can be copied into
-your own project::
+install plotly`` before running the example below:
 
-    import mosaik
-    import mosaik.util
+.. literalinclude:: code/dataflow_groups.py
+   :language: python
+   :linenos:
 
-    SIM_CONFIG = {
-        "Input": {"python": "mosaik.basic_simulators.input_simulator:InputSimulator"},
-        "Output": {"python": "mosaik.basic_simulators.output_simulator:OutputSimulator"},
-    }
-
-    with mosaik.World(SIM_CONFIG, debug=False) as world:
-        with world.group("North Campus"):
-            with world.group("Solar Farm"):
-                north_solar = world.start("Input", sim_id="NorthSolar").Constant(
-                    constant=2
-                )
-            north_gen = world.start("Input", sim_id="NorthGen").Constant(constant=3)
-            north_grid = world.start("Output", sim_id="NorthGrid").Dict()
-
-        with world.group("South Campus"):
-            south_gen = world.start("Input", sim_id="SouthGen").Constant(constant=5)
-
-        monitor = world.start("Output", sim_id="Monitor").Dict()
-
-        world.connect(north_solar, north_gen, ("value", "value"))
-        world.connect(
-            north_gen,
-            north_grid,
-            ("value", "value"),
-            weak=True,
-            initial_data={"value": 0},  # weak links need an initial value
-        )
-        world.connect(north_grid, monitor, ("value", "value"))
-        world.connect(south_gen, monitor, ("value", "value"))
-
-        world.run(until=5)
-
-        fig = mosaik.util.plot_dataflow_graph_plotly(world, show_plot=False)
-        fig.write_html("dataflow_groups.html", include_plotlyjs="cdn")
-
-You can also browse the same example in the repository:
-https://gitlab.com/mosaik/mosaik/-/blob/main/docs/tutorials/code/dataflow_groups.py
-
-When you open the generated ``dataflow_groups.html`` you will see the
-group overlays in the background (for example ``North Campus`` and
+When you open the generated ``dataflow_groups.html`` after running the code above,
+you should see a graph similar to the one below.
+It shows the group overlays in the background (for example ``North Campus`` and
 ``North Campus / Solar Farm``) together with the weak dataflow edges.
 Set ``show_plot=True`` if you want Plotly to immediately open the figure
 while the script is running.
+
+.. figure:: /_static/graphs/group_dataflow_graph_example.png
+   :width: 100%
+   :align: center
+   :alt: Group Dataflow Graph
 
 Execution graph
 ===============
