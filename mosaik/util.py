@@ -23,6 +23,7 @@ from typing import (
     Tuple,
 )
 
+from loguru import logger
 from mosaik_api_v3 import Attr, SimId
 from typing_extensions import Literal
 
@@ -439,10 +440,10 @@ def quadratic_bezier(
     return curve_x, curve_y
 
 
-def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph:
+def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph[str]:
     import networkx as nx
 
-    graph = nx.DiGraph()
+    graph: nx.DiGraph[str] = nx.DiGraph()
     for sim in world.sims.values():
         graph.add_node(sim.sid)
         for pred, delay in sim.input_delays.items():
@@ -456,7 +457,7 @@ def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph:
 
 
 def _edge_traces(
-    graph: nx.DiGraph, pos: Dict[str, Tuple[float, float]]
+    graph: nx.DiGraph[str], pos: Dict[str, Tuple[float, float]]
 ) -> Tuple[List[go.Scatter], List[dict[str, Any]]]:
     import plotly.graph_objects as go
 
@@ -475,7 +476,7 @@ def _edge_traces(
 
         edge_color = "red" if data.get("time_shifted") else "gray"
         line_style = "dot" if data.get("weak") else "solid"
-        labels = []
+        labels: List[str] = []
         if data.get("time_shifted"):
             labels.append("Time-Shifted")
         if data.get("weak"):
@@ -570,8 +571,7 @@ def _rgb_components(color: str) -> Tuple[int, int, int]:
         comps = color[color.find("(") + 1 : color.find(")")]
         r, g, b = (int(part.strip()) for part in comps.split(","))
         return r, g, b
-    fallback = hex_to_rgb("#1f77b4")
-    return int(fallback[0]), int(fallback[1]), int(fallback[2])
+    return hex_to_rgb("#1f77b4")  # Fallback color
 
 
 def _group_label(group_info: Dict[str, Any]) -> str:
@@ -597,12 +597,6 @@ def _group_bounds(
     max_x = max(xs) + margin
     min_y = min(ys) - margin
     max_y = max(ys) + margin
-    if min_x == max_x:
-        min_x -= margin
-        max_x += margin
-    if min_y == max_y:
-        min_y -= margin
-        max_y += margin
     return min_x, max_x, min_y, max_y
 
 
@@ -622,6 +616,7 @@ def _group_shapes(
             continue
         bounds = _group_bounds(info, pos)
         if bounds is None:
+            logger.info(f"Skipping plotting group {info['group'].name} as it is empty.")
             continue
         min_x, max_x, min_y, max_y = bounds
         color = next(color_cycle)
@@ -691,9 +686,6 @@ def plot_dataflow_graph_plotly(
     max_layout_tries: int = 25,
     accept_incorrectly_placed_simulators: bool = False,
 ) -> go.Figure:
-    import networkx as nx
-    import plotly.graph_objects as go
-
     """Return a Plotly figure of the dataflow graph with group overlays.
 
     The layout is retried until no simulator is placed inside an
@@ -702,34 +694,37 @@ def plot_dataflow_graph_plotly(
     remain after ``max_layout_tries``.
     """
 
-    graph = _build_dataflow_graph(world)
-    if not graph.nodes:
-        fig = go.Figure()
-        if show_plot:
-            fig.show()
-        return fig
+    import networkx as nx
+    import plotly.graph_objects as go
 
+    graph = _build_dataflow_graph(world)
     max_tries = max(1, max_layout_tries)
     group_infos = _collect_group_infos(world)
-    rng = random.Random()
     pos: Dict[str, Tuple[float, float]] = {}
     incorrect_overlaps: Set[Tuple[str, str]] = set()
 
-    for attempt in range(max_tries):
-        pos = nx.spring_layout(graph, seed=rng.randint(0, 1_000_000))
+    for _attempt in range(max_tries):
+        pos = nx.spring_layout(graph)
         incorrect_overlaps = _find_incorrect_group_overlaps(pos, group_infos)
         if not incorrect_overlaps:
             break
-
-    if incorrect_overlaps and not accept_incorrectly_placed_simulators:
+    else:
         misplaced = ", ".join(
             sorted(f"{node} in {group}" for node, group in incorrect_overlaps)
         )
-        raise RuntimeError(
-            "Could not place simulators outside unrelated groups after "
-            f"{max_tries} attempts. Misplaced nodes: {misplaced}. "
-            "Pass accept_incorrectly_placed_simulators=True to keep the last layout."
-        )
+        if accept_incorrectly_placed_simulators:
+            logger.info(
+                "Accepting layout even though following simulators are misplaced: "
+                "f{misplaced}. (Accepting due to accept_incorrectly_placed_simulators="
+                "True.)"
+            )
+        else:
+            raise RuntimeError(
+                "Could not place simulators outside unrelated groups after "
+                f"{max_tries} attempts. Misplaced nodes: {misplaced}. "
+                "Pass accept_incorrectly_placed_simulators=True to keep the last "
+                "layout."
+            )
 
     edge_traces, edge_annotations = _edge_traces(graph, pos)
     node_trace = _node_trace(pos)

@@ -121,7 +121,7 @@ class SimRunner:
     _proxy: Proxy
     """The actual proxy for this simulator."""
 
-    group: "SimGroup | None"
+    group: SimGroup | None
 
     # Connection setup
     input_delays: Dict[SimRunner, MinimalDurations]
@@ -227,7 +227,7 @@ class SimRunner:
         connection: Proxy,
         check_outputs: Callable[[OutputData], None],
         depth: int = 1,
-        group: "SimGroup | None" = None,
+        group: SimGroup | None = None,
     ):
         self.check_outputs = check_outputs
         self.sid = sid
