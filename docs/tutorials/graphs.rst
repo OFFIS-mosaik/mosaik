@@ -2,22 +2,23 @@
 Plotting graphs
 ===============
 
-Sometimes it is useful to visualize your scenario to understand the behavior of mosaik. The Matplotlib-based plotting helpers in ``mosaik.util`` take the world object and a ``folder`` argument that controls where image files are written.
+Sometimes it is useful to visualize your scenario to understand the behavior of mosaik. The plotting helpers in ``mosaik.util`` take the world object and a ``folder`` argument that controls where image files are written.
 
 Optional parameters are `slice` (see below) and `show_plot` (default: True). With `show_plot` you can control if a window is opened to show the plot in an interactive window. If set to false, the plot is stored directly. If set to true, you can interact with the plot and the chosen view in stored after you close the window.
 
-There are four different plots available (all Matplotlib-based):
+There are five different plots available:
 
 .. code-block:: Python
 
     world = mosaik.World(SIM_CONFIG, debug=True)
     ...
-    mosaik.util.plot_df_graph(world, folder='util_figures')
-    mosaik.util.plot_execution_graph(world, folder='util_figures')
-    mosaik.util.plot_execution_time(world, folder='util_figures')
-    mosaik.util.plot_execution_time_per_simulator(world, folder='util_figures')
+    mosaik.util.plot_df_graph(world, folder='util_figures') (uses Matplotlib)
+    mosaik.util.plot_df_graph_groups(world, html_folder='util_figures') (uses Plotly instead of Matplotlib)
+    mosaik.util.plot_execution_graph(world, folder='util_figures') (uses Matplotlib)
+    mosaik.util.plot_execution_time(world, folder='util_figures') (uses Matplotlib)
+    mosaik.util.plot_execution_time_per_simulator(world, folder='util_figures') (uses Matplotlib)
 
-You need to install `matplotlib` in your environment before using these functions. The Plotly-based helper described below returns a figure instead of writing image files directly; save it yourself via ``fig.write_html(...)``.
+Depending on the function, you need to install either `matplotlib` or `plotly` in your environment beforehand.
 
 Examples
 ========
@@ -89,7 +90,7 @@ which can be seen in the red label.
 Plotly dataflow graph with groups
 ---------------------------------
 If you want to highlight simulator groups directly inside the dataflow
-graph, use :func:`mosaik.util.plot_dataflow_graph_plotly`. The helper
+graph, use :func:`mosaik.util.plot_df_graph_groups`. The helper
 uses `Plotly <https://plotly.com/python/>`_, so install it via ``pip
 install plotly`` before running the example below:
 

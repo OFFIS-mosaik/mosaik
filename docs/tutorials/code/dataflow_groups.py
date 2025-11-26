@@ -39,7 +39,7 @@ def main() -> None:
 
         world.run(until=END)
 
-        fig = mosaik.util.plot_dataflow_graph_plotly(world, show_plot=False)
+        fig = mosaik.util.plot_df_graph_groups(world, show_plot=False)
         fig.write_html("dataflow_groups.html", include_plotlyjs="cdn")
 
 

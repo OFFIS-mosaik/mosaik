@@ -679,10 +679,11 @@ def _find_incorrect_group_overlaps(
     return incorrect
 
 
-def plot_dataflow_graph_plotly(
+def plot_df_graph_groups(
     world: World | AsyncWorld,
     show_plot: bool = False,
     *,
+    html_folder: str | None = None,
     max_layout_tries: int = 25,
     accept_incorrectly_placed_simulators: bool = False,
 ) -> go.Figure:
@@ -740,6 +741,10 @@ def plot_dataflow_graph_plotly(
         yaxis={"showgrid": False, "zeroline": False},
         shapes=group_shapes,
     )
+    if html_folder is not None:
+        fig.write_html(
+            html_folder + "/dataflow_graph_plotly.html", include_plotlyjs="cdn"
+        )
     if show_plot:
         fig.show()
     return fig

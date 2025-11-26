@@ -125,7 +125,7 @@ class SimStub:
         self.input_delays: OrderedDict["SimStub", DelayStub] = OrderedDict()
 
 
-def test_plot_dataflow_graph_plotly_groups():
+def test_plot_df_graph_groups_groups():
     main_group = SimGroup(parent=None, name="main")
     group_a = SimGroup(parent=main_group, name="GroupA")
     group_b = SimGroup(parent=group_a, name="GroupB")
@@ -147,7 +147,7 @@ def test_plot_dataflow_graph_plotly_groups():
         )
     )
 
-    fig = util.plot_dataflow_graph_plotly(world)
+    fig = util.plot_df_graph_groups(world)
 
     shapes = fig.layout.shapes
     assert shapes is not None and len(shapes) == 2
@@ -161,7 +161,7 @@ def test_plot_dataflow_graph_plotly_groups():
     assert "GroupA / GroupB" in label_texts
 
 
-def test_plot_dataflow_graph_plotly_retries_on_overlap(monkeypatch):
+def test_plot_df_graph_groups_retries_on_overlap(monkeypatch):
     main_group = SimGroup(parent=None, name="main")
     group_a = SimGroup(parent=main_group, name="GroupA")
 
@@ -204,7 +204,7 @@ def test_plot_dataflow_graph_plotly_retries_on_overlap(monkeypatch):
 
     monkeypatch.setattr("networkx.spring_layout", fake_layout)
 
-    fig = util.plot_dataflow_graph_plotly(world, show_plot=False, max_layout_tries=3)
+    fig = util.plot_df_graph_groups(world, show_plot=False, max_layout_tries=3)
 
     assert call_count == 2  # one retry after overlap detection
     node_trace = fig.data[-1]
