@@ -47,7 +47,6 @@ docs = [
 ]
 plotting = [
     "matplotlib>=3.8.2;python_version>='3.10'", 
-    "numpy>=1.24",  
     "plotly>=5.19.0",
 ]
 tutorial = [
