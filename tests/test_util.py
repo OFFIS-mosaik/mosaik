@@ -125,7 +125,7 @@ class SimStub:
         self.input_delays: OrderedDict["SimStub", DelayStub] = OrderedDict()
 
 
-def test_plot_df_graph_groups_groups():
+def test_plot_df_graph_groups():
     main_group = SimGroup(parent=None, name="main")
     group_a = SimGroup(parent=main_group, name="GroupA")
     group_b = SimGroup(parent=group_a, name="GroupB")
