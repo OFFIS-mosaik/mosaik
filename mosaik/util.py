@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import random
+from itertools import count, cycle
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -22,7 +23,7 @@ from typing import (
     Tuple,
 )
 
-import networkx as nx
+from loguru import logger
 from mosaik_api_v3 import Attr, SimId
 from typing_extensions import Literal
 
@@ -31,6 +32,8 @@ from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
+    import networkx as nx
+    import plotly.graph_objects as go
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
@@ -404,6 +407,347 @@ def plot_dataflow_graph(
         transparent=True,
         bbox_inches="tight",
     )
+
+
+def quadratic_bezier(
+    p0: Tuple[float, float],
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    num: int = 20,
+):
+    """Return the curve points for a quadratic Bézier segment."""
+    if num <= 1:
+        return [p0[0]], [p0[1]]
+
+    step = 1.0 / (num - 1)
+    ts = [i * step for i in range(num)]
+    curve_x: List[float] = []
+    curve_y: List[float] = []
+    for t in ts:
+        one_minus_t = 1 - t
+        x = (
+            one_minus_t * one_minus_t * p0[0]
+            + 2 * one_minus_t * t * p1[0]
+            + t * t * p2[0]
+        )
+        y = (
+            one_minus_t * one_minus_t * p0[1]
+            + 2 * one_minus_t * t * p1[1]
+            + t * t * p2[1]
+        )
+        curve_x.append(x)
+        curve_y.append(y)
+    return curve_x, curve_y
+
+
+def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph[str]:
+    import networkx as nx
+
+    graph: nx.DiGraph[str] = nx.DiGraph()
+    for sim in world.sims.values():
+        graph.add_node(sim.sid)
+        for pred, delay in sim.input_delays.items():
+            graph.add_edge(
+                pred.sid,
+                sim.sid,
+                time_shifted=delay.is_time_shifted(),
+                weak=delay.is_weak(),
+            )
+    return graph
+
+
+def _edge_traces(
+    graph: nx.DiGraph[str], pos: Dict[str, Tuple[float, float]]
+) -> Tuple[List[go.Scatter], List[dict[str, Any]]]:
+    import plotly.graph_objects as go
+
+    traces: List[go.Scatter] = []
+    annotations: List[dict[str, Any]] = []
+    for src, dst, data in graph.edges(data=True):
+        x0, y0 = pos[src]
+        x1, y1 = pos[dst]
+        control_x = (x0 + x1) / 2 + 0.1 * (y1 - y0)
+        control_y = (y0 + y1) / 2 - 0.1 * (x1 - x0)
+        curve_x, curve_y = quadratic_bezier(
+            (x0, y0),
+            (control_x, control_y),
+            (x1, y1),
+        )
+
+        edge_color = "red" if data.get("time_shifted") else "gray"
+        line_style = "dot" if data.get("weak") else "solid"
+        labels: List[str] = []
+        if data.get("time_shifted"):
+            labels.append("Time-Shifted")
+        if data.get("weak"):
+            labels.append("Weak")
+        details = " | ".join(labels) if labels else "Standard Connection"
+        hover_text = f"Source: {src}<br>Target: {dst}<br>{details}"
+
+        traces.append(
+            go.Scatter(
+                x=curve_x,
+                y=curve_y,
+                line={"width": 1.5, "color": edge_color, "dash": line_style},
+                mode="lines",
+                hoverinfo="text",
+                text=hover_text,
+            )
+        )
+
+        annotations.append(
+            {
+                "x": curve_x[-1],
+                "y": curve_y[-1],
+                "ax": curve_x[-2],
+                "ay": curve_y[-2],
+                "xref": "x",
+                "yref": "y",
+                "axref": "x",
+                "ayref": "y",
+                "showarrow": True,
+                "arrowhead": 3,
+                "arrowsize": 1.5,
+                "arrowwidth": 1.5,
+                "arrowcolor": edge_color,
+            }
+        )
+    return traces, annotations
+
+
+def _node_trace(pos: Dict[str, Tuple[float, float]]) -> go.Scatter:
+    import plotly.graph_objects as go
+
+    node_x: List[float] = []
+    node_y: List[float] = []
+    node_labels: List[str] = []
+    for node, (x, y) in pos.items():
+        node_x.append(x)
+        node_y.append(y)
+        node_labels.append(node)
+
+    return go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode="markers+text",
+        text=node_labels,
+        textposition="top center",
+        marker={
+            "size": 10,
+            "color": "blue",
+            "line": {"width": 2, "color": "black"},
+        },
+    )
+
+
+def _collect_group_infos(world: World | AsyncWorld) -> Dict[int, Dict[str, Any]]:
+    infos: Dict[int, Dict[str, Any]] = {}
+    order_counter = count()
+    for sim in world.sims.values():
+        group = getattr(sim, "group", None)
+        current = group
+        while current is not None:
+            group_id = id(current)
+            if group_id not in infos:
+                parent_id = id(current.parent) if current.parent else None
+                infos[group_id] = {
+                    "group": current,
+                    "nodes": set(),
+                    "parent": parent_id,
+                    "order": next(order_counter),
+                }
+            infos[group_id]["nodes"].add(sim.sid)
+            current = current.parent
+    return infos
+
+
+def _rgb_components(color: str) -> Tuple[int, int, int]:
+    from plotly.colors import hex_to_rgb
+
+    if color.startswith("#"):
+        r, g, b = hex_to_rgb(color)
+        return r, g, b
+    if color.startswith("rgb"):
+        comps = color[color.find("(") + 1 : color.find(")")]
+        r, g, b = (int(part.strip()) for part in comps.split(","))
+        return r, g, b
+    return hex_to_rgb("#1f77b4")  # Fallback color
+
+
+def _group_label(group_info: Dict[str, Any]) -> str:
+    names: List[str] = []
+    group_cursor = group_info["group"]
+    while group_cursor:
+        if group_cursor.name and group_cursor.name != "main":
+            names.append(group_cursor.name)
+        group_cursor = group_cursor.parent
+    if names:
+        return " / ".join(reversed(names))
+    return f"Group {group_info['order'] + 1}"
+
+
+def _group_bounds(
+    info: Dict[str, Any], pos: Dict[str, Tuple[float, float]], *, margin: float = 0.2
+) -> Tuple[float, float, float, float] | None:
+    coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
+    if not coords:
+        return None
+    xs, ys = zip(*coords)
+    min_x = min(xs) - margin
+    max_x = max(xs) + margin
+    min_y = min(ys) - margin
+    max_y = max(ys) + margin
+    return min_x, max_x, min_y, max_y
+
+
+def _group_shapes(
+    world: World | AsyncWorld, pos: Dict[str, Tuple[float, float]]
+) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
+    from plotly.colors import qualitative
+
+    group_infos = _collect_group_infos(world)
+    color_cycle = cycle(qualitative.Plotly)
+    shapes: List[dict[str, Any]] = []
+    labels: List[dict[str, Any]] = []
+    for info in sorted(
+        group_infos.values(), key=lambda item: (item["group"].depth, item["order"])
+    ):
+        if info["parent"] is None:
+            continue
+        bounds = _group_bounds(info, pos)
+        if bounds is None:
+            logger.info(f"Skipping plotting group {info['group'].name} as it is empty.")
+            continue
+        min_x, max_x, min_y, max_y = bounds
+        color = next(color_cycle)
+        r, g, b = _rgb_components(color)
+        fill_color = f"rgba({r}, {g}, {b}, 0.08)"
+        line_color = f"rgba({r}, {g}, {b}, 0.6)"
+
+        shapes.append(
+            {
+                "type": "rect",
+                "xref": "x",
+                "yref": "y",
+                "x0": min_x,
+                "x1": max_x,
+                "y0": min_y,
+                "y1": max_y,
+                "line": {"color": line_color, "width": 2},
+                "fillcolor": fill_color,
+                "layer": "below",
+            }
+        )
+
+        labels.append(
+            {
+                "x": min_x,
+                "y": max_y,
+                "xref": "x",
+                "yref": "y",
+                "text": _group_label(info),
+                "showarrow": False,
+                "xanchor": "left",
+                "yanchor": "bottom",
+                "font": {"size": 12, "color": line_color},
+                "bgcolor": "rgba(255, 255, 255, 0.6)",
+            }
+        )
+
+    return shapes, labels
+
+
+def _find_incorrect_group_overlaps(
+    pos: Dict[str, Tuple[float, float]],
+    group_infos: Dict[int, Dict[str, Any]],
+) -> Set[Tuple[str, str]]:
+    """Return nodes that would appear inside unrelated groups."""
+
+    incorrect: Set[Tuple[str, str]] = set()
+    for info in group_infos.values():
+        if info["parent"] is None:
+            continue
+        bounds = _group_bounds(info, pos)
+        if bounds is None:
+            continue
+        min_x, max_x, min_y, max_y = bounds
+        for node_id, (x, y) in pos.items():
+            if node_id in info["nodes"]:
+                continue
+            if min_x <= x <= max_x and min_y <= y <= max_y:
+                incorrect.add((node_id, _group_label(info)))
+    return incorrect
+
+
+def plot_df_graph_groups(
+    world: World | AsyncWorld,
+    show_plot: bool = False,
+    *,
+    html_folder: str | None = None,
+    max_layout_tries: int = 25,
+    accept_incorrectly_placed_simulators: bool = False,
+) -> go.Figure:
+    """Return a Plotly figure of the dataflow graph with group overlays.
+
+    The layout is retried until no simulator is placed inside an
+    unrelated group. Set ``accept_incorrectly_placed_simulators``
+    to ``True`` to keep the last attempt even if misplacements
+    remain after ``max_layout_tries``.
+    """
+
+    import networkx as nx
+    import plotly.graph_objects as go
+
+    graph = _build_dataflow_graph(world)
+    max_tries = max(1, max_layout_tries)
+    group_infos = _collect_group_infos(world)
+    pos: Dict[str, Tuple[float, float]] = {}
+    incorrect_overlaps: Set[Tuple[str, str]] = set()
+
+    for _attempt in range(max_tries):
+        pos = nx.spring_layout(graph)
+        incorrect_overlaps = _find_incorrect_group_overlaps(pos, group_infos)
+        if not incorrect_overlaps:
+            break
+    else:
+        misplaced = ", ".join(
+            sorted(f"{node} in {group}" for node, group in incorrect_overlaps)
+        )
+        if accept_incorrectly_placed_simulators:
+            logger.info(
+                "Accepting layout even though following simulators are misplaced: "
+                "f{misplaced}. (Accepting due to accept_incorrectly_placed_simulators="
+                "True.)"
+            )
+        else:
+            raise RuntimeError(
+                "Could not place simulators outside unrelated groups after "
+                f"{max_tries} attempts. Misplaced nodes: {misplaced}. "
+                "Pass accept_incorrectly_placed_simulators=True to keep the last "
+                "layout."
+            )
+
+    edge_traces, edge_annotations = _edge_traces(graph, pos)
+    node_trace = _node_trace(pos)
+    group_shapes, group_labels = _group_shapes(world, pos)
+
+    fig = go.Figure(data=edge_traces + [node_trace])
+    fig.update_layout(
+        showlegend=False,
+        hovermode="closest",
+        margin={"b": 0, "l": 0, "r": 0, "t": 0},
+        annotations=group_labels + edge_annotations,
+        xaxis={"showgrid": False, "zeroline": False},
+        yaxis={"showgrid": False, "zeroline": False},
+        shapes=group_shapes,
+    )
+    if html_folder is not None:
+        fig.write_html(
+            html_folder + "/dataflow_graph_plotly.html", include_plotlyjs="cdn"
+        )
+    if show_plot:
+        fig.show()
+    return fig
 
 
 def plot_execution_graph(  # noqa: C901

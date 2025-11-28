@@ -1,9 +1,12 @@
 import collections
 import random
+from collections import OrderedDict
+from types import SimpleNamespace
 
 import pytest
 
 from mosaik import util
+from mosaik.async_scenario import SimGroup
 
 
 class World(object):
@@ -101,3 +104,109 @@ def test_connect_randomly_errors():
     # dest_set is empty
     # dest_set too small for src_set and max_connects
     pass
+
+
+class DelayStub:
+    def __init__(self, *, time_shifted: bool = False, weak: bool = False) -> None:
+        self._time_shifted = time_shifted
+        self._weak = weak
+
+    def is_time_shifted(self) -> bool:
+        return self._time_shifted
+
+    def is_weak(self) -> bool:
+        return self._weak
+
+
+class SimStub:
+    def __init__(self, sid: str, group: SimGroup) -> None:
+        self.sid = sid
+        self.group = group
+        self.input_delays: OrderedDict["SimStub", DelayStub] = OrderedDict()
+
+
+def test_plot_df_graph_groups():
+    main_group = SimGroup(parent=None, name="main")
+    group_a = SimGroup(parent=main_group, name="GroupA")
+    group_b = SimGroup(parent=group_a, name="GroupB")
+
+    root_sim = SimStub("Root", main_group)
+    sim_a = SimStub("A", group_a)
+    sim_b = SimStub("B", group_b)
+
+    sim_a.input_delays[root_sim] = DelayStub()
+    sim_b.input_delays[sim_a] = DelayStub(time_shifted=True)
+
+    world = SimpleNamespace(
+        sims=OrderedDict(
+            (
+                (root_sim.sid, root_sim),
+                (sim_a.sid, sim_a),
+                (sim_b.sid, sim_b),
+            )
+        )
+    )
+
+    fig = util.plot_df_graph_groups(world)
+
+    shapes = fig.layout.shapes
+    assert shapes is not None and len(shapes) == 2
+
+    label_texts = {
+        annotation.text
+        for annotation in fig.layout.annotations
+        if not annotation.showarrow
+    }
+    assert "GroupA" in label_texts
+    assert "GroupA / GroupB" in label_texts
+
+
+def test_plot_df_graph_groups_retries_on_overlap(monkeypatch):
+    main_group = SimGroup(parent=None, name="main")
+    group_a = SimGroup(parent=main_group, name="GroupA")
+
+    sim_a1 = SimStub("A1", group_a)
+    sim_a2 = SimStub("A2", group_a)
+    intruder = SimStub("Intruder", main_group)
+
+    sim_a2.input_delays[sim_a1] = DelayStub()
+    intruder.input_delays[sim_a2] = DelayStub()
+
+    world = SimpleNamespace(
+        sims=OrderedDict(
+            (
+                (sim_a1.sid, sim_a1),
+                (sim_a2.sid, sim_a2),
+                (intruder.sid, intruder),
+            )
+        )
+    )
+
+    layouts = [
+        {
+            sim_a1.sid: (0.0, 0.0),
+            sim_a2.sid: (1.0, 0.0),
+            # Inside GroupA's rectangle -> should force retry
+            intruder.sid: (0.5, 0.05),
+        },
+        {
+            sim_a1.sid: (-1.0, 0.0),
+            sim_a2.sid: (-1.0, 1.0),
+            intruder.sid: (1.5, 0.0),
+        },
+    ]
+    call_count = 0
+
+    def fake_layout(graph, *, seed=None):
+        nonlocal call_count
+        call_count += 1
+        return layouts[min(call_count - 1, len(layouts) - 1)]
+
+    monkeypatch.setattr("networkx.spring_layout", fake_layout)
+
+    fig = util.plot_df_graph_groups(world, show_plot=False, max_layout_tries=3)
+
+    assert call_count == 2  # one retry after overlap detection
+    node_trace = fig.data[-1]
+    assert list(node_trace.x) == [-1.0, -1.0, 1.5]
+    assert list(node_trace.y) == [0.0, 1.0, 0.0]

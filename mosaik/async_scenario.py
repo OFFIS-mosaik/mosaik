@@ -879,6 +879,7 @@ class AsyncWorld:
                 proxy,
                 check_outputs=factory.validate_output_dict,
                 depth=factory._group.depth,
+                group=factory._group,
             )
             if self.use_cache:
                 sim_runner.outputs = {}

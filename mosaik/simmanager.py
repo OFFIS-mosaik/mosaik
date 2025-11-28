@@ -54,7 +54,7 @@ from mosaik.proxies import Proxy
 from mosaik.tiered_time import MinimalDurations, TieredDuration, TieredTime
 
 if TYPE_CHECKING:
-    from mosaik.async_scenario import AsyncWorld
+    from mosaik.async_scenario import AsyncWorld, SimGroup
 
 FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
@@ -120,6 +120,8 @@ class SimRunner:
 
     _proxy: Proxy
     """The actual proxy for this simulator."""
+
+    group: SimGroup | None
 
     # Connection setup
     input_delays: Dict[SimRunner, MinimalDurations]
@@ -225,10 +227,12 @@ class SimRunner:
         connection: Proxy,
         check_outputs: Callable[[OutputData], None],
         depth: int = 1,
+        group: SimGroup | None = None,
     ):
         self.check_outputs = check_outputs
         self.sid = sid
         self._proxy = connection
+        self.group = group
 
         self.type = connection.meta["type"]
         self.supports_set_events = connection.meta.get("set_events", False)
