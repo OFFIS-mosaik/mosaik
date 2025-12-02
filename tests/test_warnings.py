@@ -4,6 +4,8 @@ import mosaik
 import mosaik.basic_simulators
 import mosaik.util
 from mosaik.scenario import SimConfig
+from mosaik.starters import PythonStarter
+from tests.simulators.warnings_test_simulator import WarningsTestSimulator
 
 
 def test_non_existing_entity_warning():
@@ -23,7 +25,7 @@ def test_non_existing_entity_warning():
     test_model = test_sim.Test.create(2)
 
     world.connect(
-        test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=True
+        test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=1
     )
     world.set_initial_event(test_sim._sid, 0)
 
@@ -47,9 +49,17 @@ def test_non_existing_attribute_warning():
     test_model = test_sim.Test.create(2)
 
     world.connect(
-        test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=True
+        test_model[0], test_model[1], ("value", "to_be_deleted"), time_shifted=1
     )
     world.set_initial_event(test_sim._sid, 0)
 
     with pytest.warns(UserWarning, match="returned data for attribute"):
         world.run(until=END)
+
+
+def test_time_shifted_events_warning():
+    with mosaik.World() as world:
+        sim = world.start(PythonStarter(WarningsTestSimulator), "TestSim")
+        ent0, ent1 = sim.Test.create(2)
+        with pytest.warns(UserWarning, match="implicit 1-step shift"):
+            world.connect(ent0, ent1, "value", time_shifted=True)
