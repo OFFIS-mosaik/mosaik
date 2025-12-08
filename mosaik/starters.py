@@ -49,9 +49,17 @@ if TYPE_CHECKING:
 
 
 class Starter(ABC):
+    """Description of how to start or connect to a mosaik simulator.
+
+    In practice, you will usually use one of the subclasses
+    :class:`PythonStarter`, :class:`CmdStarter`, or
+    :class:`ConnectStarter`.
+    """
+
     api_version: str | None
     """The API version of this simulator. This should be set if the
-    simulator is using an outdated version of the API."""
+    simulator is using an outdated version of the API.
+    """
 
     @abstractmethod
     async def start(
