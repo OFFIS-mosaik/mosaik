@@ -13,6 +13,7 @@ This reference should also be helpful if you want to work on or extend mosaik it
    mosaik.exceptions
    mosaik.scenario
    mosaik.async_scenario
+   mosaik.starters
    mosaik.scheduler
    mosaik.simmanager
    mosaik.util
