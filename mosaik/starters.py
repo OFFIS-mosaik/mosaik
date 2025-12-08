@@ -8,18 +8,20 @@ by spawning a separate process, and :class:`ConnectStarter` for
 connecting to a simulator running at some TCP/IP address.
 
 These starters can be used by storing them in a ``SIM_CONFIG`` dict
-mapping *simulator names* to :class:`Starter`s. When such a
+mapping *simulator names* to :class:`Starter` objects. When such a
 ``SIM_CONFIG`` is given to the mosaik :class:`~mosaik.World` at
 creation, instances of the simulators can be spawned by simply giving
 the simulator name to the worlds :meth:`mosaik.World.start` method.
 Alternatively, this method also accepts a :class:`Starter` object
-directly.
+directly. (In this case, you need to specify the simulator ID, as it
+cannot be auto-generated from the simulator name.)
 
 Finally, traditionally, ``SIM_CONFIG`` would be a dict of dicts, where
 the inner dicts correspond to our :class:`Starter` objects. To keep
-supporting this, :class:`Starter`s can be parsed from such a dict using
-the :meth:`~Starter.from_starter_config` method; to try parsing into all
-starters automatically, use :func:`get_starter_from_starter_config`.
+supporting this, :class:`Starter` objects can be parsed from such a dict
+using the :meth:`~Starter.from_starter_config` method; to try parsing
+into all starters automatically, use
+:func:`get_starter_from_starter_config`.
 """
 
 from __future__ import annotations
