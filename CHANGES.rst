@@ -4,13 +4,13 @@ Changelog
 3.6.0 - 2025-12-08
 ------------------
 
-- [NEW] Groups in dataflow graphs have improved visibility (`#229 https://gitlab.com/mosaik/mosaik/-/issues/230`_)
-- [NEW] Entity children are now provided as dict (`#287 https://gitlab.com/mosaik/mosaik/-/work_items/287`_)
-- [NEW] Starting simulators without SIM_CONFIG is now possible (`#280 https://gitlab.com/mosaik/mosaik/-/issues/280`_)
-- [NEW] AsyncWorld was changed so that SimRunners are created after the world.run() method is called (`#278 https://gitlab.com/mosaik/mosaik/-/issues/278`_)
-- [NEW] Improved documentation around AsyncWorld finalization (`#277 https://gitlab.com/mosaik/mosaik/-/issues/277`_)
-- [FIX] Improved an error message that happens when you pass a simulator to world.connect (`#270 https://gitlab.com/mosaik/mosaik/-/issues/270`_)
-- [FIX] Fixed a warning when simulators return time with their data (`#284 https://gitlab.com/mosaik/mosaik/-/issues/284`_)
+- [NEW] Groups in dataflow graphs have improved visibility (`#229 <https://gitlab.com/mosaik/mosaik/-/issues/230>`_)
+- [NEW] Entity children are now provided as dict (`#287 <https://gitlab.com/mosaik/mosaik/-/work_items/287>`_)
+- [NEW] Starting simulators without SIM_CONFIG is now possible (`#280 <https://gitlab.com/mosaik/mosaik/-/issues/280>`_)
+- [NEW] AsyncWorld was changed so that SimRunners are created after the world.run() method is called (`#278 <https://gitlab.com/mosaik/mosaik/-/issues/278>`_)
+- [NEW] Improved documentation around AsyncWorld finalization (`#277 <https://gitlab.com/mosaik/mosaik/-/issues/277>`_)
+- [FIX] Improved an error message that happens when you pass a simulator to world.connect (`#270 <https://gitlab.com/mosaik/mosaik/-/issues/270>`_)
+- [FIX] Fixed a warning when simulators return time with their data (`#284 <https://gitlab.com/mosaik/mosaik/-/issues/284>`_)
 
 
 3.5.0 - 2025-03-17
