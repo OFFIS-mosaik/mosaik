@@ -16,6 +16,8 @@ from mosaik_api_v3.types import Meta, SimId
 from mosaik.exceptions import ConnectionClosedError, ScenarioError
 
 if TYPE_CHECKING:
+    from loguru import Logger
+
     from mosaik.simmanager import MosaikRemote
 
 
@@ -90,6 +92,7 @@ class LocalProxy(BaseProxy):
 
     sim: Simulator
     """The underlying ``mosaik_api.Simulator."""
+    _logger: Logger
 
     def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
         super().__init__()
@@ -107,6 +110,8 @@ class LocalProxy(BaseProxy):
             forced_old_api = True
             del kwargs["time_resolution"]
 
+        logger_module = f"sim.local.{sid}"
+        self._logger = logger.patch(lambda record: record.update(name=logger_module))
         meta = await self.send(("init", (sid,), kwargs))
         self._meta = deepcopy(meta)
         version = extract_version(meta)
@@ -125,6 +130,7 @@ class LocalProxy(BaseProxy):
         return self._meta
 
     async def send(self, request: Tuple[str, Tuple[Any, ...], Dict[str, Any]]):
+        self._logger.trace(f"CALL {request}")
         func_name, args, kwargs = request
         func = getattr(self.sim, func_name)
         # A simulator that makes requests back to mosaik (like set_data
@@ -144,11 +150,16 @@ class LocalProxy(BaseProxy):
                 while True:
                     incoming_request = gen.send(await incoming_request)
             except StopIteration as stop:
-                return stop.value
+                result = stop.value
+                self._logger.trace(f"RETN[{func_name}] {result}")
+                return result
         else:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            self._logger.trace(f"RETN[{func_name}] {result}")
+            return result
 
     async def stop(self):
+        self._logger.trace("STOP")
         self.sim.finalize()
 
 
@@ -164,6 +175,8 @@ class RemoteProxy(BaseProxy):
     the simulation.
     """
 
+    _logger: Logger
+
     def __init__(
         self,
         channel: Channel,
@@ -172,6 +185,8 @@ class RemoteProxy(BaseProxy):
         process: Tuple[Popen[str], bool] | None = None,
     ):
         super().__init__()
+        logger_module = f"sim.remote.{mosaik_remote.sid}"
+        self._logger = logger.patch(lambda record: record.update(name=logger_module))
         self._channel = channel
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
@@ -184,12 +199,15 @@ class RemoteProxy(BaseProxy):
         try:
             while True:
                 request = await self._channel.next_request()
+                self._logger.trace(f"RECV[REQ, {request._msg_id}] {request}")
                 func_name, args, kwargs = request.content
                 func = getattr(self._mosaik_remote, func_name)
                 try:
                     result = await func(*args, **kwargs)
+                    self._logger.trace(f"SEND[ANS, {request._msg_id}] {result}")
                     await request.set_result(result)
                 except Exception as e:
+                    self._logger.trace(f"SEND[EXC, {request._msg_id}] {e}")
                     await request.set_exception(e)
         except EndOfRequests:
             pass
@@ -216,8 +234,11 @@ class RemoteProxy(BaseProxy):
         return self._meta
 
     async def send(self, request: Any) -> Any:
+        self._logger.trace(f"SEND {request}")
         try:
-            return await self._channel.send(request)
+            result = await self._channel.send(request)
+            self._logger.trace(f"RECV[{request[0]}] {result}")
+            return result
         except asyncio.IncompleteReadError:
             # TODO: find a better source for the simulator name
             raise ConnectionClosedError(
@@ -226,6 +247,7 @@ class RemoteProxy(BaseProxy):
             )
 
     async def stop(self) -> None:
+        self._logger.trace("STOP")
         try:
             await asyncio.wait_for(self._channel.send(["stop", [], {}]), 0.1)
         except (asyncio.TimeoutError, asyncio.IncompleteReadError):

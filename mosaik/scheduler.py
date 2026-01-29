@@ -11,6 +11,7 @@ from math import ceil
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional, cast
 
+from loguru import logger
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
 from mosaik.exceptions import SimulationError
@@ -140,6 +141,9 @@ async def sim_process(
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
         raise SimulationError(f'Simulator "{sim.sid}" closed its connection.', e)
+    except BaseException as e:
+        e.add_note(f"in simulator task for {sim.sid}")
+        raise e
 
 
 async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
@@ -369,6 +373,7 @@ async def step(
 
         if next_step_time < world.until:
             next_step_tiered_time = TieredTime(next_step_time) + sim.from_world_time
+            logger.trace(f"{sim.sid} schedules self-step at {next_step_tiered_time}")
             sim.schedule_step(next_step_tiered_time)
             sim.next_self_step = next_step_tiered_time
 
@@ -515,7 +520,11 @@ def trigger_successors(sim: SimRunner) -> None:
     for (eid, attr), triggered in sim.triggers.items():
         if attr in sim.data.get(eid, {}):
             for dest_sim, delay in triggered:
-                dest_sim.schedule_step(sim.output_time + delay)
+                scheduled_step = sim.output_time + delay
+                logger.trace(
+                    f"{sim.sid} schedules step for {dest_sim.sid} at {scheduled_step}"
+                )
+                dest_sim.schedule_step(scheduled_step)
 
 
 def prune_dataflow_cache(world: AsyncWorld):
