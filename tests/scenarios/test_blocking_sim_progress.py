@@ -1,5 +1,3 @@
-import pytest
-
 from mosaik import World
 from mosaik.starters import PythonStarter
 from tests.simulators.blocking_sim import BlockingSim
@@ -19,7 +17,6 @@ def create_scenario(world: World):
         world.connect(generic, blocking, ("val_out", "in"), weak=True)
 
 
-@pytest.mark.xfail(reason="should trigger cannot progress backwards")
 def test_scenario(world: World):
     create_scenario(world)
     world.run(until=2)

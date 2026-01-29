@@ -551,9 +551,9 @@ def get_avg_progress(sims: Dict[SimId, SimRunner], until: int) -> int:
 
 def advance_progress(sim: SimRunner, world: AsyncWorld):
     pre_sim_induced_progress: List[TieredTime] = [
-        distance.earliest_sum(pre_sim.next_steps[0])
+        distance.earliest_sum(pre_sim.current_step or pre_sim.next_steps[0])
         for pre_sim, distance in sim.triggering_ancestors.items()
-        if pre_sim.next_steps
+        if pre_sim.current_step or pre_sim.next_steps
     ]
 
     next_step_progress: List[TieredTime] = [sim.next_steps[0]] if sim.next_steps else []
