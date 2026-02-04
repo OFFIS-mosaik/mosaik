@@ -40,7 +40,9 @@ from typing import TYPE_CHECKING, Any, Union, cast
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 
+from mosaik import process_termination_managers
 from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.process_termination_managers import ProcessTerminationManager
 from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.simmanager import MosaikRemote
 
@@ -230,9 +232,7 @@ class CmdStarter(Starter):
     """Whether to open a new console for this simulator (only works on
     Windows)
     """
-    auto_terminate: bool
-    """Whether to automatically terminate the process when the world
-    is shut down"""
+    termination_manager: ProcessTerminationManager
 
     bind_addr: tuple[str, int | None] | None
     connect_timeout: float | None
@@ -242,20 +242,32 @@ class CmdStarter(Starter):
         cmd: str,
         *,
         api_version: str | None = None,
-        auto_terminate: bool = True,
+        auto_terminate: bool | None = None,
+        termination_manager: ProcessTerminationManager | None = None,
         bind_addr: tuple[str, int | None] | None = None,
         connect_timeout: float | None = None,
         cwd: str = ".",
         env: dict[str, str] = {},
         new_console: bool = False,
-        posix: bool = os.name == "nt",
+        posix: bool = True,
     ):
         self.cmd = cmd
         self.posix = posix
         self.cwd = cwd
         self.env = env
         self.new_console = new_console
-        self.auto_terminate = auto_terminate
+
+        if auto_terminate is not None and termination_manager is not None:
+            raise ScenarioError(
+                f"specify at most one of {termination_manager} and {auto_terminate}"
+            )
+        if termination_manager is not None:
+            self.termination_manager = termination_manager
+        elif auto_terminate or auto_terminate is None:
+            self.termination_manager = process_termination_managers.auto_terminate()
+        else:
+            self.termination_manager = process_termination_managers.keep_running
+
         self.api_version = api_version
         self.bind_addr = bind_addr
         self.connect_timeout = connect_timeout
@@ -303,11 +315,9 @@ class CmdStarter(Starter):
                     )
 
             try:
-                proc = subprocess.Popen(
-                    cmd_parts,
-                    bufsize=1,
+                proc = await asyncio.subprocess.create_subprocess_exec(
+                    *cmd_parts,
                     cwd=self.cwd,
-                    universal_newlines=True,
                     env=environ,  # pass the new env dict to the sub process
                     creationflags=creationflags,
                 )
@@ -331,11 +341,10 @@ class CmdStarter(Starter):
                 return RemoteProxy(
                     channel,
                     mosaik_remote,
-                    process=(proc, self.auto_terminate),
+                    process=(proc, self.termination_manager),
                 )
             except asyncio.TimeoutError:
-                if self.auto_terminate:
-                    proc.terminate()
+                await self.termination_manager(proc)
                 raise SimulationError(
                     f'Simulator "{sim_id}" did not connect to mosaik in time.'
                 )
