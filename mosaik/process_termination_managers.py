@@ -5,6 +5,8 @@ import warnings
 from asyncio.subprocess import Process
 from typing import Protocol
 
+from loguru import logger
+
 
 class ProcessTerminationManager(Protocol):
     """A protocal for coroutines that can terminate an
@@ -42,17 +44,22 @@ class auto_terminate:
     async def __call__(self, process: Process):
         try:
             process.terminate()
-            if self.timeout is not None:
-                await asyncio.wait_for(process.wait(), self.timeout)
-            else:
-                await process.wait()
         except ProcessLookupError:
             # The process is already gone, so we're happy
             pass
+        try:
+            if self.timeout is not None:
+                exit_code = await asyncio.wait_for(process.wait(), self.timeout)
+            else:
+                exit_code = await process.wait()
+            logger.trace(f"Simulator finished with exit code {exit_code}")
         except asyncio.TimeoutError:
             warnings.warn(
                 UserWarning(
-                    "mosaik could not terminate subprocess for cmd simulator "
-                    "(set `auto_terminate=False` to stop it from trying)"
+                    f"simulator did not terminate within {self.timeout} seconds after "
+                    "terminate call by mosaik. (Set `termination_manager=keep_running` "
+                    "to stop mosaik from terminating the simulator at all; or "
+                    "`termination_manager=auto_terminate(timeout=timeout)` to wait for "
+                    "`timeout` seconds; `None` meaning indefinitely."
                 )
             )
