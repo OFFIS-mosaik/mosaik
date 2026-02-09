@@ -16,15 +16,22 @@ class ProcessTerminationManager(Protocol):
     termination managers.
     """
 
-    async def __call__(self, process: Process): ...
+    async def __call__(self, process: Process):
+        """Terminate the process (or not), as specified for this
+        termination manager.
+        """
 
 
 async def keep_running(process: Process):
     """Do not attempt to terminate the process. (It might keep running
-    depending on the operating system an the way that it was created.)
+    depending on the operating system and the way that it was created.)
     """
-    # Nothing to be done
-    pass
+    # Nothing to be done, just log the state
+    rc = process.returncode
+    if rc is not None:
+        logger.trace("Simulator process is still running, keeping it that way")
+    else:
+        logger.trace(f"Simulator process has already concluded with exit code {rc}")
 
 
 class auto_terminate:
