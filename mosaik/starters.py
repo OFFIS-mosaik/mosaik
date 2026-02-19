@@ -234,6 +234,23 @@ class CmdStarter(Starter):
     """
     termination_manager: ProcessTerminationManager
 
+    stdout = None
+    """Where the process should write its stdout.
+
+    See the `official documentation`_ on ``subprocess_exec`` for the
+    supported types values.
+
+    .. _official documentation: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.subprocess_exec
+    """
+    stderr = None
+    """Where the process should write its stderr.
+
+    See the `official documentation`_ on ``subprocess_exec`` for the
+    supported types values.
+
+    .. _official documentation: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.subprocess_exec
+    """
+
     bind_addr: tuple[str, int | None] | None
     connect_timeout: float | None
 
@@ -250,12 +267,16 @@ class CmdStarter(Starter):
         env: dict[str, str] = {},
         new_console: bool = False,
         posix: bool = True,
+        stdout=None,
+        stderr=None,
     ):
         self.cmd = cmd
         self.posix = posix
         self.cwd = cwd
         self.env = env
         self.new_console = new_console
+        self.stdout = stdout
+        self.stderr = stderr
 
         if auto_terminate is not None and termination_manager is not None:
             raise ScenarioError(
@@ -320,6 +341,8 @@ class CmdStarter(Starter):
                     cwd=self.cwd,
                     env=environ,  # pass the new env dict to the sub process
                     creationflags=creationflags,
+                    stdout=self.stdout,
+                    stderr=self.stderr,
                 )
             except (FileNotFoundError, NotADirectoryError) as e:
                 # This distinction has to be made due to a change in
