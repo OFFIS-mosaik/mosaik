@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import warnings
 from abc import ABC, abstractmethod
+from asyncio.subprocess import Process
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from subprocess import Popen, TimeoutExpired
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Tuple
 
 from loguru import logger
@@ -14,6 +13,7 @@ from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
 
 from mosaik.exceptions import ConnectionClosedError, ScenarioError
+from mosaik.process_termination_managers import ProcessTerminationManager
 
 if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
@@ -157,11 +157,13 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikRemote
-    _process: Tuple[Popen[str], bool] | None
+    _process: Tuple[Process, ProcessTerminationManager] | None
     """The process for this RemoteProxy (or None, if the connection
     was established using connect). The second component of the tuple is
-    True if the process should be automatically terminated at the end of
-    the simulation.
+    a ProcessTerminationManager: a function that is called with the
+    process as the first argument that is responsible for terminating
+    the process in the desired way (which might depend on the simulator
+    and simulation).
     """
 
     def __init__(
@@ -169,7 +171,7 @@ class RemoteProxy(BaseProxy):
         channel: Channel,
         mosaik_remote: MosaikRemote,
         *,
-        process: Tuple[Popen[str], bool] | None = None,
+        process: Tuple[Process, ProcessTerminationManager] | None = None,
     ):
         super().__init__()
         self._channel = channel
@@ -228,22 +230,17 @@ class RemoteProxy(BaseProxy):
     async def stop(self) -> None:
         try:
             await asyncio.wait_for(self._channel.send(["stop", [], {}]), 0.1)
-        except (asyncio.TimeoutError, asyncio.IncompleteReadError):
+        except (
+            asyncio.TimeoutError,
+            asyncio.IncompleteReadError,
+            ConnectionResetError,
+        ):
             pass
         await self._channel.close()
         await self._reader_task
-        if self._process and self._process[1]:
-            self._process[0].terminate()
-            try:
-                # TODO: Potentially make this timeout configurable
-                self._process[0].wait(1.0)
-            except TimeoutExpired:
-                warnings.warn(
-                    UserWarning(
-                        "mosaik could not terminate subprocess for cmd simulator "
-                        "(set `auto_terminate=False` to stop it from trying)"
-                    )
-                )
+        if self._process:
+            process, terminate = self._process
+            await terminate(process)
 
 
 def extract_version(meta: Meta) -> List[int]:

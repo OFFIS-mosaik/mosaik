@@ -112,8 +112,12 @@ async def test_start_proc_no_port_conflict():
     # We should get `SimulationError`s here, not `OSError`s -- the
     # latter would indicate that we tried to open two servers on the
     # same port
-    assert isinstance(exc_1, SimulationError)
-    assert isinstance(exc_2, SimulationError)
+    assert isinstance(exc_1, Exception)
+    if not isinstance(exc_1, SimulationError):
+        raise exc_1
+    assert isinstance(exc_2, Exception)
+    if not isinstance(exc_2, SimulationError):
+        raise exc_2
 
 
 @pytest.mark.cmd_process
@@ -191,11 +195,11 @@ async def test_start_connect_timeout_init():
         print("Writer closed")
 
     async with await asyncio.start_server(mock_sim_server, "127.0.0.1", 5556):
+        proxy = await start_starter(
+            ConnectStarter("127.0.0.1", 5556),
+            {"start_timeout": 0.1},
+        )
         with pytest.raises(SystemExit) as exc_info:
-            proxy = await start_starter(
-                ConnectStarter.from_sim_config_entry(SIM_CONFIG["ExampleSimC"]),
-                {"start_timeout": 0.1},
-            )
             await adapters.init_and_get_adapter(
                 proxy,
                 "Spam",
@@ -208,6 +212,7 @@ async def test_start_connect_timeout_init():
         )
 
         await asyncio.sleep(0.1)
+        await proxy.stop()
 
 
 @pytest.mark.asyncio
@@ -299,11 +304,11 @@ async def test_start_init_error():
         base_proxy = await start_starter(starter)
         await adapters.init_and_get_adapter(
             base_proxy,
-            "spam",
+            "Spam",
             {"foo": 3},
             start_timeout=1.0,
         )
-        assert (
-            'Simulator "Spam" closed its connection during the init() call.'
-            == exc_info.value.args[0]
-        )
+    assert (
+        'Simulator "Spam" closed its connection during the init() call.'
+        == exc_info.value.args[0]
+    )

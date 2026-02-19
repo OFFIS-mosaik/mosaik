@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from subprocess import TimeoutExpired
 from typing import Any, Callable, Coroutine, Type
 
 import mosaik_api_v3.connection
@@ -12,7 +11,7 @@ import pytest_asyncio
 from example_sim.mosaik import ExampleSim
 from mosaik_api_v3.connection import Channel, RemoteException
 
-from mosaik import World, async_scenario, proxies, scenario, simmanager
+from mosaik import AsyncWorld, World, async_scenario, proxies, scenario, simmanager
 from mosaik.exceptions import (
     DuplicateEntityIdError,
     NonSerializableOutputsError,
@@ -87,9 +86,10 @@ def test_start_wrong_api_version(world: World, monkeypatch):
     )
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("auto_terminate", [True, False])
-def test_start_proc_auto_terminate(auto_terminate: bool):
-    with World(
+async def test_start_proc_auto_terminate(auto_terminate: bool):
+    async with AsyncWorld(
         {
             "ProcTest": {
                 "cmd": "%(python)s -m tests.simulators.proc_test_sim %(addr)s",
@@ -97,22 +97,27 @@ def test_start_proc_auto_terminate(auto_terminate: bool):
             }
         }
     ) as world:
-        sim = world.start("ProcTest")
-        world.run(1)
+        sim = await world.start("ProcTest")
+        await world.run(1)
 
-    proxy = sim._async_model_factory._proxy
+    proxy = sim._proxy
     assert isinstance(proxy, RemoteProxy)
     assert proxy._process is not None
     try:
-        proxy._process[0].wait(0.1)
-    except TimeoutExpired:
-        # Just wait a moment for terminate to go through, but not long
-        # enough for the thread in ProcTest to finish.
+        await asyncio.wait_for(proxy._process[0].wait(), 0.1)
+    except asyncio.TimeoutError:
+        # Just wait a moment for terminate (in the shutdown procedure
+        # at the end of the with block) to go through if auto_terminate
+        # is True, but not long enough for the thread in ProcTest to
+        # finish.
         # This way, the process should only terminate if explicitly
         # terminated by mosaik.
-        pass
-    # Check that the process has terminated
-    assert (proxy._process[0].poll() is not None) == auto_terminate
+        assert not auto_terminate, "did terminate despite auto_terminate=False"
+        proxy._process[0].terminate()
+        await proxy._process[0].wait()
+    else:
+        # Check that the process has terminated
+        assert auto_terminate, "did not terminate despite auto_terminate=True"
 
 
 async def read_message(reader: asyncio.StreamReader):

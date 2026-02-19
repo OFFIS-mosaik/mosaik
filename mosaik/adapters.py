@@ -71,6 +71,7 @@ async def init_and_get_adapter(
             base_proxy.init(sim_id, **sim_params), start_timeout
         )
     except ScenarioError as e:
+        await base_proxy.stop()
         raise ScenarioError(
             f"There was an error during the initialization of {sim_id}: ", e
         )
