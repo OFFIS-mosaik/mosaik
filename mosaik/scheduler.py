@@ -135,7 +135,7 @@ async def sim_process(
             world.tqdm.update(get_avg_progress(sims, until) - world.tqdm.n)
 
             if world.use_cache:
-                prune_dataflow_cache(world)
+                prune_dataflow_cache(world, sim)
 
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
@@ -280,7 +280,7 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
                     f"Simulator {src_sim.sid}'s entity {single_entry.src_port[0]} did "
                     "not produce output on its persistent attribute "
                     f"{single_entry.src_port[1]} during its last step. However, this "
-                    "value is now required by simulator {sim.sid}. This usually "
+                    f"value is now required by simulator {sim.sid}. This usually "
                     "results from attributes that are marked persistent despite "
                     "working like events. Supplying `None` for now. This will be an "
                     "error in future versions of mosaik."
@@ -518,20 +518,16 @@ def trigger_successors(sim: SimRunner) -> None:
                 dest_sim.schedule_step(sim.output_time + delay)
 
 
-def prune_dataflow_cache(world: AsyncWorld):
-    """
-    Prunes the dataflow cache.
-    """
-    if not world.use_cache:
-        return
-    min_cache_time = min(s.last_step.time for s in world._get_sim_runners().values())
-    for sim in world._get_sim_runners().values():
-        if sim.outputs:
-            sim.outputs = {
-                time: cache
-                for time, cache in sim.outputs.items()
-                if time >= min_cache_time
-            }
+def prune_dataflow_cache(world: AsyncWorld, sim: SimRunner):
+    """Prunes the dataflow cache for `sim`."""
+    if sim.outputs and sim.pullers:
+        min_cache_time = min(
+            succ_sim.progress.time.time - dur for succ_sim, dur in sim.pullers.items()
+        )
+        min_cache_time = max(time for time in sim.outputs if time <= min_cache_time)
+        sim.outputs = {
+            time: cache for time, cache in sim.outputs.items() if time >= min_cache_time
+        }
 
 
 def get_progress(sims: Dict[SimId, SimRunner], until: int) -> float:

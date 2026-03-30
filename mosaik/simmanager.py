@@ -129,8 +129,6 @@ class SimRunner:
     minimum over all input delays. This is used while waiting for
     dependencies.
     """
-    # TODO: Saving the minimal durations here might actually be wrong.
-    # We probably want to save *all* triggering durations.
     triggers: Dict[Port, List[Tuple[SimRunner, TieredDuration]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
@@ -218,6 +216,13 @@ class SimRunner:
     """The asyncio.Task for this simulator."""
 
     outputs: Optional[Dict[Time, OutputData]]
+    """Optionally, the output cache. For each time, the output produced
+    by this simulator at that time.
+
+    This cache gets pruned by
+    :func:`~mosaik.scheduler.prune_dataflow_cache`.
+    """
+    pullers: Dict[SimRunner, Time]
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
     check_outputs: Callable[[OutputData], None]
 
@@ -270,6 +275,7 @@ class SimRunner:
         self.output_request = {}
 
         self.outputs = None
+        self.pullers = {}
 
     def schedule_step(self, tiered_time: TieredTime):
         """Schedule a step for this simulator at the given time. This

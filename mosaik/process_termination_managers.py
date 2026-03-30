@@ -57,10 +57,8 @@ class auto_terminate:
             logger.trace("Simulator process had already ceased existing.")
             pass
         try:
-            if self.timeout is not None:
-                exit_code = await asyncio.wait_for(process.wait(), self.timeout)
-            else:
-                exit_code = await process.wait()
+            # If timeout is None, wait_for will wait indefinitely
+            exit_code = await asyncio.wait_for(process.wait(), self.timeout)
             logger.trace(f"Simulator process finished with exit code {exit_code}")
         except asyncio.TimeoutError:
             warnings.warn(

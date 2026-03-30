@@ -763,6 +763,12 @@ class AsyncWorld:
                     transform=transform,
                 )
             )
+            if dest_sim in src_sim.pullers:
+                src_sim.pullers[dest_sim] = max(
+                    src_sim.pullers[dest_sim], delay.tiers[0]
+                )
+            else:
+                src_sim.pullers[dest_sim] = delay.tiers[0]
         else:
             src_sim.output_to_push.setdefault(src_port, []).append(
                 PushDescription(
