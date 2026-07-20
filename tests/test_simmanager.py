@@ -13,9 +13,13 @@ from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import AsyncWorld, World, async_scenario, proxies, scenario, simmanager
 from mosaik.exceptions import (
+    ApiVersionTooNewError,
+    AsyncRequestsNotConnectedError,
+    AsyncRequestsNotEnabledError,
     DuplicateEntityIdError,
+    IllegalExtraMethodNameError,
+    IllegalModelNameError,
     NonSerializableOutputsError,
-    ScenarioError,
 )
 from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.tiered_time import TieredDuration, TieredTime
@@ -76,14 +80,11 @@ def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
-    with pytest.raises(ScenarioError) as exc_info:
+    with pytest.raises(ApiVersionTooNewError) as exc_info:
         world.start("MetaMock", meta={"api_version": "1000.0"})
 
-    assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMock-0: The API version "
-        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
-        "mosaik package is available to be used in your scenario?"
-    )
+    assert exc_info.value.sim_id == "MetaMock-0"
+    assert exc_info.value.version == [1000, 0]
 
 
 @pytest.mark.asyncio
@@ -127,18 +128,23 @@ async def read_message(reader: asyncio.StreamReader):
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_model_names(world):
-    with pytest.raises(ScenarioError):
+    with pytest.raises(IllegalModelNameError) as exc_info:
         world.start("MetaMock", meta={"models": {"step": {}}})
+    assert exc_info.value.model_name == "step"
 
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_extra_methods(world):
-    with pytest.raises(ScenarioError):
+    with pytest.raises(IllegalExtraMethodNameError) as exc_info:
         world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
-    with pytest.raises(ScenarioError):
+    assert exc_info.value.method_name == "step"
+    assert not exc_info.value.clashes_with_model
+    with pytest.raises(IllegalExtraMethodNameError) as exc_info:
         world.start(
             "MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]}
         )
+    assert exc_info.value.method_name == "A"
+    assert exc_info.value.clashes_with_model
 
 
 def test_sim_proxy_stop_impl(world):
@@ -272,8 +278,8 @@ async def _rpc_get_data_err1(channel: Channel, world: World):
     try:
         await channel.send(["get_data", [{"Z.2": []}], {}])
     except mosaik_api_v3.connection.RemoteException as exception:
-        if exception.remote_type == "ScenarioError":
-            raise ScenarioError
+        if exception.remote_type == "AsyncRequestsNotConnectedError":
+            raise AsyncRequestsNotConnectedError(None, None)
 
 
 async def _rpc_get_data_err2(channel: Channel, world: World):
@@ -283,8 +289,8 @@ async def _rpc_get_data_err2(channel: Channel, world: World):
     try:
         await channel.send(["get_data", [{"Y.2": []}], {}])
     except mosaik_api_v3.connection.RemoteException as exception:
-        if exception.remote_type == "ScenarioError":
-            raise ScenarioError
+        if exception.remote_type == "AsyncRequestsNotEnabledError":
+            raise AsyncRequestsNotEnabledError(None, None)
 
 
 async def _rpc_set_data_err1(channel: Channel, world: World):
@@ -308,8 +314,8 @@ async def _rpc_set_data_err2(channel: Channel, world: World):
         (_rpc_get_related_entities, None),
         (_rpc_get_data, None),
         (_rpc_set_data, None),
-        (_rpc_get_data_err1, ScenarioError),
-        (_rpc_get_data_err2, ScenarioError),
+        (_rpc_get_data_err1, AsyncRequestsNotConnectedError),
+        (_rpc_get_data_err2, AsyncRequestsNotEnabledError),
         (_rpc_set_data_err1, RemoteException),
         (_rpc_set_data_err2, RemoteException),
     ],
@@ -365,6 +371,10 @@ def test_mosaik_remote(  # noqa
             world._async_world._proxies["Y"] = proxy_y
             sim_y = simmanager.SimRunner("Y", proxy_y, None)
             world._async_world._sims_cache["Y"] = sim_y
+            # Y is connected to X, but async_requests is not enabled
+            # for this connection, so async requests from X to Y should
+            # fail with `AsyncRequestsNotEnabledError`.
+            sim_y.successors[sim_x] = TieredDuration(0)
 
             proxy_z = DummyProxy()
             world._async_world._proxies["Z"] = proxy_z

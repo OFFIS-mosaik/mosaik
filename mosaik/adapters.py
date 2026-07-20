@@ -29,7 +29,13 @@ from typing import Any, Dict, Optional
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ConnectionClosedError, ScenarioError
+from mosaik.exceptions import (
+    ApiVersionMismatchError,
+    ApiVersionTooNewError,
+    ConnectionClosedError,
+    ScenarioError,
+    SimulatorInitError,
+)
 from mosaik.proxies import BaseProxy, Proxy
 
 
@@ -72,9 +78,7 @@ async def init_and_get_adapter(
         )
     except ScenarioError as e:
         await base_proxy.stop()
-        raise ScenarioError(
-            f"There was an error during the initialization of {sim_id}: ", e
-        )
+        raise SimulatorInitError(sim_id, e)
     except ConnectionClosedError:
         await base_proxy.stop()
         raise SystemExit(
@@ -88,19 +92,9 @@ async def init_and_get_adapter(
 
     # version > 3.0
     if version >= [4]:
-        raise ScenarioError(
-            f"There was an error during the initialization of {sim_id}: "
-            f"The API version ({'.'.join(map(str, version))}) is too new for this "
-            "version of mosaik. Maybe a newer version of the mosaik package is "
-            "available to be used in your scenario?"
-        )
+        raise ApiVersionTooNewError(sim_id, version)
     if explicit_version and version != explicit_version:
-        raise ScenarioError(
-            f"The explicit version that you specified for simulator {sim_id} in your "
-            f"SimConfig (namely {'.'.join(map(str, explicit_version))}) does not match "
-            "the version that this simulator reports (namely "
-            f"{'.'.join(map(str, version))})."
-        )
+        raise ApiVersionMismatchError(sim_id, explicit_version, version)
 
     proxy: Proxy = base_proxy
     # Add all the adapters needed to get from the actual version of the

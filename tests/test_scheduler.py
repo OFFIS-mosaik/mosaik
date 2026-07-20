@@ -193,7 +193,7 @@ async def test_sim_process_error(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(scheduler, "advance_progress", advance_progress)
 
-    with pytest.raises(exceptions.SimulationError) as excinfo:
+    with pytest.raises(exceptions.SimulatorConnectionLostError) as excinfo:
         await scheduler.sim_process(
             cast(AsyncWorld, None),
             cast(SimRunner, Sim()),
@@ -203,6 +203,7 @@ async def test_sim_process_error(monkeypatch: pytest.MonkeyPatch):
             False,
             scheduler.Barrier(1),
         )
+    assert excinfo.value.sim_id == "spam"
     assert str(excinfo.value) == (
         '[Errno 1337] noob: Simulator "spam" closed its connection.'
     )

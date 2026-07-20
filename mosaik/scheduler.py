@@ -13,7 +13,14 @@ from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
-from mosaik.exceptions import SimulationError
+from mosaik.exceptions import (
+    InvalidNextStepTimeError,
+    InvalidNextStepTypeError,
+    InvalidOutputTimeError,
+    MaxLoopIterationsExceededError,
+    SimulatorConnectionLostError,
+    StepTimeMismatchError,
+)
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
 from mosaik.tiered_time import TieredTime
@@ -102,18 +109,12 @@ async def sim_process(
             await wait_for_dependencies(sim, lazy_stepping)
             sim.current_step = heappop(sim.next_steps)
             if sim.current_step != sim.progress.time:
-                raise SimulationError(
-                    f"Simulator {sim.sid} is trying to perform a step at time "
-                    f"{sim.current_step}, but it has already progressed to time "
-                    f"{sim.progress.time}."
+                raise StepTimeMismatchError(
+                    sim.sid, sim.current_step, sim.progress.time
                 )
             if any(t >= world.max_loop_iterations for t in sim.current_step.tiers[1:]):
-                raise SimulationError(
-                    f"Simulator {sim.sid} has performed a sub-step more than "
-                    f"{world.max_loop_iterations} times. (The complete now is "
-                    f"{sim.current_step}.) This might indicate that you have run into "
-                    "an infinite loop. If not, you can increase max_loop_iterations to "
-                    "get rid of this warning."
+                raise MaxLoopIterationsExceededError(
+                    sim.sid, world.max_loop_iterations, sim.current_step
                 )
 
             input_data = get_input_data(world, sim)
@@ -139,7 +140,7 @@ async def sim_process(
 
         sim.tqdm.set_postfix_str("done")
     except ConnectionError as e:
-        raise SimulationError(f'Simulator "{sim.sid}" closed its connection.', e)
+        raise SimulatorConnectionLostError(sim.sid, e)
 
 
 async def next_step_settled(sim: SimRunner, world: AsyncWorld) -> bool:
@@ -356,15 +357,10 @@ async def step(
     sim.is_in_step = False
     if next_step_time is not None:
         if not isinstance(next_step_time, int):
-            raise SimulationError(
-                f"the next step time returned by the step method must be of type int, "
-                f'but is of type {type(next_step_time)} for simulator "{sim.sid}"'
-            )
+            raise InvalidNextStepTypeError(sim.sid, next_step_time)
         if next_step_time <= sim.current_step.time:
-            raise SimulationError(
-                f"the next step time returned by step must be later than the current "
-                f"step's time, but {next_step_time} <= {sim.current_step.time} "
-                f'for simulator "{sim.sid}"'
+            raise InvalidNextStepTimeError(
+                sim.sid, next_step_time, sim.current_step.time
             )
 
         if next_step_time < world.until:
@@ -435,14 +431,11 @@ def validate_output_time(sim: SimRunner, output_time: int):
 
     :param sim: The `SimRunner` instance representing the simulation.
     :param output_time: The output time to validate.
-    :raises SimulationError: if the output time is less than the
+    :raises InvalidOutputTimeError: if the output time is less than the
         simulation's last time step.
     """
     if sim.last_step.time > output_time:
-        raise SimulationError(
-            f"Output time ({output_time}) is not >= time ({sim.last_step}) for "
-            f'simulator "{sim.sid}".'
-        )
+        raise InvalidOutputTimeError(sim.sid, output_time, sim.last_step)
 
 
 def determine_output_tiered_time(sim: SimRunner, output_time: int) -> TieredTime:

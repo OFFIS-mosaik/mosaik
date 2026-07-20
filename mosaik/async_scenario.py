@@ -59,10 +59,26 @@ from typing_extensions import Literal, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
-from mosaik.exceptions import DuplicateEntityIdError, ScenarioError, SimulationError
+from mosaik.exceptions import (
+    AttributeConnectionError,
+    ConnectError,
+    DataflowCycleError,
+    DuplicateEntityIdError,
+    DuplicateSimIdError,
+    IllegalExtraMethodNameError,
+    IllegalModelNameError,
+    InvalidSimulatorTypeError,
+    MissingSimConfigError,
+    MissingSimIdError,
+    MissingSimulatorTypeError,
+    ScenarioError,
+    SimulatorConnectionLostError,
+    UnknownExtraMethodError,
+    UnknownStarterNameError,
+    WeakConnectionOutsideGroupError,
+)
 from mosaik.greetings_util import print_greetings
 from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
-from mosaik.internal_util import doc_link
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import BaseProxy, Proxy
 from mosaik.simmanager import (
@@ -202,11 +218,7 @@ def connect_interval(
     cutoff = pre_length - ascent
     list_tiers = [0] * dest_group.depth
     if weak and not common_group.parent:
-        raise ScenarioError(
-            "Weak connections may only be used in groups. This is new in mosaik 3.3. "
-            "For more information, see "
-            f"{doc_link('scenario-definition', 'weak-connections')}."
-        )
+        raise WeakConnectionOutsideGroupError()
     if time_shifted:
         list_tiers[0] = time_shifted
     if weak:
@@ -474,17 +486,11 @@ class AsyncWorld:
         if isinstance(starter, Starter):
             starter_name = None
             if not sim_id:
-                raise ScenarioError(
-                    "when starting a simulator using a Starter, a sim_id must be "
-                    "specified explicitly"
-                )
+                raise MissingSimIdError()
         elif isinstance(starter, str):
             starter_name = starter
             if not self.sim_config:
-                raise ScenarioError(
-                    "starting simulators by name requires specifying a sim_config when "
-                    "creating the world"
-                )
+                raise MissingSimConfigError()
             try:
                 starter_config = self.sim_config[starter_name]
                 if isinstance(starter_config, Starter):
@@ -492,17 +498,13 @@ class AsyncWorld:
                 else:
                     starter = starters.get_starter_from_starter_config(starter_config)
             except KeyError:
-                raise ScenarioError(
-                    f"no starter '{starter}' was defined in the sim_config"
-                )
+                raise UnknownStarterNameError(starter)
             if not sim_id:
                 sim_id_counter = self._sim_ids[starter_name]
                 sim_id = f"{starter_name}-{next(sim_id_counter)}"
 
         if sim_id in self._factories:
-            raise ScenarioError(
-                f"a simulator with sim_id '{sim_id}' has already been started"
-            )
+            raise DuplicateSimIdError(sim_id)
 
         if starter_name:
             logger.info(f"Starting '{sim_id}' (based on starter '{starter_name}')")
@@ -545,19 +547,13 @@ class AsyncWorld:
         if not dest_attr:
             dest_attr = src_attr
 
-        problems: List[str] = []
-
-        if src_attr not in src.model_mock.output_attrs:
-            problems.append("the source attribute does not exist")
-        if dest_attr not in dest.model_mock.input_attrs:
-            problems.append("the destination attribute does not exist")
+        missing_src_attr = src_attr not in src.model_mock.output_attrs
+        missing_dest_attr = dest_attr not in dest.model_mock.input_attrs
+        missing_initial_data = False
 
         if (time_shifted or weak) and dest_attr in dest.model_mock.measurement_inputs:
             if initial_data is SENTINEL:
-                problems.append(
-                    "weak or time-shifted connection into non-trigger attribute "
-                    "requires initial data"
-                )
+                missing_initial_data = True
         elif initial_data is not SENTINEL:
             warnings.warn(
                 f"Gave initial data for connection from {src.full_id}.{src_attr} to "
@@ -573,10 +569,15 @@ class AsyncWorld:
                 "usual step size) explicitly if this is what you want."
             )
 
-        if problems:
-            raise ScenarioError(
-                f"There are problems connecting {src.full_id}.{src_attr} to "
-                f"{dest.full_id}.{dest_attr}:\n- " + "\n- ".join(problems)
+        if missing_src_attr or missing_dest_attr or missing_initial_data:
+            raise AttributeConnectionError(
+                src,
+                dest,
+                src_attr,
+                dest_attr,
+                missing_src_attr=missing_src_attr,
+                missing_dest_attr=missing_dest_attr,
+                missing_initial_data=missing_initial_data,
             )
 
         if (
@@ -699,10 +700,7 @@ class AsyncWorld:
             )
 
         if errors:
-            raise ScenarioError(
-                "While connecting entities, the following errors occurred:\n - "
-                + "\n - ".join(str(e) for e in errors)
-            )
+            raise ConnectError(errors)
 
         # Add relation in entity_graph
         self.entity_graph.add_edge(src.full_id, dest.full_id)
@@ -856,10 +854,8 @@ class AsyncWorld:
             # Try to find the simulator that closed its connection
             for sid, task in requests.items():
                 if task.exception():
-                    raise SimulationError(
-                        f"Simulator '{sid}' closed its connection while executing "
-                        "`World.get_data()`.",
-                        e,
+                    raise SimulatorConnectionLostError(
+                        sid, e, during="`World.get_data()`"
                     ) from None
             else:
                 raise RuntimeError(
@@ -1140,9 +1136,7 @@ class AsyncWorld:
                 continue
             min_path = descs[sim]
             if min_path["delays"].contains_zero():
-                raise ScenarioError(
-                    f"Your scenario contains cycles, for example: {min_path['path']}."
-                )
+                raise DataflowCycleError([isim.sid for isim in min_path["path"]])
 
     async def shutdown(self):
         """
@@ -1211,7 +1205,7 @@ class ExtraMethodsProxy:
         return iter(self._methods)
 
     def __getattr__(self, name: str) -> Callable[..., Any]:
-        raise ScenarioError(f"`{name}` is not an extra method on '{self._sim_id}'")
+        raise UnknownExtraMethodError(self._sim_id, name)
 
 
 class AsyncModelFactory:
@@ -1244,26 +1238,15 @@ class AsyncModelFactory:
         self.entities = {}
 
         if "type" not in proxy.meta:
-            raise ScenarioError(
-                'The simulator is missing a type specification ("time-based", '
-                '"event-based" or "hybrid"). This is required starting from API '
-                "version 3."
-            )
+            raise MissingSimulatorTypeError(sid)
         self.type = proxy.meta["type"]
         if self.type not in ["time-based", "event-based", "hybrid"]:
-            raise ScenarioError(
-                f"The type '{self.type}' is not a valid type. (It should be one of"
-                "'time-based', 'event-based' and 'hybrid'.) Please check for typos "
-                f"in your simulator's init function and meta."
-            )
+            raise InvalidSimulatorTypeError(sid, self.type)
 
         self.models = {}
         for model, props in self.meta["models"].items():
             if model in MOSAIK_METHODS:
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal model name: {model}. This name "
-                    "is already the name of a mosaik API method."
-                )
+                raise IllegalModelNameError(sid, model)
             self.models[model] = AsyncModelMock(self._world, self, model)
             # Make public models accessible
             if props.get("public", True):
@@ -1272,15 +1255,10 @@ class AsyncModelFactory:
         # Bind extra_methods to this instance:
         for meth_name in self.meta.get("extra_methods", []):
             if meth_name in MOSAIK_METHODS:
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a mosaik API method.'
-                )
+                raise IllegalExtraMethodNameError(sid, meth_name)
             if meth_name in self.models.keys():
-                raise ScenarioError(
-                    f"Simulator {sid} uses an illegal name for an extra method: "
-                    f'"{meth_name}". This is already the name of a model of this '
-                    "simulator."
+                raise IllegalExtraMethodNameError(
+                    sid, meth_name, clashes_with_model=True
                 )
 
             # We need get_wrapper() in order to avoid problems with

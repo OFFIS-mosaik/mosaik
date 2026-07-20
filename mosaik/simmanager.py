@@ -45,9 +45,10 @@ from mosaik_api_v3.types import (
 from typing_extensions import Literal, TypeAlias
 
 from mosaik.exceptions import (
+    AsyncRequestsNotConnectedError,
+    AsyncRequestsNotEnabledError,
+    EventInNonRealTimeModeError,
     NonSerializableOutputsError,
-    ScenarioError,
-    SimulationError,
 )
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy
@@ -484,9 +485,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         """
         sim = self.world._get_sim_runners()[self.sid]
         if not self.world.rt_factor:
-            raise SimulationError(
-                f"Simulator '{self.sid}' tried to set an event in non-real-time mode."
-            )
+            raise EventInNonRealTimeModeError(self.sid)
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))
         else:
@@ -499,19 +498,13 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):
         """
         Check if async. requests are allowed from *dest_sid* to
-        *src_sid* and raise a :exc:`ScenarioError` if not.
+        *src_sid* and raise a :exc:`~mosaik.exceptions.ScenarioError` if
+        not.
         """
         if dest_sim not in src_sim.successors:
-            raise ScenarioError(
-                f"No connection from {src_sim.sid} to {dest_sim.sid}: You need to "
-                "connect entities from both simulators and set `async_requests=True`."
-            )
+            raise AsyncRequestsNotConnectedError(src_sim.sid, dest_sim.sid)
         if dest_sim not in src_sim.successors_to_wait_for:
-            raise ScenarioError(
-                f"Async. requests not enabled for the connection from {src_sim.sid} to "
-                f"{dest_sim.sid}. Add the argument `async_requests=True` to the "
-                f"connection of entities from {src_sim.sid} to {dest_sim.sid}."
-            )
+            raise AsyncRequestsNotEnabledError(src_sim.sid, dest_sim.sid)
 
 
 class TimedInputBuffer:
