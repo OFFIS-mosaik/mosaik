@@ -1,8 +1,6 @@
 ================================================================
-``mosaik.scenario`` --- Classes related to the scenario creation
+``mosaik.in_or_out_set`` -- Classes for attribute specifications
 ================================================================
 
-.. currentmodule:: mosaik.scenario
-
-.. automodule:: mosaik.scenario
+.. automodule:: mosaik.in_or_out_set
    :members:

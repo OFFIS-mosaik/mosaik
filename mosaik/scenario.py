@@ -18,12 +18,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Dict,
     Iterable,
-    Optional,
-    Tuple,
-    Type,
-    Union,
 )
 
 from mosaik_api_v3.types import Attr, ModelName, SimId
@@ -65,7 +60,7 @@ class World:
 
     You have to provide a *sim_config* which tells the world which
     simulators are available and how to start them. See
-    :func:`mosaik.simmanager.start` for more details.
+    :class:`~mosaik.async_scenario.SimConfig` for more details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set
     addional parameters overriding the defaults::
@@ -103,15 +98,15 @@ class World:
 
     def __init__(
         self,
-        sim_config: Optional[SimConfig] = None,
-        mosaik_config: Optional[MosaikConfig] = None,
+        sim_config: SimConfig | None = None,
+        mosaik_config: MosaikConfig | None = None,
         time_resolution: float = 1.0,
         debug: bool = False,
         cache: bool = True,
         max_loop_iterations: int = 100,
         skip_greetings: bool = False,
         configure_logging: bool = True,
-        asyncio_loop: Optional[asyncio.AbstractEventLoop] = None,
+        asyncio_loop: asyncio.AbstractEventLoop | None = None,
     ):
         if asyncio_loop:
             self.loop = asyncio_loop
@@ -134,7 +129,12 @@ class World:
         self._no_shutdown_in_run = True
         return self
 
-    def __exit__(self, exc_type: Type[Exception], exc: Exception, tb: TracebackType):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ):
         self.shutdown()
         # Don't suppress exceptions. Later on, we might want to add
         # handling of mosaik exceptions here. (Make sure to unify
@@ -148,12 +148,12 @@ class World:
         self,
         starter: Starter | str,
         /,
-        sim_id: Optional[SimId] = None,
+        sim_id: SimId | None = None,
         **sim_params: Any,
     ) -> ModelFactory:
         """
         Start the simulator named *sim_name* and return a
-        :class:`ModelFactory` for it.
+        :class:`~mosaik.scenario.ModelFactory` for it.
         """
         async_model_factory = self.loop.run_until_complete(
             self._async_world.start(starter, sim_id, **sim_params)
@@ -165,8 +165,8 @@ class World:
         src: Entity,
         dest: Entity,
         src_attr: Attr,
-        dest_attr: Optional[Attr] = None,
-        time_shifted: Union[bool, int] = False,
+        dest_attr: Attr | None = None,
+        time_shifted: bool | int = False,
         weak: bool = False,
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = lambda x: x,
@@ -184,10 +184,10 @@ class World:
         self,
         src: Entity,
         dest: Entity,
-        *attr_pairs: Union[str, Tuple[str, str]],  # type: ignore
+        *attr_pairs: str | tuple[str, str],  # type: ignore
         async_requests: bool = False,
-        time_shifted: Union[bool, int] = False,
-        initial_data: Dict[Attr, Any] = {},
+        time_shifted: bool | int = False,
+        initial_data: dict[Attr, Any] | None = None,
         weak: bool = False,
         transform: Callable[[Any], Any] = lambda x: x,
     ):
@@ -230,6 +230,8 @@ class World:
         sent to the destination simulator at the first step (e.g.
         *{'src_attr': value}*).
         """
+        if initial_data is None:
+            initial_data = {}
         return self._async_world.connect(
             src,
             dest,
@@ -252,7 +254,7 @@ class World:
         self,
         entity_set: Iterable[Entity],
         *attributes: Attr,
-    ) -> Dict[Entity, Dict[Attr, Any]]:
+    ) -> dict[Entity, dict[Attr, Any]]:
         """
         Get and return the values of all *attributes* for each entity of
         an *entity_set*.
@@ -277,9 +279,9 @@ class World:
     def run(
         self,
         until: int,
-        rt_factor: Optional[float] = None,
+        rt_factor: float | None = None,
         rt_strict: bool = False,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        print_progress: bool | Literal["individual"] = True,
         lazy_stepping: bool = True,
         *,
         shutdown: bool = True,
@@ -360,8 +362,9 @@ class World:
 
     @property
     def entity_graph(self):
-        """The graph of all entities. See :attr:`AsyncWorld.entity_graph
-        <mosaik.async_scenario.AsyncWorld.entity_graph>."""
+        """The graph of all entities. See
+        :attr:`AsyncWorld.entity_graph<mosaik.async_scenario.AsyncWorld.entity_graph>`.
+        """
         return self._async_world.entity_graph
 
     @property
@@ -380,7 +383,7 @@ class World:
     def _get_sim_runners(self):
         return self._async_world._get_sim_runners()
 
-    def compile(self, *, use_cache: bool = False) -> Dict[SimId, SimRunner]:
+    def compile(self, *, use_cache: bool = False) -> dict[SimId, SimRunner]:
         """
         Return the mapping of simulator IDs to their
         :class:`~mosaik.simmanager.SimRunner` instances.
@@ -459,7 +462,7 @@ class ModelFactory:
         return value
 
 
-class ModelMock(object):
+class ModelMock:
     """
     Instances of this class are exposed as attributes of
     :class:`ModelFactory` and allow the instantiation of simulator

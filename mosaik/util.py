@@ -14,15 +14,11 @@ from typing import (
     Any,
     Callable,
     Collection,
-    Dict,
     Iterable,
-    List,
     MutableSequence,
-    Optional,
-    Set,
-    Tuple,
 )
 
+import networkx as nx
 from loguru import logger
 from mosaik_api_v3 import Attr, SimId
 from typing_extensions import Literal
@@ -32,7 +28,6 @@ from mosaik.scenario import Entity, World
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
-    import networkx as nx
     import plotly.graph_objects as go
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
@@ -46,7 +41,7 @@ def connect_many_to_one(
     world: World | AsyncWorld,
     src_set: Iterable[Entity],
     dest: Entity,
-    *attrs: Attr | Tuple[Attr, Attr],
+    *attrs: Attr | tuple[Attr, Attr],
     async_requests: bool = False,
     transform: Callable[[Any], Any] = lambda x: x,
 ):
@@ -65,7 +60,7 @@ def connect_randomly(
     world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
-    *attrs: Attr | Tuple[Attr, Attr],
+    *attrs: Attr | tuple[Attr, Attr],
     evenly: bool = True,
     max_connects: int = float("inf"),  # type: ignore
 ):
@@ -128,7 +123,7 @@ def connect_zip(
     world: World | AsyncWorld,
     src_set: Collection[Entity],
     dest_set: Collection[Entity],
-    *attrs: Attr | Tuple[Attr, Attr],
+    *attrs: Attr | tuple[Attr, Attr],
     **kwargs,
 ) -> None:
     """Connect entities in parallel. This works analogously to the
@@ -154,10 +149,10 @@ def _connect_evenly(
     world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
-    *attrs: Attr | Tuple[Attr, Attr],
-) -> Set[Entity]:
+    *attrs: Attr | tuple[Attr, Attr],
+) -> set[Entity]:
     connect = world.connect
-    connected: Set[Entity] = set()
+    connected: set[Entity] = set()
 
     src_size, dest_size = len(src_set), len(dest_set)
     pos = 0
@@ -175,16 +170,16 @@ def _connect_randomly(
     world: World | AsyncWorld,
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
-    *attrs: Attr | Tuple[Attr, Attr],
+    *attrs: Attr | tuple[Attr, Attr],
     max_connects: int = float("inf"),  # type: ignore
-) -> Set[Entity]:
+) -> set[Entity]:
     connect = world.connect
-    connected: Set[Entity] = set()
+    connected: set[Entity] = set()
 
     assert len(src_set) <= (len(dest_set) * max_connects)
     max_i = len(dest_set) - 1
     randint = random.randint
-    connects: Dict[Entity, int] = {}
+    connects: dict[Entity, int] = {}
     for src in src_set:
         i = randint(0, max_i)
         dest = dest_set[i]
@@ -206,7 +201,7 @@ def plot_execution_time(
     dpi: int = STANDARD_DPI,
     format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
     show_plot: bool = True,
-    slice: Tuple[int, int] | None = None,
+    slice: tuple[int, int] | None = None,
 ):
     """Creates an image visualizing the execution time of the different
     simulators of a mosaik scenario.
@@ -245,7 +240,7 @@ def plot_execution_time(
     t_max = max([node[1]["t_end"] for node in all_nodes])
 
     sims = world._get_sim_runners()
-    for isid in sims.keys():
+    for isid in sims:
         steps[isid] = []
         for node in all_nodes:
             if node[0][0] == isid:
@@ -282,7 +277,7 @@ def plot_execution_time(
 def plot_dataflow_graph(
     world: World,
     folder: str = STANDARD_FOLDER,
-    hdf5path: Optional[str] = None,
+    hdf5path: str | None = None,
     dpi: int = STANDARD_DPI,
     format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
     show_plot: bool = True,
@@ -378,7 +373,7 @@ def plot_dataflow_graph(
         # Because then by a 50/50 chance when you have a curved arrow
         # back and forth between two points, you can have the annotation
         # above the wrong arrow.
-        midpoint: Tuple[float, float] = con.get_path().vertices[1]  # type: ignore  # close enough
+        midpoint: tuple[float, float] = con.get_path().vertices[1]  # type: ignore  # close enough
 
         ax.annotate(
             annotation,
@@ -410,9 +405,9 @@ def plot_dataflow_graph(
 
 
 def quadratic_bezier(
-    p0: Tuple[float, float],
-    p1: Tuple[float, float],
-    p2: Tuple[float, float],
+    p0: tuple[float, float],
+    p1: tuple[float, float],
+    p2: tuple[float, float],
     num: int = 20,
 ):
     """Return the curve points for a quadratic Bézier segment."""
@@ -421,8 +416,8 @@ def quadratic_bezier(
 
     step = 1.0 / (num - 1)
     ts = [i * step for i in range(num)]
-    curve_x: List[float] = []
-    curve_y: List[float] = []
+    curve_x: list[float] = []
+    curve_y: list[float] = []
     for t in ts:
         one_minus_t = 1 - t
         x = (
@@ -457,12 +452,12 @@ def _build_dataflow_graph(world: World | AsyncWorld) -> nx.DiGraph[str]:
 
 
 def _edge_traces(
-    graph: nx.DiGraph[str], pos: Dict[str, Tuple[float, float]]
-) -> Tuple[List[go.Scatter], List[dict[str, Any]]]:
+    graph: nx.DiGraph[str], pos: dict[str, tuple[float, float]]
+) -> tuple[list[go.Scatter], list[dict[str, Any]]]:
     import plotly.graph_objects as go
 
-    traces: List[go.Scatter] = []
-    annotations: List[dict[str, Any]] = []
+    traces: list[go.Scatter] = []
+    annotations: list[dict[str, Any]] = []
     for src, dst, data in graph.edges(data=True):
         x0, y0 = pos[src]
         x1, y1 = pos[dst]
@@ -476,7 +471,7 @@ def _edge_traces(
 
         edge_color = "red" if data.get("time_shifted") else "gray"
         line_style = "dot" if data.get("weak") else "solid"
-        labels: List[str] = []
+        labels: list[str] = []
         if data.get("time_shifted"):
             labels.append("Time-Shifted")
         if data.get("weak"):
@@ -515,12 +510,12 @@ def _edge_traces(
     return traces, annotations
 
 
-def _node_trace(pos: Dict[str, Tuple[float, float]]) -> go.Scatter:
+def _node_trace(pos: dict[str, tuple[float, float]]) -> go.Scatter:
     import plotly.graph_objects as go
 
-    node_x: List[float] = []
-    node_y: List[float] = []
-    node_labels: List[str] = []
+    node_x: list[float] = []
+    node_y: list[float] = []
+    node_labels: list[str] = []
     for node, (x, y) in pos.items():
         node_x.append(x)
         node_y.append(y)
@@ -540,8 +535,8 @@ def _node_trace(pos: Dict[str, Tuple[float, float]]) -> go.Scatter:
     )
 
 
-def _collect_group_infos(world: World | AsyncWorld) -> Dict[int, Dict[str, Any]]:
-    infos: Dict[int, Dict[str, Any]] = {}
+def _collect_group_infos(world: World | AsyncWorld) -> dict[int, dict[str, Any]]:
+    infos: dict[int, dict[str, Any]] = {}
     order_counter = count()
     for sim in world.sims.values():
         group = getattr(sim, "group", None)
@@ -561,7 +556,7 @@ def _collect_group_infos(world: World | AsyncWorld) -> Dict[int, Dict[str, Any]]
     return infos
 
 
-def _rgb_components(color: str) -> Tuple[int, int, int]:
+def _rgb_components(color: str) -> tuple[int, int, int]:
     from plotly.colors import hex_to_rgb
 
     if color.startswith("#"):
@@ -574,8 +569,8 @@ def _rgb_components(color: str) -> Tuple[int, int, int]:
     return hex_to_rgb("#1f77b4")  # Fallback color
 
 
-def _group_label(group_info: Dict[str, Any]) -> str:
-    names: List[str] = []
+def _group_label(group_info: dict[str, Any]) -> str:
+    names: list[str] = []
     group_cursor = group_info["group"]
     while group_cursor:
         if group_cursor.name and group_cursor.name != "main":
@@ -587,8 +582,8 @@ def _group_label(group_info: Dict[str, Any]) -> str:
 
 
 def _group_bounds(
-    info: Dict[str, Any], pos: Dict[str, Tuple[float, float]], *, margin: float = 0.2
-) -> Tuple[float, float, float, float] | None:
+    info: dict[str, Any], pos: dict[str, tuple[float, float]], *, margin: float = 0.2
+) -> tuple[float, float, float, float] | None:
     coords = [pos[node_id] for node_id in info["nodes"] if node_id in pos]
     if not coords:
         return None
@@ -601,14 +596,14 @@ def _group_bounds(
 
 
 def _group_shapes(
-    world: World | AsyncWorld, pos: Dict[str, Tuple[float, float]]
-) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
+    world: World | AsyncWorld, pos: dict[str, tuple[float, float]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     from plotly.colors import qualitative
 
     group_infos = _collect_group_infos(world)
     color_cycle = cycle(qualitative.Plotly)
-    shapes: List[dict[str, Any]] = []
-    labels: List[dict[str, Any]] = []
+    shapes: list[dict[str, Any]] = []
+    labels: list[dict[str, Any]] = []
     for info in sorted(
         group_infos.values(), key=lambda item: (item["group"].depth, item["order"])
     ):
@@ -658,12 +653,12 @@ def _group_shapes(
 
 
 def _find_incorrect_group_overlaps(
-    pos: Dict[str, Tuple[float, float]],
-    group_infos: Dict[int, Dict[str, Any]],
-) -> Set[Tuple[str, str]]:
+    pos: dict[str, tuple[float, float]],
+    group_infos: dict[int, dict[str, Any]],
+) -> set[tuple[str, str]]:
     """Return nodes that would appear inside unrelated groups."""
 
-    incorrect: Set[Tuple[str, str]] = set()
+    incorrect: set[tuple[str, str]] = set()
     for info in group_infos.values():
         if info["parent"] is None:
             continue
@@ -701,8 +696,8 @@ def plot_df_graph_groups(
     graph = _build_dataflow_graph(world)
     max_tries = max(1, max_layout_tries)
     group_infos = _collect_group_infos(world)
-    pos: Dict[str, Tuple[float, float]] = {}
-    incorrect_overlaps: Set[Tuple[str, str]] = set()
+    pos: dict[str, tuple[float, float]] = {}
+    incorrect_overlaps: set[tuple[str, str]] = set()
 
     for _attempt in range(max_tries):
         pos = nx.spring_layout(graph)
@@ -759,7 +754,7 @@ def plot_execution_graph(  # noqa: C901
     format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
     show_plot: bool = True,
     save_plot: bool = True,
-    slice: Tuple[int, int] | None = None,
+    slice: tuple[int, int] | None = None,
 ):
     """Creates an image visualizing the execution graph of a mosaik
     scenario.
@@ -790,8 +785,8 @@ def plot_execution_graph(  # noqa: C901
     rcParams.update({"figure.autolayout": True})
 
     sims = world._get_sim_runners()
-    steps_st: Dict[SimId, List[float]] = {}
-    for sim_name in sims.keys():
+    steps_st: dict[SimId, list[float]] = {}
+    for sim_name in sims:
         steps_st[sim_name] = []
 
     for node in all_nodes:
@@ -808,8 +803,7 @@ def plot_execution_graph(  # noqa: C901
     for i, sim_name in enumerate(sims):
         # We need the number of steps in the simulation for correct
         # plotting with slices
-        if number_of_steps < len(steps_st[sim_name]):
-            number_of_steps = len(steps_st[sim_name])
+        number_of_steps = max(number_of_steps, len(steps_st[sim_name]))
 
         if slice is not None:
             dot = ax.plot(
@@ -828,7 +822,7 @@ def plot_execution_graph(  # noqa: C901
     ax.set_yticklabels(list(sims.keys()))
 
     all_edges = list(world.execution_graph.edges())
-    y_pos: Dict[SimId, int] = {}
+    y_pos: dict[SimId, int] = {}
     for sim_count, sim_name in enumerate(sims.keys()):
         y_pos[sim_name] = sim_count
 
@@ -897,7 +891,7 @@ def plot_execution_time_per_simulator(
     format: Literal["png", "pdf", "svg"] = STANDARD_FORMAT,
     show_plot: bool = True,
     plot_per_simulator: bool = False,
-    slice: Tuple[int, int] | None = None,
+    slice: tuple[int, int] | None = None,
 ):
     """Creates images visualizing the execution time of each of the
     different simulators of a mosaik scenario.
@@ -921,7 +915,7 @@ def plot_execution_time_per_simulator(
     :return: ``None`` but image file will be written to file system
     """
     execution_graph = world.execution_graph
-    results: Dict[SimId, List[float]] = {}
+    results: dict[SimId, list[float]] = {}
     for node in execution_graph.nodes:
         execution_time = (
             execution_graph.nodes[node]["t_end"] - execution_graph.nodes[node]["t"]
@@ -931,7 +925,7 @@ def plot_execution_time_per_simulator(
 
     if plot_per_simulator is False:
         fig, sub_figure = init_execution_time_per_simulator_plot()
-        for key in results.keys():
+        for key in results:
             plot_results = get_execution_time_per_simulator_plot_data(
                 slice, results, sub_figure, key
             )
@@ -940,7 +934,7 @@ def plot_execution_time_per_simulator(
             folder, hdf5path, dpi, format, show_plot, fig
         )
     else:
-        for key in results.keys():
+        for key in results:
             fig, sub_figure = init_execution_time_per_simulator_plot()
             plot_results = get_execution_time_per_simulator_plot_data(
                 slice, results, sub_figure, key
@@ -952,17 +946,17 @@ def plot_execution_time_per_simulator(
 
 
 def get_execution_time_per_simulator_plot_data(
-    slice: Tuple[int, int] | None,
-    results: Dict[SimId, List[float]],
+    slice: tuple[int, int] | None,
+    results: dict[SimId, list[float]],
     sub_figure: Axes,
     key: SimId,
-) -> List[float]:
+) -> list[float]:
     if slice is not None:
         plot_results = results[key][slice[0] : slice[1]]
         # The slice values can be negative, so we want to have the
         # correct time steps
         labels = range(len(results[key]))[slice[0] : slice[1]]
-        sub_figure.set_xticks(range(0, len(labels)), map(str, labels))
+        sub_figure.set_xticks(range(len(labels)), map(str, labels))
     else:
         plot_results = results[key]
     return plot_results
@@ -1002,7 +996,7 @@ def finish_execution_time_per_simulator_plot(
     plt.close()
 
 
-def init_execution_time_per_simulator_plot() -> Tuple[Figure, Axes]:
+def init_execution_time_per_simulator_plot() -> tuple[Figure, Axes]:
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
 
@@ -1019,7 +1013,7 @@ def get_filename(dir: str, type: str, file_format: str) -> str:
     return (
         dir
         + "/"
-        + str(datetime.datetime.now())
+        + str(datetime.datetime.now())  # noqa: DTZ005  # using a local datetime is fine
         .replace(" ", "")
         .replace(":", "")
         .replace(".", "")
@@ -1048,7 +1042,7 @@ def plot_dataflow(
     return_figure: bool = True,
     seed: int | None = None,
     **kwargs: Any,
-) -> None | Tuple[Figure, Axes]:
+) -> None | tuple[Figure, Axes]:
     """Creates an image visualizing the data flow graph of a mosaik
     scenario. Using the spring layout from Matplotlib (Fruchterman-
     Reingold force-directed algorithm) to position the nodes.
@@ -1061,7 +1055,7 @@ def plot_dataflow(
     :param show_plot: whether open a window to show the plot
     :param return_figure: return figure and axis
     :param seed: needed to fix graph layout
-    :param **kwargs: extra parameters will be passed to fig.savefig()
+    :param kwargs: extra parameters will be passed to fig.savefig()
     :return: ``None`` but image file will be written to ``file name``
         if given. It returns tuple with figure and axis instead if
         return_figure is True
@@ -1131,7 +1125,7 @@ def plot_dataflow(
         )
         ax.add_artist(con)
 
-        midpoint: Tuple[float, float] = con.get_path().vertices[1]
+        midpoint: tuple[float, float] = con.get_path().vertices[1]
 
         ax.annotate(
             annotation,

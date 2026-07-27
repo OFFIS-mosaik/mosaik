@@ -148,8 +148,6 @@ For components which need a more detailled documentation to describe how they wo
    :maxdepth: 2
    :hidden:
 
-   components/mosaik-heatpump/overview
-
 .. _mosaik-examples:
 
 |mosaik| **mosaik-examples**

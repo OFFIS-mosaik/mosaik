@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 from typing import (
-    Any,
     FrozenSet,
     Generic,
     Iterable,
-    Optional,
-    Tuple,
+    TypeAlias,
     TypeVar,
     Union,
 )
-
-from typing_extensions import TypeAlias
 
 E = TypeVar("E")
 
@@ -21,14 +17,14 @@ class OutSet(Generic[E]):
     finite number.
 
     In particular, ``x in OutSet(elems)`` is ``True`` whenever
-    ``x not in elems``. Set operations between :class:`OutSet`s and
-    normal :class:`~frozenset`s work as excepted.
+    ``x not in elems``. Set operations between instances of
+    :class:`OutSet` and normal :class:`~frozenset` work as excepted.
 
     Note that by their nature it is not possible to iterate over an
     OutSet.
     """
 
-    _set: FrozenSet[E]
+    _set: frozenset[E]
 
     def __init__(self, elems: Iterable[E] = ()):
         self._set = frozenset(elems)
@@ -39,7 +35,7 @@ class OutSet(Generic[E]):
         else:
             return OutSet(self._set | other)
 
-    def __rsub__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
+    def __rsub__(self, rother: frozenset[E]) -> frozenset[E]:
         return rother & self._set
 
     def __and__(self, other: InOrOutSet[E]) -> InOrOutSet[E]:
@@ -48,7 +44,7 @@ class OutSet(Generic[E]):
         else:
             return other - self._set
 
-    def __rand__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
+    def __rand__(self, rother: frozenset[E]) -> frozenset[E]:
         return rother - self._set
 
     def __or__(self, other: InOrOutSet[E]) -> OutSet[E]:
@@ -57,13 +53,13 @@ class OutSet(Generic[E]):
         else:
             return OutSet(self._set - other)
 
-    def __ror__(self, rother: FrozenSet[E]) -> OutSet[E]:
+    def __ror__(self, rother: frozenset[E]) -> OutSet[E]:
         return OutSet(self._set - rother)
 
     def __contains__(self, item: E) -> bool:
         return item not in self._set
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: object):
         if not isinstance(other, OutSet):
             return False
         return self._set == other._set  # type: ignore  (Pyright does not know E here)
@@ -84,13 +80,13 @@ be computed for InOrOutSets and will result in a InOrOutSet again.
 
 
 def parse_set_triple(
-    union: Optional[InOrOutSet[E]],
-    part_a: Optional[InOrOutSet[E]],
-    part_b: Optional[InOrOutSet[E]],
+    union: InOrOutSet[E] | None,
+    part_a: InOrOutSet[E] | None,
+    part_b: InOrOutSet[E] | None,
     union_name: str = "union",
     part_a_name: str = "part_a",
     part_b_name: str = "part_b",
-) -> Tuple[InOrOutSet[E], InOrOutSet[E]]:
+) -> tuple[InOrOutSet[E], InOrOutSet[E]]:
     """Take three sets and make sure that the first is the disjoint
     union of the other two. If one of the sets is None, find the value
     for it that ensures this, if possible.
@@ -130,7 +126,7 @@ def parse_set_triple(
     return part_a, part_b
 
 
-def wrap_set(set: Union[Iterable[E], OutSet[E], None]) -> Optional[InOrOutSet[E]]:
+def wrap_set(set: Iterable[E] | OutSet[E] | None) -> InOrOutSet[E] | None:
     """Wrap an iterable or OutSet, resulting in an InOrOutSet. Pass
     through None unchanged.
     """

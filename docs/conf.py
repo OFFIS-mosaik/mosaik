@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # mosaik documentation build configuration file, created by
 # sphinx-quickstart on Thu Dec  5 10:36:19 2013.
@@ -12,52 +11,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import os
-import shutil
 from typing import cast
-from urllib.request import urlretrieve
-
-import mosaik_components.heatpump
 
 import mosaik
 
-# Create a directory for the documentation of components of the mosaik
-# ecosystem.
-component_docs_dir = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "ecosystem", "components"
-)
-os.makedirs(component_docs_dir, exist_ok=True)
-
-# Integrate mosaik-heatpump docuemtantion from
-# https://gitlab.com/mosaik/components/energy/mosaik-heatpump.
-# Files will be downloaded and integrated in mosaik documentation.
-
-# Create a directory for the mosaik-heatpump documentation
-mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, "mosaik-heatpump")
-if os.path.exists(mosaik_heatpump_docs_dir):
-    shutil.rmtree(mosaik_heatpump_docs_dir)
-# Download documentation from mosaik-heatpump repository.
-zip_file_dir = os.path.join(component_docs_dir, "doc.zip")
-urlretrieve(
-    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/master/mosaik-heatpump-master.zip?path=docs",
-    zip_file_dir,
-)
-shutil.unpack_archive(zip_file_dir, component_docs_dir)
-os.remove(zip_file_dir)
-shutil.move(
-    os.path.join(
-        os.path.join(component_docs_dir, "mosaik-heatpump-master-docs"), "docs"
-    ),
-    mosaik_heatpump_docs_dir,
-)
-os.rmdir(os.path.join(component_docs_dir, "mosaik-heatpump-master-docs"))
-
-mosaik_hp_version = mosaik_components.heatpump.__version__
-
 # -- General configuration ---------------------------------------------
-
-# If your documentation needs a minimal Sphinx version, state it here.
-# needs_sphinx = '1.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -69,8 +27,7 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx.ext.mathjax",
     "sphinx.ext.linkcode",
-    "sphinx_rtd_theme",
-    "sphinx_toolbox.more_autodoc.autotypeddict",
+    # "sphinx_toolbox.more_autodoc.autotypeddict",
 ]
 
 # -- Options for Graphviz ----------------------------------------------
@@ -95,7 +52,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mosaik"
-copyright = "2012-2025 OFFIS"
+copyright = "2012-2026 OFFIS"
 
 # The version info for the project you're documenting, acts as
 # replacement for |version| and |release|, also used in various other
@@ -106,8 +63,7 @@ copyright = "2012-2025 OFFIS"
 version = mosaik.__version__
 release = mosaik.__version__
 
-rst_epilog = f"""
-.. |mosaik_hp_version| replace:: v{mosaik_hp_version}
+rst_epilog = """
 .. |mosaik| image:: /_static/favicon.png
 """
 
@@ -152,12 +108,17 @@ pygments_style = "sphinx"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation
 # for a list of builtin themes.
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see
 # the documentation.
-# html_theme_options = {}
+html_theme_options = {
+    "sidebar_hide_name": True,
+    "source_repository": "https://gitlab.com/mosaik/mosaik/",
+    "source_branch": "main",
+    "source_directory": "docs",
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -169,7 +130,7 @@ html_theme = "sphinx_rtd_theme"
 
 # The name of an image file (relative to this directory) to place at the
 # top of the sidebar.
-# html_logo = None
+html_logo = "_static/mosaik_logo.png"
 
 # The name of an image file (within the static path) to use as favicon
 # of the docs.  This file should be a Windows icon file (.ico) being
@@ -335,6 +296,7 @@ autodoc_typehints = "both"
 # TODO: Check once type aliases work in type annotations
 autodoc_type_aliases = {
     "InputData": "mosaik_api_v3.types.InputData",
+    "OutputData": "mosaik_api_v3.types.OutputData",
     "SimConfig": "mosaik.async_scenario.SimConfig",
     "PythonModel": "PythonModel",
 }

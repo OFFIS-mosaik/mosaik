@@ -39,14 +39,15 @@ dev = [
     {include-group = "plotting"},
 ]
 docs = [
-    "sphinx>=8.0.0; python_version>='3.10'",
+    "sphinx>=9.0.0; python_version>='3.12'",
     "sphinx-rtd-theme>=1.3.0",
+    "furo>=2024.5.27",
     "sphinx-toolbox>=3.5.0",
     "mosaik-heatpump>=1.0.2",
     "setuptools>=75; python_version<'3.12'",
 ]
 plotting = [
-    "matplotlib>=3.8.2;python_version>='3.10'", 
+    "matplotlib>=3.8.2;python_version>='3.10'",
     "plotly>=5.19.0",
     "numpy>=1.24",
 ]
@@ -54,7 +55,7 @@ tutorial = [
     "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
     "mosaik-pv>=1.2.2; python_version>='3.9'",
     "pandapower>=2.13.1",
-    "numba>=0.59.0; python_version>='3.9'",
+    #"numba>=0.59.0; python_version>='3.9'",
     "plotly>=5.19.0",
     "simbench>=1.4.0",
 ]
@@ -90,6 +91,9 @@ publish-url = "https://upload.pypi.org/legacy/"
 name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
+
+[tool.uv.sources]
+mosaik-heatpump = { git = "https://gitlab.com/mosaik/components/energy/mosaik-heatpump.git", branch = "update-pandas-numpy" }
 
 [tool.pytest.ini_options]
 markers = [

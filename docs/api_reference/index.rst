@@ -10,11 +10,13 @@ This reference should also be helpful if you want to work on or extend mosaik it
 .. toctree::
 
    mosaik
+   mosaik.util
    mosaik.exceptions
    mosaik.scenario
    mosaik.async_scenario
    mosaik.starters
+   mosaik.basic_simulators
    mosaik.scheduler
    mosaik.simmanager
-   mosaik.util
-   mosaik.basic_simulators
+   mosaik.proxies
+   mosaik.in_or_out_set

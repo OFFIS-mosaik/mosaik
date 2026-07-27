@@ -186,8 +186,14 @@ There are a bunch of helper classes to allow users to give more precise type ann
 .. autoclass:: mosaik_api_v3.types.InputData
    :members:
 
-.. autoclass:: OutputRequest
+.. autoclass:: mosaik_api_v3.types.OutputRequest
    :members:
 
-.. autoclass:: OutputData
+.. autoclass:: mosaik_api_v3.types.OutputData
    :members:
+
+.. autoclass:: mosaik_api_v3.types.SimId
+
+.. autoclass:: mosaik_api_v3.types.FullId
+
+.. autoclass:: mosaik_api_v3.types.ModelName

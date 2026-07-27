@@ -1,3 +1,10 @@
+"""This module contains the :class:`Proxy` class and its subclasses.
+They are used to represent a running simulator in the scenario.
+:class:`LocalProxy` represents a simulator running in the current
+Python process; :class:`RemoteProxy` represents a simulator connected to
+mosaik via a TCP connection.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -5,7 +12,7 @@ from abc import ABC, abstractmethod
 from asyncio.subprocess import Process
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Tuple
+from typing import TYPE_CHECKING, Any, Iterator
 
 from loguru import logger
 from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
@@ -33,10 +40,10 @@ class Proxy(ABC):
         """Send a request to the connected simulator.
 
         :param request: Generally, this will be a three-tuple consisting
-        of a function name, a list of positional arguments and a dict
-        of named arguments.
+            of a function name, a list of positional arguments and a
+            dict of named arguments.
         :return: The return value from the remote simulator (depends on
-        the specified function).
+            the specified function).
         """
         raise NotImplementedError()
 
@@ -60,24 +67,24 @@ class Proxy(ABC):
 class BaseProxy(Proxy):
     """A base ``Proxy`` for a connected simulator that simply sends all
     requests along unchanged. This will usually be wrapped in one or
-    more ``Adapter``s to allow treating the simulator as up-to-date from
-    other parts of mosaik.
+    more instances of ``Adapter`` to allow treating the simulator as
+    up-to-date from other parts of mosaik.
     """
 
     @abstractmethod
     async def init(
         self, sid: SimId, *, time_resolution: float, **sim_params: Any
-    ) -> List[int]:
+    ) -> list[int]:
         """Initialize the simulator by sending the ``init`` call. The
         ``meta`` returned by the simulator will be saved to be retrieved
         using the ``meta`` property.
 
         :param sid: The ``SimId`` that mosaik assigns to this simulator
-        instance
+            instance
         :param time_resolution: The time resolution of the simulation,
-        i.e. how many seconds correspond to one mosaik time step.
+            i.e. how many seconds correspond to one mosaik time step.
         :param sim_params: The params sent to the simulator for
-        initialization.
+            initialization.
         """
         raise NotImplementedError()
 
@@ -89,14 +96,14 @@ class LocalProxy(BaseProxy):
     """
 
     sim: Simulator
-    """The underlying ``mosaik_api.Simulator."""
+    """The underlying :class:`mosaik_api_v3.Simulator`."""
 
     def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
         super().__init__()
         self.sim = sim
         sim.mosaik = mosaik_remote
 
-    async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
+    async def init(self, sid: SimId, **kwargs: Any) -> list[int]:
         # This in an ugly place for these checks. However, we cannot
         # put them in mosaik.adapters because we need to determine
         # API compliance before sending the init method and thus before
@@ -124,7 +131,7 @@ class LocalProxy(BaseProxy):
     def meta(self):
         return self._meta
 
-    async def send(self, request: Tuple[str, Tuple[Any, ...], Dict[str, Any]]):
+    async def send(self, request: tuple[str, tuple[Any, ...], dict[str, Any]]):
         func_name, args, kwargs = request
         func = getattr(self.sim, func_name)
         # A simulator that makes requests back to mosaik (like set_data
@@ -157,7 +164,7 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikRemote
-    _process: Tuple[Process, ProcessTerminationManager] | None
+    _process: tuple[Process, ProcessTerminationManager] | None
     """The process for this RemoteProxy (or None, if the connection
     was established using connect). The second component of the tuple is
     a ProcessTerminationManager: a function that is called with the
@@ -171,7 +178,7 @@ class RemoteProxy(BaseProxy):
         channel: Channel,
         mosaik_remote: MosaikRemote,
         *,
-        process: Tuple[Process, ProcessTerminationManager] | None = None,
+        process: tuple[Process, ProcessTerminationManager] | None = None,
     ):
         super().__init__()
         self._channel = channel
@@ -191,7 +198,7 @@ class RemoteProxy(BaseProxy):
                 try:
                     result = await func(*args, **kwargs)
                     await request.set_result(result)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     await request.set_exception(e)
         except EndOfRequests:
             pass
@@ -202,14 +209,14 @@ class RemoteProxy(BaseProxy):
                     f"exception type {type(e)}"
                 )
                 await self.stop()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.exception(
                 "Something went wrong in _handle_remote_requests, "
                 f"exception type {type(e)}"
             )
             await self.stop()
 
-    async def init(self, sid: SimId, **kwargs: Any) -> List[int]:
+    async def init(self, sid: SimId, **kwargs: Any) -> list[int]:
         self._meta = await self.send(["init", (sid,), kwargs])
         return extract_version(self._meta)
 
@@ -243,7 +250,7 @@ class RemoteProxy(BaseProxy):
             await terminate(process)
 
 
-def extract_version(meta: Meta) -> List[int]:
+def extract_version(meta: Meta) -> list[int]:
     if "api_version" not in meta:
         return [1]
     else:

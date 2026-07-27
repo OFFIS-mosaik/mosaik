@@ -53,7 +53,7 @@ The high-level APIs for other programming languages are documented in their resp
 Low-level API
 =============
 
-*You generally do not need the documentation of the low-level API unless you are implementing a simulator in a programming language that has no high-level API or you are implementing a high-level API yourself.
+*You generally do not need the documentation of the low-level API unless you are implementing a simulator in a programming language that has no high-level API or you are implementing a high-level API yourself.*
 
 .. toctree::
    :maxdepth: 1
