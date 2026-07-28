@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from typing import Any, Callable, Coroutine, Type
+from typing import Any, Callable, Coroutine
 
 import mosaik_api_v3.connection
 import pytest
@@ -158,7 +158,7 @@ def test_sim_proxy_stop_impl(world):
         async def send(self, *args, **kwargs):
             raise NotImplementedError()
 
-        meta = {"type": "time-based", "models": {}}
+        meta = {"type": "time-based", "models": {}}  # noqa: RUF012
 
     sim = simmanager.SimRunner("id", Test(), None)
     with pytest.raises(NotImplementedError):
@@ -322,14 +322,14 @@ async def _rpc_set_data_err2(channel: Channel, world: World):
 )
 def test_mosaik_remote(  # noqa
     rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
-    err: Type[Exception],
+    err: type[Exception],
 ):
     world = scenario.World({})
     world.use_cache = True
 
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
-        edges = [("X.%s" % x, "X.%s" % y) for x, y in edges]
+        edges = [(f"X.{x}", f"X.{y}") for x, y in edges]
         world.entity_graph.add_edges_from(edges)
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim="ExampleSim", type="A")

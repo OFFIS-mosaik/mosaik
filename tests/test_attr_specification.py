@@ -1,12 +1,13 @@
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import Literal, Optional, Tuple, Union, cast
+from typing import Literal, cast
 
 import pytest
 from mosaik_api_v3.types import (
     Meta,
     ModelDescription,
 )
-from typing_extensions import Type
 
 from mosaik.async_scenario import parse_attrs
 from mosaik.in_or_out_set import OutSet
@@ -77,9 +78,9 @@ def world_fixture():
 def test_parse_attrs(
     type: Literal["time-based", "event-based", "hybrid"],
     any_inputs: bool,
-    attrs: Optional[str],
-    spec_in: Tuple[Optional[str], Optional[str], Optional[str], Optional[str]],
-    spec_out: Union[Type[ValueError], Tuple[str, str, str, str]],
+    attrs: str | None,
+    spec_in: tuple[str | None, str | None, str | None, str | None],
+    spec_out: type[ValueError] | tuple[str, str, str, str],
 ):
     model_description: ModelDescription = {
         "public": True,
@@ -101,10 +102,8 @@ def test_parse_attrs(
     print(f"(mi, ei, mo, eo)={spec_out}")
     if isinstance(spec_out, tuple):
         out_sets = tuple(
-            (
-                OutSet(value[1:]) if value.startswith("~") else frozenset(value)
-                for value in spec_out
-            )
+            OutSet(value[1:]) if value.startswith("~") else frozenset(value)
+            for value in spec_out
         )
         assert out_sets == parse_attrs(model_description, type)
     else:

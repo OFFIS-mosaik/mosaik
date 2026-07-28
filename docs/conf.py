@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # mosaik documentation build configuration file, created by
 # sphinx-quickstart on Thu Dec  5 10:36:19 2013.

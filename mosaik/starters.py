@@ -35,7 +35,7 @@ import subprocess
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
@@ -97,7 +97,7 @@ class Starter(ABC):
         """
 
     @classmethod
-    def from_sim_config_entry(cls, entry: Union[StarterConfig, Starter]) -> Starter:
+    def from_sim_config_entry(cls, entry: StarterConfig | Starter) -> Starter:
         """Create a :class:`Starter` from an entry in a
         :class:`~mosaik.async_scenario.SimConfig`. This is intended to
         be called on a subclass of :class:`Starter` and will check that
@@ -151,8 +151,10 @@ class PythonStarter(Starter):
         *,
         api_version: str | None = None,
         args: tuple[Any, ...] = (),
-        kwargs: dict[str, Any] = {},
+        kwargs: dict[str, Any] | None = None,
     ):
+        if kwargs is None:
+            kwargs = {}
         self.cls = cls
         self.api_version = api_version
         # TODO: allow setting these
@@ -266,12 +268,14 @@ class CmdStarter(Starter):
         bind_addr: tuple[str, int | None] | None = None,
         connect_timeout: float | None = None,
         cwd: str = ".",
-        env: dict[str, str] = {},
+        env: dict[str, str] | None = None,
         new_console: bool = False,
         posix: bool = True,
         stdout=None,
         stderr=None,
     ):
+        if env is None:
+            env = {}
         self.cmd = cmd
         self.posix = posix
         self.cwd = cwd
@@ -312,7 +316,7 @@ class CmdStarter(Starter):
             actual_addr = server.sockets[0].getsockname()
 
             replacements = {
-                "addr": "%s:%s" % actual_addr,
+                "addr": "{}:{}".format(*actual_addr),
                 "python": sys.executable,
             }
             cmd = self.cmd % replacements
@@ -460,5 +464,4 @@ def get_starter_from_starter_config(starter_config: StarterConfig) -> Starter:
         starter = starter_cls.from_starter_config(starter_config)
         if starter:
             return starter
-    else:
-        raise UnknownStarterConfigError(starter_config)
+    raise UnknownStarterConfigError(starter_config)

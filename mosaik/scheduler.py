@@ -9,7 +9,7 @@ import warnings
 from heapq import heappop
 from math import ceil
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Coroutine, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
@@ -34,7 +34,7 @@ SENTINEL = object()
 async def run(
     world: AsyncWorld,
     until: int,
-    rt_factor: Optional[float] = None,
+    rt_factor: float | None = None,
     rt_strict: bool = False,
     lazy_stepping: bool = True,
 ):
@@ -50,13 +50,13 @@ async def run(
     world.until = until
 
     if rt_factor is not None and rt_factor <= 0:
-        raise ValueError('"rt_factor" is %s but must be > 0"' % rt_factor)
+        raise ValueError(f'"rt_factor" is {rt_factor} but must be > 0"')
     if rt_factor is not None:
         # Adjust rt_factor to the time_resolution:
         rt_factor *= world.time_resolution
     world.rt_factor = rt_factor
 
-    setup_done_events: List[asyncio.Task[None]] = []
+    setup_done_events: list[asyncio.Task[None]] = []
     for sim in world._get_sim_runners().values():
         sim.tqdm.set_postfix_str("setup")
         # Send a setup_done event to all simulators
@@ -67,7 +67,7 @@ async def run(
 
     # Start simulator processes
     start_barrier = Barrier(len(world._get_sim_runners()))
-    processes: List[asyncio.Task[None]] = []
+    processes: list[asyncio.Task[None]] = []
     for sim in world._get_sim_runners().values():
         process = asyncio.create_task(
             sim_process(
@@ -87,7 +87,7 @@ async def sim_process(
     world: AsyncWorld,
     sim: SimRunner,
     until: int,
-    rt_factor: Optional[float],
+    rt_factor: float | None,
     rt_strict: bool,
     lazy_stepping: bool,
     start_barrier: Barrier,
@@ -202,7 +202,7 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
 
     *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
-    futures: List[Coroutine[Any, Any, TieredTime]] = []
+    futures: list[Coroutine[Any, Any, TieredTime]] = []
     next_step = sim.next_steps[0]
 
     for pre_sim, min_delays in sim.input_delays.items():
@@ -318,7 +318,7 @@ def get_max_advance(world: AsyncWorld, sim: SimRunner, until: int) -> int:
     Checks how far *sim* can safely advance its internal time during
     next step without causing a causality error.
     """
-    ancs_next_steps: List[Time] = []
+    ancs_next_steps: list[Time] = []
     for anc_sim, distances in sim.triggering_ancestors.items():
         if anc_sim.next_steps:
             for distance in distances.durations:
@@ -372,9 +372,7 @@ async def step(
         assert next_step_time, "A time-based simulator must always return a next step"
 
 
-def rt_check(
-    rt_factor: Optional[float], rt_start: float, rt_strict: bool, sim: SimRunner
-):
+def rt_check(rt_factor: float | None, rt_start: float, rt_strict: bool, sim: SimRunner):
     """
     Check if simulation is fast enough for a given real-time factor.
     """
@@ -527,7 +525,7 @@ def prune_dataflow_cache(world: AsyncWorld):
             }
 
 
-def get_progress(sims: Dict[SimId, SimRunner], until: int) -> float:
+def get_progress(sims: dict[SimId, SimRunner], until: int) -> float:
     """
     Return the current progress of the simulation in percent.
     """
@@ -536,20 +534,20 @@ def get_progress(sims: Dict[SimId, SimRunner], until: int) -> float:
     return avg_time * 100 / until
 
 
-def get_avg_progress(sims: Dict[SimId, SimRunner], until: int) -> int:
+def get_avg_progress(sims: dict[SimId, SimRunner], until: int) -> int:
     """Get the average progress of all simulations (in time steps)."""
     times = [min(until, sim.progress.time.time + 1) for sim in sims.values()]
     return sum(times) // len(times)
 
 
 def advance_progress(sim: SimRunner, world: AsyncWorld):
-    pre_sim_induced_progress: List[TieredTime] = [
+    pre_sim_induced_progress: list[TieredTime] = [
         distance.earliest_sum(pre_sim.current_step or pre_sim.next_steps[0])
         for pre_sim, distance in sim.triggering_ancestors.items()
         if pre_sim.current_step or pre_sim.next_steps
     ]
 
-    next_step_progress: List[TieredTime] = [sim.next_steps[0]] if sim.next_steps else []
+    next_step_progress: list[TieredTime] = [sim.next_steps[0]] if sim.next_steps else []
     current_step_prog = [sim.current_step] if sim.current_step else []
     if world.rt_factor:
         rt_passed = perf_counter() - sim.rt_start

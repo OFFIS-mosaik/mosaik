@@ -16,7 +16,7 @@ from tests.test_mosaik import SIM_CONFIG
 
 
 def plot_test_case(test_case):
-    test_module = importlib.import_module("tests.fixtures.%s" % test_case)
+    test_module = importlib.import_module(f"tests.fixtures.{test_case}")
     world = scenario.World(SIM_CONFIG[test_module.CONFIG], debug=True)
     try:
         test_module.create_scenario(world)

@@ -500,13 +500,13 @@ def test_model_factory_hierarchical_entities_illegal_type(
 
 def test_model_factory_private_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
-        getattr(mf, "C")
+        _ = mf.C
     assert str(err.value) == 'Model "C" is not public.'
 
 
 def test_model_factory_unkown_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
-        getattr(mf, "D")
+        _ = mf.D
     assert (
         str(err.value)
         == 'Model factory for "ExampleSim-0" has no model and no function "D".'

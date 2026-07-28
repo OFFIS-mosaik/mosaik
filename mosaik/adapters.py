@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
@@ -42,9 +42,9 @@ from mosaik.proxies import BaseProxy, Proxy
 async def init_and_get_adapter(
     base_proxy: BaseProxy,
     sim_id: SimId,
-    sim_params: Dict[str, Any],
+    sim_params: dict[str, Any],
     start_timeout: float,
-    explicit_version_str: Optional[str] = None,
+    explicit_version_str: str | None = None,
 ) -> Proxy:
     """Initialize the simulator given by ``base_proxy`` (by calling its
     ``init`` function) and wrap it in a ``Proxy`` object that

@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
@@ -26,7 +28,7 @@ META: Meta = {
 
 
 class WarningsTestSimulator(mosaik_api_v3.Simulator):
-    entities: Dict[str, Any]
+    entities: dict[str, Any]
     add_unregistered_entity: bool
     add_unregistered_attr: bool
 
@@ -41,9 +43,9 @@ class WarningsTestSimulator(mosaik_api_v3.Simulator):
 
     def create(
         self, num: int, model: ModelName, **model_params: Any
-    ) -> List[CreateResult]:
+    ) -> list[CreateResult]:
         next_eid = len(self.entities)
-        entities: List[CreateResult] = []
+        entities: list[CreateResult] = []
         for i in range(next_eid, next_eid + num):
             entity_value = 0
             eid = f"{model}-{i}"
@@ -54,9 +56,9 @@ class WarningsTestSimulator(mosaik_api_v3.Simulator):
     def step(
         self,
         time: Time,
-        inputs: Dict[ModelName, Dict[ModelName, Dict[ModelName, Any]]],
+        inputs: dict[ModelName, dict[ModelName, dict[ModelName, Any]]],
         max_advance: Time,
-    ) -> Optional[Time]:
+    ) -> Time | None:
         return time + 1
 
     def get_data(self, outputs: OutputRequest) -> OutputData:

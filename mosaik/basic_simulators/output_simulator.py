@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
@@ -40,7 +42,7 @@ class OutputSimulator(mosaik_api_v3.Simulator):
     The dictionary can be retrieved using the :meth:`get_dict` method.
     """
 
-    entities: Dict[str, Dict[Time, Any]]
+    entities: dict[str, dict[Time, Any]]
 
     def __init__(self):
         super().__init__(META)
@@ -51,9 +53,9 @@ class OutputSimulator(mosaik_api_v3.Simulator):
 
     def create(
         self, num: int, model: ModelName, **model_params: Any
-    ) -> List[CreateResult]:
+    ) -> list[CreateResult]:
         next_eid = len(self.entities)
-        entities: List[CreateResult] = []
+        entities: list[CreateResult] = []
         for i in range(next_eid, next_eid + num):
             model_instance = {}
             eid = f"{model}-{i}"
@@ -71,7 +73,7 @@ class OutputSimulator(mosaik_api_v3.Simulator):
             "Use this simulator for input data only."
         )
 
-    def get_dict(self, eid: str) -> Dict[Time, Any]:
+    def get_dict(self, eid: str) -> dict[Time, Any]:
         """
         Returns the dict of the simulator entity specified by the
         ``eid``.

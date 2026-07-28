@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import sys
 from dataclasses import dataclass
@@ -49,7 +51,9 @@ DUMMY_REMOTE = cast(MosaikRemote, MockRemote("Spam"))
 """
 
 
-async def start_starter(starter: Starter, config: MosaikConfig = {}) -> BaseProxy:
+async def start_starter(starter: Starter, config: MosaikConfig = None) -> BaseProxy:
+    if config is None:
+        config = {}
     full_config: MosaikConfigTotal = {**base_config, **config}
     proxy = await starter.start("Spam", DUMMY_REMOTE, full_config)
     return proxy

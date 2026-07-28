@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mosaik_api_v3
 from mosaik_api_v3 import CreateResult, InputData, Meta, ModelName, OutputRequest, Time
 from mosaik_api_v3.types import EntityId, OutputData

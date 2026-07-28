@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, cast
 
 import mosaik
@@ -59,10 +61,10 @@ def test_transform_parameter_input_pulled():
         transform=multiply_by_onehundred,
     )
 
-    test_dict: Dict[int, Dict[str, Any]] = cast(
+    test_dict: dict[int, dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[0].eid)
     )
-    test_dict2: Dict[int, Dict[str, Any]] = cast(
+    test_dict2: dict[int, dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
@@ -121,10 +123,10 @@ def test_transform_parameter_input_pushed():
         transform=multiply_by_onehundred,
     )
 
-    test_dict: Dict[int, Dict[str, Any]] = cast(
+    test_dict: dict[int, dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[0].eid)
     )
-    test_dict2: Dict[int, Dict[str, Any]] = cast(
+    test_dict2: dict[int, dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
