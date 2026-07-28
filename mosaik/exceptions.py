@@ -4,12 +4,14 @@ This module provides mosaik specific exception types.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from mosaik_api_v3 import SimId
 from mosaik_api_v3.types import Attr
 
 from mosaik.internal_util import doc_link
+from mosaik.process_termination_managers import ProcessTerminationManager
+from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import Entity, StarterConfig
@@ -28,13 +30,13 @@ class SimulationError(Exception):
     a problem arises during the execution of a simulation.
     """
 
-    def __init__(self, msg: str, exc: Any = None):
+    def __init__(self, msg: str, exc: BaseException | None = None):
         arg = ""
         if exc:
             orig = str(exc)
             if orig.endswith("."):
                 orig = orig[:-1]
-            arg += "%s: " % orig
+            arg += f"{orig}: "
         arg += msg
         super().__init__(arg)
 
@@ -55,7 +57,7 @@ class NonSerializableOutputsError(SimulationError):
     """
 
     dest: SimId
-    errors: List[Tuple[str, str, str, TypeError]]
+    errors: list[tuple[str, str, str, TypeError]]
 
     def __init__(self, dest: SimId):
         self.dest = dest
@@ -71,8 +73,7 @@ class NonSerializableOutputsError(SimulationError):
         return (
             f"Errors while trying to JSON-serialize inputs for {self.dest}:\n"
             + "\n".join(
-                f"- serializing output from {src} for {dest_eid}.{dest_attr}: "
-                f"{str(error)}"
+                f"- serializing output from {src} for {dest_eid}.{dest_attr}: {error!s}"
                 for dest_eid, dest_attr, src, error in self.errors
             )
             + "\nThis is likely a problem in the source simulator(s)."
@@ -101,9 +102,9 @@ class DuplicateEntityIdError(SimulatorError):
 
     entity_id: str
 
-    def __init__(self, simulator: str, entity_id: str, *args: Any) -> None:
+    def __init__(self, simulator: str, entity_id: str) -> None:
         self.entity_id = entity_id
-        super().__init__(simulator, *args)
+        super().__init__(simulator)
 
     def __str__(self) -> str:
         return (
@@ -162,9 +163,9 @@ class ApiVersionTooNewError(ScenarioError):
     """
 
     sim_id: SimId
-    version: List[int]
+    version: list[int]
 
-    def __init__(self, sim_id: SimId, version: List[int]) -> None:
+    def __init__(self, sim_id: SimId, version: list[int]) -> None:
         self.sim_id = sim_id
         self.version = version
 
@@ -186,14 +187,14 @@ class ApiVersionMismatchError(ScenarioError):
     """
 
     sim_id: SimId
-    explicit_version: List[int]
-    actual_version: List[int]
+    explicit_version: list[int]
+    actual_version: list[int]
 
     def __init__(
         self,
         sim_id: SimId,
-        explicit_version: List[int],
-        actual_version: List[int],
+        explicit_version: list[int],
+        actual_version: list[int],
     ) -> None:
         self.sim_id = sim_id
         self.explicit_version = explicit_version
@@ -218,9 +219,9 @@ class ForcedOldApiUsageError(ScenarioError):
     """
 
     sim_id: SimId
-    version: List[int]
+    version: list[int]
 
-    def __init__(self, sim_id: SimId, version: List[int]) -> None:
+    def __init__(self, sim_id: SimId, version: list[int]) -> None:
         self.sim_id = sim_id
         self.version = version
 
@@ -323,8 +324,8 @@ class AttributeConnectionError(ScenarioError):
     non-trigger attribute is missing initial data.
     """
 
-    src: "Entity"
-    dest: "Entity"
+    src: Entity
+    dest: Entity
     src_attr: Attr
     dest_attr: Attr
     missing_src_attr: bool
@@ -333,8 +334,8 @@ class AttributeConnectionError(ScenarioError):
 
     def __init__(
         self,
-        src: "Entity",
-        dest: "Entity",
+        src: Entity,
+        dest: Entity,
         src_attr: Attr,
         dest_attr: Attr,
         missing_src_attr: bool = False,
@@ -350,8 +351,8 @@ class AttributeConnectionError(ScenarioError):
         self.missing_initial_data = missing_initial_data
 
     @property
-    def problems(self) -> List[str]:
-        problems: List[str] = []
+    def problems(self) -> list[str]:
+        problems: list[str] = []
         if self.missing_src_attr:
             problems.append("the source attribute does not exist")
         if self.missing_dest_attr:
@@ -378,9 +379,9 @@ class ConnectError(ScenarioError):
     instances) are available in :attr:`errors`.
     """
 
-    errors: List[ScenarioError]
+    errors: list[ScenarioError]
 
-    def __init__(self, errors: List[ScenarioError]) -> None:
+    def __init__(self, errors: list[ScenarioError]) -> None:
         self.errors = errors
 
     def __str__(self) -> str:
@@ -403,9 +404,9 @@ class DataflowCycleError(ScenarioError):
     connections in the cycle weak or time-shifted.
     """
 
-    cycle: List[SimId]
+    cycle: list[SimId]
 
-    def __init__(self, cycle: List[SimId]) -> None:
+    def __init__(self, cycle: list[SimId]) -> None:
         self.cycle = cycle
 
     def __str__(self) -> str:
@@ -530,10 +531,13 @@ class SimulatorConnectionLostError(SimulationError):
     """
 
     sim_id: SimId
-    during: Optional[str]
+    during: str | None
 
     def __init__(
-        self, sim_id: SimId, cause: Any = None, during: Optional[str] = None
+        self,
+        sim_id: SimId,
+        cause: BaseException | None = None,
+        during: str | None = None,
     ) -> None:
         self.sim_id = sim_id
         self.during = during
@@ -554,10 +558,12 @@ class StepTimeMismatchError(SimulationError):
     """
 
     sim_id: SimId
-    step_time: Any
-    progress_time: Any
+    step_time: TieredTime
+    progress_time: TieredTime
 
-    def __init__(self, sim_id: SimId, step_time: Any, progress_time: Any) -> None:
+    def __init__(
+        self, sim_id: SimId, step_time: TieredTime, progress_time: TieredTime
+    ) -> None:
         self.sim_id = sim_id
         self.step_time = step_time
         self.progress_time = progress_time
@@ -580,9 +586,11 @@ class MaxLoopIterationsExceededError(SimulationError):
 
     sim_id: SimId
     max_loop_iterations: int
-    step_time: Any
+    step_time: TieredTime
 
-    def __init__(self, sim_id: SimId, max_loop_iterations: int, step_time: Any) -> None:
+    def __init__(
+        self, sim_id: SimId, max_loop_iterations: int, step_time: TieredTime
+    ) -> None:
         self.sim_id = sim_id
         self.max_loop_iterations = max_loop_iterations
         self.step_time = step_time
@@ -601,9 +609,9 @@ class InvalidNextStepTypeError(SimulationError):
     """
 
     sim_id: SimId
-    next_step_time: Any
+    next_step_time: int
 
-    def __init__(self, sim_id: SimId, next_step_time: Any) -> None:
+    def __init__(self, sim_id: SimId, next_step_time: int) -> None:
         self.sim_id = sim_id
         self.next_step_time = next_step_time
         super().__init__(
@@ -644,9 +652,11 @@ class InvalidOutputTimeError(SimulationError):
 
     sim_id: SimId
     output_time: int
-    last_step_time: Any
+    last_step_time: TieredTime
 
-    def __init__(self, sim_id: SimId, output_time: int, last_step_time: Any) -> None:
+    def __init__(
+        self, sim_id: SimId, output_time: int, last_step_time: TieredTime
+    ) -> None:
         self.sim_id = sim_id
         self.output_time = output_time
         self.last_step_time = last_step_time
@@ -730,9 +740,9 @@ class UnknownStarterConfigError(ScenarioError):
     or ``"connect"``.)
     """
 
-    starter_config: "StarterConfig"
+    starter_config: StarterConfig
 
-    def __init__(self, starter_config: "StarterConfig") -> None:
+    def __init__(self, starter_config: StarterConfig) -> None:
         self.starter_config = starter_config
 
     def __str__(self) -> str:
@@ -800,10 +810,14 @@ class ConflictingTerminationManagerError(ScenarioError):
     at most one of the two arguments should be given.
     """
 
-    auto_terminate: Optional[bool]
-    termination_manager: Any
+    auto_terminate: bool
+    termination_manager: ProcessTerminationManager
 
-    def __init__(self, auto_terminate: Optional[bool], termination_manager: Any):
+    def __init__(
+        self,
+        auto_terminate: bool,
+        termination_manager: ProcessTerminationManager,
+    ):
         self.auto_terminate = auto_terminate
         self.termination_manager = termination_manager
 
