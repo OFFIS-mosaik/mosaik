@@ -191,13 +191,24 @@ def test_world_connect_cycle(world: World):
     If connecting two entities results in a cycle in the dataflow graph,
     an error must be raised.
     """
-    a = world.start("ExampleSim").A(init_val=0)
-    b = world.start("ExampleSim").B(init_val=0)
+    a = world.start("ExampleSim", sim_id="A").A(init_val=0)
+    b = world.start("ExampleSim", sim_id="B").B(init_val=0)
     world.connect(a, b, ("val_out", "val_in"))
+    world.connect(
+        a,
+        b,
+        ("dummy_out", "dummy_in"),
+        time_shifted=True,
+        initial_data={"dummy_out": 0},
+    )
     world.connect(b, a, ("val_in", "val_out"))
     with pytest.raises(ScenarioError) as err:
         world.run(1)
-    assert "Your scenario contains cycles" in str(err.value)
+    message = str(err.value)
+    assert "Your scenario contains cycles" in message
+    assert "A.0.0.val_out -> B.0.0.val_in" in message
+    assert "B.0.0.val_in -> A.0.0.val_out" in message
+    assert "dummy_out" not in message
 
 
 def test_group_cycle(world: World):
