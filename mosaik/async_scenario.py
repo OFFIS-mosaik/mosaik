@@ -1141,16 +1141,13 @@ class AsyncWorld:
             min_path = descs[sim]
             if min_path["delays"].contains_zero():
                 cycle_connections = []
-                for src_sim, dest_sim in zip(
-                    min_path["path"], min_path["path"][1:]
-                ):
+                for src_sim, dest_sim in zip(min_path["path"], min_path["path"][1:]):
                     cycle_connections.extend(
                         connection
                         for connection in self._pending_connections
                         if connection.src_entity.sid == src_sim.sid
                         and connection.dest_entity.sid == dest_sim.sid
-                        and connection.delay
-                        in dest_sim.input_delays[src_sim].durations
+                        and connection.delay in dest_sim.input_delays[src_sim].durations
                     )
                 connection_report = "\n".join(
                     f"- {connection.src_entity.full_id}.{connection.src_attr} -> "
