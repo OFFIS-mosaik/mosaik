@@ -35,13 +35,23 @@ import subprocess
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import mosaik_api_v3
 from mosaik_api_v3.connection import Channel
 
 from mosaik import process_termination_managers
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import (
+    ConflictingTerminationManagerError,
+    MalformedConnectAddressError,
+    MalformedPythonImportStringError,
+    OutdatedMosaikApiPackageError,
+    ProcessStartError,
+    PythonImportError,
+    SimulatorConnectError,
+    SimulatorStartTimeoutError,
+    UnknownStarterConfigError,
+)
 from mosaik.process_termination_managers import ProcessTerminationManager
 from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.simmanager import MosaikRemote
@@ -87,7 +97,7 @@ class Starter(ABC):
         """
 
     @classmethod
-    def from_sim_config_entry(cls, entry: Union[StarterConfig, Starter]) -> Starter:
+    def from_sim_config_entry(cls, entry: StarterConfig | Starter) -> Starter:
         """Create a :class:`Starter` from an entry in a
         :class:`~mosaik.async_scenario.SimConfig`. This is intended to
         be called on a subclass of :class:`Starter` and will check that
@@ -141,8 +151,10 @@ class PythonStarter(Starter):
         *,
         api_version: str | None = None,
         args: tuple[Any, ...] = (),
-        kwargs: dict[str, Any] = {},
+        kwargs: dict[str, Any] | None = None,
     ):
+        if kwargs is None:
+            kwargs = {}
         self.cls = cls
         self.api_version = api_version
         # TODO: allow setting these
@@ -169,16 +181,10 @@ class PythonStarter(Starter):
             mod = importlib.import_module(mod_name)
             sim_cls = getattr(mod, cls_name)
         except (AttributeError, ImportError) as err:
-            detail_msgs = {
-                ModuleNotFoundError: f"could not import module `{mod_name}`",
-                AttributeError: f"class `{cls_name}` not found in module `{mod_name}`",
-                ImportError: f"Error importing the requested class: {err.args[0]}",
-            }
-            details = detail_msgs[type(err)]
-            raise ScenarioError(f"Simulator could not be started: {details}")
+            raise PythonImportError(mod_name, cls_name, err) from None
 
         if int(mosaik_api_v3.__version__.split(".")[0]) < 3:
-            raise ScenarioError("mosaik 3 requires mosaik_api_v3 or newer.")
+            raise OutdatedMosaikApiPackageError()
 
         return cls(sim_cls, api_version=api_version)
 
@@ -194,9 +200,7 @@ class PythonStarter(Starter):
         try:
             mod_name, cls_name = import_string.split(":")
         except ValueError:
-            raise ScenarioError(
-                'malformed import string for python starter, expected "module:Class"'
-            )
+            raise MalformedPythonImportStringError(import_string)
 
         return cls.from_module_class_name(mod_name, cls_name, api_version=api_version)
 
@@ -264,12 +268,14 @@ class CmdStarter(Starter):
         bind_addr: tuple[str, int | None] | None = None,
         connect_timeout: float | None = None,
         cwd: str = ".",
-        env: dict[str, str] = {},
+        env: dict[str, str] | None = None,
         new_console: bool = False,
         posix: bool = True,
         stdout=None,
         stderr=None,
     ):
+        if env is None:
+            env = {}
         self.cmd = cmd
         self.posix = posix
         self.cwd = cwd
@@ -279,8 +285,8 @@ class CmdStarter(Starter):
         self.stderr = stderr
 
         if auto_terminate is not None and termination_manager is not None:
-            raise ScenarioError(
-                f"specify at most one of {termination_manager} and {auto_terminate}"
+            raise ConflictingTerminationManagerError(
+                auto_terminate, termination_manager
             )
         if termination_manager is not None:
             self.termination_manager = termination_manager
@@ -310,7 +316,7 @@ class CmdStarter(Starter):
             actual_addr = server.sockets[0].getsockname()
 
             replacements = {
-                "addr": "%s:%s" % actual_addr,
+                "addr": "{}:{}".format(*actual_addr),
                 "python": sys.executable,
             }
             cmd = self.cmd % replacements
@@ -345,16 +351,7 @@ class CmdStarter(Starter):
                     stderr=self.stderr,
                 )
             except (FileNotFoundError, NotADirectoryError) as e:
-                # This distinction has to be made due to a change in
-                # Python 3.8.0. It might become unecessary for future
-                # releases supporting Python >= 3.8 only.
-                if str(e).count(":") == 2:
-                    eout = e.args[1]
-                else:
-                    eout = str(e).split("] ")[1]
-                raise ScenarioError(
-                    f'Simulator "{sim_id}" could not be started: {eout}'
-                ) from None
+                raise ProcessStartError(sim_id, e) from None
 
             try:
                 channel = await asyncio.wait_for(
@@ -368,9 +365,7 @@ class CmdStarter(Starter):
                 )
             except asyncio.TimeoutError:
                 await self.termination_manager(proc)
-                raise SimulationError(
-                    f'Simulator "{sim_id}" did not connect to mosaik in time.'
-                )
+                raise SimulatorStartTimeoutError(sim_id)
         finally:
             server.close()
 
@@ -409,10 +404,7 @@ class ConnectStarter(Starter):
         try:
             reader, writer = await asyncio.open_connection(self.host, self.port)
         except (ConnectionError, OSError):
-            raise SimulationError(
-                f'Simulator "{sim_id}" could not be started: Could not connect to '
-                f'"{self.host}:{self.port}"'
-            )
+            raise SimulatorConnectError(sim_id, self.host, self.port)
         return RemoteProxy(Channel(reader, writer, name=sim_id), mosaik_remote)
 
     @classmethod
@@ -426,9 +418,7 @@ class ConnectStarter(Starter):
             host, port_str = address.strip().split(":")
             port = int(port_str)
         except ValueError:
-            raise ScenarioError(
-                f'ConnectStarter could be created: Could not parse address "{address}"'
-            )
+            raise MalformedConnectAddressError(address)
 
         return cls(host, port, api_version=api_version)
 
@@ -474,9 +464,4 @@ def get_starter_from_starter_config(starter_config: StarterConfig) -> Starter:
         starter = starter_cls.from_starter_config(starter_config)
         if starter:
             return starter
-    else:
-        raise ScenarioError(
-            f"Starter config {starter_config} does not match any known starter. "
-            '(By default, it must contain one of the keys "python", "cmd", or '
-            '"connect".)'
-        )
+    raise UnknownStarterConfigError(starter_config)

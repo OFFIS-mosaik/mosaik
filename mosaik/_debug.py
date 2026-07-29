@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from time import perf_counter
-from typing import Dict, List, Optional, Tuple
 
 import networkx as nx
 from loguru import logger  # noqa: F401  # type: ignore
@@ -50,7 +49,7 @@ def disable():
         setattr(scheduler, k, v)
 
 
-def parse_node(node_str: str) -> Tuple[SimId, TieredTime]:
+def parse_node(node_str: str) -> tuple[SimId, TieredTime]:
     # networkx will call the parser on already-parsed nodes occasionally
     # So we make sure that we only try to parse strings.
     if isinstance(node_str, str):
@@ -59,7 +58,7 @@ def parse_node(node_str: str) -> Tuple[SimId, TieredTime]:
     return node_str
 
 
-def parse_execution_graph(graph_string: str) -> nx.DiGraph[Tuple[SimId, TieredTime]]:
+def parse_execution_graph(graph_string: str) -> nx.DiGraph[tuple[SimId, TieredTime]]:
     return nx.parse_edgelist(
         graph_string.split("\n"),
         create_using=nx.DiGraph(),
@@ -88,14 +87,11 @@ def pre_step(world: AsyncWorld, sim: SimRunner, inputs: InputData):
     eg.add_node(node_id, t=perf_counter(), inputs=deepcopy(inputs))
 
     input_pres = {
-        kk.split(".")[0]
-        for ii in inputs.values()
-        for jj in ii.values()
-        for kk in jj.keys()
+        kk.split(".")[0] for ii in inputs.values() for jj in ii.values() for kk in jj
     }
     for pre_sim, min_delays in sim.input_delays.items():
         if pre_sim.sid in input_pres or sim in pre_sim.successors_to_wait_for:
-            pre_node: Optional[Tuple[str, TieredTime]] = None
+            pre_node: tuple[str, TieredTime] | None = None
             pre_time = TieredTime(-1, *([0] * (len(pre_sim.progress.time) - 1)))
             # We check for all nodes if it is from the predecessor and
             # it its step time is before the current step of sim. There
@@ -140,18 +136,22 @@ def post_step(world: AsyncWorld, sim: SimRunner):
         sim.next_self_step = None
 
 
-def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = []):  # noqa: C901
+def assert_graph(  # noqa: C901
+    world: AsyncWorld, expected_str: str, extra_nodes: list[str] | None = None
+):
+    if extra_nodes is None:
+        extra_nodes = []
     actual_graph = world.execution_graph
     expected_graph = parse_execution_graph(expected_str)
     for node in extra_nodes:
         expected_graph.add_node(parse_node(node))
 
-    errors: List[str] = []
+    errors: list[str] = []
     expected_nodes = set(expected_graph.nodes)
     actual_nodes = set(actual_graph.nodes)
     missing_nodes = expected_nodes - actual_nodes
 
-    def format_node(node: Tuple[str, TieredTime]) -> str:
+    def format_node(node: tuple[str, TieredTime]) -> str:
         return f"{node[0]} @ {node[1]}"
 
     if missing_nodes:
@@ -172,7 +172,7 @@ def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = 
             errors.append(f"- {format_node(node)} ({sources_str})")
         errors.append("")
 
-    predecessor_errors: List[str] = []
+    predecessor_errors: list[str] = []
     for node in sorted(actual_nodes & expected_nodes):
         actual_pres = set(actual_graph.predecessors(node))
         expected_pres = set(expected_graph.predecessors(node))
@@ -198,7 +198,7 @@ def assert_graph(world: AsyncWorld, expected_str: str, extra_nodes: List[str] = 
     assert actual_graph.adj == expected_graph.adj
 
 
-def assert_inputs(world: AsyncWorld, expected_inputs: Dict[str, InputData]):
+def assert_inputs(world: AsyncWorld, expected_inputs: dict[str, InputData]):
     eg = world.execution_graph
     for node_str, expected_data in expected_inputs.items():
         node = parse_node(node_str)

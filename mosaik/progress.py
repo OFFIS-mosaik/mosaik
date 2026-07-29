@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List, Tuple
+from typing import Tuple
 
 from loguru import logger  # type: ignore  # noqa: F401
 
@@ -21,7 +21,7 @@ class Progress:
 
     time: TieredTime
     """The current value of the progress."""
-    _futures: List[Tuple[TriggerSpec, asyncio.Future[TieredTime]]]
+    _futures: list[tuple[TriggerSpec, asyncio.Future[TieredTime]]]
     """Futures representing all currently waiting has_reached and
     has_passed calls.
 
@@ -42,7 +42,7 @@ class Progress:
         assert time >= self.time, "cannot progress backwards"
         self.time = time
         # Use index-based for loop so we can call del in the loop.
-        for index in reversed(range(0, len(self._futures))):
+        for index in reversed(range(len(self._futures))):
             trigger_spec, future = self._futures[index]
             triggered_time = self._triggered_time(trigger_spec)
             if triggered_time:
