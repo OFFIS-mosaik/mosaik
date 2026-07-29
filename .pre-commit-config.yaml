@@ -12,11 +12,11 @@ repos:
     hooks:
       - id: format
         name: Run Formatter
-        entry: uvx --from ruff==0.15.22 ruff format
+        entry: uvx ruff format
         language: system
         types: [python]
       - id: lint
         name: Run Linter
-        entry: uvx --from ruff==0.15.22 ruff check
+        entry: uvx ruff check
         language: system
         types: [python]

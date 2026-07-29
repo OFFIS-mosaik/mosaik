@@ -183,7 +183,7 @@ def test_world_connect_same_simulator(world: World):
     with pytest.raises(ScenarioError) as err:
         world.connect(a[0], a[1], ("val_out", "val_out"))
         world.run(1)
-    assert "Your scenario contains cycles" in str(err.value)
+    assert "Your scenario contains a cycle" in str(err.value)
 
 
 def test_world_connect_cycle(world: World):
@@ -205,7 +205,8 @@ def test_world_connect_cycle(world: World):
     with pytest.raises(ScenarioError) as err:
         world.run(1)
     message = str(err.value)
-    assert "Your scenario contains cycles" in message
+    assert "Your scenario contains a cycle:" in message
+    assert "for example" not in message
     assert "A.0.0.val_out -> B.0.0.val_in" in message
     assert "B.0.0.val_in -> A.0.0.val_out" in message
     assert "dummy_out" not in message
@@ -221,7 +222,7 @@ def test_group_cycle(world: World):
     world.connect_one(c, a, "val_out", "val_in")
     with pytest.raises(ScenarioError) as err:
         world.run(0)
-    assert "Your scenario contains cycles" in str(err.value)
+    assert "Your scenario contains a cycle" in str(err.value)
 
 
 def test_world_connect_wrong_attr_names(world: World):
