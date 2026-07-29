@@ -6,6 +6,15 @@ include:
       main_branch: master
       develop_branch: develop
 
+Linting:
+  script:
+    - FORCE_COLOR=1 uvx --from ruff==0.15.22 ruff check
+    - uvx --from ruff==0.15.22 ruff check -e --output-format=gitlab -o lintreport.json
+
+Formatting:
+  script:
+    - uvx --from ruff==0.15.22 ruff format --diff
+
 # Execute the pipeline from the mosaik demo project
 mosaik demo:
   stage: Tests
