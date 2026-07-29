@@ -42,7 +42,7 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal
 
 from mosaik.exceptions import (
     NonSerializableOutputsError,
@@ -60,7 +60,7 @@ FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
 
 
-Port: TypeAlias = Tuple[EntityId, Attr]
+type Port = Tuple[EntityId, Attr]
 """Pair of an entity ID and an attribute of that entity"""
 
 

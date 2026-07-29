@@ -1,22 +1,28 @@
+""":type:`InOrOutSet` is an abstraction used to represent sets of
+attributes used by a model.
+
+Normally, a simulator model specifies a (finite) list of input
+attributes. However, it can also specify ``any_inputs=True``, in which
+case any string is a valid attribute. This can furthermore be combined
+with listing a finite list of them as trigger or non-trigger attributes,
+in which case the other type of attribute allows all but a finite number
+of strings.
+
+An :class:`OutSet` represents a set consisting of all elements of a type
+(``string``, for attribute names), except for a finite number. An
+:type:`InOrOutSet` represents either a normal :class:`frozenset` or an
+:class:`OutSet`. (So it is a set that is finite or co-finite.)
+
+Set operations between :type:`InOrOutSet` instances are well-defined and
+always result in another :type:`InOrOutSet`.
+"""
+
 from __future__ import annotations
 
-from typing import (
-    Any,
-    FrozenSet,
-    Generic,
-    Iterable,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
-
-from typing_extensions import TypeAlias
-
-E = TypeVar("E")
+from collections.abc import Iterable
 
 
-class OutSet(Generic[E]):
+class OutSet[E]:
     """An OutSet[E] represents all elements of the type E except for a
     finite number.
 
@@ -28,7 +34,7 @@ class OutSet(Generic[E]):
     OutSet.
     """
 
-    _set: FrozenSet[E]
+    _set: frozenset[E]
 
     def __init__(self, elems: Iterable[E] = ()):
         self._set = frozenset(elems)
@@ -39,7 +45,7 @@ class OutSet(Generic[E]):
         else:
             return OutSet(self._set | other)
 
-    def __rsub__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
+    def __rsub__(self, rother: frozenset[E]) -> frozenset[E]:
         return rother & self._set
 
     def __and__(self, other: InOrOutSet[E]) -> InOrOutSet[E]:
@@ -48,7 +54,7 @@ class OutSet(Generic[E]):
         else:
             return other - self._set
 
-    def __rand__(self, rother: FrozenSet[E]) -> FrozenSet[E]:
+    def __rand__(self, rother: frozenset[E]) -> frozenset[E]:
         return rother - self._set
 
     def __or__(self, other: InOrOutSet[E]) -> OutSet[E]:
@@ -57,13 +63,13 @@ class OutSet(Generic[E]):
         else:
             return OutSet(self._set - other)
 
-    def __ror__(self, rother: FrozenSet[E]) -> OutSet[E]:
+    def __ror__(self, rother: frozenset[E]) -> OutSet[E]:
         return OutSet(self._set - rother)
 
     def __contains__(self, item: E) -> bool:
         return item not in self._set
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: object):
         if not isinstance(other, OutSet):
             return False
         return self._set == other._set  # type: ignore  (Pyright does not know E here)
@@ -72,7 +78,7 @@ class OutSet(Generic[E]):
         return f"OutSet({{{', '.join(map(str, self._set))}}})"
 
 
-InOrOutSet: TypeAlias = Union[FrozenSet[E], OutSet[E]]
+type InOrOutSet[E] = frozenset[E] | OutSet[E]
 """A InOrOutSet is either a FrozenSet or an OutSet. This means
 that it can represent either
 - a finite number of elements of the type E or
@@ -83,14 +89,14 @@ be computed for InOrOutSets and will result in a InOrOutSet again.
 """
 
 
-def parse_set_triple(
-    union: Optional[InOrOutSet[E]],
-    part_a: Optional[InOrOutSet[E]],
-    part_b: Optional[InOrOutSet[E]],
+def parse_set_triple[E](
+    union: InOrOutSet[E] | None,
+    part_a: InOrOutSet[E] | None,
+    part_b: InOrOutSet[E] | None,
     union_name: str = "union",
     part_a_name: str = "part_a",
     part_b_name: str = "part_b",
-) -> Tuple[InOrOutSet[E], InOrOutSet[E]]:
+) -> tuple[InOrOutSet[E], InOrOutSet[E]]:
     """Take three sets and make sure that the first is the disjoint
     union of the other two. If one of the sets is None, find the value
     for it that ensures this, if possible.
@@ -130,7 +136,7 @@ def parse_set_triple(
     return part_a, part_b
 
 
-def wrap_set(set: Union[Iterable[E], OutSet[E], None]) -> Optional[InOrOutSet[E]]:
+def wrap_set[E](set: Iterable[E] | OutSet[E] | None) -> InOrOutSet[E] | None:
     """Wrap an iterable or OutSet, resulting in an InOrOutSet. Pass
     through None unchanged.
     """

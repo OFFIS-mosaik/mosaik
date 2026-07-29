@@ -55,7 +55,7 @@ from mosaik_api_v3.types import (
 )
 from networkx import DiGraph
 from tqdm import tqdm
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing_extensions import Literal, TypedDict
 
 from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
@@ -152,7 +152,7 @@ As a more modern alternative, consider using the starters from
 :mod:`mosaik.starters` directly.
 """
 
-SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
+type SimConfig = Dict[str, Union[StarterConfig, Starter]]
 """Description of all the simulators you intend to use in your
 simulation.
 """
