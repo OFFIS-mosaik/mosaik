@@ -2,8 +2,7 @@
 ``mosaik.exceptions`` --- mosaik specific error types
 =====================================================
 
+.. currentmodule:: mosaik.exceptions
+
 .. automodule:: mosaik.exceptions
-
-.. autoclass:: ScenarioError
-
-.. autoclass:: SimulationError
+   :members:

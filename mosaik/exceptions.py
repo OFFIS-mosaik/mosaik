@@ -1,5 +1,14 @@
-"""
-This module provides mosaik specific exception types.
+"""This module provides mosaik-specific exception types.
+
+Exceptions are sorted into two types:
+
+- A :exc:`ScenarioError` indicates that you as the author of the
+  scenario have made an error in their setup.
+- A :exc:`SimulationError` occurs during the simulation. This often
+  indicates that there is an error in a simulator. (But the error
+  might also be due to an error in using it.) Check your usage carefully
+  (including the simulator's documentation), and then potentially
+  contact the simulator author about the error.
 """
 
 from __future__ import annotations
@@ -18,16 +27,20 @@ if TYPE_CHECKING:
 
 
 class ScenarioError(Exception):
-    """
-    This exception is raised if something fails during the creation of
-    a scenario.
+    """This exception is raised if something fails during the creation
+    of a scenario.
+
+    This is usually due to an error on the part of the part of the
+    scenario author.
     """
 
 
 class SimulationError(Exception):
-    """
-    This exception is raised if a simulator cannot be started or if
+    """This exception is raised if a simulator cannot be started or if
     a problem arises during the execution of a simulation.
+
+    These exceptions can be due to errors in the scenario or due to
+    errors in the simulators.
     """
 
     def __init__(self, msg: str, exc: BaseException | None = None):
@@ -41,6 +54,22 @@ class SimulationError(Exception):
         super().__init__(arg)
 
 
+class SimulatorError(Exception):
+    """This is the supertype for exceptions raised if a simulator does
+    not behave correctly.
+
+    If you encounter one of these exceptions as a scenario author, you
+    should usually contact the author of the simulator in question to
+    resolve the issue.
+    """
+
+    simulator: str
+
+    def __init__(self, simulator: str, *args: Any):
+        self.simulator = simulator
+        super().__init__(*args)
+
+
 class NonSerializableOutputsError(SimulationError):
     """This exception is raised if a simulator started via ``"python"``
     returns output that cannot be serialized to JSON but you try to
@@ -48,6 +77,7 @@ class NonSerializableOutputsError(SimulationError):
     ``"connect"``.
 
     There are two possible resolutions:
+
     - Contact the simulator author to have them change their output
       datatypes to standard Python types that can be serialized.
     - Start the destination simulator via ``"python"`` as well. This
@@ -80,29 +110,13 @@ class NonSerializableOutputsError(SimulationError):
         )
 
 
-class SimulatorError(Exception):
-    """This is the supertype for exceptions raised if a simulator does
-    not behave correctly.
-
-    If you encounter one of these exceptions as a scenario author, you
-    should usually contact the author of the simulator in question to
-    resolve the issue.
-    """
-
-    simulator: str
-
-    def __init__(self, simulator: str, *args: Any) -> None:
-        self.simulator = simulator
-        super().__init__(*args)
-
-
 class DuplicateEntityIdError(SimulatorError):
     """This exception is raised if a simulator returns multiple entities
     with the same entity ID."""
 
     entity_id: str
 
-    def __init__(self, simulator: str, entity_id: str) -> None:
+    def __init__(self, simulator: str, entity_id: str):
         self.entity_id = entity_id
         super().__init__(simulator)
 
@@ -121,7 +135,7 @@ class ConnectionClosedError(SimulatorError):
 
     method_called: str
 
-    def __init__(self, simulator: str, method_called: str) -> None:
+    def __init__(self, simulator: str, method_called: str):
         super().__init__(simulator)
         self.method_called = method_called
 
@@ -145,7 +159,7 @@ class SimulatorInitError(ScenarioError):
     sim_id: SimId
     cause: BaseException
 
-    def __init__(self, sim_id: SimId, cause: BaseException) -> None:
+    def __init__(self, sim_id: SimId, cause: BaseException):
         self.sim_id = sim_id
         self.cause = cause
 
@@ -165,7 +179,7 @@ class ApiVersionTooNewError(ScenarioError):
     sim_id: SimId
     version: list[int]
 
-    def __init__(self, sim_id: SimId, version: list[int]) -> None:
+    def __init__(self, sim_id: SimId, version: list[int]):
         self.sim_id = sim_id
         self.version = version
 
@@ -195,7 +209,7 @@ class ApiVersionMismatchError(ScenarioError):
         sim_id: SimId,
         explicit_version: list[int],
         actual_version: list[int],
-    ) -> None:
+    ):
         self.sim_id = sim_id
         self.explicit_version = explicit_version
         self.actual_version = actual_version
@@ -221,7 +235,7 @@ class ForcedOldApiUsageError(ScenarioError):
     sim_id: SimId
     version: list[int]
 
-    def __init__(self, sim_id: SimId, version: list[int]) -> None:
+    def __init__(self, sim_id: SimId, version: list[int]):
         self.sim_id = sim_id
         self.version = version
 
@@ -275,7 +289,7 @@ class UnknownStarterNameError(ScenarioError):
 
     starter_name: str
 
-    def __init__(self, starter_name: str) -> None:
+    def __init__(self, starter_name: str):
         self.starter_name = starter_name
 
     def __str__(self) -> str:
@@ -290,7 +304,7 @@ class DuplicateSimIdError(ScenarioError):
 
     sim_id: SimId
 
-    def __init__(self, sim_id: SimId) -> None:
+    def __init__(self, sim_id: SimId):
         self.sim_id = sim_id
 
     def __str__(self) -> str:
@@ -301,10 +315,12 @@ class DuplicateSimIdError(ScenarioError):
 
 
 class WeakConnectionOutsideGroupError(ScenarioError):
-    """This exception is raised if a weak connection is attempted
-    outside of a simulator group. Weak connections are only meaningful
-    within a group, as they are used to indicate that a connection may
-    be resolved after all connections outside of the group.
+    """This exception is raised if a weak connection is created between
+    (entities of) two simulators that do not share a simulator group.
+
+    Weak connections are only legal within groups, which clarify whether
+    and how weak connections in different parts of the simulation
+    interact, see :ref:`weak-connections`.
     """
 
     def __str__(self) -> str:
@@ -341,7 +357,7 @@ class AttributeConnectionError(ScenarioError):
         missing_src_attr: bool = False,
         missing_dest_attr: bool = False,
         missing_initial_data: bool = False,
-    ) -> None:
+    ):
         self.src = src
         self.dest = dest
         self.src_attr = src_attr
@@ -381,7 +397,7 @@ class ConnectError(ScenarioError):
 
     errors: list[ScenarioError]
 
-    def __init__(self, errors: list[ScenarioError]) -> None:
+    def __init__(self, errors: list[ScenarioError]):
         self.errors = errors
 
     def __str__(self) -> str:
@@ -406,7 +422,7 @@ class DataflowCycleError(ScenarioError):
 
     cycle: list[SimId]
 
-    def __init__(self, cycle: list[SimId]) -> None:
+    def __init__(self, cycle: list[SimId]):
         self.cycle = cycle
 
     def __str__(self) -> str:
@@ -424,7 +440,7 @@ class UnknownExtraMethodError(ScenarioError):
     sim_id: SimId
     method_name: str
 
-    def __init__(self, sim_id: SimId, method_name: str) -> None:
+    def __init__(self, sim_id: SimId, method_name: str):
         self.sim_id = sim_id
         self.method_name = method_name
 
@@ -440,7 +456,7 @@ class MissingSimulatorTypeError(ScenarioError):
 
     sim_id: SimId
 
-    def __init__(self, sim_id: SimId) -> None:
+    def __init__(self, sim_id: SimId):
         self.sim_id = sim_id
 
     def __str__(self) -> str:
@@ -460,7 +476,7 @@ class InvalidSimulatorTypeError(ScenarioError):
     sim_id: SimId
     type: str
 
-    def __init__(self, sim_id: SimId, type: str) -> None:
+    def __init__(self, sim_id: SimId, type: str):
         self.sim_id = sim_id
         self.type = type
 
@@ -481,7 +497,7 @@ class IllegalModelNameError(ScenarioError):
     sim_id: SimId
     model_name: str
 
-    def __init__(self, sim_id: SimId, model_name: str) -> None:
+    def __init__(self, sim_id: SimId, model_name: str):
         self.sim_id = sim_id
         self.model_name = model_name
 
@@ -505,7 +521,7 @@ class IllegalExtraMethodNameError(ScenarioError):
 
     def __init__(
         self, sim_id: SimId, method_name: str, clashes_with_model: bool = False
-    ) -> None:
+    ):
         self.sim_id = sim_id
         self.method_name = method_name
         self.clashes_with_model = clashes_with_model
@@ -538,7 +554,7 @@ class SimulatorConnectionLostError(SimulationError):
         sim_id: SimId,
         cause: BaseException | None = None,
         during: str | None = None,
-    ) -> None:
+    ):
         self.sim_id = sim_id
         self.during = during
         if during:
@@ -552,18 +568,19 @@ class SimulatorConnectionLostError(SimulationError):
 
 class StepTimeMismatchError(SimulationError):
     """This exception is raised if a simulator is about to perform a
-    step at a time that does not match the time it has already
-    progressed to. This usually indicates an internal scheduling error
-    in mosaik.
+    step at some time but mosaik has previously determined that that
+    simulator had already passed that time.
+
+    This usually indicates an internal scheduling error in mosaik;
+    please report it on our
+    `issue tracker <https://gitlab.com/mosaik/mosaik/issues>`__.
     """
 
     sim_id: SimId
     step_time: TieredTime
     progress_time: TieredTime
 
-    def __init__(
-        self, sim_id: SimId, step_time: TieredTime, progress_time: TieredTime
-    ) -> None:
+    def __init__(self, sim_id: SimId, step_time: TieredTime, progress_time: TieredTime):
         self.sim_id = sim_id
         self.step_time = step_time
         self.progress_time = progress_time
@@ -588,9 +605,7 @@ class MaxLoopIterationsExceededError(SimulationError):
     max_loop_iterations: int
     step_time: TieredTime
 
-    def __init__(
-        self, sim_id: SimId, max_loop_iterations: int, step_time: TieredTime
-    ) -> None:
+    def __init__(self, sim_id: SimId, max_loop_iterations: int, step_time: TieredTime):
         self.sim_id = sim_id
         self.max_loop_iterations = max_loop_iterations
         self.step_time = step_time
@@ -611,7 +626,7 @@ class InvalidNextStepTypeError(SimulationError):
     sim_id: SimId
     next_step_time: int
 
-    def __init__(self, sim_id: SimId, next_step_time: int) -> None:
+    def __init__(self, sim_id: SimId, next_step_time: int):
         self.sim_id = sim_id
         self.next_step_time = next_step_time
         super().__init__(
@@ -631,9 +646,7 @@ class InvalidNextStepTimeError(SimulationError):
     next_step_time: int
     current_step_time: int
 
-    def __init__(
-        self, sim_id: SimId, next_step_time: int, current_step_time: int
-    ) -> None:
+    def __init__(self, sim_id: SimId, next_step_time: int, current_step_time: int):
         self.sim_id = sim_id
         self.next_step_time = next_step_time
         self.current_step_time = current_step_time
@@ -654,9 +667,7 @@ class InvalidOutputTimeError(SimulationError):
     output_time: int
     last_step_time: TieredTime
 
-    def __init__(
-        self, sim_id: SimId, output_time: int, last_step_time: TieredTime
-    ) -> None:
+    def __init__(self, sim_id: SimId, output_time: int, last_step_time: TieredTime):
         self.sim_id = sim_id
         self.output_time = output_time
         self.last_step_time = last_step_time
@@ -671,14 +682,16 @@ class InvalidOutputTimeError(SimulationError):
 
 class EventInNonRealTimeModeError(SimulationError):
     """This exception is raised if a simulator tries to schedule an
-    event (using ``set_event``) while the simulation is not running in
-    real-time mode. Events can only sensibly be scheduled in real-time
-    mode, as they are meant to react to events happening in real time.
+    event (using ``set_event``) in a non-real-time simulation.
+
+    Events can only sensibly be scheduled in real-time mode, as there
+    is no relation between the real time at which the event occurs and
+    and mosaik's internal simulation time, otherwise.
     """
 
     sim_id: SimId
 
-    def __init__(self, sim_id: SimId) -> None:
+    def __init__(self, sim_id: SimId):
         self.sim_id = sim_id
         super().__init__(
             f"Simulator '{sim_id}' tried to set an event in non-real-time mode."
@@ -694,7 +707,7 @@ class AsyncRequestsNotConnectedError(ScenarioError):
     src_sim_id: SimId
     dest_sim_id: SimId
 
-    def __init__(self, src_sim_id: SimId, dest_sim_id: SimId) -> None:
+    def __init__(self, src_sim_id: SimId, dest_sim_id: SimId):
         self.src_sim_id = src_sim_id
         self.dest_sim_id = dest_sim_id
 
@@ -716,7 +729,7 @@ class AsyncRequestsNotEnabledError(ScenarioError):
     src_sim_id: SimId
     dest_sim_id: SimId
 
-    def __init__(self, src_sim_id: SimId, dest_sim_id: SimId) -> None:
+    def __init__(self, src_sim_id: SimId, dest_sim_id: SimId):
         self.src_sim_id = src_sim_id
         self.dest_sim_id = dest_sim_id
 
@@ -742,7 +755,7 @@ class UnknownStarterConfigError(ScenarioError):
 
     starter_config: StarterConfig
 
-    def __init__(self, starter_config: StarterConfig) -> None:
+    def __init__(self, starter_config: StarterConfig):
         self.starter_config = starter_config
 
     def __str__(self) -> str:
@@ -760,7 +773,7 @@ class MalformedPythonImportStringError(ScenarioError):
 
     import_string: str
 
-    def __init__(self, import_string: str) -> None:
+    def __init__(self, import_string: str):
         self.import_string = import_string
 
     def __str__(self) -> str:
@@ -776,7 +789,7 @@ class PythonImportError(ScenarioError):
     class_name: str
     cause: BaseException
 
-    def __init__(self, module_name: str, class_name: str, cause: BaseException) -> None:
+    def __init__(self, module_name: str, class_name: str, cause: BaseException):
         self.module_name = module_name
         self.class_name = class_name
         self.cause = cause
@@ -838,7 +851,7 @@ class ProcessStartError(ScenarioError):
     sim_id: SimId
     cause: BaseException
 
-    def __init__(self, sim_id: SimId, cause: BaseException) -> None:
+    def __init__(self, sim_id: SimId, cause: BaseException):
         self.sim_id = sim_id
         self.cause = cause
 
@@ -861,7 +874,7 @@ class MalformedConnectAddressError(ScenarioError):
 
     address: str
 
-    def __init__(self, address: str) -> None:
+    def __init__(self, address: str):
         self.address = address
 
     def __str__(self) -> str:
@@ -876,7 +889,7 @@ class SimulatorStartTimeoutError(SimulationError):
 
     sim_id: SimId
 
-    def __init__(self, sim_id: SimId) -> None:
+    def __init__(self, sim_id: SimId):
         self.sim_id = sim_id
         super().__init__(f'Simulator "{sim_id}" did not connect to mosaik in time.')
 
@@ -891,7 +904,7 @@ class SimulatorConnectError(SimulationError):
     host: str
     port: int
 
-    def __init__(self, sim_id: SimId, host: str, port: int) -> None:
+    def __init__(self, sim_id: SimId, host: str, port: int):
         self.sim_id = sim_id
         self.host = host
         self.port = port
