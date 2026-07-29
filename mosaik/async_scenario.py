@@ -1140,25 +1140,27 @@ class AsyncWorld:
                 continue
             min_path = descs[sim]
             if min_path["delays"].contains_zero():
-                cycle_connections = []
-                for src_sim, dest_sim in zip(min_path["path"], min_path["path"][1:]):
-                    cycle_connections.extend(
-                        connection
-                        for connection in self._pending_connections
-                        if connection.src_entity.sid == src_sim.sid
-                        and connection.dest_entity.sid == dest_sim.sid
-                        and connection.delay in dest_sim.input_delays[src_sim].durations
-                    )
-                connection_report = "\n".join(
-                    f"- {connection.src_entity.full_id}.{connection.src_attr} -> "
-                    f"{connection.dest_entity.full_id}.{connection.dest_attr}"
-                    for connection in cycle_connections
-                )
                 raise ScenarioError(
                     f"Your scenario contains cycles, for example: {min_path['path']}.\n"
                     "The relevant connections are:\n"
-                    f"{connection_report}"
+                    f"{self._format_cycle_connections(min_path['path'])}"
                 )
+
+    def _format_cycle_connections(self, path: List[SimRunner]) -> str:
+        cycle_connections = []
+        for src_sim, dest_sim in zip(path, path[1:]):
+            cycle_connections.extend(
+                connection
+                for connection in self._pending_connections
+                if connection.src_entity.sid == src_sim.sid
+                and connection.dest_entity.sid == dest_sim.sid
+                and connection.delay in dest_sim.input_delays[src_sim].durations
+            )
+        return "\n".join(
+            f"- {connection.src_entity.full_id}.{connection.src_attr} -> "
+            f"{connection.dest_entity.full_id}.{connection.dest_attr}"
+            for connection in cycle_connections
+        )
 
     async def shutdown(self):
         """
