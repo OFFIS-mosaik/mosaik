@@ -1048,6 +1048,8 @@ class AsyncWorld:
         """Collects the ancestors of each simulator and stores them in
         the respective simulator object.
         """
+        # See ``ensure_no_dataflow_cycles`` for an explanation of this
+        # algorithm
         sims = self._get_sim_runners()
         dirty: Set[SimRunner] = set()
         for sim in sims.values():
@@ -1075,12 +1077,25 @@ class AsyncWorld:
         delay. Raise an exception with one such cycle otherwise.
         """
 
+        # Short note on terminology: ancestors and descendants any
+        # number of steps removed; predecessors and successors are one
+        # step removed (i.e. they're *direct* ancestors/descendants)
+
         sims = self._get_sim_runners()
         dirty: Set[SimRunner] = set(sims.values())
+        """Sims that have changed descendants and thus require
+        recalculation
+        """
         sim_descs: Dict[SimRunner, Dict[SimRunner, MinPath]] = {
             sim: {} for sim in sims.values()
         }
+        """For each SimRunner, all its descendants that have been found
+        so far with the shortest delay to them and the path that
+        exhibits this delay.
+        """
 
+        # At the start, enter each sim as a descendant of all its
+        # (direct) predecessors
         for sim in sims.values():
             for pred, delay in sim.input_delays.items():
                 min_durations = MinimalDurations()
@@ -1092,6 +1107,8 @@ class AsyncWorld:
 
         while dirty:
             mid_sim = dirty.pop()
+            # This sim has had updates to its descendants since we last
+            # processed it. These changes are pushed to its predecessors
             for src_sim, src_to_mid_delays in mid_sim.input_delays.items():
                 for dest_sim, mid_to_dest in sim_descs[mid_sim].items():
                     src_to_dest_delays = src_to_mid_delays + mid_to_dest["delays"]
@@ -1107,12 +1124,17 @@ class AsyncWorld:
                         .insert_all(src_to_dest_delays)
                     )
                     if was_updated:
+                        # In this case we need to update the
+                        # predecessor's shortest path to the descendant
+                        # and reprocess the predecessor
                         sim_descs[src_sim][dest_sim]["path"] = [
                             src_sim,
                             *mid_to_dest["path"],
                         ]
                         dirty.add(src_sim)
 
+        # We need to raise an error if any sim has itself as a
+        # descendant with a delay of 0
         for sim, descendants in sim_descs.items():
             if sim not in descendants:
                 continue
