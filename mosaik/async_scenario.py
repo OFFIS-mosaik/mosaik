@@ -1135,10 +1135,10 @@ class AsyncWorld:
 
         # We need to raise an error if any sim has itself as a
         # descendant with a delay of 0
-        for sim, descendants in sim_descs.items():
-            if sim not in descendants:
+        for sim, descs in sim_descs.items():
+            if sim not in descs:
                 continue
-            min_path = descendants[sim]
+            min_path = descs[sim]
             if min_path["delays"].contains_zero():
                 raise ScenarioError(
                     "Your scenario contains a cycle:\n"
