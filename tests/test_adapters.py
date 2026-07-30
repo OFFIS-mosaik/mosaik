@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 
 from mosaik.async_scenario import AsyncWorld
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import ApiVersionTooNewError
 from mosaik.scenario import SimConfig
 
 sim_config: SimConfig = {
@@ -52,14 +52,11 @@ async def test_start_wrong_api_version(world: AsyncWorld):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
-    with pytest.raises(ScenarioError) as exc_info:
+    with pytest.raises(ApiVersionTooNewError) as exc_info:
         await world.start(
             "MetaMirror",
             meta={"api_version": "1000.0", "models": {}},
         )
 
-    assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMirror-0: The API version "
-        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
-        "mosaik package is available to be used in your scenario?"
-    )
+    assert exc_info.value.sim_id == "MetaMirror-0"
+    assert exc_info.value.version == [1000, 0]

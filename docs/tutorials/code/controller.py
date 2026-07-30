@@ -29,7 +29,7 @@ class Controller(mosaik_api_v3.Simulator):
         n_agents = len(self.agents)
         entities = []
         for i in range(n_agents, n_agents + num):
-            eid = "Agent_%d" % i
+            eid = f"Agent_{i}"
             self.agents.append(eid)
             entities.append({"eid": eid, "type": model})
 
@@ -41,16 +41,16 @@ class Controller(mosaik_api_v3.Simulator):
         for agent_eid, attrs in inputs.items():
             delta_dict = attrs.get("delta", {})
             if len(delta_dict) > 0:
-                data[agent_eid] = {"delta": list(delta_dict.values())[0]}
+                data[agent_eid] = {"delta": next(iter(delta_dict.values()))}
                 continue
 
             values_dict = attrs.get("val_in", {})
             if len(values_dict) != 1:
                 raise RuntimeError(
                     "Only one ingoing connection allowed per "
-                    'agent, but "%s" has %i.' % (agent_eid, len(values_dict))
+                    f'agent, but "{agent_eid}" has {len(values_dict)}.'
                 )
-            value = list(values_dict.values())[0]
+            value = next(iter(values_dict.values()))
 
             if value >= 3:
                 delta = -1
@@ -63,14 +63,12 @@ class Controller(mosaik_api_v3.Simulator):
 
         self.data = data
 
-        return None
-
     def get_data(self, outputs):
         data = {}
         for agent_eid, attrs in outputs.items():
             for attr in attrs:
                 if attr != "delta":
-                    raise ValueError('Unknown output attribute "%s"' % attr)
+                    raise ValueError(f'Unknown output attribute "{attr}"')
                 if agent_eid in self.data:
                     data["time"] = self.time
                     data.setdefault(agent_eid, {})[attr] = self.data[agent_eid][attr]

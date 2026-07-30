@@ -9,7 +9,7 @@ from mosaik import util
 from mosaik.async_scenario import SimGroup
 
 
-class World(object):
+class World:
     """
     A dummy world for testing purposes.
     """
@@ -122,7 +122,7 @@ class SimStub:
     def __init__(self, sid: str, group: SimGroup) -> None:
         self.sid = sid
         self.group = group
-        self.input_delays: OrderedDict["SimStub", DelayStub] = OrderedDict()
+        self.input_delays: OrderedDict[SimStub, DelayStub] = OrderedDict()
 
 
 def test_plot_df_graph_groups():

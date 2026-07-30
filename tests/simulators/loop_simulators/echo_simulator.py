@@ -40,8 +40,7 @@ class EchoSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         logger.info("step at {time} with inputs {inputs}", time=time, inputs=inputs)
-        self.loop_count = list(inputs[self.eid]["loop_in"].values())[0]
-        return None
+        self.loop_count = next(iter(inputs[self.eid]["loop_in"].values()))
 
     def get_data(self, outputs):
         return {self.eid: {"loop_out": self.loop_count}}

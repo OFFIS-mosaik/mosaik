@@ -31,7 +31,7 @@ class ExampleSim(mosaik_api_v3.Simulator):
         if float(time_resolution) != 1.0:
             raise ValueError(
                 "ExampleSim only supports time_resolution=1., but"
-                " %s was set." % time_resolution
+                f" {time_resolution} was set."
             )
         if eid_prefix is not None:
             self.eid_prefix = eid_prefix
@@ -43,7 +43,7 @@ class ExampleSim(mosaik_api_v3.Simulator):
 
         for i in range(next_eid, next_eid + num):
             model_instance = example_model.Model(init_val)
-            eid = "%s%d" % (self.eid_prefix, i)
+            eid = f"{self.eid_prefix}{i}"
             self.entities[eid] = model_instance
             entities.append({"eid": eid, "type": model})
 
@@ -55,7 +55,7 @@ class ExampleSim(mosaik_api_v3.Simulator):
         for eid, model_instance in self.entities.items():
             if eid in inputs:
                 attrs = inputs[eid]
-                for attr, values in attrs.items():
+                for values in attrs.values():
                     new_delta = sum(values.values())
                 model_instance.delta = new_delta
 
@@ -71,7 +71,7 @@ class ExampleSim(mosaik_api_v3.Simulator):
             data[eid] = {}
             for attr in attrs:
                 if attr not in self.meta["models"]["ExampleModel"]["attrs"]:
-                    raise ValueError("Unknown output attribute: %s" % attr)
+                    raise ValueError(f"Unknown output attribute: {attr}")
 
                 # Get model.val or model.delta:
                 data[eid][attr] = getattr(model, attr)

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import mosaik_api_v3
 from mosaik_api_v3.types import InputData, OutputData, OutputRequest
@@ -17,7 +19,7 @@ sim_meta = {
 
 
 class FixedOutputSim(mosaik_api_v3.Simulator):
-    entities: Dict[str, Dict[int, Any]]
+    entities: dict[str, dict[int, Any]]
 
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))
@@ -29,7 +31,7 @@ class FixedOutputSim(mosaik_api_v3.Simulator):
         self.sid = sid
         return self.meta
 
-    def create(self, num: int, model: str, outputs: Dict[int, Any]):
+    def create(self, num: int, model: str, outputs: dict[int, Any]):
         n_entities = len(self.entities)
         new_entities = [f"E{i}" for i in range(n_entities, n_entities + num)]
         self.entities.update(dict.fromkeys(new_entities, outputs))
