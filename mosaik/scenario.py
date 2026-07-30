@@ -13,16 +13,14 @@ from __future__ import annotations
 
 import asyncio
 import functools
+from collections.abc import Awaitable, Callable, Iterable
 from types import TracebackType
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Iterable,
+    Literal,
 )
 
 from mosaik_api_v3.types import Attr, ModelName, SimId
-from typing_extensions import Literal
 
 from mosaik.async_scenario import (
     SENTINEL,

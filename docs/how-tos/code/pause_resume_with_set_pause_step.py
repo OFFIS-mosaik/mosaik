@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import queue
 import threading
@@ -70,7 +72,6 @@ async def pause_sim(pause_step: int, world: AsyncWorld, progress: ProgressProxy)
         f"step {pause_step} and is now paused."
     )
     world.running.clear()
-    return
 
 
 # End: pause_sim_method
@@ -82,10 +83,9 @@ def on_press(key, event, loop):
             if event and loop.is_running():
                 loop.call_soon_threadsafe(lambda: event.clear())  # Pause
                 logger.info("mosaik simulation is paused.")
-        elif key.char == "r":
-            if event and loop.is_running():
-                loop.call_soon_threadsafe(lambda: event.set())  # Resume
-                logger.info("mosaik simulation is resumed.")
+        elif key.char == "r" and event and loop.is_running():
+            loop.call_soon_threadsafe(lambda: event.set())  # Resume
+            logger.info("mosaik simulation is resumed.")
     except AttributeError:
         # This handles cases where `key` does not have a `char`
         # attribute, which happens for special keys like Shift or Ctrl.

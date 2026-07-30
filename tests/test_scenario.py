@@ -1,10 +1,17 @@
-from typing import List, cast
+from typing import cast
 
 import pytest
 from networkx import to_dict_of_dicts as to_dict
 
 from mosaik import scenario
-from mosaik.exceptions import ScenarioError
+from mosaik.exceptions import (
+    AttributeConnectionError,
+    ConnectError,
+    DataflowCycleError,
+    InvalidSimulatorTypeError,
+    MissingSimulatorTypeError,
+    WeakConnectionOutsideGroupError,
+)
 from mosaik.proxies import LocalProxy
 from mosaik.scenario import Entity, ModelFactory, World
 from mosaik.tiered_time import MinimalDurations, TieredDuration
@@ -138,8 +145,8 @@ def test_world_connect(world: World):
     """
     sim_0 = world.start("ExampleSim")
     sim_1 = world.start("ExampleSim")
-    a = cast(List[Entity], sim_0.A.create(2, init_val=0))
-    b = cast(List[Entity], sim_1.B.create(2, init_val=0))
+    a = cast(list[Entity], sim_0.A.create(2, init_val=0))
+    b = cast(list[Entity], sim_1.B.create(2, init_val=0))
     for i, j in zip(a, b):
         world.connect(i, j, ("val_out", "val_in"), ("dummy_out", "dummy_in"))
 
@@ -180,10 +187,10 @@ def test_world_connect_same_simulator(world: World):
     a delay (time-shifted or weak).
     """
     a = world.start("ExampleSim").A.create(2, init_val=0)
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(DataflowCycleError) as err:
         world.connect(a[0], a[1], ("val_out", "val_out"))
         world.run(1)
-    assert "Your scenario contains cycles" in str(err.value)
+    assert err.value.cycle
 
 
 def test_world_connect_cycle(world: World):
@@ -195,9 +202,9 @@ def test_world_connect_cycle(world: World):
     b = world.start("ExampleSim").B(init_val=0)
     world.connect(a, b, ("val_out", "val_in"))
     world.connect(b, a, ("val_in", "val_out"))
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(DataflowCycleError) as err:
         world.run(1)
-    assert "Your scenario contains cycles" in str(err.value)
+    assert err.value.cycle
 
 
 def test_group_cycle(world: World):
@@ -208,9 +215,9 @@ def test_group_cycle(world: World):
     world.connect_one(a, b, "val_out", "val_in", weak=True, initial_data=None)
     world.connect_one(b, c, "val_out", "val_in")
     world.connect_one(c, a, "val_out", "val_in")
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(DataflowCycleError) as err:
         world.run(0)
-    assert "Your scenario contains cycles" in str(err.value)
+    assert err.value.cycle
 
 
 def test_world_connect_wrong_attr_names(world: World):
@@ -219,22 +226,35 @@ def test_world_connect_wrong_attr_names(world: World):
     """
     a = world.start("ExampleSim", sim_id="A").A(init_val=0)
     b = world.start("ExampleSim", sim_id="B").B(init_val=0)
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(ConnectError) as err:
         world.connect(a, b, ("val", "val_in"))
-    assert "connecting A.0.0.val to B.0.0.val_in" in str(err.value)
-    assert "source attribute" in str(err.value)
+    assert len(err.value.errors) == 1
+    sub_err = err.value.errors[0]
+    assert isinstance(sub_err, AttributeConnectionError)
+    assert sub_err.src_attr == "val"
+    assert sub_err.dest_attr == "val_in"
+    assert sub_err.missing_src_attr
+    assert not sub_err.missing_dest_attr
 
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(ConnectError) as err:
         world.connect(a, b, ("val_out", "val"))
-    assert "connecting A.0.0.val_out to B.0.0.val" in str(err.value)
-    assert "destination attribute"
+    assert len(err.value.errors) == 1
+    sub_err = err.value.errors[0]
+    assert isinstance(sub_err, AttributeConnectionError)
+    assert sub_err.src_attr == "val_out"
+    assert sub_err.dest_attr == "val"
+    assert not sub_err.missing_src_attr
+    assert sub_err.missing_dest_attr
 
-    with pytest.raises(ScenarioError) as err:
+    with pytest.raises(ConnectError) as err:
         world.connect(a, b, ("val", "val_in"), "onoes")
-    assert "connecting A.0.0.val to B.0.0.val_in" in str(err.value)
-    assert "connecting A.0.0.onoes to B.0.0.onoes" in str(err.value)
-    assert "source attribute" in str(err.value)
-    assert "destination attribute" in str(err.value)
+    assert len(err.value.errors) == 2
+    errors_by_src_attr = {e.src_attr: e for e in err.value.errors}
+    for sub_err in errors_by_src_attr.values():
+        assert isinstance(sub_err, AttributeConnectionError)
+        assert sub_err.missing_src_attr
+    assert not errors_by_src_attr["val"].missing_dest_attr
+    assert errors_by_src_attr["onoes"].missing_dest_attr
 
 
 def test_world_connect_no_attrs(world: World):
@@ -344,9 +364,10 @@ def test_world_connect_time_shifted(world: World):
 def test_weak_outside_group(world: World):
     a = world.start("ExampleSim").A(init_val=0)
     b = world.start("ExampleSim").B(init_val=0)
-    with pytest.raises(ScenarioError) as exc:
+    with pytest.raises(ConnectError) as exc:
         world.connect(a, b, "val_out", weak=True, initial_data={"val_out": 0})
-    assert "in groups" in str(exc.value)
+    assert len(exc.value.errors) == 1
+    assert isinstance(exc.value.errors[0], WeakConnectionOutsideGroupError)
 
 
 def test_world_get_data(world: World):
@@ -479,13 +500,13 @@ def test_model_factory_hierarchical_entities_illegal_type(
 
 def test_model_factory_private_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
-        getattr(mf, "C")
+        _ = mf.C
     assert str(err.value) == 'Model "C" is not public.'
 
 
 def test_model_factory_unkown_model(world: World, mf: ModelFactory):
     with pytest.raises(AttributeError) as err:
-        getattr(mf, "D")
+        _ = mf.D
     assert (
         str(err.value)
         == 'Model factory for "ExampleSim-0" has no model and no function "D".'
@@ -553,7 +574,7 @@ def test_extra_info(world: World):
 
 
 def test_missing_type_in_meta(world: World):
-    with pytest.raises(ScenarioError) as exc:
+    with pytest.raises(MissingSimulatorTypeError) as exc:
         world.start(
             "MetaMirror",
             meta={
@@ -561,11 +582,11 @@ def test_missing_type_in_meta(world: World):
                 "models": {},
             },
         )
-    assert "missing a type specification" in str(exc)
+    assert exc.value.sim_id == "MetaMirror-0"
 
 
 def test_typo_in_type_in_meta(world: World):
-    with pytest.raises(ScenarioError) as exc:
+    with pytest.raises(InvalidSimulatorTypeError) as exc:
         world.start(
             "MetaMirror",
             meta={
@@ -574,7 +595,8 @@ def test_typo_in_type_in_meta(world: World):
                 "models": {},
             },
         )
-    assert "not a valid type" in str(exc)
+    assert exc.value.sim_id == "MetaMirror-0"
+    assert exc.value.type == "timebased"
 
 
 def test_missing_type_in_old_api(world: World):

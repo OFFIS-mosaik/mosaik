@@ -7,12 +7,16 @@
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 
 
+def full_contents(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
 class DescriptionDataHook(MetadataHookInterface):
     def update(self, metadata):
         metadata["readme"] = {
             "content-type": "text/x-rst",
             "text": "\n\n".join(
-                open(f, encoding="utf-8").read()
-                for f in ["README.rst", "CHANGES.rst", "AUTHORS.rst"]
+                full_contents(f) for f in ["README.rst", "CHANGES.rst", "AUTHORS.rst"]
             ),
         }

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import threading
 from time import sleep
-from typing import Optional
 
 import mosaik_api_v3
 from mosaik_api_v3 import InputData, OutputData, OutputRequest, Time
@@ -16,7 +17,7 @@ class Sim(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(META)
 
-    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Optional[Time]:
+    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time | None:
         threading.Thread(target=delayed_greet).start()
         return time + 1
 

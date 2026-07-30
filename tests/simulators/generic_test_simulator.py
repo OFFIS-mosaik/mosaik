@@ -69,11 +69,15 @@ class TestSim(mosaik_api_v3.Simulator):
         step_type="time-based",
         step_size=1,
         trigger=None,
-        self_steps={},
+        self_steps=None,
         wallclock_duration=0.0,
         output_timing=None,
-        events={},
+        events=None,
     ):
+        if events is None:
+            events = {}
+        if self_steps is None:
+            self_steps = {}
         self.sid = sid
         self.step_type = step_type
         self.meta["type"] = step_type
@@ -116,7 +120,7 @@ class TestSim(mosaik_api_v3.Simulator):
             if time in self.self_steps:
                 return self.self_steps[time]
             else:
-                None
+                return None
 
     def get_data(self, outputs):
         if self.output_timing is None:

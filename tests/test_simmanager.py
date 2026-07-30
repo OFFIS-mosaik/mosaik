@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from typing import Any, Callable, Coroutine, Type
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import mosaik_api_v3.connection
 import pytest
@@ -13,9 +14,13 @@ from mosaik_api_v3.connection import Channel, RemoteException
 
 from mosaik import AsyncWorld, World, async_scenario, proxies, scenario, simmanager
 from mosaik.exceptions import (
+    ApiVersionTooNewError,
+    AsyncRequestsNotConnectedError,
+    AsyncRequestsNotEnabledError,
     DuplicateEntityIdError,
+    IllegalExtraMethodNameError,
+    IllegalModelNameError,
     NonSerializableOutputsError,
-    ScenarioError,
 )
 from mosaik.proxies import BaseProxy, LocalProxy, RemoteProxy
 from mosaik.tiered_time import TieredDuration, TieredTime
@@ -76,14 +81,11 @@ def test_start_wrong_api_version(world: World, monkeypatch):
     """
     An exception should be raised if the simulator uses an unsupported
     API version."""
-    with pytest.raises(ScenarioError) as exc_info:
+    with pytest.raises(ApiVersionTooNewError) as exc_info:
         world.start("MetaMock", meta={"api_version": "1000.0"})
 
-    assert str(exc_info.value) == (
-        "There was an error during the initialization of MetaMock-0: The API version "
-        "(1000.0) is too new for this version of mosaik. Maybe a newer version of the "
-        "mosaik package is available to be used in your scenario?"
-    )
+    assert exc_info.value.sim_id == "MetaMock-0"
+    assert exc_info.value.version == [1000, 0]
 
 
 @pytest.mark.asyncio
@@ -105,7 +107,7 @@ async def test_start_proc_auto_terminate(auto_terminate: bool):
     assert proxy._process is not None
     try:
         await asyncio.wait_for(proxy._process[0].wait(), 0.1)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         # Just wait a moment for terminate (in the shutdown procedure
         # at the end of the with block) to go through if auto_terminate
         # is True, but not long enough for the thread in ProcTest to
@@ -127,18 +129,23 @@ async def read_message(reader: asyncio.StreamReader):
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_model_names(world):
-    with pytest.raises(ScenarioError):
+    with pytest.raises(IllegalModelNameError) as exc_info:
         world.start("MetaMock", meta={"models": {"step": {}}})
+    assert exc_info.value.model_name == "step"
 
 
 @pytest.mark.filterwarnings("ignore:Simulator MetaMock")
 def test_sim_proxy_illegal_extra_methods(world):
-    with pytest.raises(ScenarioError):
+    with pytest.raises(IllegalExtraMethodNameError) as exc_info:
         world.start("MetaMock", meta={"models": {}, "extra_methods": ["step"]})
-    with pytest.raises(ScenarioError):
+    assert exc_info.value.method_name == "step"
+    assert not exc_info.value.clashes_with_model
+    with pytest.raises(IllegalExtraMethodNameError) as exc_info:
         world.start(
             "MetaMock", meta={"models": {"A": {"attrs": []}}, "extra_methods": ["A"]}
         )
+    assert exc_info.value.method_name == "A"
+    assert exc_info.value.clashes_with_model
 
 
 def test_sim_proxy_stop_impl(world):
@@ -152,7 +159,7 @@ def test_sim_proxy_stop_impl(world):
         async def send(self, *args, **kwargs):
             raise NotImplementedError()
 
-        meta = {"type": "time-based", "models": {}}
+        meta = {"type": "time-based", "models": {}}  # noqa: RUF012
 
     sim = simmanager.SimRunner("id", Test(), None)
     with pytest.raises(NotImplementedError):
@@ -272,8 +279,8 @@ async def _rpc_get_data_err1(channel: Channel, world: World):
     try:
         await channel.send(["get_data", [{"Z.2": []}], {}])
     except mosaik_api_v3.connection.RemoteException as exception:
-        if exception.remote_type == "ScenarioError":
-            raise ScenarioError
+        if exception.remote_type == "AsyncRequestsNotConnectedError":
+            raise AsyncRequestsNotConnectedError(None, None)
 
 
 async def _rpc_get_data_err2(channel: Channel, world: World):
@@ -283,8 +290,8 @@ async def _rpc_get_data_err2(channel: Channel, world: World):
     try:
         await channel.send(["get_data", [{"Y.2": []}], {}])
     except mosaik_api_v3.connection.RemoteException as exception:
-        if exception.remote_type == "ScenarioError":
-            raise ScenarioError
+        if exception.remote_type == "AsyncRequestsNotEnabledError":
+            raise AsyncRequestsNotEnabledError(None, None)
 
 
 async def _rpc_set_data_err1(channel: Channel, world: World):
@@ -308,22 +315,22 @@ async def _rpc_set_data_err2(channel: Channel, world: World):
         (_rpc_get_related_entities, None),
         (_rpc_get_data, None),
         (_rpc_set_data, None),
-        (_rpc_get_data_err1, ScenarioError),
-        (_rpc_get_data_err2, ScenarioError),
+        (_rpc_get_data_err1, AsyncRequestsNotConnectedError),
+        (_rpc_get_data_err2, AsyncRequestsNotEnabledError),
         (_rpc_set_data_err1, RemoteException),
         (_rpc_set_data_err2, RemoteException),
     ],
 )
 def test_mosaik_remote(  # noqa
     rpc: Callable[[Channel, World], Coroutine[Any, Any, None]],
-    err: Type[Exception],
+    err: type[Exception],
 ):
     world = scenario.World({})
     world.use_cache = True
 
     try:
         edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
-        edges = [("X.%s" % x, "X.%s" % y) for x, y in edges]
+        edges = [(f"X.{x}", f"X.{y}") for x, y in edges]
         world.entity_graph.add_edges_from(edges)
         for node in world.entity_graph:
             world.entity_graph.add_node(node, sim="ExampleSim", type="A")
@@ -365,6 +372,10 @@ def test_mosaik_remote(  # noqa
             world._async_world._proxies["Y"] = proxy_y
             sim_y = simmanager.SimRunner("Y", proxy_y, None)
             world._async_world._sims_cache["Y"] = sim_y
+            # Y is connected to X, but async_requests is not enabled
+            # for this connection, so async requests from X to Y should
+            # fail with `AsyncRequestsNotEnabledError`.
+            sim_y.successors[sim_x] = TieredDuration(0)
 
             proxy_z = DummyProxy()
             world._async_world._proxies["Z"] = proxy_z

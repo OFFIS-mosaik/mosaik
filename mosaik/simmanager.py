@@ -16,18 +16,14 @@ import heapq as hq
 import itertools
 import warnings
 from ast import literal_eval
+from collections.abc import Callable
 from dataclasses import dataclass
 from json import JSONEncoder
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    List,
+    Literal,
     NoReturn,
-    Optional,
-    Tuple,
-    Union,
 )
 
 import mosaik_api_v3
@@ -42,12 +38,12 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-from typing_extensions import Literal, TypeAlias
 
 from mosaik.exceptions import (
+    AsyncRequestsNotConnectedError,
+    AsyncRequestsNotEnabledError,
+    EventInNonRealTimeModeError,
     NonSerializableOutputsError,
-    ScenarioError,
-    SimulationError,
 )
 from mosaik.progress import Progress
 from mosaik.proxies import Proxy
@@ -60,7 +56,7 @@ FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
 
 
-Port: TypeAlias = Tuple[EntityId, Attr]
+type Port = tuple[EntityId, Attr]
 """Pair of an entity ID and an attribute of that entity"""
 
 
@@ -124,35 +120,35 @@ class SimRunner:
     group: SimGroup | None
 
     # Connection setup
-    input_delays: Dict[SimRunner, MinimalDurations]
+    input_delays: dict[SimRunner, MinimalDurations]
     """For each simulator that provides data to this simulator, the
     minimum over all input delays. This is used while waiting for
     dependencies.
     """
     # TODO: Saving the minimal durations here might actually be wrong.
     # We probably want to save *all* triggering durations.
-    triggers: Dict[Port, List[Tuple[SimRunner, TieredDuration]]]
+    triggers: dict[Port, list[tuple[SimRunner, TieredDuration]]]
     """For each port of this simulator, the simulators that are
     triggered by output on that port and the delay accrued along that
     edge.
     """
-    successors: Dict[SimRunner, TieredDuration]
+    successors: dict[SimRunner, TieredDuration]
     """The immediate successors of this simulator. This is used when
     lazy stepping to ensure that we don't step ahead too far. Therefore,
     the duration is only used as an adapter, and will always have all
     tiers 0. (Thus, we don't need `MinimalDurations` here.)
     """
-    successors_to_wait_for: Dict[SimRunner, TieredDuration]
+    successors_to_wait_for: dict[SimRunner, TieredDuration]
     """The immediate successors that we always need to wait for (due
     to async requests.) The duration only serves as an adapter (so we
     don't need `MinimalDurations` here.)
     """
-    triggering_ancestors: Dict[SimRunner, MinimalDurations]
+    triggering_ancestors: dict[SimRunner, MinimalDurations]
     """An iterable of this sim's ancestors that can trigger a step of
     this simulator. The second component specifies the least amount of
     time that output from the ancestor needs to reach us.
     """
-    pulled_inputs: Dict[Tuple[SimRunner, TieredDuration], List[PullDescription]]
+    pulled_inputs: dict[tuple[SimRunner, TieredDuration], list[PullDescription]]
     """Output to pull in whenever this simulator performs a step.
     The keys are the source :class:`SimRunner` and the time shift, the
     values are lists of :class:`PullDescription` objects. Each
@@ -160,7 +156,7 @@ class SimRunner:
     entity-attribute pairs along with an optional transformation
     function applied to the data.
     """
-    output_to_push: Dict[Port, List[PushDescription]]
+    output_to_push: dict[Port, list[PushDescription]]
     """This lists those connections that use the timed_input_buffer.
     The keys are the entity-attribute pairs (Port) of this simulator,
     and the values are lists of :class:`PushDescription` objects. Each
@@ -186,14 +182,14 @@ class SimRunner:
     `perf_counter()`."""
     started: bool
 
-    next_steps: List[TieredTime]
+    next_steps: list[TieredTime]
     """The scheduled next steps this simulator will take, organized as a
     heap. Once the immediate next step has been chosen (and the
     :attr:`has_next_step` event has been triggered), the step is moved
     to :attr:`next_step` instead.
     """
     newer_step: asyncio.Event
-    next_self_step: Optional[TieredTime]
+    next_self_step: TieredTime | None
     """The next self-scheduled step for this simulator."""
 
     progress: Progress
@@ -205,7 +201,7 @@ class SimRunner:
     """
     last_step: TieredTime
     """The most recent step this simulator performed."""
-    current_step: Optional[TieredTime]
+    current_step: TieredTime | None
 
     output_time: TieredTime  # type: ignore  # set on first get_data
     """The output time associated with `data`. Usually, this will be
@@ -217,7 +213,7 @@ class SimRunner:
     task: asyncio.Task[None]
     """The asyncio.Task for this simulator."""
 
-    outputs: Optional[Dict[Time, OutputData]]
+    outputs: dict[Time, OutputData] | None
     tqdm: tqdm.tqdm[NoReturn]  # type: ignore
     check_outputs: Callable[[OutputData], None]
 
@@ -291,7 +287,7 @@ class SimRunner:
 
     async def step(
         self, time: Time, inputs: InputData, max_advance: Time
-    ) -> Optional[Time]:
+    ) -> Time | None:
         try:
             return await self._proxy.send(["step", (time, inputs, max_advance), {}])
         except TypeError:  # from JSON serialization
@@ -345,8 +341,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         return self.world.sim_progress
 
     async def get_related_entities(
-        self, entities: Union[FullId, List[FullId], None] = None
-    ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        self, entities: FullId | list[FullId] | None = None
+    ) -> dict[str, Any] | dict[str, dict[str, Any]]:
         """
         Return information about the related entities of *entities*.
 
@@ -402,7 +398,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         else:
             return {eid: {n: graph.nodes[n] for n in graph[eid]} for eid in entities}
 
-    async def get_data(self, attrs: Dict[FullId, List[Attr]]) -> Dict[str, Any]:
+    async def get_data(self, attrs: dict[FullId, list[Attr]]) -> dict[str, Any]:
         """
         .. warning::
             This method is deprecated and will be removed in a future
@@ -422,8 +418,8 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         assert self.sim.is_in_step, "get_data must happen in step"
         assert self.sim.current_step is not None, "no current step time"
 
-        data: Dict[FullId, Dict[Attr, Any]] = {}
-        missing: Dict[SimId, OutputRequest] = collections.defaultdict(
+        data: dict[FullId, dict[Attr, Any]] = {}
+        missing: dict[SimId, OutputRequest] = collections.defaultdict(
             lambda: collections.defaultdict(list)
         )
         # Try to get data from cache
@@ -445,9 +441,9 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
                     missing[sid][eid].append(attr)
 
         # Query simulator for data not in the cache
-        for sid, attrs in missing.items():
+        for sid, missing_attrs in missing.items():
             dep = self.world._get_sim_runners()[sid]
-            dep_data = await dep._proxy.send(["get_data", (attrs,), {}])
+            dep_data = await dep._proxy.send(["get_data", (missing_attrs,), {}])
             for eid, vals in dep_data.items():
                 # Maybe there's already an entry for full_id, so we need
                 # to update the dict in that case.
@@ -455,7 +451,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
 
         return data
 
-    async def set_data(self, data: Dict[FullId, Dict[Attr, Any]]):
+    async def set_data(self, data: dict[FullId, dict[Attr, Any]]):
         """
         .. warning::
             This method is deprecated and will be removed in a future
@@ -484,9 +480,7 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
         """
         sim = self.world._get_sim_runners()[self.sid]
         if not self.world.rt_factor:
-            raise SimulationError(
-                f"Simulator '{self.sid}' tried to set an event in non-real-time mode."
-            )
+            raise EventInNonRealTimeModeError(self.sid)
         if event_time < self.world.until:
             sim.schedule_step(TieredTime(event_time))
         else:
@@ -499,19 +493,13 @@ class MosaikRemote(mosaik_api_v3.MosaikProxy):
     def _assert_async_requests(self, src_sim: SimRunner, dest_sim: SimRunner):
         """
         Check if async. requests are allowed from *dest_sid* to
-        *src_sid* and raise a :exc:`ScenarioError` if not.
+        *src_sid* and raise a :exc:`~mosaik.exceptions.ScenarioError` if
+        not.
         """
         if dest_sim not in src_sim.successors:
-            raise ScenarioError(
-                f"No connection from {src_sim.sid} to {dest_sim.sid}: You need to "
-                "connect entities from both simulators and set `async_requests=True`."
-            )
+            raise AsyncRequestsNotConnectedError(src_sim.sid, dest_sim.sid)
         if dest_sim not in src_sim.successors_to_wait_for:
-            raise ScenarioError(
-                f"Async. requests not enabled for the connection from {src_sim.sid} to "
-                f"{dest_sim.sid}. Add the argument `async_requests=True` to the "
-                f"connection of entities from {src_sim.sid} to {dest_sim.sid}."
-            )
+            raise AsyncRequestsNotEnabledError(src_sim.sid, dest_sim.sid)
 
 
 class TimedInputBuffer:
@@ -525,7 +513,7 @@ class TimedInputBuffer:
     time, only the most recent value is added.
     """
 
-    input_queue: List[Tuple[Time, int, FullId, EntityId, Attr, Any]]
+    input_queue: list[tuple[Time, int, FullId, EntityId, Attr, Any]]
 
     def __init__(self):
         self.input_queue = []

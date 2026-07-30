@@ -13,7 +13,7 @@ from mosaik.async_scenario import AsyncWorld as AsyncWorld
 from mosaik.scenario import SimConfig as SimConfig
 from mosaik.scenario import World as World
 
-__all__ = ["World", "AsyncWorld"]
+__all__ = ["AsyncWorld", "World"]
 __version__ = version
 
 logger.disable(__name__)

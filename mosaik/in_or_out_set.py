@@ -1,18 +1,9 @@
 from __future__ import annotations
 
-from typing import (
-    FrozenSet,
-    Generic,
-    Iterable,
-    TypeAlias,
-    TypeVar,
-    Union,
-)
-
-E = TypeVar("E")
+from collections.abc import Iterable
 
 
-class OutSet(Generic[E]):
+class OutSet[E]:
     """An OutSet[E] represents all elements of the type E except for a
     finite number.
 
@@ -68,7 +59,7 @@ class OutSet(Generic[E]):
         return f"OutSet({{{', '.join(map(str, self._set))}}})"
 
 
-InOrOutSet: TypeAlias = Union[FrozenSet[E], OutSet[E]]
+type InOrOutSet[E] = frozenset[E] | OutSet[E]
 """A InOrOutSet is either a FrozenSet or an OutSet. This means
 that it can represent either
 - a finite number of elements of the type E or
@@ -79,7 +70,7 @@ be computed for InOrOutSets and will result in a InOrOutSet again.
 """
 
 
-def parse_set_triple(
+def parse_set_triple[E](
     union: InOrOutSet[E] | None,
     part_a: InOrOutSet[E] | None,
     part_b: InOrOutSet[E] | None,
@@ -126,7 +117,7 @@ def parse_set_triple(
     return part_a, part_b
 
 
-def wrap_set(set: Iterable[E] | OutSet[E] | None) -> InOrOutSet[E] | None:
+def wrap_set[E](set: Iterable[E] | OutSet[E] | None) -> InOrOutSet[E] | None:
     """Wrap an iterable or OutSet, resulting in an InOrOutSet. Pass
     through None unchanged.
     """

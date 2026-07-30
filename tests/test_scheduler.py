@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine, Iterable
 from heapq import heappop, heappush
-from typing import Any, Coroutine, Iterable, List, cast
+from typing import Any, cast
 
 import pytest
 import pytest_asyncio
@@ -72,7 +73,7 @@ async def world_fixture(request: pytest.FixtureRequest):
     """
     event_based = request.param == "event-based"
     world = async_scenario.AsyncWorld({})
-    sims: List[SimRunner] = []
+    sims: list[SimRunner] = []
     for i in range(6):
         sim_id = f"Sim-{i}"
         proxy = LocalProxy(
@@ -151,7 +152,7 @@ def test_run(monkeypatch: pytest.MonkeyPatch):
         async def stop(cls):
             return None
 
-        meta = {"api_version": "2.2", "type": "time-based"}
+        meta = {"api_version": "2.2", "type": "time-based"}  # noqa: RUF012
 
     world._async_world._sims_cache = {
         f"Sim-{i}": SimRunner(f"Sim-{i}", cast(Proxy, proxy), lambda _: None)
@@ -193,7 +194,7 @@ async def test_sim_process_error(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(scheduler, "advance_progress", advance_progress)
 
-    with pytest.raises(exceptions.SimulationError) as excinfo:
+    with pytest.raises(exceptions.SimulatorConnectionLostError) as excinfo:
         await scheduler.sim_process(
             cast(AsyncWorld, None),
             cast(SimRunner, Sim()),
@@ -203,6 +204,7 @@ async def test_sim_process_error(monkeypatch: pytest.MonkeyPatch):
             False,
             scheduler.Barrier(1),
         )
+    assert excinfo.value.sim_id == "spam"
     assert str(excinfo.value) == (
         '[Errno 1337] noob: Simulator "spam" closed its connection.'
     )
@@ -364,7 +366,7 @@ def test_get_input_data_shifted(world: AsyncWorld):
 )
 def test_get_max_advance(
     world: AsyncWorld,
-    next_steps: List[TieredTime],
+    next_steps: list[TieredTime],
     next_step_s1: TieredTime | None,
     expected: int,
 ):
@@ -493,7 +495,7 @@ async def test_get_outputs_buffered(world: AsyncWorld):
 def test_trigger_successors(
     world: AsyncWorld,
     output_time: TieredTime,
-    next_steps: List[TieredTime],
+    next_steps: list[TieredTime],
     progress: int,
 ):
     sim = world._compiled_sims["Sim-0"]

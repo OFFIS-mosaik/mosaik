@@ -1,4 +1,6 @@
-from typing import Any, Dict, cast
+from __future__ import annotations
+
+from typing import Any, cast
 
 import mosaik
 import mosaik.basic_simulators
@@ -59,11 +61,11 @@ def test_transform_parameter_input_pulled():
         transform=multiply_by_onehundred,
     )
 
-    test_dict: Dict[int, Dict[str, Any]] = cast(
-        Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[0].eid)
+    test_dict: dict[int, dict[str, Any]] = cast(
+        dict[int, dict[str, Any]], output_dict.get_dict(output_model[0].eid)
     )
-    test_dict2: Dict[int, Dict[str, Any]] = cast(
-        Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
+    test_dict2: dict[int, dict[str, Any]] = cast(
+        dict[int, dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
 
@@ -121,11 +123,11 @@ def test_transform_parameter_input_pushed():
         transform=multiply_by_onehundred,
     )
 
-    test_dict: Dict[int, Dict[str, Any]] = cast(
-        Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[0].eid)
+    test_dict: dict[int, dict[str, Any]] = cast(
+        dict[int, dict[str, Any]], output_dict.get_dict(output_model[0].eid)
     )
-    test_dict2: Dict[int, Dict[str, Any]] = cast(
-        Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
+    test_dict2: dict[int, dict[str, Any]] = cast(
+        dict[int, dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     world.run(until=END)
     print(test_dict)

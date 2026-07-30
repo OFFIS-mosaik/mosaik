@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import sys
 from dataclasses import dataclass
@@ -15,7 +17,18 @@ from mosaik.async_scenario import (
     StarterConfig,
     base_config,
 )
-from mosaik.exceptions import ScenarioError, SimulationError
+from mosaik.exceptions import (
+    ConflictingTerminationManagerError,
+    MalformedConnectAddressError,
+    MalformedPythonImportStringError,
+    ProcessStartError,
+    PythonImportError,
+    ScenarioError,
+    SimulatorConnectError,
+    SimulatorStartTimeoutError,
+    UnknownStarterConfigError,
+)
+from mosaik.process_termination_managers import keep_running
 from mosaik.proxies import BaseProxy, LocalProxy
 from mosaik.simmanager import MosaikRemote
 from mosaik.starters import (
@@ -38,7 +51,9 @@ DUMMY_REMOTE = cast(MosaikRemote, MockRemote("Spam"))
 """
 
 
-async def start_starter(starter: Starter, config: MosaikConfig = {}) -> BaseProxy:
+async def start_starter(starter: Starter, config: MosaikConfig = None) -> BaseProxy:
+    if config is None:
+        config = {}
     full_config: MosaikConfigTotal = {**base_config, **config}
     proxy = await starter.start("Spam", DUMMY_REMOTE, full_config)
     return proxy
@@ -57,6 +72,21 @@ def test_get_starter():
 
     starter = get_starter_from_starter_config(SIM_CONFIG["ExampleSimC"])
     assert isinstance(starter, ConnectStarter)
+
+
+def test_cmd_starter_conflicting_termination_manager():
+    """Specifying both `auto_terminate` and `termination_manager` for a
+    `CmdStarter` is ambiguous and should raise a
+    `ConflictingTerminationManagerError`.
+    """
+    with pytest.raises(ConflictingTerminationManagerError) as exc_info:
+        CmdStarter(
+            "some command",
+            auto_terminate=True,
+            termination_manager=keep_running,
+        )
+    assert exc_info.value.auto_terminate is True
+    assert exc_info.value.termination_manager is keep_running
 
 
 @pytest.mark.asyncio
@@ -89,12 +119,10 @@ async def test_start_external_process():
 
 @pytest.mark.asyncio
 async def test_start_proc_timeout_accept():
-    with pytest.raises(SimulationError) as exc_info:
+    with pytest.raises(SimulatorStartTimeoutError) as exc_info:
         starter = CmdStarter.from_sim_config_entry(SIM_CONFIG["Fail"])
         await start_starter(starter, {"start_timeout": 0.1})
-    assert (
-        exc_info.value.args[0] == 'Simulator "Spam" did not connect to mosaik in time.'
-    )
+    assert exc_info.value.sim_id == "Spam"
 
 
 @pytest.mark.asyncio
@@ -109,14 +137,14 @@ async def test_start_proc_no_port_conflict():
         start_starter(CmdStarter(f"{VENV}/python --version"), mosaik_config),
         return_exceptions=True,
     )
-    # We should get `SimulationError`s here, not `OSError`s -- the
-    # latter would indicate that we tried to open two servers on the
-    # same port
+    # We should get `SimulatorStartTimeoutError`s here, not `OSError`s
+    # -- the latter would indicate that we tried to open two servers on
+    # the same port
     assert isinstance(exc_1, Exception)
-    if not isinstance(exc_1, SimulationError):
+    if not isinstance(exc_1, SimulatorStartTimeoutError):
         raise exc_1
     assert isinstance(exc_2, Exception)
-    if not isinstance(exc_2, SimulationError):
+    if not isinstance(exc_2, SimulatorStartTimeoutError):
         raise exc_2
 
 
@@ -247,29 +275,47 @@ async def test_start_connect_stop_timeout():
 
 
 @pytest.mark.parametrize(
-    ("starter_config", "err_msg"),
+    ("starter_config", "err_cls", "err_msg"),
     [
-        ({}, "does not match any known starter"),
+        ({}, UnknownStarterConfigError, "does not match any known starter"),
         (
             {"python": "eggs"},
+            MalformedPythonImportStringError,
             'malformed import string for python starter, expected "module:Class"',
         ),
-        ({"python": "eggs:Bacon"}, "could not import module `eggs`"),
+        (
+            {"python": "eggs:Bacon"},
+            PythonImportError,
+            "could not import module `eggs`",
+        ),
         (
             {"python": "example_sim:Bacon"},
+            PythonImportError,
             "class `Bacon` not found in module `example_sim`",
         ),
-        ({"cmd": "foo"}, "No such file or directory: 'foo'"),
-        ({"cmd": "python", "cwd": "bar"}, "No such file or directory: 'bar'"),
-        ({"connect": "eggs"}, 'Could not parse address "eggs"'),
+        ({"cmd": "foo"}, ProcessStartError, "No such file or directory: 'foo'"),
+        (
+            {"cmd": "python", "cwd": "bar"},
+            ProcessStartError,
+            "No such file or directory: 'bar'",
+        ),
+        (
+            {"connect": "eggs"},
+            MalformedConnectAddressError,
+            'Could not parse address "eggs"',
+        ),
     ],
 )
 @pytest.mark.asyncio
-async def test_start_user_error(starter_config: StarterConfig, err_msg: str):
+async def test_start_user_error(
+    starter_config: StarterConfig,
+    err_cls: type[ScenarioError],
+    err_msg: str,
+):
     """
     Test failure at starting an in-proc simulator.
     """
-    with pytest.raises(ScenarioError) as exc_info:
+    with pytest.raises(err_cls) as exc_info:
         starter = get_starter_from_starter_config(starter_config)
         proxy = await start_starter(starter)
         await proxy.stop()
@@ -285,13 +331,12 @@ async def test_start_sim_error():
     Test connection failures of external processes.
     """
     starter = ConnectStarter(host="foo", port=1234)
-    with pytest.raises(SimulationError) as exc_info:
+    with pytest.raises(SimulatorConnectError) as exc_info:
         await start_starter(starter)
 
-    assert (
-        'Simulator "Spam" could not be started: Could not connect to '
-        '"foo:1234"' == exc_info.value.args[0]
-    )
+    assert exc_info.value.sim_id == "Spam"
+    assert exc_info.value.host == "foo"
+    assert exc_info.value.port == 1234
 
 
 @pytest.mark.asyncio

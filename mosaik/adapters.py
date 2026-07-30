@@ -24,21 +24,27 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger  # noqa: F401  # type: ignore
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ConnectionClosedError, ScenarioError
+from mosaik.exceptions import (
+    ApiVersionMismatchError,
+    ApiVersionTooNewError,
+    ConnectionClosedError,
+    ScenarioError,
+    SimulatorInitError,
+)
 from mosaik.proxies import BaseProxy, Proxy
 
 
 async def init_and_get_adapter(
     base_proxy: BaseProxy,
     sim_id: SimId,
-    sim_params: Dict[str, Any],
+    sim_params: dict[str, Any],
     start_timeout: float,
-    explicit_version_str: Optional[str] = None,
+    explicit_version_str: str | None = None,
 ) -> Proxy:
     """Initialize the simulator given by ``base_proxy`` (by calling its
     ``init`` function) and wrap it in a ``Proxy`` object that
@@ -72,15 +78,13 @@ async def init_and_get_adapter(
         )
     except ScenarioError as e:
         await base_proxy.stop()
-        raise ScenarioError(
-            f"There was an error during the initialization of {sim_id}: ", e
-        )
+        raise SimulatorInitError(sim_id, e)
     except ConnectionClosedError:
         await base_proxy.stop()
         raise SystemExit(
             f'Simulator "{sim_id}" closed its connection during the init() call.'
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await base_proxy.stop()
         raise SystemExit(
             f'Simulator "{sim_id}" did not reply to the init() call in time.'
@@ -88,19 +92,9 @@ async def init_and_get_adapter(
 
     # version > 3.0
     if version >= [4]:
-        raise ScenarioError(
-            f"There was an error during the initialization of {sim_id}: "
-            f"The API version ({'.'.join(map(str, version))}) is too new for this "
-            "version of mosaik. Maybe a newer version of the mosaik package is "
-            "available to be used in your scenario?"
-        )
+        raise ApiVersionTooNewError(sim_id, version)
     if explicit_version and version != explicit_version:
-        raise ScenarioError(
-            f"The explicit version that you specified for simulator {sim_id} in your "
-            f"SimConfig (namely {'.'.join(map(str, explicit_version))}) does not match "
-            "the version that this simulator reports (namely "
-            f"{'.'.join(map(str, version))})."
-        )
+        raise ApiVersionMismatchError(sim_id, explicit_version, version)
 
     proxy: Proxy = base_proxy
     # Add all the adapters needed to get from the actual version of the

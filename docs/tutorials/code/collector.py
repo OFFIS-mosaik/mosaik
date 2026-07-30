@@ -42,14 +42,12 @@ class Collector(mosaik_api_v3.Simulator):
             for src, value in values.items():
                 self.data[src][attr][time] = value
 
-        return None
-
     def finalize(self):
         print("Collected data:")
         for sim, sim_data in sorted(self.data.items()):
-            print("- %s:" % sim)
+            print(f"- {sim}:")
             for attr, values in sorted(sim_data.items()):
-                print("  - %s: %s" % (attr, values))
+                print(f"  - {attr}: {values}")
         sys.stdout.flush()
 
 

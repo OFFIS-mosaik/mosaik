@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import platform
-from typing import Callable, Dict
+from collections.abc import Callable
 
 from typing_extensions import TypeVar
 
@@ -9,11 +11,11 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-def merge_existing(
+def merge_existing[V, K](
     merger: Callable[[V, V], V],
-    target: Dict[K, V],
-    other: Dict[K, V],
-) -> Dict[K, V]:
+    target: dict[K, V],
+    other: dict[K, V],
+) -> dict[K, V]:
     """Merge the values from ``other`` which correspond to keys that
     already exists in ``target`` into ``target`` (and return
     ``target``). The function ``merger`` will be used to combine the
@@ -29,11 +31,11 @@ def merge_existing(
     return target
 
 
-def merge_all(
+def merge_all[V, K](
     merger: Callable[[V, V], V],
-    target: Dict[K, V],
-    other: Dict[K, V],
-) -> Dict[K, V]:
+    target: dict[K, V],
+    other: dict[K, V],
+) -> dict[K, V]:
     """Merge dict ``other`` into ``target``, which will be modified
     (and returned). If a key exists in both ``other`` and ``target``,
     the function ``merger`` will be called on the corresponding values

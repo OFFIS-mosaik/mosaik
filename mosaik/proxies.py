@@ -10,16 +10,17 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio.subprocess import Process
+from collections.abc import Iterator
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
 from mosaik_api_v3.connection import Channel, EndOfRequests
 from mosaik_api_v3.types import Meta, SimId
 
-from mosaik.exceptions import ConnectionClosedError, ScenarioError
+from mosaik.exceptions import ConnectionClosedError, ForcedOldApiUsageError
 from mosaik.process_termination_managers import ProcessTerminationManager
 
 if TYPE_CHECKING:
@@ -118,13 +119,7 @@ class LocalProxy(BaseProxy):
         self._meta = deepcopy(meta)
         version = extract_version(meta)
         if forced_old_api and version >= [3]:
-            raise ScenarioError(
-                "The underlying simulator is not compliant with the high-level API "
-                "version 3 (or higher) (because its init method is missing the "
-                "time_resolution keyword parameter or its step method is missing the "
-                "max_advance parameter), but it claims to be of version "
-                f"{'.'.join(map(str, version))} in its meta's api_version field."
-            )
+            raise ForcedOldApiUsageError(sid, version)
         return version
 
     @property
@@ -237,11 +232,7 @@ class RemoteProxy(BaseProxy):
     async def stop(self) -> None:
         try:
             await asyncio.wait_for(self._channel.send(["stop", [], {}]), 0.1)
-        except (
-            asyncio.TimeoutError,
-            asyncio.IncompleteReadError,
-            ConnectionResetError,
-        ):
+        except (TimeoutError, asyncio.IncompleteReadError, ConnectionResetError):
             pass
         await self._channel.close()
         await self._reader_task
