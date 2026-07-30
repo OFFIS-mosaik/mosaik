@@ -1148,13 +1148,18 @@ class AsyncWorld:
     def _format_cycle_connections(self, path: List[SimRunner]) -> str:
         cycle_connections = []
         for src_sim, dest_sim in zip(path, path[1:]):
-            cycle_connections.extend(
-                connection
-                for connection in self._pending_connections
-                if connection.src_entity.sid == src_sim.sid
-                and connection.dest_entity.sid == dest_sim.sid
-                and connection.delay in dest_sim.input_delays[src_sim].durations
+            connection = next(
+                (
+                    connection
+                    for connection in self._pending_connections
+                    if connection.src_entity.sid == src_sim.sid
+                    and connection.dest_entity.sid == dest_sim.sid
+                    and connection.delay in dest_sim.input_delays[src_sim].durations
+                ),
+                None,
             )
+            if connection:
+                cycle_connections.append(connection)
         return "\n".join(
             f"- {connection.src_entity.full_id}.{connection.src_attr} -> "
             f"{connection.dest_entity.full_id}.{connection.dest_attr}"

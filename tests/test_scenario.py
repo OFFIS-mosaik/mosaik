@@ -194,6 +194,7 @@ def test_world_connect_cycle(world: World):
     a = world.start("ExampleSim", sim_id="A").A(init_val=0)
     b = world.start("ExampleSim", sim_id="B").B(init_val=0)
     world.connect(a, b, ("val_out", "val_in"))
+    world.connect(a, b, ("dummy_out", "dummy_in"))
     world.connect(
         a,
         b,
