@@ -29,7 +29,7 @@ END = 31 * 24 * 3600  # 1 day
 PV_DATA = "data/pv_10kw.csv"
 PROFILE_FILE = "data/profiles.data.gz"
 GRID_NAME = "demo_lv_grid"
-GRID_FILE = "data/%s.json" % GRID_NAME
+GRID_FILE = f"data/{GRID_NAME}.json"
 
 
 def main():

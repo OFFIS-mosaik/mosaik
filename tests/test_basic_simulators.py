@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, cast
 
 import mosaik
@@ -37,7 +39,7 @@ def test_basic_simulators():
     world.connect(input_model_const[0], output_model[0], "value")
 
     # Run simulation
-    test_dict: Dict[int, Dict[str, Any]] = cast(
+    test_dict: dict[int, dict[str, Any]] = cast(
         Dict[int, Dict[str, Any]], output_dict.get_dict(output_model[1].eid)
     )
     test_input_eid = input_model_func[0].sid + "." + input_model_func[0].eid

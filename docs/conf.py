@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # mosaik documentation build configuration file, created by
 # sphinx-quickstart on Thu Dec  5 10:36:19 2013.
@@ -12,47 +11,9 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import os
-import shutil
 from typing import cast
-from urllib.request import urlretrieve
-
-import mosaik_components.heatpump
 
 import mosaik
-
-# Create a directory for the documentation of components of the mosaik
-# ecosystem.
-component_docs_dir = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "ecosystem", "components"
-)
-os.makedirs(component_docs_dir, exist_ok=True)
-
-# Integrate mosaik-heatpump docuemtantion from
-# https://gitlab.com/mosaik/components/energy/mosaik-heatpump.
-# Files will be downloaded and integrated in mosaik documentation.
-
-# Create a directory for the mosaik-heatpump documentation
-mosaik_heatpump_docs_dir = os.path.join(component_docs_dir, "mosaik-heatpump")
-if os.path.exists(mosaik_heatpump_docs_dir):
-    shutil.rmtree(mosaik_heatpump_docs_dir)
-# Download documentation from mosaik-heatpump repository.
-zip_file_dir = os.path.join(component_docs_dir, "doc.zip")
-urlretrieve(
-    "https://gitlab.com/mosaik/components/energy/mosaik-heatpump/-/archive/master/mosaik-heatpump-master.zip?path=docs",
-    zip_file_dir,
-)
-shutil.unpack_archive(zip_file_dir, component_docs_dir)
-os.remove(zip_file_dir)
-shutil.move(
-    os.path.join(
-        os.path.join(component_docs_dir, "mosaik-heatpump-master-docs"), "docs"
-    ),
-    mosaik_heatpump_docs_dir,
-)
-os.rmdir(os.path.join(component_docs_dir, "mosaik-heatpump-master-docs"))
-
-mosaik_hp_version = mosaik_components.heatpump.__version__
 
 # -- General configuration ---------------------------------------------
 
@@ -64,6 +25,7 @@ mosaik_hp_version = mosaik_components.heatpump.__version__
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.graphviz",
@@ -106,8 +68,7 @@ copyright = "2012-2025 OFFIS"
 version = mosaik.__version__
 release = mosaik.__version__
 
-rst_epilog = f"""
-.. |mosaik_hp_version| replace:: v{mosaik_hp_version}
+rst_epilog = """
 .. |mosaik| image:: /_static/favicon.png
 """
 

@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 import os
 import queue
 import runpy
 import threading
 from functools import partial
-from typing import Tuple
 
 import pytest
 
@@ -18,7 +19,7 @@ class FakeKey:
 
 
 def test_pause_resume():
-    pause_queue: queue.Queue[Tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
+    pause_queue: queue.Queue[tuple[asyncio.Event, asyncio.AbstractEventLoop]] = (
         queue.Queue()
     )
     END = 300
@@ -36,7 +37,7 @@ def test_pause_resume():
     mosaik_thread.start()
     try:
         event, loop = pause_queue.get(timeout=10)
-    except Exception as e:
+    except queue.Empty as e:
         assert False, f"Timed out waiting for simulation to start: {e}"
     asyncio.run_coroutine_threadsafe(asyncio.sleep(0.0), loop).result()
     assert event.is_set(), "Expected simulation to be running initially"

@@ -1,4 +1,6 @@
-from typing import Any, Callable, Dict, List
+from __future__ import annotations
+
+from typing import Any, Callable
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
@@ -57,8 +59,8 @@ class InputSimulator(mosaik_api_v3.Simulator):
     """
 
     step_size: int
-    functions: Dict[str, Callable[[Time], Any]]
-    constants: Dict[str, Any]
+    functions: dict[str, Callable[[Time], Any]]
+    constants: dict[str, Any]
 
     def __init__(self):
         super().__init__(META)
@@ -75,8 +77,8 @@ class InputSimulator(mosaik_api_v3.Simulator):
     @override
     def create(
         self, num: int, model: ModelName, **model_params: Any
-    ) -> List[CreateResult]:
-        new_entities: List[CreateResult] = []
+    ) -> list[CreateResult]:
+        new_entities: list[CreateResult] = []
         if model == FUNCTION_KEY:
             for i in range(len(self.functions), len(self.functions) + num):
                 new_entities.append(

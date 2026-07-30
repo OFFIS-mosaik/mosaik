@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import mosaik_api_v3
 from mosaik_api_v3.types import InputData, OutputData, OutputRequest
@@ -22,7 +24,7 @@ sim_meta: mosaik_api_v3.Meta = {
 
 
 class BlockingSim(mosaik_api_v3.Simulator):
-    entities: Dict[str, Dict[int, Any]]
+    entities: dict[str, dict[int, Any]]
 
     def __init__(self):
         super().__init__(copy.deepcopy(sim_meta))

@@ -55,7 +55,6 @@ class auto_terminate:
         except ProcessLookupError:
             # The process is already gone, so we're happy
             logger.trace("Simulator process had already ceased existing.")
-            pass
         try:
             if self.timeout is not None:
                 exit_code = await asyncio.wait_for(process.wait(), self.timeout)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
-from typing import Any, Optional, Set, Union
 
 
 def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
@@ -120,12 +119,12 @@ class MinimalDurations:
     minimal elements among all elements seen so far.
     """
 
-    durations: Set[TieredDuration]
+    durations: set[TieredDuration]
     """All the minimal durations. Invariant: No two durations in this
     set are comparable.
     """
 
-    def __init__(self, duration: Optional[TieredDuration] = None):
+    def __init__(self, duration: TieredDuration | None = None):
         self.durations = set()
         if duration is not None:
             self.durations.add(duration)
@@ -140,7 +139,7 @@ class MinimalDurations:
 
         Returns whether the set of durations was changed.
         """
-        displaced_durations: Set[TieredDuration] = set()
+        displaced_durations: set[TieredDuration] = set()
         for existing_duration in self.durations:
             if duration < existing_duration:
                 displaced_durations.add(existing_duration)
@@ -159,9 +158,7 @@ class MinimalDurations:
             updated = self.insert(duration) or updated
         return updated
 
-    def __add__(
-        self, other: Union[MinimalDurations, TieredDuration]
-    ) -> MinimalDurations:
+    def __add__(self, other: MinimalDurations | TieredDuration) -> MinimalDurations:
         result = MinimalDurations()
         if isinstance(other, TieredDuration):
             other = MinimalDurations(other)
@@ -170,7 +167,7 @@ class MinimalDurations:
                 result.insert(u + v)
         return result
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, MinimalDurations):
             raise TypeError("cannot compare MinimalDurations to values of other types")
         return self.durations == other.durations

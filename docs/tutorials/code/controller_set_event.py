@@ -74,7 +74,6 @@ class Controller(mosaik_api_v3.Simulator):
         print(f"In step at time {self.time}")
         print(f"max_advance {max_advance}")
 
-        return None
         # end step
 
 
