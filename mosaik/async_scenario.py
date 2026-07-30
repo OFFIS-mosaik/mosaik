@@ -1147,10 +1147,8 @@ class AsyncWorld:
                     and connection.dest_entity.sid == dest_sim.sid
                     and connection.delay in dest_sim.input_delays[src_sim].durations
                 ),
-                None,
             )
-            if connection:
-                cycle_connections.append(
+            cycle_connections.append(
                     (
                         connection.src_entity.full_id,
                         connection.src_attr,
