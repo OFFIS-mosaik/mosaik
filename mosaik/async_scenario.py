@@ -1149,13 +1149,13 @@ class AsyncWorld:
                 ),
             )
             cycle_connections.append(
-                    (
-                        connection.src_entity.full_id,
-                        connection.src_attr,
-                        connection.dest_entity.full_id,
-                        connection.dest_attr,
-                    )
+                (
+                    connection.src_entity.full_id,
+                    connection.src_attr,
+                    connection.dest_entity.full_id,
+                    connection.dest_attr,
                 )
+            )
         return cycle_connections
 
     async def shutdown(self):
