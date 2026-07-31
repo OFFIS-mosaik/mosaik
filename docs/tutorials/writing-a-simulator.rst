@@ -278,14 +278,14 @@ Having calculated the profits, we now need to pass them to mosaik.
 For this, there is a second method, :meth:`~Simulator.get_data`.
 Usually, mosaik will call this immediately after the call to :meth:`~Simulator.step` has returned, except when our simulator's output is not used by any other simulator.
 
-:meth:`~Simulator.get_data` gets called with an :class:`~mosaik_api_v3.OutputRequest`, which is just a dictionary mapping entity IDs of our simulator to attribute names.
+:meth:`~Simulator.get_data` gets called with an :class:`~mosaik_api_v3.types.OutputRequest`, which is just a dictionary mapping entity IDs of our simulator to attribute names.
 Our simulator should return output for the given attributes of those entities.
 There are two cases here:
 
 - If the attribute is :ref:`persistent`, output should always be provided.
 - If the attribute is :ref:`non-persistent` and the corresponding event occurred, output should be provided to indicate that occurrence to mosaik.
 
-The :class:`~mosaik_api_v3.OutputRequest` will only list those attributes that are connected to other simulators.
+The :class:`~mosaik_api_v3.types.OutputRequest` will only list those attributes that are connected to other simulators.
 However, if it makes implementing your simulator simpler (and the overhead is acceptable), you can also return output for non-requested attributes, which mosaik will simply ignore.
 (Output for non-existing attributes will result in at error, though, as this indicates a typo in the :meth:`~Simulator.get_data` implementation.)
 

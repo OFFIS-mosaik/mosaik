@@ -2,8 +2,7 @@
 mosaik ecosystem
 ================
 
-
-Mosaik as a co-simulation tool organizes the data exchange between simulators
+mosaik as a co-simulation tool organizes the data exchange between simulators
 and coordinates the execution of the connected simulaters. This part is called
 |mosaik| `mosaik-core`_ and contains mosaik itself and APIs for multiple
 programming languages.
@@ -19,16 +18,15 @@ programming languages.
        form the mosaik ecosystem.
 
 
-Mosaik-core without any connected simulators doesn't do much. This is why we
+mosaik-core without any connected simulators doesn't do much. This is why we
 provide some simple and free simulators so that it is possible to start with
 a working Smart-Grid simulation. These simulators belong to a part of mosaik's ecosystem called
-|mosaik| `mosaik-components`_. More detailed documentation for some components can be found in the
-|mosaik| `component documentation`_.
+|mosaik| `mosaik-components`_.
 
 To see how these components can be coupled to simulations, also some example scenarios are
 provided in |mosaik| `mosaik-examples`_.
 
-Mosaik is developed following the "lean and mean" principle. That means that we
+mosaik is developed following the "lean and mean" principle. That means that we
 try to keep the software as simple as possible in order to keep it efficient
 and easy to maintain.  In order to make it easier to set up and run experiments with
 mosaik we provide some tools that help building scenarios, connecting
@@ -79,7 +77,7 @@ This lists the mosaik components that are available on pypi. There are always co
 
     - `mosaik-heatpump <https://gitlab.com/mosaik/components/energy/mosaik-heatpump>`_
       contains different models for simulation of heatpump systems (detailled documentation
-      can be found :doc:`here <./components/mosaik-heatpump/overview>`).
+      can be found `here <https://mosaik-heatpump-docs.readthedocs.io/>`__).
 
     - `mosaik-pv <https://gitlab.com/mosaik/components/energy/mosaik-pv>`_
       is a simple PV Simulator based on PyPVSim.
@@ -134,19 +132,6 @@ This lists the mosaik components that are available on pypi. There are always co
 
 - `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`_ allows to couple Functional Mockup Units (FMU),
   which are based on the `FMI standard <https://fmi-standard.org>`_.
-
-.. _component documentation:
-
-|mosaik| **component documentation**
-
-The components listed above and provided by the mosaik team, have usually a documentation directly in their repository.
-For components which need a more detailled documentation to describe how they work, the documentation is integrated here:
-
-- :doc:`mosaik-heatpump <./components/mosaik-heatpump/overview>`
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
 
 .. _mosaik-examples:
 

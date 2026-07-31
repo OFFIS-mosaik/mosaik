@@ -20,3 +20,6 @@ This reference should also be helpful if you want to work on or extend mosaik it
    mosaik.simmanager
    mosaik.proxies
    mosaik.in_or_out_set
+   mosaik.tiered_time
+   mosaik.progress
+   mosaik.process_termination_managers

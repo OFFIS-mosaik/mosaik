@@ -287,20 +287,14 @@ texinfo_documents = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "networkx": ("https://networkx.org/documentation/stable/", None),
+    "plotly": ("https://plotly.com/python-api-reference/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
 # Autodoc
 autodoc_member_order = "bysource"
 
-autodoc_typehints = "both"
-
-# TODO: Check once type aliases work in type annotations
-autodoc_type_aliases = {
-    "InputData": "mosaik_api_v3.types.InputData",
-    "OutputData": "mosaik_api_v3.types.OutputData",
-    "SimConfig": "mosaik.async_scenario.SimConfig",
-    "PythonModel": "PythonModel",
-}
+autodoc_typehints = "description"
 
 
 # This method is used to generate links to the source code in the

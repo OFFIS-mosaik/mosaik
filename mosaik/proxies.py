@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from asyncio.subprocess import Process
 from collections.abc import Iterator
 from copy import deepcopy
 from inspect import isgeneratorfunction
@@ -159,7 +158,7 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikRemote
-    _process: tuple[Process, ProcessTerminationManager] | None
+    _process: tuple[asyncio.subprocess.Process, ProcessTerminationManager] | None
     """The process for this RemoteProxy (or None, if the connection
     was established using connect). The second component of the tuple is
     a ProcessTerminationManager: a function that is called with the
@@ -173,7 +172,8 @@ class RemoteProxy(BaseProxy):
         channel: Channel,
         mosaik_remote: MosaikRemote,
         *,
-        process: tuple[Process, ProcessTerminationManager] | None = None,
+        process: tuple[asyncio.subprocess.Process, ProcessTerminationManager]
+        | None = None,
     ):
         super().__init__()
         self._channel = channel

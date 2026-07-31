@@ -184,9 +184,9 @@ class SimRunner:
 
     next_steps: list[TieredTime]
     """The scheduled next steps this simulator will take, organized as a
-    heap. Once the immediate next step has been chosen (and the
-    :attr:`has_next_step` event has been triggered), the step is moved
-    to :attr:`next_step` instead.
+    heap. Once the immediate next step has been chosen and all
+    dependecies for it have run, the step is moved to
+    :attr:`current_step` instead.
     """
     newer_step: asyncio.Event
     next_self_step: TieredTime | None
@@ -202,6 +202,8 @@ class SimRunner:
     last_step: TieredTime
     """The most recent step this simulator performed."""
     current_step: TieredTime | None
+    """The step currently being performed by this simulator, or ``None``
+    if this simulator is not currently performing a step."""
 
     output_time: TieredTime  # type: ignore  # set on first get_data
     """The output time associated with `data`. Usually, this will be

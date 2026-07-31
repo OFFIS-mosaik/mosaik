@@ -10,11 +10,7 @@ import datetime
 import random
 from collections.abc import Callable, Collection, Iterable, MutableSequence
 from itertools import count, cycle
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-)
+from typing import TYPE_CHECKING, Any, Literal
 
 import networkx as nx
 from loguru import logger
@@ -70,18 +66,18 @@ def connect_randomly(
         to which the entities belong.
 
     :param src_set: a :class:`~collections.abc.MutableSequence`
-        (potentially empty) containing :class:`~mosaik.scenario.Entity`
-        instances. Each of these entities will be connected to an entity
-        of ``dest_set``.
+        (potentially empty) containing
+        :class:`~mosaik.async_scenario.Entity` instances. Each of these
+        entities will be connected to an entity of ``dest_set``.
 
     :param dest_set: a non-empty
         :class:`~collections.abc.MutableSequence` of
-        :class:`~mosaik.scenario.Entity` instances. Not every of these
-        entities is necessarily connected (if ``src_set`` contains too
-        few entities)
+        :class:`~mosaik.async_scenario.Entity` instances. Not every of
+        these entities is necessarily connected (if ``src_set`` contains
+        too few entities)
 
     :params attrs: the attribute names to connect as in
-        :meth:`~mosaik.scenario.World.connect()`.
+        :meth:`~mosaik.scenario.World.connect`.
 
     :param evenly: How to distribute the entities:
 
@@ -685,6 +681,8 @@ def plot_df_graph_groups(
     unrelated group. Set ``accept_incorrectly_placed_simulators``
     to ``True`` to keep the last attempt even if misplacements
     remain after ``max_layout_tries``.
+
+    :rtype: plotly.graph_objects.Figure
     """
 
     import networkx as nx
@@ -1056,6 +1054,7 @@ def plot_dataflow(
     :return: ``None`` but image file will be written to ``file name``
         if given. It returns tuple with figure and axis instead if
         return_figure is True
+    :rtype: tuple[matplotlib.figure.Figure, matplotlib.axes.Axes] | None
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import ConnectionPatch

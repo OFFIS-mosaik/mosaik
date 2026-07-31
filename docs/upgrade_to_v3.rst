@@ -25,12 +25,9 @@ data, which the component returns to mosaik via the API's
 Time resolution
 ===============
 
-A global :ref:`time resolution <time_resolution>` is now defined for each
-scenario indicating how to translate mosaik's integer time to simulated time.
-It can be set at the instantiation of the simulation's :class:`World` in the
-:ref:`setup of the scenario <scenario_definition>` and is set to *1.* by
-default. It's value is passed to the components via the :ref:`init <api.init>`
-function.
+A global :ref:`time resolution <time_resolution>` is now defined for each scenario indicating how to translate mosaik's integer time to simulated time.
+It can be set at the instantiation of the simulation's :class:`~mosaik.scenario.World` in the :ref:`setup of the scenario <scenario_definition>` and is set to *1.* by default.
+It's value is passed to the components via the :ref:`init <api.init>` function.
 
 
 Max_advance time

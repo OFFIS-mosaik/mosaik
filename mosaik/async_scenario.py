@@ -213,12 +213,15 @@ class AsyncWorld:
     """
     The world holds all data required to specify and run the scenario.
 
-    It provides a method to start a simulator process (:meth:`start`)
+    It provides a method to start a simulator process
+    (:meth:`~mosaik.async_scenario.AsyncWorld.start`)
     and manages the simulator instances.
 
     You have to provide a ``sim_config`` which tells the world which
     simulators are available and how to start them. This will be stored
-    as :attr:`sim_config`; see there for details.
+    as
+    :attr:`~mosaik.async_scenario.AsyncWorld.sim_config`; see there for
+    details.
 
     *mosaik_config* can be a dict or list of key-value pairs to set
     additional parameters overriding the defaults::
@@ -248,7 +251,8 @@ class AsyncWorld:
 
     This will ensure that the connections to all remote simulators are
     properly closed at the end of the simulation. Alternatively, you can
-    use the :meth:`shutdown` method manually.
+    use the :meth:`~mosaik.async_scenario.AsyncWorld.shutdown` method
+    manually.
     """
 
     sim_config: SimConfig | None
@@ -530,6 +534,34 @@ class AsyncWorld:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = default_transform_callable,
     ):
+        """Make a connection between the attribute ``src_attr`` of the
+        entity ``src`` and the attribute ``dest_attr`` of ``dest``.
+
+        To connect multiple attributes at once, you may use
+        :meth:`~mosaik.async_scenario.AsyncWorld.connect`, instead.
+
+        ``dest_attr`` defaults to ``src_attr`` if it is not given.
+
+        To resolve dataflow cycles, use ``time_shifted`` or ``weak``.
+        ``time_shifted`` will delay data transmitted over this
+        connection by the given number of steps; the value ``True`` does
+        the same as ``1``. (We recommend that you use ``True`` when
+        connecting to a non-trigger attribute and an explicit integer
+        when connecting to a trigger attribute.) ``weak`` can only be
+        used if the simulators for the two entities are in a joint
+        simulator group and is used for same-time loops, see
+        :ref:`weak-connections`.
+
+        For time-shifted connections between measurements,
+        ``initial_data`` must be given. This data will be used as input
+        to ``dest_attr`` in step `0` (when no output on ``src_attr``
+        exists, yet).
+
+        Finally, a function ``transform`` can be specified which will
+        be applied to the data. This function should not be used for
+        actual "simulation work", but is intended for purposes like
+        unit conversion.
+        """
         self._sims_cache = None
         if not isinstance(src, Entity):
             raise TypeError(
@@ -960,7 +992,8 @@ class AsyncWorld:
         synchronous :class:`~mosaik.scenario.World`, this method will
         not automatically close the connection to connected simulators,
         even outside of a ``with`` block. You need to call
-        :meth:`shutdown` manually afterwards (or use a ``with`` block).
+        :meth:`~mosaik.async_scenario.AsyncWorld.shutdown` manually
+        afterwards (or use a ``with`` block).
 
         :param until: The end of the simulation in mosaik time steps
             (exclusive).

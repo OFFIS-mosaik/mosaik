@@ -54,7 +54,8 @@ class World:
     However, you can also use a ``World`` outside of a ``with`` block.
 
     The ``World`` provides a method to start a simulator process
-    (:meth:`~World.start`) and manages the simulator instances.
+    (:meth:`~mosaik.scenario.World.start`) and manages the simulator
+    instances.
 
     You have to provide a *sim_config* which tells the world which
     simulators are available and how to start them. See
@@ -169,6 +170,7 @@ class World:
         initial_data: Any = SENTINEL,
         transform: Callable[[Any], Any] = lambda x: x,
     ):
+        """See :meth:`~mosaik.async_scenario.AsyncWorld.connect_one`."""
         return self._async_world.connect_one(
             src, dest, src_attr, dest_attr, time_shifted, weak, initial_data, transform
         )
@@ -317,15 +319,17 @@ class World:
             one step of it's successors. If ``False`` a simulator always
             steps as soon as all input is provided. This might decrease
             the simulation time but increase the memory consumption.
-        :param shutdown: If ``True`` and this :class:`World` is not
-            being used in a ``with`` block, mosaik will stop all
-            simulators and close the connections to them at the end of
-            the simulation run. You can set this to ``False`` if you
-            want to keep the connections open and call :meth:`shutdown`
-            yourself, later. (This is useful if you want to call extra
-            methods on your simulator after the simulation is over;
-            however, we recommend that you use the :class:`World` in a
-            ``with`` block.)
+        :param shutdown: If ``True`` and this
+            :class:`~mosaik.scenario.World` is not being used in a
+            ``with`` block, mosaik will stop all simulators and close
+            the connections to them at the end of the simulation run.
+            You can set this to ``False`` if you want to keep the
+            connections open and call
+            :meth:`~mosaik.scenario.World.shutdown` yourself, later.
+            (This is useful if you want to call extra methods on your
+            simulator after the simulation is over; however, we
+            recommend that you use the :class:`mosaik.scenario.World` in
+            a ``with`` block.)
 
         :raise RuntimeError: if this world has already been run
         """
@@ -382,13 +386,13 @@ class World:
         return self._async_world._get_sim_runners()
 
     def compile(self, *, use_cache: bool = False) -> dict[SimId, SimRunner]:
-        """
-        Return the mapping of simulator IDs to their
+        """Return the mapping of simulator IDs to their
         :class:`~mosaik.simmanager.SimRunner` instances.
 
         This mirrors :meth:`mosaik.async_scenario.AsyncWorld.compile`
         and allows synchronous scenarios to inspect the simulators
-        without relying on the deprecated :attr:`sims` accessor.
+        without relying on the deprecated
+        :attr:`~mosaik.scenario.World.sims` accessor.
         """
         return self._async_world.compile(use_cache=use_cache)
 

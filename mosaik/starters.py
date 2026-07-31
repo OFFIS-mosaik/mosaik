@@ -9,12 +9,12 @@ connecting to a simulator running at some TCP/IP address.
 
 These starters can be used by storing them in a ``SIM_CONFIG`` dict
 mapping *simulator names* to :class:`Starter` objects. When such a
-``SIM_CONFIG`` is given to the mosaik :class:`~mosaik.World` at
+``SIM_CONFIG`` is given to the mosaik :class:`~mosaik.scenario.World` at
 creation, instances of the simulators can be spawned by simply giving
-the simulator name to the worlds :meth:`mosaik.World.start` method.
-Alternatively, this method also accepts a :class:`Starter` object
-directly. (In this case, you need to specify the simulator ID, as it
-cannot be auto-generated from the simulator name.)
+the simulator name to the worlds :meth:`mosaik.scenario.World.start`
+method. Alternatively, this method also accepts a :class:`Starter`
+object directly. (In this case, you need to specify the simulator ID, as
+it cannot be auto-generated from the simulator name.)
 
 Finally, traditionally, ``SIM_CONFIG`` would be a dict of dicts, where
 the inner dicts correspond to our :class:`Starter` objects. To keep
@@ -37,8 +37,10 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, cast
 
-import mosaik_api_v3
+from mosaik_api_v3 import Simulator
+from mosaik_api_v3 import __version__ as api_package_version
 from mosaik_api_v3.connection import Channel
+from mosaik_api_v3.types import SimId
 
 from mosaik import process_termination_managers
 from mosaik.exceptions import (
@@ -76,7 +78,7 @@ class Starter(ABC):
     @abstractmethod
     async def start(
         self,
-        sim_id: mosaik_api_v3.SimId,
+        sim_id: SimId,
         mosaik_remote: MosaikRemote,
         mosaik_config: MosaikConfigTotal,
     ) -> BaseProxy:
@@ -84,8 +86,8 @@ class Starter(ABC):
         name ``sim_id`` and using the supplied ``mosaik_remote`` to
         allow it to make callbacks to mosaik.
 
-        This may raise :class:`ScenarioError` (or appropriate
-        subclasses) if the simulator cannot be started.
+        This may raise :exc:`~mosaik.exceptions.ScenarioError` (or
+        appropriate subclasses) if the simulator cannot be started.
         """
 
     @classmethod
@@ -136,7 +138,7 @@ class PythonStarter(Starter):
     :meth:`from_starter_config`.
     """
 
-    cls: type[mosaik_api_v3.Simulator]
+    cls: type[Simulator]
     """The :class:`~mosaik_api_v3.Simulator` subclass started by this
     starter. When started, the class's constructor will be called with
     :attr:`args` and :attr:`kwargs`."""
@@ -147,7 +149,7 @@ class PythonStarter(Starter):
 
     def __init__(
         self,
-        cls: type[mosaik_api_v3.Simulator],
+        cls: type[Simulator],
         *,
         api_version: str | None = None,
         args: tuple[Any, ...] = (),
@@ -163,7 +165,7 @@ class PythonStarter(Starter):
 
     async def start(
         self,
-        sim_id: mosaik_api_v3.SimId,
+        sim_id: SimId,
         mosaik_remote: MosaikRemote,
         mosaik_config: MosaikConfigTotal,
     ) -> BaseProxy:
@@ -183,7 +185,7 @@ class PythonStarter(Starter):
         except (AttributeError, ImportError) as err:
             raise PythonImportError(mod_name, cls_name, err) from None
 
-        if int(mosaik_api_v3.__version__.split(".")[0]) < 3:
+        if int(api_package_version.split(".")[0]) < 3:
             raise OutdatedMosaikApiPackageError()
 
         return cls(sim_cls, api_version=api_version)
@@ -301,7 +303,7 @@ class CmdStarter(Starter):
 
     async def start(
         self,
-        sim_id: mosaik_api_v3.SimId,
+        sim_id: SimId,
         mosaik_remote: MosaikRemote,
         mosaik_config: MosaikConfigTotal,
     ) -> BaseProxy:
@@ -397,7 +399,7 @@ class ConnectStarter(Starter):
 
     async def start(
         self,
-        sim_id: mosaik_api_v3.SimId,
+        sim_id: SimId,
         mosaik_remote: MosaikRemote,
         mosaik_config: MosaikConfigTotal,
     ) -> BaseProxy:

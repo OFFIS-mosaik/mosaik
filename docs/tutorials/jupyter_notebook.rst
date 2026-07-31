@@ -19,7 +19,7 @@ To resolve this, there are two solutions:
 2. Alternatively, you can switch to using an :class:`~mosaik.async_scenario.AsyncWorld`.
    This version of :class:`~mosaik.scenario.World` does not control the event loop itself.
    In exchange, you need to call some of the mosaik methods as coroutines (i.e. using ``await``).
-   See :ref:`async-mosaik` for more on this.
+   See the box about "Async mosaik" on :doc:`this page </scenario-definition>` for more on this.
 
 There is a second problem that can occur if you also implement your own simulators:
 Namely, a Jupyter notebook cannot be imported using Python's import mechanism by default.

@@ -9,10 +9,14 @@ class OutSet[E]:
 
     In particular, ``x in OutSet(elems)`` is ``True`` whenever
     ``x not in elems``. Set operations between instances of
-    :class:`OutSet` and normal :class:`~frozenset` work as excepted.
+    :class:`OutSet` and Python's :class:`frozenset` work as excepted.
 
     Note that by their nature it is not possible to iterate over an
     OutSet.
+
+    :param ~collections.abc.Iterable elems: An iterable of elements of
+        the generic type. (We cannot properly document the type
+        parameter ``E`` here due to limitations in Sphinx.)
     """
 
     _set: frozenset[E]

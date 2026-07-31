@@ -174,14 +174,27 @@ Helper classes
 
 There are a bunch of helper classes to allow users to give more precise type annotations for their simulators.
 
+.. autoclass:: MosaikProxy
+   :members:
+
+.. autoclass:: mosaik_api_v3.connection.Channel
+
 .. autoclass:: Meta
    :members:
+   :exclude-members: type
+
+   .. autoattribute:: type
+      :no-index:
 
 .. autoclass:: mosaik_api_v3.types.ModelDescription
    :members:
 
 .. autoclass:: CreateResult
    :members:
+   :exclude-members: type
+
+   .. autoattribute:: type
+      :no-index:
 
 .. autoclass:: mosaik_api_v3.types.InputData
    :members:
@@ -197,3 +210,5 @@ There are a bunch of helper classes to allow users to give more precise type ann
 .. autoclass:: mosaik_api_v3.types.FullId
 
 .. autoclass:: mosaik_api_v3.types.ModelName
+
+.. autoclass:: mosaik_api_v3.types.Attr
