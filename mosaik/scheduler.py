@@ -92,11 +92,9 @@ async def sim_process(
     rt_factor: float | None,
     rt_strict: bool,
     lazy_stepping: bool,
-    start_barrier: Barrier,
+    start_barrier: asyncio.Barrier,
 ):
-    """
-    Coroutine running the simulator *sim*.
-    """
+    """Coroutine running the simulator ``sim``."""
 
     sim.started = True
     sim.rt_start = perf_counter()

@@ -157,17 +157,17 @@ An overview is provided below.
    :alt: mosaik
 
 
-At the heart of the mosaik co-simulation architecture sits the mosaik core. It provides the basic co-simulation functionality 
-via a set of interconnected modules, the central two being the simulation manager and the scheduler. 
-For user interaction with this mosaik core, two APIs are provided. 
+At the heart of the mosaik co-simulation architecture sits the mosaik core. It provides the basic co-simulation functionality
+via a set of interconnected modules, the central two being the simulation manager and the scheduler.
+For user interaction with this mosaik core, two APIs are provided.
 
-The scenario API allows users to set up executable co-simulation scenarios 
+The scenario API allows users to set up executable co-simulation scenarios
 by specifying which simulators are to be used and how they should be parameterized and interconnected.
 
-The low-level simulator API is used to execute communication between the mosaik core and a connected simulator. 
-Most users will not encounter this API directly since several user-friendly high-level language APIs such as the Python API or the Java API are provided 
+The low-level simulator API is used to execute communication between the mosaik core and a connected simulator.
+Most users will not encounter this API directly since several user-friendly high-level language APIs such as the Python API or the Java API are provided
 that abstract away the low-level communication with the simulator API and are highly recommended to use.
 Only users with special requirements for their API or users that want to connect a new programming language have to use the simulator API directly.
 
-Additionally, users can also use any of the pre-built simulators that the mosaik ecosystem includes, such as the pandapower simulator. 
-A list of available APIs can be found :ref:`here<mosaik-core>`, a list of provided simulators can be found :ref:`here<mosaik-components>`.
+Additionally, users can also use any of the pre-built simulators that the mosaik ecosystem includes, such as the pandapower simulator.
+A list of available APIs can be found :doc:`here <mosaik-api/high-level-other-languages>`, a list of provided simulators can be found :ref:`here <mosaik-components>`.
