@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
+from asyncio import Barrier
 from collections.abc import Coroutine
 from heapq import heappop
 from math import ceil
@@ -566,26 +567,3 @@ def advance_progress(sim: SimRunner, world: AsyncWorld):
     )
     sim.progress.set(new_progress)
     sim.tqdm.update(new_progress.time - sim.tqdm.n)
-
-
-# Once 3.11 is the minimal version of Python supported by mosaik, it
-# should be possible to replace this by
-#
-#     from asyncio import Barrier
-class Barrier:
-    """Simplified stand-in for asyncio.Barrier, because that only exists
-    from Python 3.11 onwards.
-    """
-
-    def __init__(self, num: int):
-        self.event = asyncio.Event()
-        self.num = num
-
-    async def wait(self):
-        self.num -= 1
-        if self.num == 0:
-            self.event.set()
-            # pass control to the event loop in this case as well
-            await asyncio.sleep(0)
-        else:
-            await self.event.wait()
