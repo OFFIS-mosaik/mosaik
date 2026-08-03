@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import mosaik_api_v3.connection
 import pytest
@@ -106,7 +107,7 @@ async def test_start_proc_auto_terminate(auto_terminate: bool):
     assert proxy._process is not None
     try:
         await asyncio.wait_for(proxy._process[0].wait(), 0.1)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         # Just wait a moment for terminate (in the shutdown procedure
         # at the end of the with block) to go through if auto_terminate
         # is True, but not long enough for the thread in ProcTest to

@@ -61,7 +61,7 @@ class auto_terminate:
             else:
                 exit_code = await process.wait()
             logger.trace(f"Simulator process finished with exit code {exit_code}")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             warnings.warn(
                 UserWarning(
                     f"simulator did not terminate within {self.timeout} seconds after "

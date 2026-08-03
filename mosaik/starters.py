@@ -363,7 +363,7 @@ class CmdStarter(Starter):
                     mosaik_remote,
                     process=(proc, self.termination_manager),
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await self.termination_manager(proc)
                 raise SimulatorStartTimeoutError(sim_id)
         finally:

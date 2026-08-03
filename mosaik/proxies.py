@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio.subprocess import Process
+from collections.abc import Iterator
 from copy import deepcopy
 from inspect import isgeneratorfunction
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from mosaik_api_v3 import MosaikProxy, Simulator, check_api_compliance
@@ -224,11 +225,7 @@ class RemoteProxy(BaseProxy):
     async def stop(self) -> None:
         try:
             await asyncio.wait_for(self._channel.send(["stop", [], {}]), 0.1)
-        except (
-            asyncio.TimeoutError,
-            asyncio.IncompleteReadError,
-            ConnectionResetError,
-        ):
+        except (TimeoutError, asyncio.IncompleteReadError, ConnectionResetError):
             pass
         await self._channel.close()
         await self._reader_task

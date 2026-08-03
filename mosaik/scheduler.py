@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import warnings
+from collections.abc import Coroutine
 from heapq import heappop
 from math import ceil
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Coroutine, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 

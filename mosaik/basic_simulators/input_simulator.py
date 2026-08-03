@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, override
 
 import mosaik_api_v3
 from mosaik_api_v3.types import (
@@ -13,7 +14,6 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-from typing_extensions import override
 
 FUNCTION_KEY = "Function"
 CONSTANT_KEY = "Constant"

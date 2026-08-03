@@ -8,20 +8,17 @@ from __future__ import annotations
 
 import datetime
 import random
+from collections.abc import Callable, Collection, Iterable, MutableSequence
 from itertools import count, cycle
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Collection,
-    Iterable,
-    MutableSequence,
+    Literal,
 )
 
 import networkx as nx
 from loguru import logger
 from mosaik_api_v3 import Attr, SimId
-from typing_extensions import Literal
 
 from mosaik.async_scenario import AsyncWorld
 from mosaik.scenario import Entity, World
