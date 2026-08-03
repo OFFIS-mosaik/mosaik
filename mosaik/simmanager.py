@@ -16,15 +16,10 @@ import heapq as hq
 import itertools
 import warnings
 from ast import literal_eval
+from collections.abc import Callable
 from dataclasses import dataclass
 from json import JSONEncoder
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    NoReturn,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
 import mosaik_api_v3
 import tqdm
@@ -38,7 +33,6 @@ from mosaik_api_v3.types import (
     SimId,
     Time,
 )
-from typing_extensions import Literal, TypeAlias
 
 from mosaik.exceptions import (
     AsyncRequestsNotConnectedError,
@@ -57,7 +51,7 @@ FULL_ID_SEP = "."  # Separator for full entity IDs
 FULL_ID = "%s.%s"  # Template for full entity IDs ('sid.eid')
 
 
-Port: TypeAlias = Tuple[EntityId, Attr]
+type Port = tuple[EntityId, Attr]
 """Pair of an entity ID and an attribute of that entity"""
 
 

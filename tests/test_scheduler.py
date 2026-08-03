@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine, Iterable
 from heapq import heappop, heappush
-from typing import Any, Coroutine, Iterable, cast
+from typing import Any, cast
 
 import pytest
 import pytest_asyncio

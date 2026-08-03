@@ -7,10 +7,9 @@ dependencies = [
     "loguru>=0.6",
     "networkx>=2.5",
     "tqdm>=4.66.4",
-    "typing-extensions>=4.11.0",
 ]
 license = { file = "LICENSE.txt" }
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
@@ -39,21 +38,20 @@ dev = [
     {include-group = "plotting"},
 ]
 docs = [
-    "sphinx>=8.0.0; python_version>='3.10'",
+    "sphinx>=8.0.0",
     "sphinx-rtd-theme>=1.3.0",
     "sphinx-toolbox>=3.5.0",
-    "setuptools>=75; python_version<'3.12'",
+    "mosaik-heatpump>=1.1.0",
 ]
 plotting = [
-    "matplotlib>=3.8.2;python_version>='3.10'",
+    "matplotlib>=3.8.2",
     "plotly>=5.19.0",
-    "numpy>=1.24",
+    "numpy>=2",
 ]
 tutorial = [
-    "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
-    "mosaik-pv>=1.2.2; python_version>='3.9'",
+    "mosaik-pandapower-2>=1.1.0",
+    "mosaik-pv>=1.2.2",
     "pandapower>=2.13.1",
-    "numba>=0.59.0; python_version>='3.9'",
     "plotly>=5.19.0",
     "simbench>=1.4.0",
 ]

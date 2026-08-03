@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 import pytest
 from networkx import to_dict_of_dicts as to_dict
@@ -145,8 +145,8 @@ def test_world_connect(world: World):
     """
     sim_0 = world.start("ExampleSim")
     sim_1 = world.start("ExampleSim")
-    a = cast(List[Entity], sim_0.A.create(2, init_val=0))
-    b = cast(List[Entity], sim_1.B.create(2, init_val=0))
+    a = cast(list[Entity], sim_0.A.create(2, init_val=0))
+    b = cast(list[Entity], sim_1.B.create(2, init_val=0))
     for i, j in zip(a, b):
         world.connect(i, j, ("val_out", "val_in"), ("dummy_out", "dummy_in"))
 

@@ -270,7 +270,7 @@ class CmdStarter(Starter):
         cwd: str = ".",
         env: dict[str, str] | None = None,
         new_console: bool = False,
-        posix: bool = True,
+        posix: bool = sys.platform != "win32",
         stdout=None,
         stderr=None,
     ):
@@ -363,7 +363,7 @@ class CmdStarter(Starter):
                     mosaik_remote,
                     process=(proc, self.termination_manager),
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await self.termination_manager(proc)
                 raise SimulatorStartTimeoutError(sim_id)
         finally:

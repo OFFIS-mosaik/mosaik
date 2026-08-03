@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Tuple
 
 from loguru import logger  # type: ignore  # noqa: F401
 
 from mosaik.tiered_time import TieredDuration, TieredTime
 
-TriggerSpec = Tuple[TieredTime, TieredDuration, bool]
+TriggerSpec = tuple[TieredTime, TieredDuration, bool]
 
 
 class Progress:

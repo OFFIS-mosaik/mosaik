@@ -84,7 +84,7 @@ async def init_and_get_adapter(
         raise SystemExit(
             f'Simulator "{sim_id}" closed its connection during the init() call.'
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await base_proxy.stop()
         raise SystemExit(
             f'Simulator "{sim_id}" did not reply to the init() call in time.'

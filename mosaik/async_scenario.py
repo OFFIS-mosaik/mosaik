@@ -18,17 +18,16 @@ import contextlib
 import itertools
 import warnings
 from collections import defaultdict
+from collections.abc import Callable, Iterable, Iterator
 from copy import copy
 from dataclasses import dataclass
 from types import TracebackType
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
+    Literal,
     NoReturn,
-    Union,
+    Self,
+    TypedDict,
     overload,
 )
 
@@ -48,7 +47,6 @@ from mosaik_api_v3.types import (
 )
 from networkx import DiGraph
 from tqdm import tqdm
-from typing_extensions import Literal, Self, TypeAlias, TypedDict
 
 from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
@@ -151,14 +149,14 @@ class CmdModel(ModelOptionals):
     simulator should connect."""
 
 
-StarterConfig = Union[PythonModel, ConnectModel, CmdModel]
+type StarterConfig = PythonModel | ConnectModel | CmdModel
 """Description of how to start a simulator as a dict.
 
 As a more modern alternative, consider using the starters from
 :mod:`mosaik.starters` directly.
 """
 
-SimConfig: TypeAlias = Dict[str, Union[StarterConfig, Starter]]
+type SimConfig = dict[str, StarterConfig | Starter]
 """Description of all the simulators you intend to use in your
 simulation.
 """
@@ -196,7 +194,7 @@ def group_path(src: SimGroup, dest: SimGroup) -> tuple[int, int, SimGroup]:
 
 def connect_interval(
     src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0
-):
+) -> TieredDuration:
     """Given two `SimGroup`s, calculate a TieredInterval connecting
     simulators in these groups. The tiers will be 0, unless
     `time_shifted` or `weak` are specified, in which case the given
@@ -1138,7 +1136,7 @@ class AsyncWorld:
         self, path: list[SimRunner]
     ) -> list[tuple[FullId, Attr, FullId, Attr]]:
         cycle_connections = []
-        for src_sim, dest_sim in zip(path, path[1:]):
+        for src_sim, dest_sim in itertools.pairwise(path):
             connection = next(
                 (
                     connection

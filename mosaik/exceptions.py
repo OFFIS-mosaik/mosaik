@@ -47,8 +47,7 @@ class SimulationError(Exception):
         arg = ""
         if exc:
             orig = str(exc)
-            if orig.endswith("."):
-                orig = orig[:-1]
+            orig = orig.removesuffix(".")
             arg += f"{orig}: "
         arg += msg
         super().__init__(arg)

@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 import platform
-from typing import Callable
-
-from typing_extensions import TypeVar
+from collections.abc import Callable
 
 from mosaik._version import version
 
-K = TypeVar("K")
-V = TypeVar("V")
 
-
-def merge_existing(
+def merge_existing[K, V](
     merger: Callable[[V, V], V],
     target: dict[K, V],
     other: dict[K, V],
@@ -31,7 +26,7 @@ def merge_existing(
     return target
 
 
-def merge_all(
+def merge_all[K, V](
     merger: Callable[[V, V], V],
     target: dict[K, V],
     other: dict[K, V],
