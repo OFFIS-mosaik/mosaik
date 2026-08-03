@@ -77,6 +77,13 @@ packages = ["mosaik"]
 
 [tool.uv]
 cache-keys = [{ git = { commit = true, tags = true } }]
+# Replace pynput's evdev dependency by the pre-compiled version
+override-dependencies = [
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev-binary"] },
+]
+exclude-dependencies = [
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev"] },
+]
 
 [[tool.uv.index]]
 name = "pypi"
