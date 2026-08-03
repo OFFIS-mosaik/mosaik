@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from mosaik_api_v3 import SimId
-from mosaik_api_v3.types import Attr
+from mosaik_api_v3.types import Attr, FullId
 
 from mosaik.internal_util import doc_link
 from mosaik.process_termination_managers import ProcessTerminationManager
@@ -421,12 +421,22 @@ class DataflowCycleError(ScenarioError):
     """
 
     cycle: list[SimId]
+    connections: list[tuple[FullId, Attr, FullId, Attr]]
 
-    def __init__(self, cycle: list[SimId]):
+    def __init__(
+        self,
+        cycle: list[SimId],
+        connections: list[tuple[FullId, Attr, FullId, Attr]],
+    ):
         self.cycle = cycle
+        self.connections = connections
 
     def __str__(self) -> str:
-        return f"Your scenario contains cycles, for example: {self.cycle}."
+        connection_report = "\n".join(
+            f"- {src_entity}.{src_attr} -> {dest_entity}.{dest_attr}"
+            for src_entity, src_attr, dest_entity, dest_attr in self.connections
+        )
+        return f"Your scenario contains a cycle:\n{connection_report}"
 
 
 # --- Errors related to a simulator's meta and model factory -----------
