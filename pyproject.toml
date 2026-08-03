@@ -7,7 +7,6 @@ dependencies = [
     "loguru>=0.6",
     "networkx>=2.5",
     "tqdm>=4.66.4",
-    "typing-extensions>=4.11.0",
 ]
 license = { file = "LICENSE.txt" }
 requires-python = ">= 3.12"
@@ -35,22 +34,22 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
-    "pynput==1.7.6",
+    "pynput==1.8.2",
     {include-group = "plotting"},
 ]
 docs = [
-    "sphinx>=9.0.0; python_version>='3.12'",
+    "sphinx>=9.0.0",
     "furo>=2024.5.27",
     "sphinx-toolbox>=3.5.0",
 ]
 plotting = [
-    "matplotlib>=3.8.2;python_version>='3.10'",
+    "matplotlib>=3.8.2",
     "plotly>=5.19.0",
-    "numpy>=1.24",
+    "numpy>=2",
 ]
 tutorial = [
-    "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
-    "mosaik-pv>=1.2.2; python_version>='3.9'",
+    "mosaik-pandapower-2>=1.1.0",
+    "mosaik-pv>=1.2.2",
     "pandapower>=2.13.1",
     "plotly>=5.19.0",
     "simbench>=1.4.0",
@@ -77,6 +76,13 @@ packages = ["mosaik"]
 
 [tool.uv]
 cache-keys = [{ git = { commit = true, tags = true } }]
+# Replace pynput's evdev dependency by the pre-compiled version
+override-dependencies = [
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev-binary"] },
+]
+exclude-dependencies = [
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev"] },
+]
 
 [[tool.uv.index]]
 name = "pypi"

@@ -1,3 +1,22 @@
+""":type:`InOrOutSet` is an abstraction used to represent sets of
+attributes used by a model.
+
+Normally, a simulator model specifies a (finite) list of input
+attributes. However, it can also specify ``any_inputs=True``, in which
+case any string is a valid attribute. This can furthermore be combined
+with listing a finite list of them as trigger or non-trigger attributes,
+in which case the other type of attribute allows all but a finite number
+of strings.
+
+An :class:`OutSet` represents a set consisting of all elements of a type
+(``string``, for attribute names), except for a finite number. An
+:type:`InOrOutSet` represents either a normal :class:`frozenset` or an
+:class:`OutSet`. (So it is a set that is finite or co-finite.)
+
+Set operations between :type:`InOrOutSet` instances are well-defined and
+always result in another :type:`InOrOutSet`.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterable

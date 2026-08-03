@@ -22,7 +22,7 @@ from collections.abc import Callable, Iterable, Iterator
 from copy import copy
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Literal, NoReturn, Self, overload
+from typing import Any, Literal, NoReturn, Self, TypedDict, overload
 
 import networkx
 from loguru import logger
@@ -40,7 +40,6 @@ from mosaik_api_v3.types import (
 )
 from networkx import DiGraph
 from tqdm import tqdm
-from typing_extensions import TypedDict
 
 from mosaik import scheduler, simmanager, starters
 from mosaik.adapters import init_and_get_adapter
@@ -188,7 +187,7 @@ def group_path(src: SimGroup, dest: SimGroup) -> tuple[int, int, SimGroup]:
 
 def connect_interval(
     src_group: SimGroup, dest_group: SimGroup, time_shifted: int = 0, weak: int = 0
-):
+) -> TieredDuration:
     """Given two `SimGroup`s, calculate a TieredInterval connecting
     simulators in these groups. The tiers will be 0, unless
     `time_shifted` or `weak` are specified, in which case the given
@@ -1133,14 +1132,14 @@ class AsyncWorld:
                     "delays": min_durations,
                     "path": [pred, sim],
                 }
+
         while dirty:
             mid_sim = dirty.pop()
             # This sim has had updates to its descendants since we last
             # processed it. These changes are pushed to its predecessors
             for src_sim, src_to_mid_delays in mid_sim.input_delays.items():
                 for dest_sim, mid_to_dest in sim_descs[mid_sim].items():
-                    mid_to_dest_delays = mid_to_dest["delays"]
-                    src_to_dest_delays = src_to_mid_delays + mid_to_dest_delays
+                    src_to_dest_delays = src_to_mid_delays + mid_to_dest["delays"]
                     was_updated = (
                         sim_descs[src_sim]
                         .setdefault(
@@ -1169,7 +1168,34 @@ class AsyncWorld:
                 continue
             min_path = descs[sim]
             if min_path["delays"].contains_zero():
-                raise DataflowCycleError([isim.sid for isim in min_path["path"]])
+                raise DataflowCycleError(
+                    [isim.sid for isim in min_path["path"]],
+                    self._get_cycle_connections(min_path["path"]),
+                )
+
+    def _get_cycle_connections(
+        self, path: list[SimRunner]
+    ) -> list[tuple[FullId, Attr, FullId, Attr]]:
+        cycle_connections = []
+        for src_sim, dest_sim in itertools.pairwise(path):
+            connection = next(
+                (
+                    connection
+                    for connection in self._pending_connections
+                    if connection.src_entity.sid == src_sim.sid
+                    and connection.dest_entity.sid == dest_sim.sid
+                    and connection.delay in dest_sim.input_delays[src_sim].durations
+                ),
+            )
+            cycle_connections.append(
+                (
+                    connection.src_entity.full_id,
+                    connection.src_attr,
+                    connection.dest_entity.full_id,
+                    connection.dest_attr,
+                )
+            )
+        return cycle_connections
 
     async def shutdown(self):
         """

@@ -19,12 +19,7 @@ from ast import literal_eval
 from collections.abc import Callable
 from dataclasses import dataclass
 from json import JSONEncoder
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    NoReturn,
-)
+from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
 import mosaik_api_v3
 import tqdm

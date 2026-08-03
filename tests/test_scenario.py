@@ -190,6 +190,7 @@ def test_world_connect_same_simulator(world: World):
     with pytest.raises(DataflowCycleError) as err:
         world.connect(a[0], a[1], ("val_out", "val_out"))
         world.run(1)
+    assert "Your scenario contains a cycle" in str(err.value)
     assert err.value.cycle
 
 
@@ -198,13 +199,28 @@ def test_world_connect_cycle(world: World):
     If connecting two entities results in a cycle in the dataflow graph,
     an error must be raised.
     """
-    a = world.start("ExampleSim").A(init_val=0)
-    b = world.start("ExampleSim").B(init_val=0)
+    a = world.start("ExampleSim", sim_id="A").A(init_val=0)
+    b = world.start("ExampleSim", sim_id="B").B(init_val=0)
     world.connect(a, b, ("val_out", "val_in"))
+    world.connect(a, b, ("dummy_out", "dummy_in"))
+    world.connect(
+        a,
+        b,
+        ("dummy_out", "dummy_in"),
+        time_shifted=True,
+        initial_data={"dummy_out": 0},
+    )
     world.connect(b, a, ("val_in", "val_out"))
     with pytest.raises(DataflowCycleError) as err:
         world.run(1)
+    message = str(err.value)
+    assert "Your scenario contains a cycle:" in message
+    assert "for example" not in message
+    assert "A.0.0.val_out -> B.0.0.val_in" in message
+    assert "B.0.0.val_in -> A.0.0.val_out" in message
+    assert "dummy_out" not in message
     assert err.value.cycle
+    assert len(err.value.connections) == 2
 
 
 def test_group_cycle(world: World):
@@ -217,6 +233,7 @@ def test_group_cycle(world: World):
     world.connect_one(c, a, "val_out", "val_in")
     with pytest.raises(DataflowCycleError) as err:
         world.run(0)
+    assert "Your scenario contains a cycle" in str(err.value)
     assert err.value.cycle
 
 

@@ -272,7 +272,7 @@ class CmdStarter(Starter):
         cwd: str = ".",
         env: dict[str, str] | None = None,
         new_console: bool = False,
-        posix: bool = True,
+        posix: bool = sys.platform != "win32",
         stdout=None,
         stderr=None,
     ):
