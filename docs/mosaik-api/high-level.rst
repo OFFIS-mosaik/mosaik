@@ -1,10 +1,11 @@
 .. _high-level-api:
 
-==================
-The high-level API
-==================
+=====================
+High-level Python API
+=====================
 
-Currently, there are high-level APIs for Python, Java, C#, and MatLab.
+The high-level Python API for mosaik is developed in conjuction with mosaik.
+As it is written in Python like mosaik itself, simulators implemented using this API can be started in the same process as the scenario script, which may increase performance as mosaik can skip the serialization and data exchange via TCP in this case.
 
 
 Installation

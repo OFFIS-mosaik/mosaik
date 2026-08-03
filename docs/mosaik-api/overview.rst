@@ -1,6 +1,6 @@
-========================================
-How mosaik communicates with a simulator
-========================================
+==============================
+Lifetime of a mosaik simulator
+==============================
 
 This section provides a general overview which API calls exist and when mosaik
 calls them. The following sections will go into more detail.
@@ -57,8 +57,3 @@ and set data for other entities (``set_data()``).
    :width: 500
    :align: center
    :alt: Sequence diagram for asynchronous requests made by a simulator.
-
-The next two sections explain the :ref:`low-level API <low-level-api>` and the
-:ref:`Python high-level API <high-level-api>` in more detail. The last section, 
-:ref:`High-level APIs in other languages <high-level-api-other-languages>`, presents 
-APIs available for other popular programming languages.
