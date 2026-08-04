@@ -12,3 +12,9 @@ If you are a user of mosaik, this information is probably not of interest to you
    /simmanager
    design-decisions
    logo-ci
+
+   /api_reference/mosaik.proxies
+   /api_reference/mosaik.tiered_time
+   /api_reference/mosaik.progress
+   /api_reference/mosaik.simmanager
+   /api_reference/mosaik.scheduler
