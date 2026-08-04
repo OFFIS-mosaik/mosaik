@@ -6,3 +6,4 @@
 
 .. automodule:: mosaik.exceptions
    :members:
+   :show-inheritance:
