@@ -65,20 +65,21 @@ Model heat systems consisting of heat pumps, hot water tanks and controllers. Th
 
 |mosaik| `mosaik-pv <https://pypi.org/project/mosaik-pv>`__.
 Simulate PV active power from direct normal irradiance (DNI) and time alone, in hourly resolution.
-(Based on PyPVSim.)
+(Based on `PyPVSim <https://github.com/dsoto/PyPVSim>`__.)
 
 |mosaik| `mosaik-pvlib <https://pypi.org/project/mosaik-pvlib>`__.
-Simulate PV systems using PVLib, which requires detailed weather data: global irradiance, wind speed, air temparature, and air pressure, which you will need to provide.
+Simulate PV systems using `PVLib <https://pvlib-python.readthedocs.io/en/stable/>`__, which requires detailed weather data: global irradiance, wind speed, air temparature, and air pressure, which you will need to provide.
 This adapter computes both active and reactive power.
 Three predefined PV configurations are included: house, building, and simple.
 
 |mosaik| `mosaik-pvgis <https://pypi.org/project/mosaik-pvgis>`__.
-Simulate PV systems using historical data from PVGIS, which means that no weather data is required.
+Simulate PV systems using historical data from `PVGIS <https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en>`__, which means that no weather data is required.
 Instead, you specify the system's configuration, geographic location, and a reference year.
 The default resolution is hourly, but intermediate values can be interpolated.
 
 `mosaik-demod <https://github.com/epfl-herus/mosaik-demod>`__.
-Model domestic energy demand.
+Model domestic energy demand based on `Demod <https://demod.readthedocs.io/en/latest/>`__, a modular, customizable tool designed for the simulation of domestic energy demand, specifically generating high-resolution electrical and thermal profiles based on human behavior.
+It allows users to simulate diverse household scenarios through flexible, interchangeable modules that account for occupant activity and household characteristics.
 
 .. _input simulators:
 
@@ -104,13 +105,13 @@ Write data from your simulation to a CSV file.
 Timestamps based on the current simulated time will be added automatically.
 
 |mosaik| `mosaik-hdf5 <https://pypi.org/project/mosaik-hdf5>`__.
-Write resulst from your simulation to an HDF5 file.
+Write results from your simulation to an `HDF5 <https://www.hdfgroup.org/>`__ file.
 
 |mosaik| `InfluxDB 2 <https://pypi.org/project/mosaik-influxdb2>`__.
 Write data from your simulation into an `InfluxDB 2 database <https://docs.influxdata.com/influxdb/v2/>`__, with timestamps based on the simulated time.
 You can add a measurement name to identify the simulation run, and the data's source entity information will be stored in tags.
 
-|mosaik| `mosaik-timescaledb <https://gitlab.com/mosaik/components/data/mosaik-timescaledb>`_
+|mosaik| `mosaik-timescaledb <https://gitlab.com/mosaik/components/data/mosaik-timescaledb>`__.
 Store your simulation outputs in a PostgreSQL database, potentially with TimescaleDB integrated.
 The adapter can use your existing database structure or create it for you based on the connected attributes.
 You can also specify run IDs to store data for multiple runs in the same database.
@@ -124,13 +125,14 @@ Read and write data from a ZeroMQ connection.
 
 |mosaik| `mosaik-104 <https://gitlab.com/mosaik/components/communication/mosaik-104>`__. Connect mosaik to something via the IEC 60870-5-104 protocol.
 This adapter is relatively limited in the amount of data that can be transmitted.
+There's also a draft for an adapter written directly in Python `here <https://gitlab.com/mosaik/components/communication/mosaik-104-python>`__.
 
 
 Communication simulation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 |mosaik| `mosaik-omnet <https://gitlab.com/mosaik/components/communication/mosaik-omnet>`__.
-Connect the discrete event simulator `OMNeT++` (or its commercial cousin OMNEST) to mosaik.
+Connect the discrete event simulator `OMNeT++ <https://omnetpp.org/>`__ (or its commercial cousin `OMNEST <https://omnest.com/>`__) to mosaik.
 In OMNeT++, you use a special scheduler and write modules that can be called with data from mosaik and send data back to mosaik.
 For the common case that OMNeT++ is used to simulate a communication infrastructure with the INET framework, special *apps* are provided as a further simplification.
 
@@ -147,10 +149,6 @@ Special mosaik agents in the agent simulation will appear as entities in the mos
 Input from mosaik will result in these agents being called, and they can also send data back to mosaik.
 For this, time between both frameworks is synchronized.
 
-|mosaik| `moped <https://gitlab.offis.de/official/fbe-p_recode_ext/mosaik-opsim>`__.
-Connect the co-simulation framework `OpSim <https://www.iee.fraunhofer.de/de/anwendungsfelder/energienetze/opsim.html>`__ to mosaik.
-This allows either framework access to simulators connected to the other, at the cost of a more involved set-up and slightly increased simulation time.
-
 |mosaik| `FMI adapter <https://gitlab.com/mosaik/components/mosaik-fmi>`__.
 Use Functional Mockup Units (FMU) (based on the `FMI standard <https://fmi-standard.org>`__) as simulators in mosaik.
 
@@ -164,10 +162,13 @@ These are packages of multiple simulators, that therefore do not cleanly integra
 Simulation models for different parts of the energy system.
 
 `ZDIN-ZLE components <https://gitlab.com/zdin-zle/models>`__.
-Models for digitalized energy systems from ZLE.
+Models for digitalized energy systems from the project *ZLE*.
 
-`QEMS - Quarter Energy Management System <https://gitlab.com/qems/scenarios>`__.
+`QEMS - Quarter Energy Management System <https://gitlab.com/qems>`__.
 Simulate an energy management system for neighborhoods for analyzing and optimizing energy flows.
+
+`Illuminator <https://github.com/Illuminator-team/Illuminator>__`.
+An easy-to-use Energy System Integration Development kit to demystify energy system operation, illustrate challenges that arise due to the energy transition and test state-of-the-art energy management concepts.
 
 Outdated simulators
 ^^^^^^^^^^^^^^^^^^^
@@ -217,13 +218,13 @@ Ideally, you provide a short description with it.
 
 |mosaik| The `mango demo <https://gitlab.com/mosaik/examples/mosaik-mango-demo>`__ is an example project, demonstrating how to couple a multi-agent system written in mango to mosaik.
 
-|mosaik| The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains python notebooks with example scenraios that can be executed on mybinder.
+|mosaik| The `binder tutorials <https://gitlab.com/mosaik/examples/mosaik-tutorials-on-binder>`_ contains Python notebooks with example scenarios that can be executed on mybinder.
 
 `Benchmark Model Multi-Energy Networks <https://github.com/ERIGrid2/benchmark-model-multi-energy-networks/tree/mooc-demo>`__ contains the implementation of a multi-energy networks (heat and electricity grid) benchmark model developed in the `ERIGrid 2.0 <https://erigrid2.eu/>`_ project.
 
 `Benchmark Model Multi-Energy Networks STL <https://github.com/ERIGrid2/JRA-2.1.3-STL>`__ is based on the multi-energy networks benchmark and contains a same time loop for improved initialization of the simulators.
 
-`ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`__ contains the research and development of digitalized energy systems in ZLE using mosaik (collection of simulation scenarios).
+`ZDIN-ZLE scenarios <https://gitlab.com/zdin-zle/scenarios>`__ contains the research and development of digitalized energy systems from the project *ZLE* using mosaik (collection of simulation scenarios).
 
 `QEMS - Quarter Energy Management System Scenarios <https://gitlab.com/qems/scenarios>`__ contains scenarios of an energy management system for neighborhoods for analyzing and optimizing energy flows.
 
@@ -236,7 +237,7 @@ Is uses EnergyPlus and FMUs with mosaik.
 mosaik tooling
 --------------
 
-- `icons for the energy domain <https://gitlab.com/mosaik/tools/energy-icons>`_
+- |mosaik| `icons for the energy domain <https://gitlab.com/mosaik/tools/energy-icons>`_
 - `maverig mosaik GUI <https://gitlab.com/mosaik/tools/maverig>`__ is a visualization component, which is not maintained anymore.
 - `MIDAS <https://gitlab.com/midas-mosaik/midas>`__ is a semi-automatic scenario configuration tool.
 - `mosaik-docker <https://github.com/ERIGrid2/mosaik-docker>`__ is a package for the deployment of mosaik with Docker.
