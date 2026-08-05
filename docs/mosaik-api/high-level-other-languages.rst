@@ -33,12 +33,12 @@ See the `Julia mosaik API docs <https://mosaik.gitlab.io/api/MosaikAPIv3.jl>`__.
 ---------------
 
 There are two options to connect mosaik to Matlab.
-The first is the direct `API for Matlab <https://gitlab.com/mosaik/matlab-mosaik-toolbox>`__, the second is an `API using Java as an intermediary <https://gitlab.com/mosaik/api/mosaik-api-matlab-over-java>`__.
+The first is the direct `API for Matlab <https://gitlab.com/mosaik/api/matlab-mosaik-toolbox>`__, the second is an `API using Java as an intermediary <https://gitlab.com/mosaik/api/mosaik-api-matlab-over-java>`__.
 
 |mosaik| C#
 -----------
 
-See here for the `API for C# <https://gitlab.com/mosaik/mosaik-api-c-sharp>`__.
+See here for the `API for C# <https://gitlab.com/mosaik/api/mosaik-api-c-sharp>`__.
 
 Rust
 ----
