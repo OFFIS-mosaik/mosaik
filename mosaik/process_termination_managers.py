@@ -12,7 +12,7 @@ class ProcessTerminationManager(Protocol):
     """A protocal for coroutines that can terminate an
     :class:`asyncio.subprocess.Process`.
 
-    See :mod:`mosaik.process_termination.managers` for predefined
+    See :mod:`mosaik.process_termination_managers` for predefined
     termination managers.
     """
 

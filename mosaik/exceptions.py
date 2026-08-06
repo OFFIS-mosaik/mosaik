@@ -394,9 +394,10 @@ class ConnectError(ScenarioError):
     instances) are available in :attr:`errors`.
     """
 
-    errors: list[ScenarioError]
+    errors: list[AttributeConnectionError]
+    """The individual errors for the attempted connections."""
 
-    def __init__(self, errors: list[ScenarioError]):
+    def __init__(self, errors: list[AttributeConnectionError]):
         self.errors = errors
 
     def __str__(self) -> str:

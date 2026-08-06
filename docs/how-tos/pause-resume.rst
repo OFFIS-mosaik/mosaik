@@ -5,17 +5,17 @@ Pausing and resuming a simulation in mosaik
 .. currentmodule:: mosaik.scenario
 
 In some scenarios, you may want to pause and resume a running simulation.
-For instance, this feature can be useful when wanting to inspect intermediate results without terminating the simulation or when using graphical display tools (e.g. WebVis). 
+For instance, this feature can be useful when wanting to inspect intermediate results without terminating the simulation or when using graphical display tools (e.g. WebVis).
 mosaik provides a simple mechanism to pause and resume a simulation using an :class:`~asyncio.Event`.
 
-This guide will walk you through setting up a simulation that can be controlled via keyboard input. 
+This guide will walk you through setting up a simulation that can be controlled via keyboard input.
 Pressing ``p`` will pause the simulation, and pressing ``r`` will resume it.
 
 Step 1: Setting up the simulation
 ----------------------------------
 
 To begin, we need to define a function to start our simulation.
-We create a :class:`~AsyncWorld`, which represents our simulation, and define the simulators we want to use.
+We create a :class:`~mosaik.async_scenario.AsyncWorld`, which represents our simulation, and define the simulators we want to use.
 We also use an :class:`~asyncio.Event` called ``world.running``, which we will later use to control pausing and resuming.
 
 .. literalinclude:: code/pause_resume_how_to.py
@@ -70,7 +70,7 @@ Addendum: Pausing automatically at a certain simulation step
 Instead of hitting the ``p`` key to pause, we could also set a certain step number the simulation should stop at.
 This could be used for debugging purposes or analysis of a certain intermediate state of the simulation.
 
-To accomplish this, we can get the ProgressProxy object from one of the participating simulators 
+To accomplish this, we can get the ProgressProxy object from one of the participating simulators
 
 .. literalinclude:: code/pause_resume_with_set_pause_step.py
    :start-at: get progress

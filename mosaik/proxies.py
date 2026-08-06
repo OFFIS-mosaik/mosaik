@@ -1,8 +1,14 @@
+"""This module contains the :class:`Proxy` class and its subclasses.
+They are used to represent a running simulator in the scenario.
+:class:`LocalProxy` represents a simulator running in the current
+Python process; :class:`RemoteProxy` represents a simulator connected to
+mosaik via a TCP connection.
+"""
+
 from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from asyncio.subprocess import Process
 from collections.abc import Iterator
 from copy import deepcopy
 from inspect import isgeneratorfunction
@@ -34,10 +40,10 @@ class Proxy(ABC):
         """Send a request to the connected simulator.
 
         :param request: Generally, this will be a three-tuple consisting
-        of a function name, a list of positional arguments and a dict
-        of named arguments.
+            of a function name, a list of positional arguments and a
+            dict of named arguments.
         :return: The return value from the remote simulator (depends on
-        the specified function).
+            the specified function).
         """
         raise NotImplementedError()
 
@@ -61,8 +67,8 @@ class Proxy(ABC):
 class BaseProxy(Proxy):
     """A base ``Proxy`` for a connected simulator that simply sends all
     requests along unchanged. This will usually be wrapped in one or
-    more ``Adapter``s to allow treating the simulator as up-to-date from
-    other parts of mosaik.
+    more instances of ``Adapter`` to allow treating the simulator as
+    up-to-date from other parts of mosaik.
     """
 
     @abstractmethod
@@ -74,11 +80,11 @@ class BaseProxy(Proxy):
         using the ``meta`` property.
 
         :param sid: The ``SimId`` that mosaik assigns to this simulator
-        instance
+            instance
         :param time_resolution: The time resolution of the simulation,
-        i.e. how many seconds correspond to one mosaik time step.
+            i.e. how many seconds correspond to one mosaik time step.
         :param sim_params: The params sent to the simulator for
-        initialization.
+            initialization.
         """
         raise NotImplementedError()
 
@@ -90,7 +96,7 @@ class LocalProxy(BaseProxy):
     """
 
     sim: Simulator
-    """The underlying ``mosaik_api.Simulator."""
+    """The underlying :class:`mosaik_api_v3.Simulator`."""
 
     def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
         super().__init__()
@@ -152,7 +158,7 @@ class RemoteProxy(BaseProxy):
     _reader_task: asyncio.Task[None]
     _outgoing_msg_counter: Iterator[int]
     _mosaik_remote: MosaikRemote
-    _process: tuple[Process, ProcessTerminationManager] | None
+    _process: tuple[asyncio.subprocess.Process, ProcessTerminationManager] | None
     """The process for this RemoteProxy (or None, if the connection
     was established using connect). The second component of the tuple is
     a ProcessTerminationManager: a function that is called with the
@@ -166,7 +172,8 @@ class RemoteProxy(BaseProxy):
         channel: Channel,
         mosaik_remote: MosaikRemote,
         *,
-        process: tuple[Process, ProcessTerminationManager] | None = None,
+        process: tuple[asyncio.subprocess.Process, ProcessTerminationManager]
+        | None = None,
     ):
         super().__init__()
         self._channel = channel

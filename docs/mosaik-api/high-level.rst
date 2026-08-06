@@ -1,10 +1,11 @@
 .. _high-level-api:
 
-==================
-The high-level API
-==================
+=====================
+High-level Python API
+=====================
 
-Currently, there are high-level APIs for Python, Java, C#, and MatLab.
+The high-level Python API for mosaik is developed in conjuction with mosaik.
+As it is written in Python like mosaik itself, simulators implemented using this API can be started in the same process as the scenario script, which may increase performance as mosaik can skip the serialization and data exchange via TCP in this case.
 
 
 Installation
@@ -174,20 +175,41 @@ Helper classes
 
 There are a bunch of helper classes to allow users to give more precise type annotations for their simulators.
 
+.. autoclass:: MosaikProxy
+   :members:
+
+.. autoclass:: mosaik_api_v3.connection.Channel
+
 .. autoclass:: Meta
    :members:
+   :exclude-members: type
+
+   .. autoattribute:: type
+      :no-index:
 
 .. autoclass:: mosaik_api_v3.types.ModelDescription
    :members:
 
 .. autoclass:: CreateResult
    :members:
+   :exclude-members: type
+
+   .. autoattribute:: type
+      :no-index:
 
 .. autoclass:: mosaik_api_v3.types.InputData
    :members:
 
-.. autoclass:: OutputRequest
+.. autoclass:: mosaik_api_v3.types.OutputRequest
    :members:
 
-.. autoclass:: OutputData
+.. autoclass:: mosaik_api_v3.types.OutputData
    :members:
+
+.. autoclass:: mosaik_api_v3.types.SimId
+
+.. autoclass:: mosaik_api_v3.types.FullId
+
+.. autoclass:: mosaik_api_v3.types.ModelName
+
+.. autoclass:: mosaik_api_v3.types.Attr

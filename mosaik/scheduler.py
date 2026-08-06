@@ -40,14 +40,14 @@ async def run(
     rt_strict: bool = False,
     lazy_stepping: bool = True,
 ):
-    """
-    Run the simulation for a :class:`~mosaik.scenario.AsyncWorld` until
-    the simulation time *until* has been reached.
+    """Run the simulation for a
+    :class:`~mosaik.async_scenario.AsyncWorld` until the simulation time
+    ``until`` has been reached.
 
     Return the final simulation time.
 
-    See :meth:`mosaik.scenario.AsyncWorld.run()` for a detailed
-    description of the *rt_factor* and *rt_strict* arguments.
+    See :meth:`mosaik.async_scenario.AsyncWorld.run` for a detailed
+    description of the ``rt_factor`` and ``rt_strict`` arguments.
     """
     world.until = until
 
@@ -92,11 +92,9 @@ async def sim_process(
     rt_factor: float | None,
     rt_strict: bool,
     lazy_stepping: bool,
-    start_barrier: Barrier,
+    start_barrier: asyncio.Barrier,
 ):
-    """
-    Coroutine running the simulator *sim*.
-    """
+    """Coroutine running the simulator ``sim``."""
 
     sim.started = True
     sim.rt_start = perf_counter()
@@ -195,14 +193,11 @@ async def rt_sleep(sim: SimRunner, world: AsyncWorld) -> None:
 
 
 async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
-    """
-    Wait until all simulators that can provide input for this simulator
-    have run for this step.
+    """Wait until all simulators that can provide input for this
+    simulator have run for this step.
 
     Also notify any simulator that is already waiting to perform its
     next step.
-
-    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     futures: list[Coroutine[Any, Any, TieredTime]] = []
     next_step = sim.next_steps[0]
@@ -223,8 +218,7 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
 
 
 def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
-    """
-    Return a dictionary with the input data for *sim*.
+    """Return a dictionary with the input data for *sim*.
 
     The dict will look like::
 
@@ -245,8 +239,6 @@ def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:
     we may have inputs from multiple simulators (e.g., different
     consumers that provide loads for a node in a power grid) and cannot
     know how to aggregate that data (sum, max, ...?).
-
-    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
     """
     assert sim.current_step is not None
     # Input data starts with the data from set_data calls
@@ -395,11 +387,7 @@ def rt_check(rt_factor: float | None, rt_start: float, rt_strict: bool, sim: Sim
 
 
 async def get_outputs(world: AsyncWorld, sim: SimRunner):
-    """
-    Wait for all required output data from a simulator *sim*.
-
-    *world* is a mosaik :class:`~mosaik.scenario.AsyncWorld`.
-    """
+    """Wait for all required output data from a simulator *sim*."""
     assert sim.current_step is not None
     outattr = sim.output_request
 

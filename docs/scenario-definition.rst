@@ -23,22 +23,23 @@ The setup
 =========
 
 The central class for creating scenarios is :class:`mosaik.scenario.World`.
-(For your convenience, :class:`~mosaik.World` and can also be imported from :mod:`mosaik` directly.)
+(For your convenience, :class:`~mosaik.scenario.World` and can also be imported from :mod:`mosaik` directly.)
 This class stores all data and state that belongs to your scenario and its simulation.
 It also provides various methods that allow you to start simulators and establish the data flows between them.
 
 .. admonition:: Async mosaik
+   :name: async-mosaik
 
    mosaik uses asyncio behind the scenes to separate the different simulators and to allow some concurrency in case of simulators running in different processes.
    In many cases, you as the user will not have to worry about this.
    There are two exceptions to this:
 
-   1. If you are using mosaik in a context where an asyncio loop has already been started, creating a :class:`mosaik.World` will lead to conflicts.
+   1. If you are using mosaik in a context where an asyncio loop has already been started, creating a :class:`mosaik.scenario.World` will lead to conflicts.
       The most common occurrence of this is when you try to use mosaik in a Jupyter notebook.
    2. You want to use asynchronicity in your scenario setup yourself, for example, because some simulators have long setup time that you want to parallelize.
 
    For these cases, you can use mosaik's async interface, by importing :mod:`mosaik.async_scenario` instead of :mod:`mosaik.scenario` and using :class:`~mosaik.async_scenario.AsyncWorld` instead of :class:`~mosaik.scenario.World`.
-   For your convenience, :class:`~mosaik.AsyncWorld` is also re-exported from the :mod:`mosaik` package.
+   For your convenience, :class:`~mosaik.async_scenario.AsyncWorld` is also re-exported from the :mod:`mosaik` package.
 
    When using async mosaik, methods that communicate with the connected simulator become coroutines and therefore need to be called with ``await``.
    This affects the following methods:
@@ -71,7 +72,7 @@ The ``SIM_CONFIG`` is a dictionary listing all of the simulators you want to use
 (We will use some type annotations throughout as the help catching typos; however, they are completely optional.
 If you don't want to bother with them, writing ``SIM_CONFIG = { ... }`` is fine as well.)
 
-In the code snippet above, we specify that our simulation will use one (type of) simulator which we call *ExampleSim*, and that this simulator is given by the class :class:`example_sim.mosaik.ExampleSim`, to be instantiated in the same Python process as the simulation script.
+In the code snippet above, we specify that our simulation will use one (type of) simulator which we call *ExampleSim*, and that this simulator is given by the class ``example_sim.mosaik.ExampleSim``, to be instantiated in the same Python process as the simulation script.
 (This example simulator is part of the mosaik-api-v3 package.)
 It is also possible to specify that simulators should be started by mosaik in separate processes (by using ``"cmd"`` instead of ``"python"``), or that mosaik should try to connect to a running simulator (by using ``"connect"``).
 For more details on this, we refer to the :doc:`simulator manager docs </simmanager>`.
@@ -192,11 +193,11 @@ Lets see what it is that gets returned to us:
    >>> a.children
    []
 
-A model instance is represented in your scenario as an :class:`Entity`.
+A model instance is represented in your scenario as an :class:`~mosaik.async_scenario.Entity`.
 The entity belongs to the simulator *ExampleSim-0*, has the ID *0.0* and its type is *A*.
 The entity ID is unique within a simulator.
 To make it globally unique, we prepend it with the simulator ID.
-This is called the entity's *full ID* (see :attr:`Entity.full_id`).
+This is called the entity's *full ID* (see :attr:`~mosaik.async_scenario.Entity.full_id`).
 You can also get a list of its child entities (which is empty in this case).
 
 In order to instantiate multiple instances of a model, you can either use a simple list comprehension (or ``for`` loop) or call the static method :meth:`~ModelMock.create` of the model:

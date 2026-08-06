@@ -73,7 +73,7 @@ Glossary
    Simulation time
       The "internal" time of the simulation, i.e., the time of the simulated world.
       In mosaik, this time is measured in steps starting from the start of the simulation.
-      Conventionally, one step represents one second, but this can be adjusted by changing the ``time_resolution`` when creating a :class:`mosaik.World`.
+      Conventionally, one step represents one second, but this can be adjusted by changing the ``time_resolution`` when creating a :class:`mosaik.scenario.World`.
 
    Simulator
       A program that contains the implementation of one or more

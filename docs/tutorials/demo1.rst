@@ -105,7 +105,7 @@ We also set the *eid_prefix* for our example simulator. What gets returned by
 
 We can use this factory object to create model instances within the respective
 simulator. In your scenario, such an instance is represented as an
-:class:`Entity`. The model factory presents the available models as if they
+:class:`mosaik.async_scenario.Entity`. The model factory presents the available models as if they
 were classes within the factory's namespace. So this is how we can create one
 instance of our example model and one 'Monitor' instance:
 

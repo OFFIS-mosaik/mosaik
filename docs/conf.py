@@ -17,9 +17,6 @@ import mosaik
 
 # -- General configuration ---------------------------------------------
 
-# If your documentation needs a minimal Sphinx version, state it here.
-# needs_sphinx = '1.0'
-
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
@@ -31,8 +28,7 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx.ext.mathjax",
     "sphinx.ext.linkcode",
-    "sphinx_rtd_theme",
-    "sphinx_toolbox.more_autodoc.autotypeddict",
+    # "sphinx_toolbox.more_autodoc.autotypeddict",
 ]
 
 # -- Options for Graphviz ----------------------------------------------
@@ -57,7 +53,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mosaik"
-copyright = "2012-2025 OFFIS"
+copyright = "2012-2026 OFFIS"
 
 # The version info for the project you're documenting, acts as
 # replacement for |version| and |release|, also used in various other
@@ -103,7 +99,7 @@ add_module_names = False
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+pygments_style = "lightbulb"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -113,12 +109,17 @@ pygments_style = "sphinx"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation
 # for a list of builtin themes.
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see
 # the documentation.
-# html_theme_options = {}
+html_theme_options = {
+    "sidebar_hide_name": True,
+    "source_repository": "https://gitlab.com/mosaik/mosaik/",
+    "source_branch": "main",
+    "source_directory": "docs",
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -130,7 +131,7 @@ html_theme = "sphinx_rtd_theme"
 
 # The name of an image file (relative to this directory) to place at the
 # top of the sidebar.
-# html_logo = None
+html_logo = "_static/mosaik_logo.png"
 
 # The name of an image file (within the static path) to use as favicon
 # of the docs.  This file should be a Windows icon file (.ico) being
@@ -286,19 +287,14 @@ texinfo_documents = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "networkx": ("https://networkx.org/documentation/stable/", None),
+    "plotly": ("https://plotly.com/python-api-reference/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
 # Autodoc
 autodoc_member_order = "bysource"
 
-autodoc_typehints = "both"
-
-# TODO: Check once type aliases work in type annotations
-autodoc_type_aliases = {
-    "InputData": "mosaik_api_v3.types.InputData",
-    "SimConfig": "mosaik.async_scenario.SimConfig",
-    "PythonModel": "PythonModel",
-}
+autodoc_typehints = "description"
 
 
 # This method is used to generate links to the source code in the

@@ -5,15 +5,15 @@ Installation
 mosaik is a Python library, so you need a working installation of Python to use it.
 You might already have one, but if you don't, you will need to install Python.
 Python's official website is https://python.org.
-They also have a beginner's guide with installation instructions for different operating systems here: https://wiki.python.org/moin/BeginnersGuide/Download.
+They also have a beginner's guide with `installation instructions for different operating systems here <https://wiki.python.org/moin/BeginnersGuide/Download>`__.
 
-mosaik itself is then published on the Python Package Index *PyPI* `here <https://pypi.org/project/mosaik/>`_.
+mosaik itself is then published on the Python Package Index *PyPI* `here <https://pypi.org/project/mosaik/>`__.
 If you have a preferred way of installing Python packages, we recommend that you keep using that.
-(Python's built-in tool ``pip``; ``uv`` (`here <https://github.com/astral-sh/uv>`_); packaging tools integrated into your text editor or IDE; Anaconda; etc.)
+(Python's built-in tool ``pip``; ``uv`` (`here <https://github.com/astral-sh/uv>`__); packaging tools integrated into your text editor or IDE; Anaconda; etc.)
 
 If you are entirely new to this, we recommend that you start with virtual environments.
 They help to separate Python packages used for different projects which greatly reduces the number of versioning conflicts that you will encounter.
-A good tutorial can be found in Python's official documentation here: https://docs.python.org/3/tutorial/venv.html.
+A good tutorial can be found in `Python's official documentation here <https://docs.python.org/3/tutorial/venv.html>`__.
 
 
 The mosaik demo
