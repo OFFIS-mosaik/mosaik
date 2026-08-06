@@ -167,7 +167,7 @@ Models for digitalized energy systems from the project *ZLE*.
 `QEMS - Quarter Energy Management System <https://gitlab.com/qems>`__.
 Simulate an energy management system for neighborhoods for analyzing and optimizing energy flows.
 
-`Illuminator <https://github.com/Illuminator-team/Illuminator>__`.
+`Illuminator <https://github.com/Illuminator-team/Illuminator>`__.
 An easy-to-use Energy System Integration Development kit to demystify energy system operation, illustrate challenges that arise due to the energy transition and test state-of-the-art energy management concepts.
 
 Outdated simulators
