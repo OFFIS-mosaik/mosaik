@@ -7,11 +7,10 @@ from __future__ import annotations
 import asyncio
 import warnings
 from asyncio import Barrier
-from collections.abc import Coroutine
 from heapq import heappop
 from math import ceil
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
@@ -199,22 +198,19 @@ async def wait_for_dependencies(sim: SimRunner, lazy_stepping: bool) -> None:
     Also notify any simulator that is already waiting to perform its
     next step.
     """
-    futures: list[Coroutine[Any, Any, TieredTime]] = []
     next_step = sim.next_steps[0]
 
     for pre_sim, min_delays in sim.input_delays.items():
         # Wait for pre_sim if it hasn't progressed enough to provide
         # the input for our current step.
         for delay in min_delays.durations:
-            futures.append(pre_sim.progress.has_passed(next_step, shift=delay))
+            await pre_sim.progress.has_passed(next_step, shift=delay)
 
     for suc_sim, adapt in sim.successors_to_wait_for.items():
-        futures.append(suc_sim.progress.has_reached(next_step + adapt))
+        await suc_sim.progress.has_reached(next_step + adapt)
     if lazy_stepping:
         for suc_sim, adapt in sim.successors.items():
-            futures.append(suc_sim.progress.has_reached(next_step + adapt))
-
-    await asyncio.gather(*futures)
+            await suc_sim.progress.has_reached(next_step + adapt)
 
 
 def get_input_data(world: AsyncWorld, sim: SimRunner) -> InputData:

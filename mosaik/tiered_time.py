@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
+from operator import add
 
 
 def tuple_add(xs: tuple[int, ...], ys: tuple[int, ...]) -> tuple[int, ...]:
-    return tuple(x + y for x, y in zip(xs, ys))
+    return tuple(map(add, xs, ys))
 
 
 @dataclass(frozen=True)
