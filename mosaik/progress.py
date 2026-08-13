@@ -40,14 +40,10 @@ class Progress:
         """
         assert time >= self.time, "cannot progress backwards"
         self.time = time
-        # Use index-based for loop so we can call del in the loop.
-        for index in reversed(range(len(self._futures))):
-            trigger_spec, future = self._futures[index]
+        for trigger_spec, future in self._futures:
             triggered_time = self._triggered_time(trigger_spec)
-            if triggered_time:
-                if not future.cancelled():
-                    future.set_result(triggered_time)
-                del self._futures[index]
+            if triggered_time and not future.done():
+                future.set_result(triggered_time)
 
     def _triggered_time(self, trigger_spec: TriggerSpec) -> None | TieredTime:
         """Get the actual (destination) time at which ``trigger_spec``
@@ -80,8 +76,7 @@ class Progress:
         try:
             return await future
         finally:
-            if waiting in self._futures:
-                self._futures.remove(waiting)
+            self._futures.remove(waiting)
 
     async def has_reached(
         self,
