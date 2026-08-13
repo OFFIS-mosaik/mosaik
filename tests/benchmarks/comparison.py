@@ -4,10 +4,10 @@ import networkx as nx
 
 
 def normalize_node_ids(graph):
-    """Return a copy whose structured execution-graph node IDs are strings.
+    """Return a copy with string execution-graph node IDs.
 
-    GEXF stores the ``(sim_id, TieredTime)`` tuples as strings, so the live
-    graph needs the same representation for a meaningful round-trip comparison.
+    GEXF stores ``(sim_id, TieredTime)`` tuples as strings, so the
+    live graph needs the same representation for comparison.
     """
     return nx.relabel_nodes(graph, str, copy=True)
 
@@ -89,12 +89,8 @@ def compare_execution_graph(world, scenario_file_name):
     remove_ids_and_labels(eg)
     fix_inputs(eg)
 
-    equal_nodes = nx.utils.nodes_equal(
-        graph.nodes(data=True), eg.nodes(data=True)
-    )
-    equal_edges = nx.utils.edges_equal(
-        graph.edges(data=True), eg.edges(data=True)
-    )
+    equal_nodes = nx.utils.nodes_equal(graph.nodes(data=True), eg.nodes(data=True))
+    equal_edges = nx.utils.edges_equal(graph.edges(data=True), eg.edges(data=True))
     equal_adj = graph.adj == eg.adj
 
     if not (equal_nodes and equal_edges and equal_adj):
