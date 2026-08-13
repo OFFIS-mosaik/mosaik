@@ -75,8 +75,13 @@ class Progress:
         if triggered_time:
             return triggered_time
         future: asyncio.Future[TieredTime] = asyncio.Future()
-        self._futures.append((trigger_spec, future))
-        return await future
+        waiting = (trigger_spec, future)
+        self._futures.append(waiting)
+        try:
+            return await future
+        finally:
+            if waiting in self._futures:
+                self._futures.remove(waiting)
 
     async def has_reached(
         self,
