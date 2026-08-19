@@ -111,9 +111,7 @@ async def test_local_proxy_traces_calls_in_both_directions(trace_records):
 
     assert {record["name"] for record in records} == {"sim.local.Trace"}
     messages = [record["message"] for record in records]
-    assert (
-        "mosaik -> simulator: init('Trace', time_resolution=1.0)" in messages
-    )
+    assert "mosaik -> simulator: init('Trace', time_resolution=1.0)" in messages
     assert any("simulator -> mosaik: init returned" in message for message in messages)
     assert "simulator -> mosaik: get_progress()" in messages
     assert "mosaik -> simulator: get_progress returned 0.5" in messages
@@ -126,9 +124,7 @@ async def test_remote_proxy_uses_remote_namespace(trace_records):
     logger.enable("mosaik")
     request = RequestMock()
     channel = ChannelMock(request)
-    proxy = RemoteProxy(
-        cast(Channel, channel), cast(Any, MosaikRemoteMock("Trace"))
-    )
+    proxy = RemoteProxy(cast(Channel, channel), cast(Any, MosaikRemoteMock("Trace")))
 
     assert await proxy.send(["step", [1, {}, 2], {}]) == 2
     assert await request.result == 0.5

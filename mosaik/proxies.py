@@ -38,9 +38,7 @@ class _CallArguments:
 
     def __format__(self, format_spec: str) -> str:
         arguments = [repr(argument) for argument in self._args]
-        arguments.extend(
-            f"{name}={value!r}" for name, value in self._kwargs.items()
-        )
+        arguments.extend(f"{name}={value!r}" for name, value in self._kwargs.items())
         return format(", ".join(arguments), format_spec)
 
 
@@ -182,9 +180,7 @@ class LocalProxy(BaseProxy):
     def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
         super().__init__()
         self.sim = sim
-        self._tracer = _CallTracer(
-            "local", getattr(mosaik_remote, "sid", "unknown")
-        )
+        self._tracer = _CallTracer("local", getattr(mosaik_remote, "sid", "unknown"))
         sim.mosaik = _TracingMosaikProxy(mosaik_remote, self._tracer)
 
     async def init(self, sid: SimId, **kwargs: Any) -> list[int]:
@@ -287,16 +283,12 @@ class RemoteProxy(BaseProxy):
         try:
             while True:
                 request = await self._channel.next_request()
-                func_name = self._tracer.call(
-                    "simulator", "mosaik", request.content
-                )
+                func_name = self._tracer.call("simulator", "mosaik", request.content)
                 _, args, kwargs = request.content
                 func = getattr(self._mosaik_remote, func_name)
                 try:
                     result = await func(*args, **kwargs)
-                    self._tracer.returned(
-                        "mosaik", "simulator", func_name, result
-                    )
+                    self._tracer.returned("mosaik", "simulator", func_name, result)
                     await request.set_result(result)
                 except Exception as e:  # noqa: BLE001
                     self._tracer.raised("mosaik", "simulator", func_name, e)
