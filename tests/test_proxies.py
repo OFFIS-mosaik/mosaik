@@ -8,6 +8,7 @@ from loguru import logger
 from mosaik_api_v3 import MosaikProxy
 from mosaik_api_v3.connection import Channel, EndOfRequests
 
+from mosaik.exceptions import ConnectionClosedError
 from mosaik.proxies import LocalProxy, RemoteProxy
 from tests.simulators.simulator_mock import SimulatorMock
 
@@ -74,6 +75,11 @@ class FailingSimulator(SimulatorMock):
         raise RuntimeError("step failed")
 
 
+class DisconnectedChannel(ChannelMock):
+    async def send(self, request: Any) -> Any:
+        raise asyncio.IncompleteReadError(b"", 1)
+
+
 @pytest.fixture
 def trace_records():
     handler_ids = []
@@ -84,7 +90,9 @@ def trace_records():
             logger.add(
                 lambda message: records.append(message.record),
                 level="TRACE",
-                filter=namespace,
+                filter=lambda record: record["extra"]
+                .get("simulator", "")
+                .startswith(namespace),
             )
         )
         return records
@@ -109,7 +117,9 @@ async def test_local_proxy_traces_calls_in_both_directions(trace_records):
     await proxy.stop()
     await other_proxy.stop()
 
-    assert {record["name"] for record in records} == {"sim.local.Trace"}
+    assert {record["extra"]["simulator"] for record in records} == {
+        "sim.local.Trace"
+    }
     messages = [record["message"] for record in records]
     assert "mosaik -> simulator: init('Trace', time_resolution=1.0)" in messages
     assert any("simulator -> mosaik: init returned" in message for message in messages)
@@ -130,7 +140,9 @@ async def test_remote_proxy_uses_remote_namespace(trace_records):
     assert await request.result == 0.5
     await proxy.stop()
 
-    assert {record["name"] for record in records} == {"sim.remote.Trace"}
+    assert {record["extra"]["simulator"] for record in records} == {
+        "sim.remote.Trace"
+    }
     messages = [record["message"] for record in records]
     assert "mosaik -> simulator: step(1, {}, 2)" in messages
     assert "simulator -> mosaik: step returned 2" in messages
@@ -161,3 +173,19 @@ async def test_simulator_exceptions_are_traced_and_reraised(trace_records):
         == "simulator -> mosaik: step raised RuntimeError('step failed')"
         for record in records
     )
+
+
+@pytest.mark.asyncio
+async def test_remote_disconnect_is_not_reported_as_simulator_exception(trace_records):
+    records = trace_records("sim.remote.Trace")
+    logger.enable("mosaik")
+    channel = DisconnectedChannel()
+    proxy = RemoteProxy(cast(Channel, channel), cast(Any, MosaikRemoteMock("Trace")))
+
+    with pytest.raises(ConnectionClosedError) as exc_info:
+        await proxy.send(["step", [1, {}, 2], {}])
+
+    assert isinstance(exc_info.value.__cause__, asyncio.IncompleteReadError)
+    assert not any("raised" in record["message"] for record in records)
+    await channel.close()
+    await proxy._reader_task

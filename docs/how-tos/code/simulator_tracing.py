@@ -27,16 +27,16 @@ def main() -> None:
     logger.remove()
     logger.enable("mosaik")
 
-    # Other useful filters are:
-    #   "sim"                    all simulators
-    #   "sim.local"              all in-process simulators
-    #   "sim.remote"             all networked simulators
-    #   "sim.remote.Controller"  one networked simulator
+    # Shorter prefixes select broader groups, for example "sim" for all
+    # simulators or "sim.local" for all in-process simulators.
+    simulator_filter = "sim.local.Input"
     trace_handler = logger.add(
         sys.stderr,
         level="TRACE",
-        filter="sim.local.Input",
-        format="{level: <8} | {name} | {message}",
+        filter=lambda record: record["extra"]
+        .get("simulator", "")
+        .startswith(simulator_filter),
+        format="{level: <8} | {extra[simulator]} | {message}",
     )
 
     try:

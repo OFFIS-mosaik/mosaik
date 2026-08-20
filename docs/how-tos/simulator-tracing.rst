@@ -4,7 +4,7 @@ How to trace simulator calls
 
 Simulator call traces help explain the interactions in a scenario.
 They show calls in both directions, including arguments, return values,
-and exceptions. Traces use the following logger names:
+and exceptions. Traces bind the simulator name to the ``simulator`` field:
 
 * ``sim.local.<sim_id>`` for in-process simulators
 * ``sim.remote.<sim_id>`` for networked simulators
@@ -16,7 +16,15 @@ logging, then select the desired namespace using a sink filter::
     from loguru import logger
 
     logger.enable("mosaik")
-    logger.add(sys.stderr, level="TRACE", filter="sim.local.Input")
+    simulator_filter = "sim.local.Input"
+    logger.add(
+        sys.stderr,
+        level="TRACE",
+        filter=lambda record: record["extra"]
+        .get("simulator", "")
+        .startswith(simulator_filter),
+        format="{level: <8} | {extra[simulator]} | {message}",
+    )
 
 The filter can be ``sim`` for all simulators, ``sim.local`` or
 ``sim.remote`` for one transport type, or the full name of a specific

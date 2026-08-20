@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from copy import deepcopy
 from inspect import isgeneratorfunction
 from typing import TYPE_CHECKING, Any
@@ -26,67 +26,35 @@ if TYPE_CHECKING:
     from mosaik.simmanager import MosaikRemote
 
 
-type _Trace = Callable[..., None]
-
-
-class _CallArguments:
-    """Lazily render positional and keyword arguments."""
-
-    def __init__(self, args: Any, kwargs: Any):
-        self._args = args
-        self._kwargs = kwargs
-
-    def __format__(self, format_spec: str) -> str:
-        arguments = [repr(argument) for argument in self._args]
-        arguments.extend(f"{name}={value!r}" for name, value in self._kwargs.items())
-        return format(", ".join(arguments), format_spec)
-
-
-class _CallTracer:
-    """Trace calls crossing the mosaik-simulator boundary."""
-
-    def __init__(self, simulator_type: str, sim_id: SimId):
-        name = f"sim.{simulator_type}.{sim_id}"
-        self._trace: _Trace = logger.patch(
-            lambda record: record.update(name=name)
-        ).trace
-
-    def call(self, source: str, target: str, request: Any) -> str:
-        method, args, kwargs = request
-        self._trace(
-            "{} -> {}: {}({})",
-            source,
-            target,
-            method,
-            _CallArguments(args, kwargs),
-        )
-        return method
-
-    def returned(self, source: str, target: str, method: str, result: Any) -> None:
-        self._trace("{} -> {}: {} returned {!r}", source, target, method, result)
-
-    def raised(
-        self, source: str, target: str, method: str, exception: Exception
-    ) -> None:
-        self._trace("{} -> {}: {} raised {!r}", source, target, method, exception)
+def _trace_call(log: Any, direction: str, method: str, args: Any, kwargs: Any) -> None:
+    """Trace a call while leaving argument rendering to loguru."""
+    parameters = ["{!r}"] * len(args)
+    parameters.extend(f"{name}={{!r}}" for name in kwargs)
+    log.trace(
+        f"{direction}: {method}({', '.join(parameters)})",
+        *args,
+        *kwargs.values(),
+    )
 
 
 class _TracingMosaikProxy(MosaikProxy):
     """Add tracing to calls a simulator makes back to mosaik."""
 
-    def __init__(self, remote: MosaikProxy, tracer: _CallTracer):
+    def __init__(self, remote: MosaikProxy, log: Any):
         self._remote = remote
-        self._tracer = tracer
+        self._log = log
 
     async def _send(self, request: Any) -> Any:
-        method = self._tracer.call("simulator", "mosaik", request)
-        _, args, kwargs = request
+        method, args, kwargs = request
+        _trace_call(self._log, "simulator -> mosaik", method, args, kwargs)
         try:
             result = await getattr(self._remote, method)(*args, **kwargs)
         except Exception as exception:
-            self._tracer.raised("mosaik", "simulator", method, exception)
+            self._log.trace(
+                "mosaik -> simulator: {} raised {!r}", method, exception
+            )
             raise
-        self._tracer.returned("mosaik", "simulator", method, result)
+        self._log.trace("mosaik -> simulator: {} returned {!r}", method, result)
         return result
 
     async def get_progress(self) -> float:
@@ -180,8 +148,10 @@ class LocalProxy(BaseProxy):
     def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
         super().__init__()
         self.sim = sim
-        self._tracer = _CallTracer("local", getattr(mosaik_remote, "sid", "unknown"))
-        sim.mosaik = _TracingMosaikProxy(mosaik_remote, self._tracer)
+        self._log = logger.bind(
+            simulator=f"sim.local.{getattr(mosaik_remote, 'sid', 'unknown')}"
+        )
+        sim.mosaik = _TracingMosaikProxy(mosaik_remote, self._log)
 
     async def init(self, sid: SimId, **kwargs: Any) -> list[int]:
         # This in an ugly place for these checks. However, we cannot
@@ -206,8 +176,8 @@ class LocalProxy(BaseProxy):
         return self._meta
 
     async def send(self, request: tuple[str, tuple[Any, ...], dict[str, Any]]):
-        func_name = self._tracer.call("mosaik", "simulator", request)
-        _, args, kwargs = request
+        func_name, args, kwargs = request
+        _trace_call(self._log, "mosaik -> simulator", func_name, args, kwargs)
         try:
             func = getattr(self.sim, func_name)
             # A simulator that makes requests back to mosaik (like
@@ -231,20 +201,23 @@ class LocalProxy(BaseProxy):
             else:
                 result = func(*args, **kwargs)
         except Exception as exception:
-            self._tracer.raised("simulator", "mosaik", func_name, exception)
+            self._log.trace(
+                "simulator -> mosaik: {} raised {!r}", func_name, exception
+            )
             raise
-        self._tracer.returned("simulator", "mosaik", func_name, result)
+        self._log.trace("simulator -> mosaik: {} returned {!r}", func_name, result)
         return result
 
     async def stop(self):
-        request: tuple[str, tuple[()], dict[str, Any]] = ("finalize", (), {})
-        method = self._tracer.call("mosaik", "simulator", request)
+        _trace_call(self._log, "mosaik -> simulator", "finalize", (), {})
         try:
             result = self.sim.finalize()
         except Exception as exception:
-            self._tracer.raised("simulator", "mosaik", method, exception)
+            self._log.trace(
+                "simulator -> mosaik: finalize raised {!r}", exception
+            )
             raise
-        self._tracer.returned("simulator", "mosaik", method, result)
+        self._log.trace("simulator -> mosaik: finalize returned {!r}", result)
 
 
 class RemoteProxy(BaseProxy):
@@ -271,7 +244,7 @@ class RemoteProxy(BaseProxy):
     ):
         super().__init__()
         self._channel = channel
-        self._tracer = _CallTracer("remote", mosaik_remote.sid)
+        self._log = logger.bind(simulator=f"sim.remote.{mosaik_remote.sid}")
         self._mosaik_remote = mosaik_remote
         self._reader_task = asyncio.create_task(
             self._handle_remote_requests(),
@@ -283,15 +256,21 @@ class RemoteProxy(BaseProxy):
         try:
             while True:
                 request = await self._channel.next_request()
-                func_name = self._tracer.call("simulator", "mosaik", request.content)
-                _, args, kwargs = request.content
+                func_name, args, kwargs = request.content
+                _trace_call(
+                    self._log, "simulator -> mosaik", func_name, args, kwargs
+                )
                 func = getattr(self._mosaik_remote, func_name)
                 try:
                     result = await func(*args, **kwargs)
-                    self._tracer.returned("mosaik", "simulator", func_name, result)
+                    self._log.trace(
+                        "mosaik -> simulator: {} returned {!r}", func_name, result
+                    )
                     await request.set_result(result)
                 except Exception as e:  # noqa: BLE001
-                    self._tracer.raised("mosaik", "simulator", func_name, e)
+                    self._log.trace(
+                        "mosaik -> simulator: {} raised {!r}", func_name, e
+                    )
                     await request.set_exception(e)
         except EndOfRequests:
             pass
@@ -318,31 +297,32 @@ class RemoteProxy(BaseProxy):
         return self._meta
 
     async def send(self, request: Any) -> Any:
-        method = self._tracer.call("mosaik", "simulator", request)
+        method, args, kwargs = request
+        _trace_call(self._log, "mosaik -> simulator", method, args, kwargs)
         try:
             result = await self._channel.send(request)
-        except asyncio.IncompleteReadError:
-            exception = ConnectionClosedError(
+        except asyncio.IncompleteReadError as exception:
+            raise ConnectionClosedError(
                 simulator=self._channel._name or "unknown simulator",
-                method_called=request[0],
-            )
-            self._tracer.raised("simulator", "mosaik", method, exception)
-            raise exception from None
+                method_called=method,
+            ) from exception
         except Exception as exception:
-            self._tracer.raised("simulator", "mosaik", method, exception)
+            self._log.trace(
+                "simulator -> mosaik: {} raised {!r}", method, exception
+            )
             raise
-        self._tracer.returned("simulator", "mosaik", method, result)
+        self._log.trace("simulator -> mosaik: {} returned {!r}", method, result)
         return result
 
     async def stop(self) -> None:
         request: list[Any] = ["stop", [], {}]
-        method = self._tracer.call("mosaik", "simulator", request)
+        _trace_call(self._log, "mosaik -> simulator", "stop", (), {})
         try:
             result = await asyncio.wait_for(self._channel.send(request), 0.1)
-        except (TimeoutError, asyncio.IncompleteReadError, ConnectionResetError) as exc:
-            self._tracer.raised("simulator", "mosaik", method, exc)
+        except (TimeoutError, asyncio.IncompleteReadError, ConnectionResetError):
+            pass
         else:
-            self._tracer.returned("simulator", "mosaik", method, result)
+            self._log.trace("simulator -> mosaik: stop returned {!r}", result)
         await self._channel.close()
         await self._reader_task
         if self._process:
