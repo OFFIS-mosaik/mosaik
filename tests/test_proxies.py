@@ -90,9 +90,9 @@ def trace_records():
             logger.add(
                 lambda message: records.append(message.record),
                 level="TRACE",
-                filter=lambda record: record["extra"]
-                .get("simulator", "")
-                .startswith(namespace),
+                filter=lambda record: (
+                    record["extra"].get("simulator", "").startswith(namespace)
+                ),
             )
         )
         return records
@@ -117,9 +117,7 @@ async def test_local_proxy_traces_calls_in_both_directions(trace_records):
     await proxy.stop()
     await other_proxy.stop()
 
-    assert {record["extra"]["simulator"] for record in records} == {
-        "sim.local.Trace"
-    }
+    assert {record["extra"]["simulator"] for record in records} == {"sim.local.Trace"}
     messages = [record["message"] for record in records]
     assert "mosaik -> simulator: init('Trace', time_resolution=1.0)" in messages
     assert any("simulator -> mosaik: init returned" in message for message in messages)
@@ -140,9 +138,7 @@ async def test_remote_proxy_uses_remote_namespace(trace_records):
     assert await request.result == 0.5
     await proxy.stop()
 
-    assert {record["extra"]["simulator"] for record in records} == {
-        "sim.remote.Trace"
-    }
+    assert {record["extra"]["simulator"] for record in records} == {"sim.remote.Trace"}
     messages = [record["message"] for record in records]
     assert "mosaik -> simulator: step(1, {}, 2)" in messages
     assert "simulator -> mosaik: step returned 2" in messages

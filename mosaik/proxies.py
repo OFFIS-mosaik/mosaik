@@ -50,9 +50,7 @@ class _TracingMosaikProxy(MosaikProxy):
         try:
             result = await getattr(self._remote, method)(*args, **kwargs)
         except Exception as exception:
-            self._log.trace(
-                "mosaik -> simulator: {} raised {!r}", method, exception
-            )
+            self._log.trace("mosaik -> simulator: {} raised {!r}", method, exception)
             raise
         self._log.trace("mosaik -> simulator: {} returned {!r}", method, result)
         return result
@@ -201,9 +199,7 @@ class LocalProxy(BaseProxy):
             else:
                 result = func(*args, **kwargs)
         except Exception as exception:
-            self._log.trace(
-                "simulator -> mosaik: {} raised {!r}", func_name, exception
-            )
+            self._log.trace("simulator -> mosaik: {} raised {!r}", func_name, exception)
             raise
         self._log.trace("simulator -> mosaik: {} returned {!r}", func_name, result)
         return result
@@ -213,9 +209,7 @@ class LocalProxy(BaseProxy):
         try:
             result = self.sim.finalize()
         except Exception as exception:
-            self._log.trace(
-                "simulator -> mosaik: finalize raised {!r}", exception
-            )
+            self._log.trace("simulator -> mosaik: finalize raised {!r}", exception)
             raise
         self._log.trace("simulator -> mosaik: finalize returned {!r}", result)
 
@@ -257,9 +251,7 @@ class RemoteProxy(BaseProxy):
             while True:
                 request = await self._channel.next_request()
                 func_name, args, kwargs = request.content
-                _trace_call(
-                    self._log, "simulator -> mosaik", func_name, args, kwargs
-                )
+                _trace_call(self._log, "simulator -> mosaik", func_name, args, kwargs)
                 func = getattr(self._mosaik_remote, func_name)
                 try:
                     result = await func(*args, **kwargs)
@@ -268,9 +260,7 @@ class RemoteProxy(BaseProxy):
                     )
                     await request.set_result(result)
                 except Exception as e:  # noqa: BLE001
-                    self._log.trace(
-                        "mosaik -> simulator: {} raised {!r}", func_name, e
-                    )
+                    self._log.trace("mosaik -> simulator: {} raised {!r}", func_name, e)
                     await request.set_exception(e)
         except EndOfRequests:
             pass
@@ -307,9 +297,7 @@ class RemoteProxy(BaseProxy):
                 method_called=method,
             ) from exception
         except Exception as exception:
-            self._log.trace(
-                "simulator -> mosaik: {} raised {!r}", method, exception
-            )
+            self._log.trace("simulator -> mosaik: {} raised {!r}", method, exception)
             raise
         self._log.trace("simulator -> mosaik: {} returned {!r}", method, result)
         return result

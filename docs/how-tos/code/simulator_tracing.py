@@ -33,9 +33,9 @@ def main() -> None:
     trace_handler = logger.add(
         sys.stderr,
         level="TRACE",
-        filter=lambda record: record["extra"]
-        .get("simulator", "")
-        .startswith(simulator_filter),
+        filter=lambda record: (
+            record["extra"].get("simulator", "").startswith(simulator_filter)
+        ),
         format="{level: <8} | {extra[simulator]} | {message}",
     )
 
