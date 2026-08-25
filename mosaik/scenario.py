@@ -86,6 +86,25 @@ class World:
     ``False``, mosaik's logging messages will not be enabled in loguru.
     You can still do this yourself by calling
     ``logger.enable("mosaik")``.
+
+    Calls between mosaik and simulators can be logged at the ``TRACE``
+    level. These logs are disabled by default and bind the simulator
+    name to the ``simulator`` field: ``sim.local.<sim_id>`` for
+    in-process simulators and ``sim.remote.<sim_id>`` for networked
+    simulators. Enable mosaik's logging and add a loguru sink at the
+    ``TRACE`` level to display these messages. For example::
+
+        import sys
+        from loguru import logger
+
+        logger.enable("mosaik")
+        logger.add(
+            sys.stderr,
+            level="TRACE",
+            filter=lambda record: record["extra"]
+            .get("simulator", "")
+            .startswith("sim.local"),
+        )
     """
 
     loop: asyncio.AbstractEventLoop

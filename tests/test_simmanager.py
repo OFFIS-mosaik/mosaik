@@ -166,9 +166,9 @@ def test_sim_proxy_stop_impl(world):
         world.loop.run_until_complete(sim._proxy.stop())
 
 
-def test_local_process(world):
+def test_local_process(world: World):
     es = ExampleSim()
-    proxy = LocalProxy(es, None)
+    proxy = LocalProxy(es, simmanager.MosaikRemote(world._async_world, "ExampleSim-0"))
     world.loop.run_until_complete(proxy.init("ExampleSim-0", time_resolution=1.0))
     sim = simmanager.SimRunner("ExampleSim-0", proxy, None)
     assert sim.sid == "ExampleSim-0"
