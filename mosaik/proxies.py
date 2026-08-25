@@ -143,12 +143,10 @@ class LocalProxy(BaseProxy):
     sim: Simulator
     """The underlying :class:`mosaik_api_v3.Simulator`."""
 
-    def __init__(self, sim: Simulator, mosaik_remote: MosaikProxy):
+    def __init__(self, sim: Simulator, mosaik_remote: MosaikRemote):
         super().__init__()
         self.sim = sim
-        self._log = logger.bind(
-            simulator=f"sim.local.{getattr(mosaik_remote, 'sid', 'unknown')}"
-        )
+        self._log = logger.bind(simulator=f"sim.local.{mosaik_remote.sid}")
         sim.mosaik = _TracingMosaikProxy(mosaik_remote, self._log)
 
     async def init(self, sid: SimId, **kwargs: Any) -> list[int]:
