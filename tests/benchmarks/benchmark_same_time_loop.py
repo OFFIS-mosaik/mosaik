@@ -39,8 +39,9 @@ output_timing = {
     8: [10],
 }
 
-a = world.start("TestSim", step_type=step_type).A()
-b = world.start("TestSim", step_type=step_type, output_timing=output_timing).A()
+with world.group():
+    a = world.start("TestSim", step_type=step_type).A()
+    b = world.start("TestSim", step_type=step_type, output_timing=output_timing).A()
 world.set_initial_event(a.sid)
 
 world.connect(a, b, ("val_out", "val_in"))

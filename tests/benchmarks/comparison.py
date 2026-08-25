@@ -3,6 +3,15 @@ import sys
 import networkx as nx
 
 
+def normalize_node_ids(graph):
+    """Return a copy with string execution-graph node IDs.
+
+    GEXF stores ``(sim_id, TieredTime)`` tuples as strings, so the
+    live graph needs the same representation for comparison.
+    """
+    return nx.relabel_nodes(graph, str, copy=True)
+
+
 def remove_time_stamps(graph):
     """
     The execution graph contains data about the execution time, which
@@ -58,7 +67,8 @@ def write_exeuction_graph(world, scenario_file_name):
     :param scenario_file_name: file name for storing the execution graph
     """
     remove_time_stamps(world.execution_graph)
-    nx.write_gexf(world.execution_graph, scenario_file_name.replace(".py", ".gexf"))
+    graph = normalize_node_ids(world.execution_graph)
+    nx.write_gexf(graph, scenario_file_name.replace(".py", ".gexf"))
 
 
 def compare_execution_graph(world, scenario_file_name):
@@ -72,19 +82,16 @@ def compare_execution_graph(world, scenario_file_name):
         compare the simulation results with
     """
     remove_time_stamps(world.execution_graph)
+    graph = normalize_node_ids(world.execution_graph)
 
     # read in previously written execution graph for comparision
     eg = nx.read_gexf(scenario_file_name.replace(".py", ".gexf"))
     remove_ids_and_labels(eg)
     fix_inputs(eg)
 
-    equal_nodes = nx.utils.nodes_equal(
-        world.execution_graph.nodes(data=True), eg.nodes(data=True)
-    )
-    equal_edges = nx.utils.edges_equal(
-        world.execution_graph.edges(data=True), eg.edges(data=True)
-    )
-    equal_adj = world.execution_graph.adj == eg.adj
+    equal_nodes = nx.utils.nodes_equal(graph.nodes(data=True), eg.nodes(data=True))
+    equal_edges = nx.utils.edges_equal(graph.edges(data=True), eg.edges(data=True))
+    equal_adj = graph.adj == eg.adj
 
     if not (equal_nodes and equal_edges and equal_adj):
         sys.exit(3)
