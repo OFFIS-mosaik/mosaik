@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime
 import random
-from collections.abc import Callable, Collection, Iterable, MutableSequence
+from collections.abc import Collection, Iterable, MutableSequence
 from itertools import count, cycle
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -43,9 +43,7 @@ def connect_many_to_one(
     See the :meth:`~mosaik.scenario.World.connect` for more details.
     """
     for src in src_set:
-        world.connect(
-            src, dest, *attrs, **kwargs
-        )
+        world.connect(src, dest, *attrs, **kwargs)
 
 
 def connect_randomly(
