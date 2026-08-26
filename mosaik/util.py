@@ -35,8 +35,7 @@ def connect_many_to_one(
     src_set: Iterable[Entity],
     dest: Entity,
     *attrs: Attr | tuple[Attr, Attr],
-    async_requests: bool = False,
-    transform: Callable[[Any], Any] = lambda x: x,
+    **kwargs,
 ):
     """:meth:`~mosaik.scenario.World.connect` each entity in *src_set*
     to *dest*.
@@ -45,7 +44,7 @@ def connect_many_to_one(
     """
     for src in src_set:
         world.connect(
-            src, dest, *attrs, async_requests=async_requests, transform=transform
+            src, dest, *attrs, **kwargs
         )
 
 
@@ -56,6 +55,7 @@ def connect_randomly(
     *attrs: Attr | tuple[Attr, Attr],
     evenly: bool = True,
     max_connects: int = float("inf"),  # type: ignore
+    **kwargs,
 ):
     """
     Randomly :meth:`~mosaik.scenario.World.connect` the entities from
@@ -103,10 +103,10 @@ def connect_randomly(
     assert dest_set
 
     if evenly:
-        connected = _connect_evenly(world, src_set, dest_set, *attrs)
+        connected = _connect_evenly(world, src_set, dest_set, *attrs, **kwargs)
     else:
         connected = _connect_randomly(
-            world, src_set, dest_set, *attrs, max_connects=max_connects
+            world, src_set, dest_set, *attrs, max_connects=max_connects, **kwargs
         )
 
     return connected
@@ -143,6 +143,7 @@ def _connect_evenly(
     src_set: MutableSequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | tuple[Attr, Attr],
+    **kwargs,
 ) -> set[Entity]:
     connect = world.connect
     connected: set[Entity] = set()
@@ -152,7 +153,7 @@ def _connect_evenly(
     while pos < src_size:
         random.shuffle(dest_set)
         for src, dest in zip(src_set[pos:], dest_set):
-            connect(src, dest, *attrs)
+            connect(src, dest, *attrs, **kwargs)
             connected.add(dest)
         pos += dest_size
 
@@ -165,6 +166,7 @@ def _connect_randomly(
     dest_set: MutableSequence[Entity],
     *attrs: Attr | tuple[Attr, Attr],
     max_connects: int = float("inf"),  # type: ignore
+    **kwargs,
 ) -> set[Entity]:
     connect = world.connect
     connected: set[Entity] = set()
@@ -176,7 +178,7 @@ def _connect_randomly(
     for src in src_set:
         i = randint(0, max_i)
         dest = dest_set[i]
-        connect(src, dest, *attrs)
+        connect(src, dest, *attrs, **kwargs)
         connected.add(dest)
         connects[dest] = connects.get(dest, 0) + 1
         if connects[dest] >= max_connects:
