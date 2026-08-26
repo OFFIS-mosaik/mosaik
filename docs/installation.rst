@@ -13,7 +13,24 @@ If you have a preferred way of installing Python packages, we recommend that you
 
 If you are entirely new to this, we recommend that you start with virtual environments.
 They help to separate Python packages used for different projects which greatly reduces the number of versioning conflicts that you will encounter.
-A good tutorial can be found in `Python's official documentation here <https://docs.python.org/3/tutorial/venv.html>`__.
+
+.. admonition:: Short intro to using virtual environments
+
+   When setting up a Python project for the first time, in the folder containing it, you call ``python -m venv .venv``.
+   This will create the folder *.venv* which will hold the Python interpreter and packages used for this project.
+
+   Whenever you want to work on this project (including right after creating it), you call ``.venv\Scripts\activate`` (on Windows) or ``. .venv/bin/activate`` (on Unix, including MacOS; note the ``.`` at the start).
+   This will activate the virtual environment, which should be reflected by the commandline prompt now starting with ``(.venv)``.
+
+   Python tools (like ``python`` itself, but also ``pip``) will now work in this virtual environment, cleanly separating it from other Python projects you might have.
+
+   When you are done working on the project, you can call ``deactivate`` to use your global Python environment again.
+   Alternatively, closing the terminal will also do that; in any new terminal you open, you will have to activate the virtual environment again.
+
+   Many editors also integrate virtual environments and will allow you to select which one to use somewhere in their interface.
+   Often, they're even detected automatically if you use a common name like *.venv* for them.
+
+For more, see `Python's official documentation for virtual environments here <https://docs.python.org/3/tutorial/venv.html>`__.
 
 
 The mosaik demo
@@ -21,8 +38,11 @@ The mosaik demo
 
 We have a (somewhat out-dated) demo scenario that you can try here: https://gitlab.com/mosaik/examples/mosaik-demo.
 Download and unpack it (or better yet, clone it with Git).
-Then, create a virtual environment in the *mosaik-demo* folder and activate it, as explaining in the official documentation we linked above.
-With the virtual environment active, install the demo's requirements by calling ``pip install -r requirements.txt``.
+Then, create a virtual environment in the *mosaik-demo* folder and activate it, as explained above.
+With the virtual environment active, install the demo's requirements by calling::
+
+   pip install -e .
+
 Then, you can run the scenario with ``python demo.py``.
 Open a webbrowser to http://localhost:8000 to see the running simulation.
 
