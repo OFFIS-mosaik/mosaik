@@ -35,7 +35,7 @@ dev = [
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
     "pynput==1.8.2",
-    {include-group = "plotting"},
+    { include-group = "plotting" },
 ]
 docs = [
     "sphinx>=9.0.0",
@@ -78,7 +78,7 @@ packages = ["mosaik"]
 cache-keys = [{ git = { commit = true, tags = true } }]
 # Replace pynput's evdev dependency by the pre-compiled version
 override-dependencies = [
-    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev-binary"] },
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev-binary; sys_platform != 'win32'"] },
 ]
 exclude-dependencies = [
     { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev"] },
