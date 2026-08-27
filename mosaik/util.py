@@ -94,6 +94,9 @@ def connect_randomly(
         entity of ``dest_set`` may receive. This argument is only taken
         into account if ``evenly`` is set to ``False``.
 
+    :param kwargs: the connection kwargs as in :meth:`world.connect
+        <mosaik.async_scenario.AsyncWorld.connect>`
+
     :return: The :class:`list` of entities from ``dest_set`` to which
         entities from ``src_set`` were actually connected.
     """
