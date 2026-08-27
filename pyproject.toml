@@ -78,9 +78,7 @@ packages = ["mosaik"]
 cache-keys = [{ git = { commit = true, tags = true } }]
 # Replace pynput's evdev dependency by the pre-compiled version
 override-dependencies = [
-    { package = {
-        name = "pynput", version = "1.8.2" },
-        dependencies = ["evdev-binary; sys_platform != 'win32'", "evdev; sys_platform == 'win32'"] },
+    { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev-binary; sys_platform != 'win32'"] },
 ]
 exclude-dependencies = [
     { package = { name = "pynput", version = "1.8.2" }, dependencies = ["evdev"] },
