@@ -1,6 +1,22 @@
 Changelog
 =========
 
+3.7.0 - 2026-08-27
+------------------
+
+- [NEW] Simulator calls in both directions can now be traced at Loguru's ``TRACE`` level, including arguments, return values, and exceptions (`!235 <https://gitlab.com/mosaik/mosaik/-/merge_requests/235>`_)
+- [NEW] ``CmdStarter`` now uses asynchronous subprocesses and supports configurable process termination as well as ``stdout`` and ``stderr`` redirection (`!226 <https://gitlab.com/mosaik/mosaik/-/merge_requests/226>`_)
+- [NEW] Dedicated exception classes make scenario and simulation errors easier to identify and handle programmatically (`!229 <https://gitlab.com/mosaik/mosaik/-/merge_requests/229>`_)
+- [IMPROVEMENT] Dataflow-cycle errors now report the entity and attribute connections that form the cycle (`!199 <https://gitlab.com/mosaik/mosaik/-/merge_requests/199>`_)
+- [IMPROVEMENT] ``connect_many_to_one()`` and ``connect_randomly()`` now forward all connection options to ``World.connect()`` (`!237 <https://gitlab.com/mosaik/mosaik/-/merge_requests/237>`_)
+- [IMPROVEMENT] Reworked the ecosystem overview and high-level API pages, extended troubleshooting and the API reference, and added documentation builds to the CI pipeline (`!231 <https://gitlab.com/mosaik/mosaik/-/merge_requests/231>`_)
+- [IMPROVEMENT] Updated the installation instructions for virtual environments and the mosaik demo (`!236 <https://gitlab.com/mosaik/mosaik/-/merge_requests/236>`_)
+- [CHANGE] Raised the minimum supported Python version to 3.12; mosaik is now tested with Python 3.12, 3.13, and 3.14 (`!230 <https://gitlab.com/mosaik/mosaik/-/merge_requests/230>`_)
+- [FIX] Corrected simulation-progress calculation for predecessors that are still executing their current step (`!224 <https://gitlab.com/mosaik/mosaik/-/merge_requests/224>`_)
+- [FIX] Reduced scheduler overhead by avoiding unnecessary tasks, cleaning up completed progress futures, and optimizing tiered-time operations (`!233 <https://gitlab.com/mosaik/mosaik/-/merge_requests/233>`_)
+- [FIX] Repaired the ``pynput`` development dependency setup on Linux and Windows (`!232 <https://gitlab.com/mosaik/mosaik/-/merge_requests/232>`_, `!237 <https://gitlab.com/mosaik/mosaik/-/merge_requests/237>`_)
+- [FIX] Updated benchmark scenarios for tiered-time execution graphs and repaired automated benchmark comparisons (`!234 <https://gitlab.com/mosaik/mosaik/-/merge_requests/234>`_)
+
 3.6.0 - 2025-12-08
 ------------------
 
