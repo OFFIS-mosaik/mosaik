@@ -62,7 +62,13 @@ from mosaik.exceptions import (
     WeakConnectionOutsideGroupError,
 )
 from mosaik.greetings_util import print_greetings
-from mosaik.in_or_out_set import InOrOutSet, OutSet, parse_set_triple, wrap_set
+from mosaik.in_or_out_set import (
+    InOrOutSet,
+    OutSet,
+    parse_set_triple,
+    wrap_frozenset,
+    wrap_set,
+)
 from mosaik.progress import ProgressProxy
 from mosaik.proxies import BaseProxy, Proxy
 from mosaik.simmanager import (
@@ -1389,7 +1395,7 @@ class AsyncModelFactory:
 
 def parse_attrs(
     model_desc: ModelDescription, type: Literal["time-based", "event-based", "hybrid"]
-) -> tuple[InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr], InOrOutSet[Attr]]:
+) -> tuple[InOrOutSet[Attr], InOrOutSet[Attr], frozenset[Attr], frozenset[Attr]]:
     """Parse the attrs and their trigger/persistent state.
 
     The guiding principle is this: The user can specify as little
@@ -1452,9 +1458,11 @@ def parse_attrs(
 
     outputs = wrap_set(model_desc.get("attrs"))
     default_measurements = empty if type == "event-based" else None
-    measurement_outputs = wrap_set(model_desc.get("persistent", default_measurements))
+    measurement_outputs = wrap_frozenset(
+        model_desc.get("persistent", default_measurements)
+    )
     default_events = None if type == "event-based" else empty
-    event_outputs = wrap_set(model_desc.get("non-persistent", default_events))
+    event_outputs = wrap_frozenset(model_desc.get("non-persistent", default_events))
     measurement_outputs, event_outputs = parse_set_triple(
         outputs,
         measurement_outputs,
@@ -1493,8 +1501,8 @@ class AsyncModelMock:
     params: frozenset[str]
     event_inputs: InOrOutSet[Attr]
     measurement_inputs: InOrOutSet[Attr]
-    event_outputs: InOrOutSet[Attr]
-    measurement_outputs: InOrOutSet[Attr]
+    event_outputs: frozenset[Attr]
+    measurement_outputs: frozenset[Attr]
 
     def __init__(
         self,
@@ -1526,7 +1534,7 @@ class AsyncModelMock:
         return self.event_inputs | self.measurement_inputs
 
     @property
-    def output_attrs(self) -> InOrOutSet[Attr]:
+    def output_attrs(self) -> frozenset[Attr]:
         return self.event_outputs | self.measurement_outputs
 
     async def __call__(self, **model_params: Any):

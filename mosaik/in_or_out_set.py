@@ -147,3 +147,12 @@ def wrap_set[E](set: Iterable[E] | OutSet[E] | None) -> InOrOutSet[E] | None:
     if set is None or isinstance(set, OutSet):
         return set
     return frozenset(set)
+
+
+def wrap_frozenset[E](set: Iterable[E] | None) -> InOrOutSet[E] | None:
+    """Wrap an iterable, resulting in a frozenset. Pass through None
+    unchanged.
+    """
+    if set is None:
+        return set
+    return frozenset(set)
