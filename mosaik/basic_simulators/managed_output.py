@@ -26,11 +26,33 @@ META: Meta = {
         "Dict": {
             "public": True,
             "any_inputs": True,
-            "params": ["domain_model", "full_id"],
+            "params": [
+                "storage_type",
+                "storage_id",
+                "storage_ids",
+                "extra_info",
+                "extra_infos",
+            ],
             "attrs": [],
         },
     },
 }
+
+
+def unify_one_or_more[T](single: T | None, multiple: list[T] | None) -> list[T]:
+    """Assert that exactly one of ``single`` and ``multiple`` is not
+    ``None`` and return it; with ``single`` turned into a one-element
+    list.
+
+    This function is intended to make writing the ``create`` method
+    easier.
+    """
+    if single is not None:
+        assert multiple is None
+        return [single]
+    else:
+        assert multiple is not None
+        return multiple
 
 
 class Simulator(mosaik_api_v3.Simulator):
@@ -51,14 +73,23 @@ class Simulator(mosaik_api_v3.Simulator):
         return self.meta
 
     def create(
-        self, num: int, model: ModelName, domain_model: str, full_id: str
+        self,
+        num: int,
+        model: ModelName,
+        storage_type: str,
+        storage_id: str | None = None,
+        storage_ids: list[str] | None = None,
+        extra_info: Any = None,
+        extra_infos: Any = None,
     ) -> list[CreateResult]:
-        next_eid = len(self.entities)
+        storage_ids = unify_one_or_more(storage_id, storage_ids)
+        assert len(storage_ids) == num
+
         entities: list[CreateResult] = []
-        for i in range(next_eid, next_eid + num):
+        for stid in storage_ids:
             model_instance = {}
-            eid = f"{model}-{i}"
-            self.domain_to_storage[full_id] = eid
+            eid = f"{model}-{len(self.entities)}"
+            self.domain_to_storage[stid] = eid
             self.entities[eid] = model_instance
             entities.append({"eid": eid, "type": model})
         return entities

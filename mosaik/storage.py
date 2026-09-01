@@ -1,10 +1,10 @@
 """While output is handled by normal simulators in mosaik, it is still
-somewhat of a special case. The :class:`OutputSim` class is a wrapper
-for the :class:`~mosaik.async_scenario.AsyncModelFactory` (i.e. the
-class that normally represents simulators in a mosaik scenario). It
+somewhat of a special case. The :class:`StorageManager` class is a
+wrapper for the :class:`~mosaik.async_scenario.AsyncModelFactory` (i.e.
+the class that represents simulators in a mosaik scenario). It
 standardizes connection patterns for output simulators.
 
-Using this model will simplify swapping your output simulator because
+Using this manager will simplify swapping your output simulator because
 you only need to create your ``outputs`` object with a different
 simulator.
 
@@ -14,12 +14,12 @@ In this documentation, **domain model** and **domain entity** refer to
 used by the output simulator.
 
 
-How to recognize OutputSim-ready simulators
--------------------------------------------
+How to recognize StorageManager-ready simulators
+------------------------------------------------
 
 Not all output simulators can be used with this wrapper yet. For
 simulators developed by us, check whether they mention being
-"OutputSim-ready" in their README.
+"StorageManager-ready" in their README.
 
 
 How to use as a scenario author
@@ -31,13 +31,13 @@ To use this adapter, your scenario must use mosaik's
 At to the start of your scenario, create the instance of your output
 simulator and wrap it in :class:`OutputSim` like so::
 
-    outputs = OutputSim(await world.start(...))
+    outputs = StorageManager(await world.start(...))
 
 where ``...`` is replaced by the appropriate parameters to start your
 output simulator.
 
 Then, for all entities that should store outputs, call
-:meth:`~OutputSim.collect_from` like so::
+:meth:`~StorageManager.collect_from` like so::
 
     await outputs.collect_from(entity, *attrs)
 
@@ -48,25 +48,25 @@ If you leave ``attrs`` blank, all output attributes are stored.
 separately in its META.)
 
 To collect output from multiple entities at once, you may also use
-:meth:`~OutputSim.collect_from_all`.
+:meth:`~StorageManager.collect_from_all`.
 
 
 Special cases
 ^^^^^^^^^^^^^
 
-By default, :class:`OutputSim` expects that an output simulator either
-provides a single model used for all outputs, or separate output models
-for all domain models, where the output and domain models share the same
-name. If this is not the case, for example because the output simulator
-creates its models based on the tables in an SQL database but the names
-do not line up perfectly, you can pass a :type:`EntityMapper` to the
-constructor of :class:`OutputSim`.
+By default, :class:`StorageManager` expects that an output simulator
+either provides a single model used for all outputs, or separate output
+models for all domain models, where the output and domain models share
+the same name. If this is not the case, for example because the output
+simulator creates its models based on the tables in an SQL database but
+the names do not line up perfectly, you can pass a :type:`EntityMapper`
+to the constructor of :class:`StorageManager`.
 
 
-How to make your own output simulator OutputSim-ready
------------------------------------------------------
+How to make your own output simulator StorageManager-ready
+----------------------------------------------------------
 
-:class:`OutputSim` expects that a single instance of the output
+:class:`StorageManager` expects that a single instance of the output
 simulator can handle the entire simulation's outputs. It works with
 output simulators set up in one of two ways:
 
@@ -78,15 +78,17 @@ output simulators set up in one of two ways:
    different tables in a database.) In this case, the input attributes
    are often fixed by the model.
 
-In either case, the :class:`OutputSim` will create an entity in the
+In either case, the :class:`StorageManager` will create an entity in the
 output simulator for each domain entity connected to it. In ``create``,
 the output simulator will be passed the model and full entity ID of the
-domain entity as ``domain_model`` and ``full_id``, respectively.
+domain entity as ``storage_type`` and ``storage_id``, respectively.
 
 It is up to the output simulator author to decide how to store the data.
 """
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from typing import Any
 
 from mosaik_api_v3.types import Attr, ModelName
 
@@ -103,7 +105,15 @@ def _extract_singleton[K, V](d: dict[K, V]) -> tuple[K, V] | None:
     return res
 
 
-type EntityMapper = Callable[[Entity], ModelName]
+@dataclass
+class EntityStorage:
+    storage_model: ModelName | None = None
+    storage_type: str | None = None
+    storage_id: str | None = None
+    extra_info: Any | None = None
+
+
+type EntityMapper = Callable[[Entity], EntityStorage]
 """A function describing how to turn entities of your domain into
 storage entities of the output simulator. If your simulator only has one
 model, or if the names of the storage models line up perfectly with the
@@ -114,7 +124,7 @@ domain entity's output.
 """
 
 
-class OutputSim:
+class StorageManager:
     """A wrapper class for a
     :class:`~mosaik.async_scenario.AsyncModelFactory` to make the
     collecting of output data in a mosaik simulation easier.
@@ -122,24 +132,22 @@ class OutputSim:
 
     _sim: AsyncModelFactory
     _entity_mapper: EntityMapper
+    _single_model: ModelName | None
     _storage_entities: dict[Entity, Entity]
 
     def __init__(
         self,
         sim: AsyncModelFactory,
         *,
-        entity_mapper: EntityMapper | None = None,
+        entity_mapper: EntityMapper = lambda _: EntityStorage(),
     ):
         self._sim = sim
-
-        if not entity_mapper:
-            if pair := _extract_singleton(self._sim._proxy.meta["models"]):
-                self._entity_mapper = lambda _entity: pair[0]
-            else:
-                self._entity_mapper = lambda entity: entity.model
+        if pair := _extract_singleton(self._sim._proxy.meta["models"]):
+            self._single_model = pair[0]
         else:
-            self._entity_mapper = entity_mapper
+            self._single_model = None
 
+        self._entity_mapper = entity_mapper
         self._storage_entities = {}
 
     async def get_storage_entity(self, entity: Entity) -> Entity:
@@ -155,9 +163,16 @@ class OutputSim:
         if storage_entity := self._storage_entities.get(entity):
             return storage_entity
 
-        storage_model = self._entity_mapper(entity)
+        si = self._entity_mapper(entity)
+        storage_model = si.storage_model or self._single_model or entity.model
+        storage_type = si.storage_type or entity.model
+        storage_id = si.storage_id or entity.full_id
+        extra_info = si.extra_info or entity.extra_info
+
         storage_entity = await self._sim.models[storage_model](
-            domain_model=entity.model, full_id=entity.full_id
+            storage_type=storage_type,
+            storage_id=storage_id,
+            extra_info=extra_info,
         )
         self._storage_entities[entity] = storage_entity
         return storage_entity

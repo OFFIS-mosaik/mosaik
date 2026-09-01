@@ -18,7 +18,7 @@ import contextlib
 import itertools
 import warnings
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Coroutine, Iterable, Iterator
 from copy import copy
 from dataclasses import dataclass
 from types import TracebackType
@@ -1262,14 +1262,16 @@ class ExtraMethodsProxy:
         self._sim_id = sim_id
         self._methods = set()
 
-    def _add_extra_method(self, name: str, wrapper: Callable[..., Any]) -> None:
+    def _add_extra_method(
+        self, name: str, wrapper: Callable[..., Coroutine[Any, Any, Any]]
+    ) -> None:
         setattr(self, name, wrapper)
         self._methods.add(name)
 
     def __iter__(self):
         return iter(self._methods)
 
-    def __getattr__(self, name: str) -> Callable[..., Any]:
+    def __getattr__(self, name: str) -> Callable[..., Coroutine[Any, Any, Any]]:
         raise UnknownExtraMethodError(self._sim_id, name)
 
 
@@ -1329,7 +1331,9 @@ class AsyncModelFactory:
             # We need get_wrapper() in order to avoid problems with
             # scoping of the name `meth_name`. Without it, `meth_name`
             # would be the same for all wrappers.
-            def get_wrapper(connection: Proxy, meth_name: str) -> Callable[..., Any]:
+            def get_wrapper(
+                connection: Proxy, meth_name: str
+            ) -> Callable[..., Coroutine[Any, Any, Any]]:
                 async def wrapper(*args: Any, **kwargs: Any):
                     return await connection.send([meth_name, args, kwargs])
 

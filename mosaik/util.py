@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime
 import random
-from collections.abc import Collection, Iterable, MutableSequence
+from collections.abc import Collection, Iterable, MutableSequence, Sequence
 from itertools import count, cycle
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -48,8 +48,8 @@ def connect_many_to_one(
 
 def connect_randomly(
     world: World | AsyncWorld,
-    src_set: MutableSequence[Entity],
-    dest_set: MutableSequence[Entity],
+    src_set: Sequence[Entity],
+    dest_set: Collection[Entity],
     *attrs: Attr | tuple[Attr, Attr],
     evenly: bool = True,
     max_connects: int = float("inf"),  # type: ignore
@@ -115,8 +115,8 @@ def connect_randomly(
 
 def connect_zip(
     world: World | AsyncWorld,
-    src_set: Collection[Entity],
-    dest_set: Collection[Entity],
+    src_set: Sequence[Entity],
+    dest_set: Sequence[Entity],
     *attrs: Attr | tuple[Attr, Attr],
     **kwargs,
 ) -> None:
@@ -141,7 +141,7 @@ def connect_zip(
 
 def _connect_evenly(
     world: World | AsyncWorld,
-    src_set: MutableSequence[Entity],
+    src_set: Sequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | tuple[Attr, Attr],
     **kwargs,
@@ -163,7 +163,7 @@ def _connect_evenly(
 
 def _connect_randomly(
     world: World | AsyncWorld,
-    src_set: MutableSequence[Entity],
+    src_set: Sequence[Entity],
     dest_set: MutableSequence[Entity],
     *attrs: Attr | tuple[Attr, Attr],
     max_connects: int = float("inf"),  # type: ignore
