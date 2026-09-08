@@ -60,7 +60,9 @@ models for all domain models, where the output and domain models share
 the same name. If this is not the case, for example because the output
 simulator creates its models based on the tables in an SQL database but
 the names do not line up perfectly, you can pass a :type:`EntityMapper`
-to the constructor of :class:`StorageManager`.
+to the constructor of :class:`StorageManager`. This also allows you to
+adapt the "storage IDs" of your entities, i.e. the name under which
+their output is stored.
 
 
 How to make your own output simulator StorageManager-ready
@@ -106,21 +108,42 @@ def _extract_singleton[K, V](d: dict[K, V]) -> tuple[K, V] | None:
 
 
 @dataclass
-class EntityStorage:
+class EntityStorageSpec:
+    """A dataclass describing where to store a domain entity's output.
+
+    For all fields, the value ``None`` indicates that the default should
+    be used. In particular ``EntityStorage()`` (i.e. with no fields set)
+    means "store in the default place".
+    """
+
     storage_model: ModelName | None = None
+    """Which model of the storage simulator to use to create this domain
+    entity's storage entity. By default, the domain entity's model name
+    will be used for the storage model, or alternatively, the storage
+    simulator's only model. (If the storage simulator has multiple
+    models and none lines up with the domain model, this must be given.)
+    """
     storage_type: str | None = None
+    """A "type" for the domain model. By default, this is the entity's
+    model name. Simulators with just one storage model will often use
+    this to organize the storage.
+    """
     storage_id: str | None = None
+    """The ID under which this entity's data should be stored.
+    By default, the domain entity's full ID is used. Override this if a
+    more convenient name is available.
+    """
     extra_info: Any | None = None
+    """Extra info associated with the domain entity. By default, the
+    domain entity's ``extra_info`` field is passed on.
+    """
 
 
-type EntityMapper = Callable[[Entity], EntityStorage]
-"""A function describing how to turn entities of your domain into
-storage entities of the output simulator. If your simulator only has one
-model, or if the names of the storage models line up perfectly with the
-names of the domain models, you can keep the default value. Otherwise,
-this function should map a (domain) entity to a model name of the output
-simulator. An entity of that storage model will be created to store that
-domain entity's output.
+type EntityMapper = Callable[[Entity], EntityStorageSpec]
+"""A function turning (domain) entities into :class:`EntityStorageSpec`
+objects describing where to store the entities' data.
+
+To use the default values, use ``lambda _: EntityStorageSpec()``.
 """
 
 
@@ -139,7 +162,7 @@ class StorageManager:
         self,
         sim: AsyncModelFactory,
         *,
-        entity_mapper: EntityMapper = lambda _: EntityStorage(),
+        entity_mapper: EntityMapper = lambda _: EntityStorageSpec(),
     ):
         self._sim = sim
         if pair := _extract_singleton(self._sim._proxy.meta["models"]):
