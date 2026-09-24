@@ -11,7 +11,7 @@ This reference should also be helpful if you want to work on or extend mosaik it
 
    mosaik
    mosaik.util
-   mosaik.output
+   mosaik.storage
    mosaik.exceptions
    mosaik.scenario
    mosaik.async_scenario
