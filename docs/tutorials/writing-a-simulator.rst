@@ -274,6 +274,10 @@ Finally, we return ``time + self.step_size`` as the step at which we want to be 
 .. literalinclude:: code/profits_simulator.py
    :pyobject: Simulator.step
 
+
+Passing data
+============
+
 Having calculated the profits, we now need to pass them to mosaik.
 For this, there is a second method, :meth:`~Simulator.get_data`.
 Usually, mosaik will call this immediately after the call to :meth:`~Simulator.step` has returned, except when our simulator's output is not used by any other simulator.
@@ -294,7 +298,7 @@ In our case, we simply send out all the profits that currently exist.
 Then we reset them so that we don't send the same profits again later.
 (Though, due to the calling behaviour of mosaik, this should not happen, anyway.)
 
-.. literalinclude: code/profits_simulator.py
+.. literalinclude:: code/profits_simulator.py
    :pyobject: Simulator.get_data
 
 This concludes the writing of our toy simulator.
