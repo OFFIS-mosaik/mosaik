@@ -19,6 +19,7 @@ Impressum
 | Prof. Dr. Sebastian Lehnhoff (Vorsitzender)
 | Prof. Dr. techn. Susanne Boll-Westermann
 | Prof. Dr.-Ing. Andreas Hein
+| Prof. Dr.-Ing. Astrid Nieße
 
 
 **Registergericht**
