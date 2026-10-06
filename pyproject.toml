@@ -7,6 +7,7 @@ dependencies = [
     "loguru>=0.6",
     "networkx>=2.5",
     "tqdm>=4.66.4",
+    "pyarrow>=25.0.1",
 ]
 license = { file = "LICENSE.txt" }
 requires-python = ">= 3.12"
@@ -35,6 +36,8 @@ dev = [
     "pytest-asyncio>=0.23.7",
     "hypothesis>=6.102.4",
     "pynput==1.8.2",
+    "pandas>=3.0.5",
+    "polars>=1.44.2",
     { include-group = "plotting" },
 ]
 docs = [

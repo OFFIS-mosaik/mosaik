@@ -6,11 +6,13 @@ from typing import Protocol
 
 import pyarrow as pa
 
-type Time = int
+from mosaik.tiered_time import TieredTime
+
+type Time = TieredTime
 type ModelName = str
 type Attr = str
 
-type MeasData = dict[str, pa.RecordBatch]
+type MeasData = dict[ModelName, pa.RecordBatch]
 """Mapping model names to record batches with one row per entity of
 that model and one column per attribute of that model.
 """

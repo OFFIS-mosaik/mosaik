@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, cast
 
 from mosaik_api_v3 import InputData, OutputData, SimId, Time
 
+from mosaik import simrunner
 from mosaik.exceptions import (
     InvalidNextStepTimeError,
     InvalidNextStepTypeError,
@@ -24,12 +25,20 @@ from mosaik.exceptions import (
 )
 from mosaik.internal_util import merge_all, merge_existing
 from mosaik.simmanager import FULL_ID, SimRunner
+from mosaik.simulator import Simulator
 from mosaik.tiered_time import TieredTime
 
 if TYPE_CHECKING:
     from mosaik.async_scenario import AsyncWorld
 
 SENTINEL = object()
+
+
+class BuiltWorld:
+    _runners: list[simrunner.SimRunner[Simulator]]
+
+    async def run_for(self, steps: int | None):
+        pass
 
 
 async def run(
