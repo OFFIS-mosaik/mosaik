@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.7.1 - 2026-10-14
+------------------
+
+- [DOCS] Some minor but important changes to the docs: incorrectly specified versions and updates to the imprint
+
 3.7.0 - 2026-08-27
 ------------------
 
