@@ -1,11 +1,10 @@
-Mosaik
+mosaik
 ======
 
-Mosaik is a simulation compositor for Smart Grid simulations.
+mosaik is a co-simulation framework with an emphasis on smart-grid simulations.
 
-It lets you re-use existing simulators and couple them to simulate large-scale
-Smart Grid scenarios. Mosaik offers powerful mechanisms to specify and compose
-these scenarios.
+mosaik lets you re-use existing simulators and couple them to simulate large-scale smart-grid scenarios.
+It offers powerful mechanisms to specify and compose these scenarios.
 
 License: LGPL
 
@@ -41,22 +40,27 @@ A simple demo scenario with mosaik:
 Installation
 ------------
 
-Mosaik requires Python >= 3.8. Use `pip`__ to install it, preferably into
-a `virtualenv`__::
+mosaik is available on `PyPI here`__ and can be installed using any Python packaging tool.
+For example, using `pip`__ (preferably in a `virtualenv`__), you would say::
 
     $ pip install mosaik
 
+mosaik requires Python 3.12 or higher.
+
+__ https://pypi.org/project/mosaik
 __ http://pip.readthedocs.org/en/latest/installing.html
 __ http://virtualenv.readthedocs.org/en/latest/
 
 Documentation, Source Code and Issues
 -------------------------------------
 
-The documentation is available at https://mosaik.readthedocs.io.
+mosaik's documentation is available at https://mosaik.readthedocs.io.
 
 Please report bugs and ideas for improvement to our `issue tracker`__.
+For more general questions, we also have `GitHub discussions`__
 
 __ https://gitlab.com/mosaik/mosaik/-/issues
+__ https://github.com/orgs/OFFIS-mosaik/discussions
 
 How to cite mosaik
 ------------------

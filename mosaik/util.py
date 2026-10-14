@@ -1011,7 +1011,7 @@ def get_filename(dir: str, type: str, file_format: str) -> str:
     return (
         dir
         + "/"
-        + str(datetime.datetime.now())  # noqa: DTZ005  # using a local datetime is fine
+        + str(datetime.datetime.now(tz=None))
         .replace(" ", "")
         .replace(":", "")
         .replace(".", "")
